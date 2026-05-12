@@ -26,6 +26,15 @@ export function OrangeBtn({ className = '', ...props }: BaseProps) {
   );
 }
 
+export function MintBtn({ className = '', ...props }: BaseProps) {
+  return (
+    <button
+      {...props}
+      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-mint)] text-white border-none ${className}`}
+    />
+  );
+}
+
 export function GhostBtn({ className = '', ...props }: BaseProps) {
   return (
     <button

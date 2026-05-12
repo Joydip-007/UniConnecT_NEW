@@ -19,5 +19,6 @@ export interface User {
   email: string
   role: UserRole
   universityId: string
+  isVerified: boolean
   profile: UserProfile
 }

@@ -24,6 +24,7 @@
   --uc-cyan-bg:       rgba(6, 182, 212, 0.10);
   --uc-mint:          #10B981;
   --uc-mint-bg:       rgba(16, 185, 129, 0.10);
+  --uc-red:           #E11D48;   /* unread badges, errors */
 
   /* ── Text ─────────────────────────────────────────── */
   --text-primary:     #EEF2FF;

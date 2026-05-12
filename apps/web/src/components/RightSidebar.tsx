@@ -1,0 +1,568 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import {
+  MapPin,
+  Hash,
+  CheckCircle2,
+  Circle,
+  Lock,
+  type LucideIcon,
+} from 'lucide-react'
+import { Avatar } from '@/components/Avatar'
+import { Badge } from '@/components/Badge'
+import { api } from '@/lib/axios'
+import { PATHS } from '@/router/paths'
+import type { UserRole } from '@uniconnect/shared/types'
+
+// ── Local types ──────────────────────────────────────────
+
+interface SuggestedUser {
+  id: string
+  role: UserRole
+  profile: {
+    fullName: string
+    department: string | null
+    batchYear: string | null
+  }
+}
+
+interface EventItem {
+  id: string
+  title: string
+  location: string | null
+  startAt: string
+}
+
+interface TrendingTag {
+  tag: string
+  postCount: number
+}
+
+// ── Helpers ──────────────────────────────────────────────
+
+const AVATAR_COLORS = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#1E3A70']
+
+function avatarColor(id: string): string {
+  let sum = 0
+  for (const ch of id) sum += ch.charCodeAt(0)
+  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
+}
+
+function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function formatDate(iso: string) {
+  const d = new Date(iso)
+  return {
+    day: d.getDate(),
+    month: d.toLocaleString('en-US', { month: 'short' }),
+    time: d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+  }
+}
+
+function roleBadgeVariant(role: UserRole): 'dept' | 'alumni' | 'neutral' {
+  if (role === 'alumni') return 'alumni'
+  if (role === 'student') return 'dept'
+  return 'neutral'
+}
+
+function roleLabel(role: UserRole): string {
+  if (role === 'alumni') return 'Alumni · verified'
+  if (role === 'staff') return 'Staff'
+  if (role === 'admin') return 'Admin'
+  return 'Student'
+}
+
+// ── Sub-components ───────────────────────────────────────
+
+function Widget({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: 16,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function SectionHeader({
+  title,
+  onSeeAll,
+}: {
+  title: string
+  onSeeAll?: () => void
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+      }}
+    >
+      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+        {title}
+      </span>
+      {onSeeAll && (
+        <button
+          onClick={onSeeAll}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--uc-indigo-l)',
+            padding: 0,
+          }}
+        >
+          See all
+        </button>
+      )}
+    </div>
+  )
+}
+
+function SkeletonLine({ width = '100%', height = 12 }: { width?: string | number; height?: number }) {
+  return (
+    <div
+      style={{
+        width,
+        height,
+        borderRadius: 'var(--r-sm)',
+        background: 'var(--surface-raised)',
+        opacity: 0.7,
+      }}
+    />
+  )
+}
+
+function PersonRow({ user }: { user: SuggestedUser }) {
+  const navigate = useNavigate()
+  const [sent, setSent] = useState(false)
+  const initials = getInitials(user.profile.fullName)
+  const color = avatarColor(user.id)
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 0',
+        borderBottom: '0.5px solid var(--border-default)',
+      }}
+    >
+      <button
+        onClick={() => navigate(PATHS.PROFILE.replace(':id', user.id))}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+        aria-label={`View ${user.profile.fullName}'s profile`}
+      >
+        <Avatar initials={initials} color={color} size={36} />
+      </button>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <button
+          onClick={() => navigate(PATHS.PROFILE.replace(':id', user.id))}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            display: 'block',
+            width: '100%',
+            textAlign: 'left',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'var(--text-primary)',
+              lineHeight: 1.3,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {user.profile.fullName}
+          </div>
+        </button>
+        <Badge variant={roleBadgeVariant(user.role)} className="mt-0.5">
+          {roleLabel(user.role)}
+        </Badge>
+      </div>
+
+      <button
+        onClick={() => setSent(true)}
+        disabled={sent}
+        style={{
+          flexShrink: 0,
+          background: sent ? 'var(--surface-raised)' : 'var(--uc-indigo-bg)',
+          border: `0.5px solid ${sent ? 'var(--border-default)' : 'var(--uc-indigo-bdr)'}`,
+          borderRadius: 'var(--r-pill)',
+          padding: '5px 12px',
+          fontSize: 12,
+          fontWeight: 500,
+          color: sent ? 'var(--text-tertiary)' : 'var(--uc-indigo-xl)',
+          cursor: sent ? 'default' : 'pointer',
+          transition: 'background 0.15s, color 0.15s',
+        }}
+      >
+        {sent ? 'Sent' : 'Connect'}
+      </button>
+    </div>
+  )
+}
+
+function EventMini({ event }: { event: EventItem }) {
+  const navigate = useNavigate()
+  const { day, month, time } = formatDate(event.startAt)
+
+  return (
+    <button
+      onClick={() => navigate(PATHS.EVENT_DETAIL.replace(':id', event.id))}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        width: '100%',
+        padding: '8px 0',
+        background: 'none',
+        border: 'none',
+        borderBottom: '0.5px solid var(--border-default)',
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      {/* Date box */}
+      <div
+        style={{
+          flexShrink: 0,
+          width: 38,
+          background: 'var(--uc-indigo-bg)',
+          border: '0.5px solid var(--uc-indigo-bdr)',
+          borderRadius: 'var(--r-sm)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '4px 0',
+          lineHeight: 1,
+        }}
+      >
+        <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--uc-indigo-xl)' }}>{day}</span>
+        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--uc-indigo-l)', marginTop: 2 }}>
+          {month}
+        </span>
+      </div>
+
+      {/* Event info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--text-primary)',
+            lineHeight: 1.35,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {event.title}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
+            marginTop: 3,
+            fontSize: 11,
+            color: 'var(--text-tertiary)',
+          }}
+        >
+          {event.location && (
+            <>
+              <MapPin size={10} />
+              <span
+                style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: 140,
+                }}
+              >
+                {event.location}
+              </span>
+              <span style={{ opacity: 0.5 }}>·</span>
+            </>
+          )}
+          <span>{time}</span>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function TrendingRow({ tag, rank, postCount }: { tag: string; rank: number; postCount: number }) {
+  const navigate = useNavigate()
+  return (
+    <button
+      onClick={() => navigate(`${PATHS.SEARCH}?q=${encodeURIComponent('#' + tag)}`)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '7px 0',
+        background: 'none',
+        border: 'none',
+        borderBottom: '0.5px solid var(--border-default)',
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.75' }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', width: 14, textAlign: 'right', flexShrink: 0 }}>
+        {rank}
+      </span>
+      <Hash size={12} style={{ color: 'var(--uc-indigo-l)', flexShrink: 0 }} />
+      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{tag}</span>
+      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+        {postCount >= 1000 ? `${(postCount / 1000).toFixed(1)}k` : postCount} posts
+      </span>
+    </button>
+  )
+}
+
+// ── Badge progress (hardcoded until Phase 9) ─────────────
+
+interface BadgeProgressItem {
+  icon: LucideIcon
+  label: string
+  state: 'done' | 'in-progress' | 'locked'
+  progress?: number
+  total?: number
+}
+
+const BADGE_ITEMS: BadgeProgressItem[] = [
+  { icon: CheckCircle2, label: 'Profile complete', state: 'in-progress', progress: 80, total: 100 },
+  { icon: CheckCircle2, label: 'First post', state: 'done' },
+  { icon: Circle, label: '10 connections', state: 'in-progress', progress: 7, total: 10 },
+  { icon: Lock, label: 'Get verified', state: 'locked' },
+]
+
+function BadgeProgressRow({ item }: { item: BadgeProgressItem }) {
+  const Icon = item.icon
+  const iconColor =
+    item.state === 'done'
+      ? 'var(--uc-mint)'
+      : item.state === 'locked'
+      ? 'var(--text-tertiary)'
+      : 'var(--uc-indigo-l)'
+
+  return (
+    <div style={{ padding: '8px 0', borderBottom: '0.5px solid var(--border-default)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: item.state === 'in-progress' ? 6 : 0 }}>
+        <Icon size={14} style={{ color: iconColor, flexShrink: 0 }} />
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: item.state === 'locked' ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
+          {item.label}
+        </span>
+        {item.state === 'in-progress' && item.progress != null && item.total != null && (
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            {item.progress}/{item.total}
+          </span>
+        )}
+        {item.state === 'done' && (
+          <span style={{ fontSize: 11, color: 'var(--uc-mint)' }}>Done</span>
+        )}
+      </div>
+
+      {item.state === 'in-progress' && item.progress != null && item.total != null && (
+        <div
+          style={{
+            height: 4,
+            borderRadius: 'var(--r-pill)',
+            background: 'var(--surface-raised)',
+            overflow: 'hidden',
+            marginLeft: 22,
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${Math.min(100, (item.progress / item.total) * 100)}%`,
+              background: 'var(--uc-indigo)',
+              borderRadius: 'var(--r-pill)',
+              transition: 'width 0.4s ease',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── RightSidebar ─────────────────────────────────────────
+
+export function RightSidebar() {
+  const navigate = useNavigate()
+
+  const { data: suggestions, isLoading: loadingSuggestions } = useQuery({
+    queryKey: ['users', 'suggestions'],
+    queryFn: () =>
+      api
+        .get<{ data: SuggestedUser[] }>('/users/suggestions', { params: { limit: 3 } })
+        .then((r) => r.data.data),
+  })
+
+  const { data: events, isLoading: loadingEvents } = useQuery({
+    queryKey: ['events', 'list', { from: 'today' }],
+    queryFn: () =>
+      api
+        .get<{ data: EventItem[] }>('/events', { params: { from: 'today', limit: 3 } })
+        .then((r) => r.data.data),
+  })
+
+  const { data: tags, isLoading: loadingTags } = useQuery({
+    queryKey: ['search', 'tags', { type: 'tags' }],
+    queryFn: () =>
+      api
+        .get<{ data: TrendingTag[] }>('/search', { params: { type: 'tags', limit: 5 } })
+        .then((r) => r.data.data),
+  })
+
+  return (
+    <aside
+      style={{
+        width: 272,
+        flexShrink: 0,
+        position: 'sticky',
+        top: 78,
+        height: 'calc(100vh - 78px)',
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        paddingBottom: 20,
+        scrollbarWidth: 'none',
+      }}
+    >
+      {/* People you may know */}
+      <Widget>
+        <SectionHeader
+          title="People you may know"
+          onSeeAll={() => navigate(PATHS.SEARCH + '?type=people')}
+        />
+
+        {loadingSuggestions ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-raised)', flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <SkeletonLine width="60%" />
+                  <SkeletonLine width="40%" height={10} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : suggestions && suggestions.length > 0 ? (
+          <div>
+            {suggestions.slice(0, 3).map((user) => (
+              <PersonRow key={user.id} user={user} />
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
+            No suggestions right now.
+          </p>
+        )}
+      </Widget>
+
+      {/* Upcoming events */}
+      <Widget>
+        <SectionHeader
+          title="Upcoming events"
+          onSeeAll={() => navigate(PATHS.EVENTS)}
+        />
+
+        {loadingEvents ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 10 }}>
+                <div style={{ width: 38, height: 46, borderRadius: 'var(--r-sm)', background: 'var(--surface-raised)', flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 }}>
+                  <SkeletonLine width="80%" />
+                  <SkeletonLine width="50%" height={10} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : events && events.length > 0 ? (
+          <div>
+            {events.slice(0, 3).map((event) => (
+              <EventMini key={event.id} event={event} />
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
+            No upcoming events.
+          </p>
+        )}
+      </Widget>
+
+      {/* Trending on campus */}
+      <Widget>
+        <SectionHeader title="Trending on campus" />
+
+        {loadingTags ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8 }}>
+                <SkeletonLine width={14} height={10} />
+                <SkeletonLine width="55%" />
+                <SkeletonLine width={30} height={10} />
+              </div>
+            ))}
+          </div>
+        ) : tags && tags.length > 0 ? (
+          <div>
+            {tags.slice(0, 5).map((t, i) => (
+              <TrendingRow key={t.tag} tag={t.tag} rank={i + 1} postCount={t.postCount} />
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
+            Nothing trending yet.
+          </p>
+        )}
+      </Widget>
+
+      {/* Badge progress */}
+      <Widget>
+        <SectionHeader title="Your progress" />
+        <div>
+          {BADGE_ITEMS.map((item) => (
+            <BadgeProgressRow key={item.label} item={item} />
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
+          Earn badges by being active — posting, connecting, and getting verified.
+        </p>
+      </Widget>
+    </aside>
+  )
+}

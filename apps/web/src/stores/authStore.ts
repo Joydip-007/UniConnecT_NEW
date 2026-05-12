@@ -9,6 +9,7 @@ interface AuthState {
   setAuth: (user: User, token: string) => void
   clearAuth: () => void
   updateProfile: (partial: Partial<UserProfile>) => void
+  markVerified: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -35,5 +36,11 @@ export const useAuthStore = create<AuthState>((set) => ({
           profile: { ...state.user.profile, ...partial },
         },
       }
+    }),
+
+  markVerified: () =>
+    set((state) => {
+      if (!state.user) return state
+      return { user: { ...state.user, isVerified: true } }
     }),
 }))

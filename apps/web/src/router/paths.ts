@@ -1,6 +1,7 @@
 export const PATHS = {
   LOGIN: '/login',
   REGISTER: '/register/:token',
+  OTP: '/otp',
 
   FEED: '/feed',
 
