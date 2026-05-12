@@ -1,248 +1,216 @@
-# UniConnecT
+# CLAUDE.md
 
-University Social Network Platform — Team Mavericks, UIU, Dhaka 2026–27.
-Private social network for students, alumni, faculty, and admin. Multi-tenant SaaS.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-See @README.md for full overview · @docs/architecture.md for system design · @package.json for all scripts.
+UniConnecT — private university social network (students, alumni, faculty, admin). Multi-tenant SaaS. Team Mavericks, UIU, Dhaka 2026–27.
 
 ---
 
 ## Commands
 
+> **`pnpm` is not on PATH in this environment — always prefix with `npx`:** `npx pnpm …`
+
 ```bash
 # Root (monorepo)
-pnpm install            # install all workspaces
-pnpm dev                # start frontend + backend concurrently
-pnpm build              # production build (all workspaces)
-pnpm test               # run all tests
-pnpm lint               # ESLint across workspaces
-pnpm typecheck          # TypeScript check (no emit)
-
-# Backend — apps/api
-pnpm --filter api dev           # Express + Socket.io on :4000
-pnpm --filter api test          # Vitest unit + integration
-pnpm --filter api test:e2e      # Supertest E2E suite
-pnpm --filter api db:migrate    # run pending Knex migrations
-pnpm --filter api db:rollback   # rollback last migration batch
-pnpm --filter api db:seed       # seed dev data
-pnpm --filter api db:reset      # rollback all → migrate → seed
+npx pnpm install            # install all workspaces
+npx pnpm dev                # start all services concurrently
+npx pnpm build              # production build (all workspaces)
+npx pnpm test               # run all tests
+npx pnpm lint               # ESLint across workspaces
+npx pnpm typecheck          # TypeScript check (no emit)
 
 # Frontend — apps/web
-pnpm --filter web dev           # Vite dev server on :5173
-pnpm --filter web test          # Vitest + React Testing Library
-pnpm --filter web build         # production Vite build → dist/
+npx pnpm --filter web dev           # Vite dev server :5173
+npx pnpm --filter web test          # Vitest + React Testing Library
+npx pnpm --filter web test src/features/feed/PostCard.test.tsx  # single file
+npx pnpm --filter web build
+
+# Backend — apps/api (not yet scaffolded)
+npx pnpm --filter api dev           # Express + Socket.io :4000
+npx pnpm --filter api test
+npx pnpm --filter api db:migrate
+npx pnpm --filter api db:rollback
+npx pnpm --filter api db:seed
+npx pnpm --filter api db:reset      # rollback → migrate → seed
 
 # Docker (local infra only)
-docker compose up -d            # start Postgres, Redis, MinIO
-docker compose down             # stop all containers
+docker compose up -d        # Postgres, Redis, MinIO
+docker compose down
 ```
 
-**Always run `pnpm typecheck` and `pnpm lint` before finishing a task.**
-**Run the smallest relevant test, not the full suite: `pnpm --filter api test src/routes/jobs.test.ts`.**
+**Always run `npx pnpm typecheck && npx pnpm lint` before finishing a task.**
 
----
+### pnpm workspace — `allowBuilds` trap
 
-## Project Structure
-
-```
-uniconnect/
-├── apps/
-│   ├── api/                    # Express REST + Socket.io
-│   │   ├── src/
-│   │   │   ├── config/         # env, db pool, redis, s3 clients
-│   │   │   ├── middleware/     # auth, errorHandler, validate, rateLimit
-│   │   │   ├── routes/         # one file per domain (posts, jobs, events…)
-│   │   │   ├── services/       # business logic — never import from routes
-│   │   │   ├── sockets/        # Socket.io event handlers
-│   │   │   ├── db/
-│   │   │   │   ├── migrations/ # Knex migration files
-│   │   │   │   └── seeds/      # Knex seed files
-│   │   │   └── utils/          # shared helpers, no side effects
-│   │   └── tests/              # mirrors src/ structure
-│   └── web/                    # React 18 + Vite + Tailwind
-│       ├── src/
-│       │   ├── components/     # shared UI — no data fetching here
-│       │   ├── features/       # domain folders (feed/, jobs/, events/…)
-│       │   │   └── feed/
-│       │   │       ├── components/   # feed-specific components
-│       │   │       ├── hooks/        # data-fetching hooks for this domain
-│       │   │       └── index.ts      # barrel export
-│       │   ├── hooks/          # truly shared hooks (useAuth, useSocket)
-│       │   ├── lib/            # axios instance, queryClient, socket init
-│       │   ├── pages/          # route-level components — thin orchestrators
-│       │   └── stores/         # Zustand stores (auth, notifications, ui)
-│       └── tests/
-├── packages/
-│   └── shared/                 # types, zod schemas, constants shared by api + web
-└── docker-compose.yml
-```
+When a new package with a post-install script (e.g. `esbuild`, `msw`) is added, pnpm appends `packagename: set this to true or false` to `pnpm-workspace.yaml` and fails the install. Set the value to `true` in `pnpm-workspace.yaml`, then re-run the install.
 
 ---
 
 ## Architecture
 
-**Multi-tenant:** Every DB query is scoped by `university_id`. The authenticated user's `university_id` is set on `req.university` by `authMiddleware`. Always pass it to service functions — never re-derive it from user lookups.
+```
+apps/
+  api/        Express REST + Socket.io (Node.js, TypeScript)
+  web/        React 18 SPA (Vite 5, Tailwind CSS)
+packages/
+  shared/     @uniconnect/shared — types, Zod schemas, constants
+```
 
-**Auth flow:** JWT access token (15 min) + refresh token (7 days stored in `user_sessions`). Middleware is at `src/middleware/auth.ts`. Protected routes use `requireAuth`. Role checks use `requireRole('alumni')`.
+**Package boundaries are strict.** `apps/web` and `apps/api` never import from each other. All shared code lives in `packages/shared`. Import it as `@uniconnect/shared`.
 
-**Real-time:** Socket.io rooms are named `uni:{university_id}` and `user:{user_id}`. Emit to the university room for feed events; to the user room for personal notifications. Socket context is in `apps/api/src/sockets/`.
+### Multi-tenancy
 
-**File uploads:** Presigned S3 URL flow — client calls `POST /api/upload/presign`, uploads directly to S3, then sends the resulting URL to the relevant endpoint. Never pipe file bytes through the API server.
+Every domain table has a `university_id` UUID FK. There is no Postgres RLS — isolation is enforced entirely in the service layer. Every service function signature starts with `(db: Knex, universityId: string, …)`. The value always comes from `req.university.id` set by `authMiddleware` — never from the request body.
 
-**Background jobs:** Bull queues on Redis. Queue definitions in `src/queues/`. Workers in `src/workers/`. Add new jobs by creating a producer in the service layer and a worker file — do not inline async work inside HTTP handlers.
+### Auth flow
+
+JWT access token (15 min, payload: `{ userId, universityId, role }`) + refresh token (256-bit random, stored in `user_sessions`, 7 days, httpOnly cookie). Access token lives in Zustand `authStore` (memory only). Middleware: `src/middleware/auth.ts` → `requireAuth` / `requireRole('alumni')`.
+
+### Real-time
+
+Socket.io on the same HTTP server. Client authenticates via `socket.handshake.auth.token`. Rooms: `uni:{universityId}` (feed/events/jobs), `user:{userId}` (personal notifications), `conv:{conversationId}` (chat). Services emit to rooms **after** DB write — never from route handlers.
+
+### File uploads
+
+Presigned S3 PUT URL flow — client calls `POST /api/upload/presign`, uploads directly to S3, then sends the resulting URL to the relevant endpoint. File bytes never pass through the API server.
+
+### Background jobs
+
+Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Never inline async work inside HTTP handlers — always enqueue.
 
 ---
 
-## Code Conventions
+## apps/web internals
 
-### Naming
+**Path alias:** `@/` → `apps/web/src/` (configured in both `vite.config.ts` and `tsconfig.json`).
+
+**Folder conventions:**
+
+| Path | Rule |
+|------|------|
+| `src/components/` | Shared UI — no data fetching, props only |
+| `src/features/{domain}/` | Domain bundle: `components/`, `hooks/`, `index.ts` barrel |
+| `src/hooks/` | Truly shared hooks: `useAuth`, `useSocket` |
+| `src/lib/` | Singleton instances: axios, queryClient, socket |
+| `src/pages/` | Route-level components — thin orchestrators, no business logic |
+| `src/stores/` | Zustand stores: `authStore`, `notificationsStore`, `uiStore` |
+| `src/styles/` | `tokens.css` (CSS vars), `index.css` (Tailwind entry + token import) |
+
+**React conventions:**
+- Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
+- `useQuery` key: `['domain', 'action', { param1, param2 }]`
+- Global state → Zustand. Server state → TanStack Query. No `useState` for server data.
+- `queryClient.invalidateQueries` only in mutation `onSuccess` — never in a component body.
+
+---
+
+## packages/shared internals
+
+Exports TypeScript types, Zod schemas, and socket event name constants consumed by both apps.
+
+- `src/types/` — interfaces (`UserProfile`, `JobApplication`, …)
+- `src/schemas/` — Zod schemas, one file per domain (e.g. `src/schemas/jobs.ts`)
+- `src/constants/socket.ts` — Socket.io event name constants
+
+Zod schemas are the **single source of truth** for validation and TS types. Use `z.infer<typeof schema>` — never duplicate types manually. Schema naming: `camelCase` + `Schema` suffix (e.g. `createJobSchema`).
+
+---
+
+## TypeScript
+
+Strict mode on everywhere. No `any` — use `unknown` + narrowing or a specific type. API response shapes: `{ data: T }` on success, `{ error: string, code: string }` on failure (defined in `packages/shared`).
+
+---
+
+## Design system (non-negotiable)
+
+CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/styles/index.css`. Theme: **Warm Futuristic Dark** — navy surfaces, UIU orange identity, indigo interactive.
+
+| Rule | Detail |
+|------|--------|
+| No hardcoded hex | Always `var(--token-name)` — never raw `#rrggbb` in component code |
+| Borders | `0.5px solid var(--border-*)` — never `1px` for structural borders |
+| Depth | Surface stacking only (`--surface-page → --surface-card → --surface-raised`) — no `box-shadow` |
+| Buttons | `border-radius: var(--r-pill)` exclusively — no sharp corners |
+| Font weight | 400 and 500 only — never 600, 700, or 800 |
+| Text case | Sentence case everywhere — no ALL CAPS or Title Case on UI labels/buttons |
+| Coloured surfaces | Text on a coloured background must use the matching light token (e.g. `--uc-orange-l` on `--uc-orange-bg`) |
+
+---
+
+## Naming conventions
 
 | Thing | Convention | Example |
 |-------|-----------|---------|
 | Files (routes, services, utils) | kebab-case | `job-applications.ts` |
 | React components | PascalCase file + named export | `PostCard.tsx` |
 | DB tables / columns | snake_case | `job_applications`, `created_at` |
-| TS types / interfaces | PascalCase | `JobApplication`, `UserProfile` |
-| Zod schemas | camelCase + `Schema` suffix | `createJobSchema` |
-| Env variables | UPPER_SNAKE_CASE | `REDIS_URL` |
+| TS types / interfaces | PascalCase | `JobApplication` |
+| Zod schemas | camelCase + `Schema` | `createJobSchema` |
+| Env vars | UPPER_SNAKE_CASE | `REDIS_URL` |
 | React hooks | camelCase + `use` prefix | `useJobApplications` |
 | Zustand stores | camelCase + `Store` suffix | `authStore` |
 
-### TypeScript
+---
 
-- Strict mode is on. No `any` — use `unknown` + narrowing or a proper type.
-- All shared types live in `packages/shared/src/types/`. Import from `@uniconnect/shared`.
-- Zod schemas are the single source of truth for validation and TS types. Use `z.infer<typeof schema>` — never duplicate types.
-- API response shapes: `{ data: T }` on success, `{ error: string, code: string }` on failure.
+## API / Express conventions
 
-### React
-
-- Data fetching only in `hooks/` using TanStack Query. Components receive props, never call `axios` directly.
-- `useQuery` key pattern: `['domain', 'action', { param1, param2 }]` — e.g. `['jobs', 'list', { universityId, page }]`.
-- Global state in Zustand (auth, socket, UI preferences). Server state in TanStack Query. No useState for server data.
-- Co-locate component styles with the component. Tailwind classes only — no inline `style={{}}` except for truly dynamic values (e.g. width percentages from JS calculations).
-- Never call `queryClient.invalidateQueries` in a component — do it in the mutation's `onSuccess` callback.
-
-### API / Express
-
-- Route files only contain `router.get(...)` calls. All logic is in `services/`.
-- Validate request body/params with Zod at the route level using the `validate(schema)` middleware helper.
-- Service functions always receive `universityId` as their first argument after db/clients.
-- DB queries use the Knex query builder. Never raw SQL unless the Knex API genuinely can't express it.
-- Errors: throw a typed `AppError(message, statusCode, code)` from service layer. The `errorHandler` middleware catches it.
+- Route files contain only `router.METHOD(...)` declarations — all logic in `services/`.
+- Validate with Zod at the route level via `validate(schema)` middleware helper.
+- Errors: throw `AppError(message, statusCode, code)` from services; `errorHandler` middleware catches it.
+- DB: Knex query builder. Raw SQL only when Knex genuinely cannot express the query.
 
 ---
 
 ## Database
 
-- **Migrations:** `apps/api/src/db/migrations/`. Filename: `YYYYMMDDHHMMSS_description.ts`.
-- **Never edit a committed migration.** Create a new one instead.
-- **Column conventions:** `id` (UUID, `uuid_generate_v4()`), `university_id` (UUID FK, indexed), `created_at` / `updated_at` (timestamptz, default `now()`).
-- **Indexes to always add:** any FK column used in WHERE clauses, `(university_id, created_at DESC)` on high-volume tables.
-- **Soft deletes:** use `is_deleted boolean default false` — not `deleted_at`. Filter with `.where('is_deleted', false)`.
-- **Redis:** keys follow `{prefix}:{university_id}:{id}` pattern. TTLs in `src/config/cache.ts`. Never hardcode TTL numbers in service files.
+- Migrations: `apps/api/src/db/migrations/`, filename `YYYYMMDDHHMMSS_description.ts`. Never edit a committed migration — create a new one.
+- Column defaults: `id` UUID (`uuid_generate_v4()`), `university_id` UUID FK indexed, `created_at`/`updated_at` timestamptz default `now()`.
+- Always index FK columns used in WHERE, and `(university_id, created_at DESC)` on high-volume tables.
+- Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
+- Redis keys: `{prefix}:{university_id}:{id}`. TTLs in `src/config/cache.ts` — never hardcode TTL values elsewhere.
 
 ---
 
-## Environment Variables
+## Testing
 
-Required in `apps/api/.env` (see `.env.example`):
-
-```
-DATABASE_URL        # postgres://user:pass@localhost:5432/uniconnect
-REDIS_URL           # redis://localhost:6379
-JWT_SECRET          # min 32 chars
-JWT_REFRESH_SECRET  # min 32 chars, different from JWT_SECRET
-AWS_S3_BUCKET       # or CLOUDINARY_URL for local dev
-AWS_REGION
-EMAIL_FROM          # verified sender address
-SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS
-```
-
-Required in `apps/web/.env`:
-
-```
-VITE_API_URL        # http://localhost:4000
-VITE_SOCKET_URL     # http://localhost:4000
-```
+- Unit tests: `*.test.ts` co-located with source.
+- Integration tests (routes): `apps/api/tests/routes/*.test.ts` against a real `TEST_DATABASE_URL`.
+- React tests: `@testing-library/react` + `user-event`. Test behaviour, not implementation. Mock HTTP with MSW handlers at `src/tests/msw/handlers.ts`.
+- Test data factories: `tests/factories/{domain}.ts` — never hardcode UUIDs.
+- Always clean up with `afterEach`/`afterAll`. Never depend on test order.
 
 ---
 
-## Common Tasks
+## Do not
 
-**Add a new API route:**
-1. Create `apps/api/src/routes/{domain}.ts` with an Express router.
-2. Create `apps/api/src/services/{domain}.ts` with business logic.
-3. Register the router in `apps/api/src/app.ts` under `/api/{domain}`.
-4. Add Zod schemas to `packages/shared/src/schemas/{domain}.ts`.
-5. Write tests in `apps/api/tests/routes/{domain}.test.ts`.
-
-**Add a new feature to the frontend:**
-1. Create `apps/web/src/features/{name}/` with `components/`, `hooks/`, `index.ts`.
-2. Add the data-fetching hook in `hooks/use{Name}.ts` using TanStack Query.
-3. Add the page component in `apps/web/src/pages/`.
-4. Register the route in `apps/web/src/App.tsx`.
-
-**Add a new DB migration:**
-```bash
-pnpm --filter api db:migrate:make add_{description}
-# edit the generated file in src/db/migrations/
-pnpm --filter api db:migrate
-```
-
-**Add a new Socket.io event:**
-1. Define the event name constant in `packages/shared/src/constants/socket.ts`.
-2. Add the emitter in the relevant service file.
-3. Add the handler in `apps/api/src/sockets/{domain}.ts`.
-4. Add the client listener in `apps/web/src/hooks/useSocket.ts`.
+- Query the DB from route files — always go through a service.
+- Store anything sensitive in the JWT payload — only `userId`, `universityId`, `role`.
+- Emit Socket.io events from route handlers — emit from services after DB write.
+- Use `university_id` from the request body for auth decisions — use `req.university.id`.
+- Import across app boundaries (`apps/web` ↔ `apps/api`) — use `packages/shared`.
+- Add a dependency without checking if `packages/shared` or an existing workspace already covers it.
+- Call `console.log` in production-path code — use the `logger` from `src/utils/logger.ts` (winston).
 
 ---
 
-## Do Not
-
-- **Do not** query the DB from route files — always go through a service function.
-- **Do not** store sensitive data in JWT payload — only `userId`, `universityId`, `role`.
-- **Do not** emit Socket.io events directly from route handlers — emit from services after DB write.
-- **Do not** use `university_id` from the request body for security decisions — always use `req.university.id` from the auth middleware.
-- **Do not** create migrations that modify existing column types without a backfill strategy — discuss first.
-- **Do not** import from `apps/api` inside `apps/web` or vice versa — all shared code lives in `packages/shared`.
-- **Do not** add new npm dependencies without checking if `packages/shared` or an existing workspace already covers it.
-- **Do not** commit `.env` files — `.env.example` only.
-- **Do not** call `console.log` in production-path code — use the `logger` from `src/utils/logger.ts` (winston).
-
----
-
-## Testing Conventions
-
-- **Unit tests:** pure functions and services with mocked DB/Redis. File: `*.test.ts` next to the source.
-- **Integration tests:** routes with a real test DB (`TEST_DATABASE_URL`). File: `tests/routes/*.test.ts`.
-- **React tests:** React Testing Library + user-event. Test behaviour, not implementation. Mock API calls with MSW handlers in `tests/msw/handlers.ts`.
-- **Test factories:** use `tests/factories/{domain}.ts` to build consistent test data — never hardcode UUIDs.
-- Always clean up test data with `afterEach` / `afterAll`. Never depend on test execution order.
-
----
-
-## Git Workflow
+## Git
 
 ```
 main            # production-ready, protected
-develop         # integration branch — PRs merge here
-feature/{name}  # new features
-fix/{name}      # bug fixes
-chore/{name}    # tooling, deps, config
+develop         # integration — PRs merge here
+feature/{name}
+fix/{name}
+chore/{name}
 ```
 
 Commit format: `type(scope): short description` — e.g. `feat(jobs): add alumni job posting endpoint`.
-Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`.
-PRs require passing CI (lint + typecheck + tests) before merge.
+Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`. CI (lint + typecheck + tests) must pass before merge.
 
 ---
 
-## Detailed References
+## Environment variables
 
-- @docs/architecture.md — system design, data flow diagrams
-- @docs/api.md — complete REST endpoint reference
-- @docs/database.md — full schema with indexes and relationships
-- @docs/socket-events.md — all Socket.io events, payloads, rooms
-- @docs/deployment.md — AWS infra, env config, CI/CD pipeline
-- @docs/design-system.md — UI tokens, component patterns, brand guide
+`apps/api/.env` (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `AWS_S3_BUCKET`, `AWS_REGION`, `EMAIL_FROM`, `SMTP_HOST/PORT/USER/PASS`.
+
+`apps/web/.env` (see `.env.example`): `VITE_API_URL`, `VITE_SOCKET_URL`.

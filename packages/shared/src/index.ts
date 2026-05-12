@@ -9,3 +9,5 @@ export interface ApiError {
   error: string;
   code: string;
 }
+
+export type { User, UserProfile, UserRole } from './types/user'

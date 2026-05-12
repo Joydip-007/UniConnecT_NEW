@@ -1,5 +1,12 @@
-function App() {
-  return <div>UniConnecT</div>
-}
+import { RouterProvider } from 'react-router-dom'
+import { Toaster } from 'sonner'
+import { router } from '@/router'
 
-export default App
+export default function App() {
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster position="top-right" theme="dark" richColors />
+    </>
+  )
+}
