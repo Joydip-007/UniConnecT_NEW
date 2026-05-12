@@ -1,0 +1,44 @@
+/* Design tokens — Warm Futuristic Dark theme. Always use var(--token) in components, never raw hex. */
+:root {
+  /* ── Surfaces (dark-mode default) ─────────────────── */
+  --surface-page:     #060D1A;
+  --surface-card:     #0A1628;
+  --surface-raised:   #111D35;
+  --surface-hover:    #1A2D4A;
+
+  /* ── Brand — UC indigo (primary interactive) ──────── */
+  --uc-indigo:        #5B5BD6;
+  --uc-indigo-l:      #7C7CF0;
+  --uc-indigo-xl:     #A5A5F8;
+  --uc-indigo-bg:     rgba(91, 91, 214, 0.10);
+  --uc-indigo-bdr:    rgba(91, 91, 214, 0.28);
+
+  /* ── Brand — UIU orange (identity & attention) ────── */
+  --uc-orange:        #F05A28;
+  --uc-orange-l:      #F5845A;
+  --uc-orange-bg:     rgba(240, 90, 40, 0.10);
+  --uc-orange-bdr:    rgba(240, 90, 40, 0.28);
+
+  /* ── Semantic ─────────────────────────────────────── */
+  --uc-cyan:          #06B6D4;
+  --uc-cyan-bg:       rgba(6, 182, 212, 0.10);
+  --uc-mint:          #10B981;
+  --uc-mint-bg:       rgba(16, 185, 129, 0.10);
+
+  /* ── Text ─────────────────────────────────────────── */
+  --text-primary:     #EEF2FF;
+  --text-secondary:   rgba(238, 242, 255, 0.58);
+  --text-tertiary:    rgba(238, 242, 255, 0.28);
+
+  /* ── Borders ──────────────────────────────────────── */
+  --border-default:   rgba(255, 255, 255, 0.07);
+  --border-hover:     rgba(255, 255, 255, 0.13);
+  --border-strong:    rgba(255, 255, 255, 0.22);
+
+  /* ── Radius ───────────────────────────────────────── */
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-pill: 999px;
+}
