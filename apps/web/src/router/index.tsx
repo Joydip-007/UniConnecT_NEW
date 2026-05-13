@@ -1,25 +1,27 @@
 import { lazy, Suspense, type ComponentType } from 'react'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
 import GuestRoute from './GuestRoute'
 import { FeedLayout } from '@/components/FeedLayout'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { PATHS } from './paths'
 
 function page(load: () => Promise<{ default: ComponentType }>) {
   const Comp = lazy(load)
   return (
-    <Suspense fallback={null}>
-      <Comp />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={null}>
+        <Comp />
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 
 export const router = createBrowserRouter([
-  { path: '/', element: <Navigate to={PATHS.FEED} replace /> },
-
   {
     element: <GuestRoute />,
     children: [
+      { path: '/', element: page(() => import('@/pages/LandingPage')) },
       { path: PATHS.LOGIN, element: page(() => import('@/pages/LoginPage')) },
       { path: PATHS.REGISTER, element: page(() => import('@/pages/RegisterPage')) },
       { path: PATHS.OTP, element: page(() => import('@/pages/OtpPage')) },

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Plus, Search } from 'lucide-react'
+import { Briefcase, Plus, Search } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { OrangeBtn } from '@/components/Button'
 import { JobCard, type Job } from '@/features/jobs/components/JobCard'
 import { PostJobForm } from '@/features/jobs/components/PostJobForm'
+import { SkeletonJobCard } from '@/components/skeletons/SkeletonJobCard'
+import { EmptyState } from '@/components/EmptyState'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,75 +31,6 @@ const TABS: { label: string; value: JobType }[] = [
   { label: 'Part-time', value: 'part_time' },
   { label: 'Contract', value: 'contract' },
 ]
-
-// ── SkeletonCard ──────────────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '16px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
-      }}
-    >
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 'var(--r-sm)',
-            background: 'var(--surface-raised)',
-            flexShrink: 0,
-          }}
-        />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 7 }}>
-          <div
-            style={{
-              height: 14,
-              width: '55%',
-              background: 'var(--surface-raised)',
-              borderRadius: 'var(--r-sm)',
-            }}
-          />
-          <div
-            style={{
-              height: 12,
-              width: '35%',
-              background: 'var(--surface-raised)',
-              borderRadius: 'var(--r-sm)',
-            }}
-          />
-          <div
-            style={{
-              height: 12,
-              width: '45%',
-              background: 'var(--surface-raised)',
-              borderRadius: 'var(--r-sm)',
-            }}
-          />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        {[72, 56, 80].map((w, i) => (
-          <div
-            key={i}
-            style={{
-              height: 24,
-              width: w,
-              background: 'var(--surface-raised)',
-              borderRadius: 'var(--r-pill)',
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
 
 // ── JobsPage ──────────────────────────────────────────────────────────────────
 
@@ -259,9 +192,9 @@ export default function JobsPage() {
       {/* Skeleton loading */}
       {isLoading && (
         <>
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
+          <SkeletonJobCard />
+          <SkeletonJobCard />
+          <SkeletonJobCard />
         </>
       )}
 
@@ -272,29 +205,22 @@ export default function JobsPage() {
 
       {/* Empty state */}
       {!isLoading && jobs.length === 0 && (
-        <div
-          style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-            padding: '48px 24px',
-            textAlign: 'center',
-          }}
-        >
-          <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-            No jobs found
-          </p>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-            {debouncedSearch ? 'Try a different keyword or clear the search.' : 'Check back soon for new opportunities.'}
-          </p>
-        </div>
+        <EmptyState
+          icon={Briefcase}
+          title="No jobs found"
+          description={
+            debouncedSearch
+              ? 'Try a different keyword or clear the search.'
+              : 'Check back soon for new opportunities.'
+          }
+        />
       )}
 
       {/* Loading next page */}
       {isFetchingNextPage && (
         <>
-          <SkeletonCard />
-          <SkeletonCard />
+          <SkeletonJobCard />
+          <SkeletonJobCard />
         </>
       )}
 

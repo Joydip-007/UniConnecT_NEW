@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { Rss } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { CreatePost } from '@/features/feed/components/CreatePost'
 import { PostCard } from '@/features/feed/components/PostCard'
 import type { FeedPost } from '@/features/feed/components/PostCard'
 import { useFeedSocket } from '@/features/feed/hooks/useFeedSocket'
+import { SkeletonPost } from '@/components/skeletons/SkeletonPost'
+import { EmptyState } from '@/components/EmptyState'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -27,77 +30,6 @@ const TABS: { label: string; value: FeedFilter }[] = [
   { label: 'Events', value: 'event' },
   { label: 'Jobs', value: 'job' },
 ]
-
-// ── SkeletonPost ───────────────────────────────────────────────────────────────
-
-function SkeletonPost() {
-  return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '14px 16px',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: 'var(--surface-raised)',
-            flexShrink: 0,
-          }}
-        />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div
-            style={{
-              height: 13,
-              width: '35%',
-              background: 'var(--surface-raised)',
-              borderRadius: 'var(--r-sm)',
-            }}
-          />
-          <div
-            style={{
-              height: 11,
-              width: '22%',
-              background: 'var(--surface-raised)',
-              borderRadius: 'var(--r-sm)',
-            }}
-          />
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-        <div
-          style={{
-            height: 13,
-            width: '90%',
-            background: 'var(--surface-raised)',
-            borderRadius: 'var(--r-sm)',
-          }}
-        />
-        <div
-          style={{
-            height: 13,
-            width: '75%',
-            background: 'var(--surface-raised)',
-            borderRadius: 'var(--r-sm)',
-          }}
-        />
-        <div
-          style={{
-            height: 13,
-            width: '55%',
-            background: 'var(--surface-raised)',
-            borderRadius: 'var(--r-sm)',
-          }}
-        />
-      </div>
-    </div>
-  )
-}
 
 // ── FeedPage ───────────────────────────────────────────────────────────────────
 
@@ -206,6 +138,15 @@ export default function FeedPage() {
       {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
+
+      {/* Empty state */}
+      {!isLoading && posts.length === 0 && (
+        <EmptyState
+          icon={Rss}
+          title="Nothing here yet"
+          description="Be the first to post something, or try a different filter."
+        />
+      )}
 
       {/* Loading next page */}
       {isFetchingNextPage && (

@@ -4,6 +4,8 @@ import { MessageCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { api } from '@/lib/axios'
+import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
+import { EmptyState } from '@/components/EmptyState'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -197,87 +199,21 @@ export function ConversationList() {
 
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-          padding: '8px 4px',
-        }}
-      >
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '10px 12px',
-            }}
-          >
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: '50%',
-                background: 'var(--surface-raised)',
-                flexShrink: 0,
-              }}
-            />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div
-                style={{
-                  height: 13,
-                  width: `${50 + (i * 13) % 30}%`,
-                  borderRadius: 4,
-                  background: 'var(--surface-raised)',
-                }}
-              />
-              <div
-                style={{
-                  height: 11,
-                  width: `${40 + (i * 17) % 35}%`,
-                  borderRadius: 4,
-                  background: 'var(--surface-raised)',
-                }}
-              />
-            </div>
-          </div>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '8px 4px' }}>
+        <SkeletonConvRow />
+        <SkeletonConvRow />
+        <SkeletonConvRow />
       </div>
     )
   }
 
   if (!data || data.length === 0) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-          padding: '48px 24px',
-          textAlign: 'center',
-        }}
-      >
-        <MessageCircle
-          size={32}
-          strokeWidth={1.5}
-          style={{ color: 'var(--text-tertiary)' }}
-        />
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontWeight: 400,
-            color: 'var(--text-tertiary)',
-            lineHeight: 1.5,
-          }}
-        >
-          No conversations yet. Start by messaging a classmate or alumni.
-        </p>
-      </div>
+      <EmptyState
+        icon={MessageCircle}
+        title="Start a conversation"
+        description="No conversations yet. Start by messaging a classmate or alumni."
+      />
     )
   }
 

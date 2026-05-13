@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { CalendarX, Plus } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { OrangeBtn } from '@/components/Button'
 import { EventCard, type Event } from '@/features/events/components/EventCard'
 import { CreateEventForm } from '@/features/events/components/CreateEventForm'
+import { SkeletonEventCard } from '@/components/skeletons/SkeletonEventCard'
+import { EmptyState } from '@/components/EmptyState'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,41 +24,6 @@ const TABS: { label: string; value: EventType }[] = [
   { label: 'Alumni meetup', value: 'alumni_meetup' },
   { label: 'Club', value: 'club' },
 ]
-
-// ── SkeletonCard ──────────────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div style={{ height: 80, background: 'var(--surface-raised)' }} />
-      <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ height: 14, width: '65%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
-        <div style={{ height: 12, width: '45%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
-        <div
-          style={{
-            marginTop: 4,
-            borderTop: '0.5px solid var(--border-default)',
-            paddingTop: 10,
-            display: 'flex',
-            gap: 8,
-          }}
-        >
-          <div style={{ height: 28, width: 70, background: 'var(--surface-raised)', borderRadius: 'var(--r-pill)' }} />
-          <div style={{ height: 28, width: 56, background: 'var(--surface-raised)', borderRadius: 'var(--r-pill)' }} />
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── EventsPage ────────────────────────────────────────────────────────────────
 
@@ -218,10 +185,9 @@ export default function EventsPage() {
       >
         {isLoading && (
           <>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
+            <SkeletonEventCard />
+            <SkeletonEventCard />
+            <SkeletonEventCard />
           </>
         )}
 
@@ -232,24 +198,15 @@ export default function EventsPage() {
 
       {/* ── Empty state ────────────────────────────────────────────────────── */}
       {!isLoading && events.length === 0 && (
-        <div
-          style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-            padding: '48px 24px',
-            textAlign: 'center',
-          }}
-        >
-          <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-            No events found
-          </p>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-            {from || to
+        <EmptyState
+          icon={CalendarX}
+          title="No events this week"
+          description={
+            from || to
               ? 'No events in the selected date range. Try adjusting the dates.'
-              : 'No events have been scheduled yet. Check back soon.'}
-          </p>
-        </div>
+              : 'No events have been scheduled yet. Check back soon.'
+          }
+        />
       )}
 
       {/* ── Floating create button — staff / admin only ─────────────────── */}
