@@ -4,6 +4,7 @@ import { Bell, LogOut, MessageSquare, Search, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
+import { NotificationDropdown } from '@/features/notifications'
 import { PATHS } from '@/router/paths'
 import logoSrc from '@/assets/logo.svg'
 
@@ -82,18 +83,23 @@ export function TopNav() {
   const { messageCount, notificationCount } = useNotificationsStore()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const notifRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!menuOpen) return
+    if (!menuOpen && !notifOpen) return
     function onClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
       }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
     }
     document.addEventListener('mousedown', onClickOutside)
     return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [menuOpen])
+  }, [menuOpen, notifOpen])
 
   function handleSignOut() {
     clearAuth()
@@ -180,14 +186,22 @@ export function TopNav() {
           <BadgeCount count={messageCount} />
         </button>
 
-        <button
-          onClick={() => navigate(PATHS.NOTIFICATIONS)}
-          style={iconBtnStyle}
-          aria-label="Notifications"
-        >
-          <Bell size={16} />
-          <BadgeCount count={notificationCount} />
-        </button>
+        <div style={{ position: 'relative' }} ref={notifRef}>
+          <button
+            onClick={() => setNotifOpen((o) => !o)}
+            style={{
+              ...iconBtnStyle,
+              borderColor: notifOpen ? 'var(--border-hover)' : undefined,
+              background: notifOpen ? 'var(--surface-raised)' : undefined,
+            }}
+            aria-label="Notifications"
+            aria-expanded={notifOpen}
+          >
+            <Bell size={16} />
+            <BadgeCount count={notificationCount} />
+          </button>
+          {notifOpen && <NotificationDropdown onClose={() => setNotifOpen(false)} />}
+        </div>
 
         {/* Avatar + profile dropdown */}
         <div style={{ position: 'relative' }} ref={menuRef}>

@@ -2,8 +2,13 @@ import { Outlet } from 'react-router-dom'
 import { TopNav } from '@/components/TopNav'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { RightSidebar } from '@/components/RightSidebar'
+import { useAuthStore } from '@/stores/authStore'
+import { useNotificationsSocket } from '@/features/notifications'
 
 export function FeedLayout() {
+  const userId = useAuthStore((s) => s.user?.id)
+  useNotificationsSocket(userId)
+
   return (
     <div style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <TopNav />
