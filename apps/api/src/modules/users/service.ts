@@ -66,7 +66,21 @@ export class UsersService {
       .first<UserProfileRow>()
 
     if (!user) throw notFound('User not found')
-    return toUserProfile(user, { includePhone: currentUserId === targetUserId })
+
+    const [followers, following, posts, isFollowingRow] = await Promise.all([
+      countFollows('following_id', targetUserId, universityId),
+      countFollows('follower_id', targetUserId, universityId),
+      db('posts').where({ user_id: targetUserId, is_deleted: false }).count<CountRow[]>({ count: '*' }).then(([r]) => Number(r.count)),
+      currentUserId !== targetUserId
+        ? db('follows').where({ follower_id: currentUserId, following_id: targetUserId }).first()
+        : Promise.resolve(null),
+    ])
+
+    return {
+      ...toUserProfile(user, { includePhone: currentUserId === targetUserId }),
+      stats: { followers, following, posts },
+      isFollowing: !!isFollowingRow,
+    }
   }
 
   async listUsers(universityId: string, query: UserListQuery) {

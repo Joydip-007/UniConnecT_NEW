@@ -52,13 +52,24 @@ const authMessages = {
 }
 
 export class AuthService {
-  async register(data: RegisterInput, universityId: string, _ipAddress: string, _deviceInfo: AuthDeviceInfo) {
+  async register(data: RegisterInput, universityId: string, _ipAddress: string, _deviceInfo: AuthDeviceInfo, allowedEmailDomains: string[] = []) {
     const invitation = data.invitation_token ? await getInvitation(data.invitation_token) : null
     const email = data.email ?? invitation?.email
     const role = data.role ?? invitation?.role
 
     if (!email || !role || !data.full_name) {
       throw new AppError('Invitation token is required', 422, 'VALIDATION_ERROR')
+    }
+
+    if (allowedEmailDomains.length > 0) {
+      const emailDomain = email.split('@')[1]?.toLowerCase() ?? ''
+      if (!allowedEmailDomains.includes(emailDomain)) {
+        throw new AppError(
+          `Registration is only allowed for these email domains: ${allowedEmailDomains.join(', ')}`,
+          422,
+          'EMAIL_DOMAIN_NOT_ALLOWED',
+        )
+      }
     }
 
     if (invitation) {
@@ -241,13 +252,16 @@ export class AuthService {
   }
 
   async forgotPassword(email: string, universityId: string) {
-    const user = await findUserWithProfileByEmail(email, universityId)
+    const user = await findUserByEmail(email, universityId)
     if (!user || !user.is_active) {
       return { message: authMessages.resetSent }
     }
 
+    const profile = await findUserWithProfile(user.id)
+    const displayName = profile?.full_name ?? email.split('@')[0]
+
     const otp = await otpService.storeOtp(user.id, 'reset')
-    await sendOtpOrThrow(user.email, otp, 'reset', user.full_name)
+    await sendOtpOrThrow(user.email, otp, 'reset', displayName)
     return { message: authMessages.resetSent }
   }
 
@@ -258,20 +272,23 @@ export class AuthService {
     await verifyOtpOrThrow(user.id, 'reset', otp)
 
     const passwordHash = await bcrypt.hash(newPassword, 12)
-    await db('users').where({ id: user.id }).update({ password_hash: passwordHash })
+    await db('users').where({ id: user.id }).update({ password_hash: passwordHash, is_verified: true })
     await tokenService.revokeAllUserSessions(user.id)
 
     return { message: authMessages.passwordReset }
   }
 
   async resendOtp(email: string, purpose: OtpPurpose, universityId: string) {
-    const user = await findUserWithProfileByEmail(email, universityId)
+    const user = await findUserByEmail(email, universityId)
     if (!user || !user.is_active) throw new AppError('User not found', 404, 'NOT_FOUND')
+
+    const profile = await findUserWithProfile(user.id)
+    const displayName = profile?.full_name ?? email.split('@')[0]
 
     await enforceOtpResendLimit(user.id)
     await otpService.revokeOtp(user.id, purpose)
     const otp = await otpService.storeOtp(user.id, purpose)
-    await sendOtpOrThrow(user.email, otp, purpose, user.full_name)
+    await sendOtpOrThrow(user.email, otp, purpose, displayName)
 
     return { message: 'A new 6-digit code was sent to your email.' }
   }

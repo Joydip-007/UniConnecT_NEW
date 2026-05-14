@@ -10,6 +10,7 @@ declare global {
         name: string
         domain: string
         plan: string
+        allowedEmailDomains: string[]
       }
     }
   }

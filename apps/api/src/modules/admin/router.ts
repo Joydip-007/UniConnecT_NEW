@@ -5,11 +5,13 @@ import { validate, validateRequest } from '../../middleware/validate'
 import {
   createInvitation,
   deleteInvitation,
+  getAllowedDomains,
   getStats,
   listInvitations,
   listReports,
   listUsers,
   resolveReport,
+  updateAllowedDomains,
   updateUserRole,
   updateUserStatus,
 } from './controller'
@@ -17,6 +19,7 @@ import {
   CreateInvitationSchema,
   PaginationQuerySchema,
   ResolveReportSchema,
+  UpdateAllowedDomainsSchema,
   UpdateUserRoleSchema,
   UpdateUserStatusSchema,
 } from './schema'
@@ -37,3 +40,6 @@ adminRouter.patch('/reports/:reportId', validate(ResolveReportSchema), resolveRe
 adminRouter.post('/invitations', validate(CreateInvitationSchema), createInvitation)
 adminRouter.get('/invitations', validateRequest({ query: PaginationQuerySchema }), listInvitations)
 adminRouter.delete('/invitations/:invitationId', requireRole('admin'), deleteInvitation)
+
+adminRouter.get('/university/domains', requireRole('admin'), getAllowedDomains)
+adminRouter.patch('/university/domains', requireRole('admin'), validate(UpdateAllowedDomainsSchema), updateAllowedDomains)

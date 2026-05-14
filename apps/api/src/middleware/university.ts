@@ -10,6 +10,7 @@ interface UniversityRow {
   domain: string
   plan: string
   is_active: boolean
+  allowed_email_domains: string[] | null
 }
 
 export const resolveUniversity = asyncHandler(async (req: Request, _res: Response, next: NextFunction) => {
@@ -21,7 +22,7 @@ export const resolveUniversity = asyncHandler(async (req: Request, _res: Respons
     getUniversityIdFromRefreshCookie(req)
 
   const query = db<UniversityRow>('universities')
-    .select('id', 'name', 'domain', 'plan', 'is_active')
+    .select('id', 'name', 'domain', 'plan', 'is_active', 'allowed_email_domains')
     .first()
 
   if (domain) {
@@ -43,6 +44,7 @@ export const resolveUniversity = asyncHandler(async (req: Request, _res: Respons
     name: university.name,
     domain: university.domain,
     plan: university.plan,
+    allowedEmailDomains: university.allowed_email_domains ?? [],
   }
 
   next()

@@ -229,6 +229,24 @@ export class AdminService {
     if (deleted === 0) throw notFound('Invitation not found')
     return { deleted: true }
   }
+
+  async getAllowedEmailDomains(universityId: string) {
+    const row = await db<{ allowed_email_domains: string[] | null }>('universities')
+      .select('allowed_email_domains')
+      .where({ id: universityId })
+      .first()
+
+    return { allowedEmailDomains: row?.allowed_email_domains ?? [] }
+  }
+
+  async updateAllowedEmailDomains(universityId: string, domains: string[]) {
+    const unique = [...new Set(domains.map((d) => d.trim().toLowerCase()).filter(Boolean))]
+    await db('universities')
+      .where({ id: universityId })
+      .update({ allowed_email_domains: db.raw('?::text[]', [unique.length ? `{${unique.join(',')}}` : '{}']) })
+
+    return { allowedEmailDomains: unique }
+  }
 }
 
 export const adminService = new AdminService()

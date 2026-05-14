@@ -4,6 +4,10 @@ import { env } from '../../config/env'
 const defaultUniversityId = '00000000-0000-4000-8000-000000000001'
 
 export async function seed(knex: Knex) {
+  const allowedDomainsLiteral = knex.raw(
+    "ARRAY['bscse.uiu.ac.bd','mscse.uiu.ac.bd','bsds.uiu.ac.bd','gmail.com']::text[]",
+  )
+
   await knex('universities')
     .insert({
       id: defaultUniversityId,
@@ -11,6 +15,7 @@ export async function seed(knex: Knex) {
       domain: 'uiu.ac.bd',
       country: 'Bangladesh',
       plan: 'starter',
+      allowed_email_domains: allowedDomainsLiteral,
     })
     .onConflict('id')
     .merge({
@@ -18,6 +23,7 @@ export async function seed(knex: Knex) {
       domain: 'uiu.ac.bd',
       country: 'Bangladesh',
       plan: 'starter',
+      allowed_email_domains: allowedDomainsLiteral,
     })
 
   await knex('invitations')

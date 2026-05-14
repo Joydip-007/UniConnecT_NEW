@@ -7,6 +7,7 @@ import type {
   CreateInvitationInput,
   PaginationQuery,
   ResolveReportInput,
+  UpdateAllowedDomainsInput,
   UpdateUserRoleInput,
   UpdateUserStatusInput,
 } from './schema'
@@ -61,6 +62,17 @@ export const deleteInvitation = asyncHandler(async (req: Request, res: Response)
   const { universityId } = getAdminContext(req)
   const invitationId = req.params.invitationId as string
   sendSuccess(res, await adminService.deleteInvitation(universityId, invitationId))
+})
+
+export const getAllowedDomains = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await adminService.getAllowedEmailDomains(universityId))
+})
+
+export const updateAllowedDomains = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const { allowed_email_domains } = req.body as UpdateAllowedDomainsInput
+  sendSuccess(res, await adminService.updateAllowedEmailDomains(universityId, allowed_email_domains))
 })
 
 function getAdminContext(req: Request) {

@@ -21,6 +21,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     getUniversityId(req),
     getIpAddress(req),
     getDeviceInfo(req),
+    req.university?.allowedEmailDomains ?? [],
   )
 
   setRefreshCookie(res, result.refreshToken)

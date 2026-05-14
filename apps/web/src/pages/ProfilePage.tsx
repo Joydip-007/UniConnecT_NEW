@@ -14,9 +14,9 @@ import type { FollowMode } from '@/features/profile'
 
 interface ProfileUser {
   id: string
-  fullName: string
   role: 'student' | 'alumni' | 'staff' | 'admin'
   profile: {
+    fullName: string
     avatarUrl: string | null
     headline: string | null
     department: string | null
@@ -194,6 +194,7 @@ export default function ProfilePage() {
   }
 
   const avatarColor = seedColor(user.id)
+  const fullName = user.profile.fullName
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -242,11 +243,11 @@ export default function ProfilePage() {
             {user.profile.avatarUrl ? (
               <img
                 src={user.profile.avatarUrl}
-                alt={user.fullName}
+                alt={fullName}
                 style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
               />
             ) : (
-              <Avatar initials={getInitials(user.fullName)} color={avatarColor} size={60} />
+              <Avatar initials={getInitials(fullName)} color={avatarColor} size={60} />
             )}
           </div>
 
@@ -277,7 +278,7 @@ export default function ProfilePage() {
           <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 17, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                {user.fullName}
+                {fullName}
               </span>
               <Badge variant={roleBadgeVariant(user.role)}>{roleLabel(user.role)}</Badge>
               {user.profile.department && (

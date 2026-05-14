@@ -23,8 +23,15 @@ export const CreateInvitationSchema = z.object({
   expires_in_days: z.number().int().min(1).max(30).default(7),
 })
 
+export const UpdateAllowedDomainsSchema = z.object({
+  allowed_email_domains: z
+    .array(z.string().trim().min(1).toLowerCase())
+    .max(20, 'Maximum 20 allowed domains'),
+})
+
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>
 export type ResolveReportInput = z.infer<typeof ResolveReportSchema>
 export type CreateInvitationInput = z.infer<typeof CreateInvitationSchema>
+export type UpdateAllowedDomainsInput = z.infer<typeof UpdateAllowedDomainsSchema>
