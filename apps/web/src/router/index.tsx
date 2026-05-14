@@ -23,8 +23,11 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: page(() => import('@/pages/LandingPage')) },
       { path: PATHS.LOGIN, element: page(() => import('@/pages/LoginPage')) },
+      { path: PATHS.REGISTER_ENTRY, element: page(() => import('@/pages/RegisterPage')) },
       { path: PATHS.REGISTER, element: page(() => import('@/pages/RegisterPage')) },
       { path: PATHS.OTP, element: page(() => import('@/pages/OtpPage')) },
+      { path: PATHS.VERIFY_OTP, element: page(() => import('@/pages/OtpPage')) },
+      { path: PATHS.FORGOT_PASSWORD, element: page(() => import('@/pages/ForgotPasswordPage')) },
     ],
   },
 

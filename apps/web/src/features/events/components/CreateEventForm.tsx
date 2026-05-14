@@ -80,9 +80,9 @@ function Label({
 // ── Presign upload helper ─────────────────────────────────────────────────────
 
 async function uploadFile(file: File): Promise<string> {
-  const res = await api.post<{ data: { uploadUrl: string; publicUrl: string } }>(
+  const res = await api.get<{ data: { uploadUrl: string; publicUrl: string } }>(
     '/upload/presign',
-    { fileName: file.name, fileType: file.type, folder: 'events' },
+    { params: { filename: file.name, contentType: file.type } },
   )
   const { uploadUrl, publicUrl } = res.data.data
   await fetch(uploadUrl, {

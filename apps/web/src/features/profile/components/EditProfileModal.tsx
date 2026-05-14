@@ -292,14 +292,11 @@ export function EditProfileModal({ onClose }: Props) {
     setUploading(slot)
     setUploadError(null)
 
-    const folder = slot === 'avatar' ? 'avatars' : 'covers'
     const fieldKey = slot === 'avatar' ? 'avatarUrl' : 'coverUrl'
 
     try {
-      const { data: presign } = await api.post<{ data: PresignResponse }>('/upload/presign', {
-        fileName: file.name,
-        fileType: file.type,
-        folder,
+      const { data: presign } = await api.get<{ data: PresignResponse }>('/upload/presign', {
+        params: { filename: file.name, contentType: file.type },
       })
       const { uploadUrl, publicUrl } = presign.data
 

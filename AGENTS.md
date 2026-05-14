@@ -25,7 +25,7 @@ npx pnpm --filter web test          # Vitest + React Testing Library
 npx pnpm --filter web test src/features/feed/PostCard.test.tsx  # single file
 npx pnpm --filter web build
 
-# Backend — apps/api (not yet scaffolded)
+# Backend — apps/api (initial auth scaffold only)
 npx pnpm --filter api dev           # Express + Socket.io :4000
 npx pnpm --filter api test
 npx pnpm --filter api db:migrate
@@ -211,6 +211,6 @@ Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`. CI (lint + 
 
 ## Environment variables
 
-`apps/api/.env` (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `AWS_S3_BUCKET`, `AWS_REGION`, `EMAIL_FROM`, `SMTP_HOST/PORT/USER/PASS`.
+`apps/api/.env` (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `AWS_S3_BUCKET`, `AWS_REGION`.
 
 `apps/web/.env` (see `.env.example`): `VITE_API_URL`, `VITE_SOCKET_URL`.

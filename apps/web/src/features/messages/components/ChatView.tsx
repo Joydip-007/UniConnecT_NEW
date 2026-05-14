@@ -231,10 +231,13 @@ export function ChatView({ convId }: { convId: string }) {
       queryKey: ['messages', convId],
       queryFn: ({ pageParam }) =>
         api
-          .get<{ data: MessagesPage }>(`/conversations/${convId}/messages`, {
-            params: pageParam ? { before: pageParam } : {},
+          .get<{ data: { items: Message[] } }>(`/conversations/${convId}/messages`, {
+            params: pageParam ? { before: pageParam, limit: 20 } : { limit: 20 },
           })
-          .then((r) => r.data.data),
+          .then((r) => ({
+            items: r.data.data.items,
+            nextCursor: r.data.data.items.length === 20 ? (r.data.data.items[0]?.id ?? null) : null,
+          })),
       initialPageParam: null as string | null,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     })

@@ -11,3 +11,4 @@ export interface ApiError {
 }
 
 export type { User, UserProfile, UserRole } from './types/user'
+export * from './schemas/auth'

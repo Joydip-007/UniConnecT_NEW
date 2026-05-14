@@ -72,12 +72,10 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
 
     try {
       // 1. Get presigned URL
-      const presignRes = await api.post<{
+      const presignRes = await api.get<{
         data: { uploadUrl: string; publicUrl: string }
       }>('/upload/presign', {
-        fileName: file.name,
-        fileType: file.type,
-        folder: 'resumes',
+        params: { filename: file.name, contentType: file.type },
       })
       const { uploadUrl, publicUrl } = presignRes.data.data
 

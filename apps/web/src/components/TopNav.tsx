@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { NotificationDropdown } from '@/features/notifications'
 import { PATHS } from '@/router/paths'
-import logoSrc from '@/assets/logo.svg'
+import { BrandLogo } from '@/components/BrandLogo'
 
 const AVATAR_COLORS = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#1E3A70']
 
@@ -124,17 +124,13 @@ export function TopNav() {
         gap: 16,
       }}
     >
-      {/* Left: mark + wordmark */}
+      {/* Left: logo */}
       <a
         href={PATHS.FEED}
         onClick={(e) => { e.preventDefault(); navigate(PATHS.FEED) }}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}
+        style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
       >
-        <img src={logoSrc} height={28} alt="UniConnecT mark" style={{ display: 'block', width: 'auto' }} />
-        <span style={{ fontSize: 15, fontWeight: 500, letterSpacing: '-0.01em', lineHeight: 1 }}>
-          <span style={{ color: 'var(--text-primary)' }}>Uni</span>
-          <span style={{ color: 'var(--uc-orange)' }}>ConnecT</span>
-        </span>
+        <BrandLogo height={36} />
       </a>
 
       {/* Center: search */}

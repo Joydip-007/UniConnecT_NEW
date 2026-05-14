@@ -4,14 +4,14 @@ import { isAxiosError } from 'axios'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { PrimaryBtn } from '@/components/Button'
+import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
 import type { User } from '@uniconnect/shared/types'
-import logoSrc from '@/assets/logo.svg'
 
 interface LoginResponse {
   data: {
-    user: User
     accessToken: string
+    user: User
   }
 }
 
@@ -71,7 +71,7 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <img src={logoSrc} alt="UniConnecT" style={{ height: 40 }} />
+          <BrandLogo height={40} />
         </div>
 
         {/* Card */}
@@ -121,9 +121,17 @@ export default function LoginPage() {
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
-                Password
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  Password
+                </span>
+                <Link
+                  to={PATHS.FORGOT_PASSWORD}
+                  style={{ fontSize: 12, color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -192,7 +200,7 @@ export default function LoginPage() {
           <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
             Or{' '}
             <Link
-              to={PATHS.REGISTER.replace(':token', 'invite')}
+              to={PATHS.REGISTER_ENTRY}
               style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
             >
               go to register page

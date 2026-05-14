@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.notificationsRouter = void 0;
+const express_1 = require("express");
+const auth_1 = require("../../middleware/auth");
+const university_1 = require("../../middleware/university");
+const validate_1 = require("../../middleware/validate");
+const controller_1 = require("./controller");
+const schema_1 = require("./schema");
+exports.notificationsRouter = (0, express_1.Router)();
+exports.notificationsRouter.use(auth_1.requireAuth, university_1.resolveUniversity);
+exports.notificationsRouter.get('/', (0, validate_1.validateRequest)({ query: schema_1.NotificationListQuerySchema }), controller_1.listNotifications);
+exports.notificationsRouter.patch('/:notificationId/read', controller_1.markRead);
+exports.notificationsRouter.post('/read-all', controller_1.markAllRead);

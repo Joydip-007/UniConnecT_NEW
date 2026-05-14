@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BrandLogo } from '@/components/BrandLogo'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
-import logoSrc from '@/assets/logo.svg'
 
 const NAV_LINKS = [
   { label: 'Features',     href: '#features' },
@@ -57,13 +57,9 @@ export function LandingNav() {
         {/* Logo */}
         <a
           href="/"
-          style={{ display: 'flex', alignItems: 'center', gap: 11, textDecoration: 'none', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
         >
-          <img src={logoSrc} alt="" style={{ height: 30 }} />
-          <span style={{ fontSize: 18, fontWeight: 500, lineHeight: 1 }}>
-            <span style={{ color: 'var(--text-primary)' }}>Uni</span>
-            <span style={{ color: 'var(--uc-orange)' }}>ConnecT</span>
-          </span>
+          <BrandLogo height={34} />
         </a>
 
         {/* Center nav links — hidden on mobile via CSS */}

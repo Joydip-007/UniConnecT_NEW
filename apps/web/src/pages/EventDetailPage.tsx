@@ -33,7 +33,7 @@ interface EventDetail {
   onlineLink: string | null
   coverUrl: string | null
   startsAt: string
-  endsAt: string
+  endsAt: string | null
   capacity: number | null
   organizer: { id: string; fullName: string; avatarUrl: string | null }
   rsvpCounts: { going: number; maybe: number; not_going: number }
@@ -89,9 +89,9 @@ function toInitials(fullName: string): string {
   return ((parts[0][0] ?? '') + (parts[parts.length - 1][0] ?? '')).toUpperCase()
 }
 
-function formatDateRange(startsAt: string, endsAt: string) {
+function formatDateRange(startsAt: string, endsAt: string | null) {
   const start = parseISO(startsAt)
-  const end = parseISO(endsAt)
+  const end = endsAt ? parseISO(endsAt) : start
   const sameDay = isSameDay(start, end)
   return {
     date: sameDay
@@ -415,7 +415,7 @@ export default function EventDetailPage() {
   const counts = localCounts ?? event.rsvpCounts
   const rsvp = localRsvp
   const meta = TYPE_META[event.type] ?? TYPE_META.general
-  const ended = isPast(parseISO(event.endsAt))
+  const ended = isPast(parseISO(event.endsAt ?? event.startsAt))
   const full =
     event.capacity !== null && counts.going >= event.capacity && rsvp !== 'going'
   const { date, time } = formatDateRange(event.startsAt, event.endsAt)

@@ -1,25 +1,59 @@
 import { useRef, useState, useEffect } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { PrimaryBtn } from '@/components/Button'
+import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
-import logoSrc from '@/assets/logo.svg'
+import type { User } from '@uniconnect/shared/types'
+
+type OtpPurpose = 'verify' | 'login'
+
+interface VerifyResponse {
+  data: {
+    accessToken: string
+    user: User
+  }
+}
 
 export default function OtpPage() {
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
-  const accessToken = useAuthStore((s) => s.accessToken)
-  const markVerified = useAuthStore((s) => s.markVerified)
+  const [searchParams] = useSearchParams()
+  const location = useLocation()
+  const setAuth = useAuthStore((s) => s.setAuth)
+  const authUser = useAuthStore((s) => s.user)
 
-  if (!accessToken || !user) return <Navigate to={PATHS.LOGIN} replace />
-  if (user.isVerified) return <Navigate to={PATHS.FEED} replace />
+  const purpose = (searchParams.get('purpose') ?? 'verify') as OtpPurpose
+  const email = (location.state as { email?: string } | null)?.email ?? ''
 
-  return <OtpForm email={user.email} onVerified={() => { markVerified(); navigate(PATHS.FEED, { replace: true }) }} />
+  // Already fully authenticated — send to feed
+  if (authUser?.isVerified) return <Navigate to={PATHS.FEED} replace />
+
+  // No email passed → back to login
+  if (!email) return <Navigate to={PATHS.LOGIN} replace />
+
+  return (
+    <OtpForm
+      email={email}
+      purpose={purpose}
+      onVerified={(user, token) => {
+        setAuth(user, token)
+        navigate(PATHS.FEED, { replace: true })
+      }}
+    />
+  )
 }
 
-function OtpForm({ email, onVerified }: { email: string; onVerified: () => void }) {
+function OtpForm({
+  email,
+  purpose,
+  onVerified,
+}: {
+  email: string
+  purpose: OtpPurpose
+  onVerified: (user: User, token: string) => void
+}) {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', ''])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -46,8 +80,14 @@ function OtpForm({ email, onVerified }: { email: string; onVerified: () => void 
     setError(null)
     setLoading(true)
     try {
-      await api.post('/auth/verify-otp', { email, otp })
-      onVerified()
+      const endpoint = purpose === 'login' ? '/auth/verify-login-otp' : '/auth/verify-otp'
+      const body =
+        purpose === 'login'
+          ? { email, otp }
+          : { email, otp, purpose: 'verify' }
+
+      const { data } = await api.post<VerifyResponse>(endpoint, body)
+      onVerified(data.data.user, data.data.accessToken)
     } catch (err) {
       const status = isAxiosError(err) ? err.response?.status : null
       setError(
@@ -99,7 +139,7 @@ function OtpForm({ email, onVerified }: { email: string; onVerified: () => void 
     setResendLoading(true)
     setResendMessage(null)
     try {
-      await api.post('/auth/resend-otp', { email })
+      await api.post('/auth/resend-otp', { email, purpose })
       setResendCountdown(60)
       setResendMessage('A new code has been sent.')
     } catch {
@@ -108,6 +148,12 @@ function OtpForm({ email, onVerified }: { email: string; onVerified: () => void 
       setResendLoading(false)
     }
   }
+
+  const headingText = purpose === 'login' ? 'Confirm your login' : 'Verify your email'
+  const bodyText =
+    purpose === 'login'
+      ? `We sent a 6-digit code to `
+      : `We sent a 6-digit code to `
 
   return (
     <div style={{
@@ -127,7 +173,7 @@ function OtpForm({ email, onVerified }: { email: string; onVerified: () => void 
         gap: 32,
       }}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <img src={logoSrc} alt="UniConnecT" style={{ height: 40 }} />
+          <BrandLogo height={40} />
         </div>
 
         <div style={{
@@ -147,7 +193,7 @@ function OtpForm({ email, onVerified }: { email: string; onVerified: () => void 
               color: 'var(--text-primary)',
               lineHeight: 1.3,
             }}>
-              Verify your email
+              {headingText}
             </h1>
             <p style={{
               margin: '8px 0 0',
@@ -155,7 +201,7 @@ function OtpForm({ email, onVerified }: { email: string; onVerified: () => void 
               color: 'var(--text-secondary)',
               lineHeight: 1.6,
             }}>
-              We sent a 6-digit code to{' '}
+              {bodyText}
               <span style={{ color: 'var(--text-primary)' }}>{email}</span>.
               Enter it below to continue.
             </p>

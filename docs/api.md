@@ -50,7 +50,7 @@ List endpoints accept `?page=1&limit=20`. Response includes:
 ## Auth
 
 ### `POST /auth/register`
-Create a new user account (requires a valid invitation token).
+Create a new user account (requires a valid invitation token). Registration issues auth tokens and sends a 6-digit email OTP through Resend when the user is not verified.
 ```json
 // body
 { "token": "inv_abc123", "password": "min8chars", "fullName": "Joydip Datta" }
@@ -64,7 +64,7 @@ Create a new user account (requires a valid invitation token).
 // body
 { "email": "jd@uiu.ac.bd", "password": "..." }
 
-// response 200  — also sets httpOnly refreshToken cookie
+// response 200  — also sets httpOnly refreshToken cookie; unverified users receive a fresh OTP when cooldown permits
 { "data": { "user": {...}, "accessToken": "..." } }
 ```
 
@@ -82,11 +82,20 @@ Issue a new access token using the refresh token cookie. No body required.
 ```
 
 ### `POST /auth/verify-otp`
+Requires auth. Verifies the signed-in user's email OTP.
 ```json
 // body
 { "email": "jd@uiu.ac.bd", "otp": "481923" }
 // response 200
 { "data": { "verified": true } }
+```
+
+### `POST /auth/resend-otp`
+Requires auth. Sends a new 6-digit OTP through Resend for the signed-in, unverified user. Rate limited by `OTP_RESEND_COOLDOWN_SECONDS`.
+```json
+// body
+{ "email": "jd@uiu.ac.bd" }
+// response 204 — no body
 ```
 
 ### `GET /auth/me`

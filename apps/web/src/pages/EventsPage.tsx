@@ -47,14 +47,14 @@ export default function EventsPage() {
     queryKey,
     queryFn: () =>
       api
-        .get<{ data: Event[] }>('/events', {
+        .get<{ data: { items: Event[] } }>('/events', {
           params: {
             ...(activeType !== 'all' && { type: activeType }),
-            ...(from && { from }),
-            ...(to && { to }),
+            ...(from && { from: new Date(from).toISOString() }),
+            ...(to && { to: new Date(to).toISOString() }),
           },
         })
-        .then((r) => r.data.data),
+        .then((r) => r.data.data.items),
   })
 
   const events = data ?? []
