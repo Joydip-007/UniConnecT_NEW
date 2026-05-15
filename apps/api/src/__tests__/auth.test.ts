@@ -47,6 +47,30 @@ describe('POST /api/v1/auth/register', () => {
 
     expect(res.status).toBe(409)
   })
+
+  it('stores department in profile when provided at registration', async () => {
+    const email = `dept.${Date.now()}@bscse.uiu.ac.bd`
+    createdUserEmails.push(email)
+
+    const res = await api.post('/api/v1/auth/register').set(UNI).send({
+      email,
+      password: 'TestPass@1234',
+      full_name: 'Dept Tester',
+      role: 'student',
+      department: 'EEE',
+    })
+
+    expect(res.status).toBe(201)
+
+    // Verify department persisted
+    const profile = await db('profiles')
+      .join('users', 'users.id', 'profiles.user_id')
+      .where('users.email', email)
+      .select('profiles.department')
+      .first<{ department: string | null }>()
+
+    expect(profile?.department).toBe('EEE')
+  })
 })
 
 describe('POST /api/v1/auth/verify-otp', () => {

@@ -106,6 +106,7 @@ export class AuthService {
       await trx('profiles').insert({
         user_id: createdUser.id,
         full_name: data.full_name,
+        department: data.department ?? null,
       })
 
       if (invitation) {

@@ -12,6 +12,7 @@ export const RegisterSchema = z
     role: AuthRoleSchema.optional(),
     invitation_token: z.string().trim().min(1).optional(),
     token: z.string().trim().min(1).optional(),
+    department: z.string().trim().min(1).max(100).optional().nullable(),
   })
   .transform((value) => ({
     email: value.email,
@@ -19,6 +20,7 @@ export const RegisterSchema = z
     full_name: value.full_name ?? value.fullName,
     role: value.role,
     invitation_token: value.invitation_token ?? value.token,
+    department: value.department ?? null,
   }))
   .refine((value) => Boolean(value.full_name), {
     message: 'Full name is required',
