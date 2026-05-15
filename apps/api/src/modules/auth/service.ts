@@ -383,7 +383,7 @@ function toAuthUser(user: UserWithProfileRow) {
     universityId: user.university_id,
     isVerified: user.is_verified,
     profile: {
-      fullName: user.full_name,
+      fullName: user.full_name ?? '',
       bio: user.bio ?? null,
       avatarUrl: user.avatar_url ?? null,
       coverUrl: user.cover_url ?? null,

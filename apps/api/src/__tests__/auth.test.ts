@@ -156,18 +156,16 @@ describe('GET /api/v1/auth/me', () => {
 
     expect(res.status).toBe(401)
   })
-})
 
-describe('GET /api/v1/auth/me', () => {
   it('returns real profile data including department', async () => {
-    const { accessToken } = await loginAs(CREDENTIALS.student.email, CREDENTIALS.student.password)
+    const { accessToken: token } = await loginAs(CREDENTIALS.student.email, CREDENTIALS.student.password)
 
     // Set department directly in DB so we can verify the field comes back
     const userRow = await db('users').where({ email: CREDENTIALS.student.email }).select('id').first()
     await db('profiles').where({ user_id: userRow.id }).update({ department: 'CSE', batch_year: '2025' })
 
     const res = await api.get('/api/v1/auth/me')
-      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .set(UNI)
 
     expect(res.status).toBe(200)
