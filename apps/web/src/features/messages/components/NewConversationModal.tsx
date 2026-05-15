@@ -12,7 +12,7 @@ import { api } from '@/lib/axios'
 interface UserResult {
   id: string
   fullName: string
-  role: 'student' | 'alumni' | 'staff' | 'admin'
+  role: 'student' | 'alumni' | 'faculty' | 'admin'
   profile: {
     fullName?: string | null
     avatarUrl: string | null
@@ -64,7 +64,7 @@ type BadgeVariant = 'dept' | 'alumni' | 'neutral'
 const ROLE_BADGE: Record<UserResult['role'], BadgeVariant> = {
   student: 'dept',
   alumni: 'alumni',
-  staff: 'neutral',
+  faculty: 'neutral',
   admin: 'neutral',
 }
 

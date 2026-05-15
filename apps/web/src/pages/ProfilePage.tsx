@@ -14,7 +14,7 @@ import type { FollowMode } from '@/features/profile'
 
 interface ProfileUser {
   id: string
-  role: 'student' | 'alumni' | 'staff' | 'admin'
+  role: 'student' | 'alumni' | 'faculty' | 'admin'
   profile: {
     fullName: string
     avatarUrl: string | null
@@ -60,7 +60,7 @@ function roleBadgeVariant(role: ProfileUser['role']): 'dept' | 'alumni' | 'neutr
 }
 
 function roleLabel(role: ProfileUser['role']): string {
-  if (role === 'staff') return 'Staff'
+  if (role === 'faculty') return 'Faculty'
   if (role === 'admin') return 'Admin'
   return role.charAt(0).toUpperCase() + role.slice(1)
 }

@@ -22,7 +22,7 @@ interface Props {
 interface FollowUser {
   id: string
   fullName: string
-  role: 'student' | 'alumni' | 'staff' | 'admin'
+  role: 'student' | 'alumni' | 'faculty' | 'admin'
   profile: {
     avatarUrl: string | null
     headline: string | null

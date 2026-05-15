@@ -12,7 +12,7 @@ import { EmptyState } from '@/components/EmptyState'
 interface Participant {
   id: string
   fullName: string
-  role: 'student' | 'alumni' | 'staff' | 'admin'
+  role: 'student' | 'alumni' | 'faculty' | 'admin'
   profile: {
     avatarUrl: string | null
     headline: string | null

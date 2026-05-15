@@ -1,14 +1,21 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Users, FileText, Mail, Flag, CheckCircle, XCircle, Trash2, X } from 'lucide-react'
+import {
+  Users, FileText, Mail, Flag, CheckCircle, XCircle, Trash2, X,
+  ArrowLeft, ShieldCheck, Briefcase, Calendar, Newspaper,
+  type LucideIcon,
+} from 'lucide-react'
 import { api } from '@/lib/axios'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { BrandLogo } from '@/components/BrandLogo'
+import { PATHS } from '@/router/paths'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type UserRole = 'student' | 'alumni' | 'staff' | 'admin'
+type UserRole = 'student' | 'alumni' | 'faculty' | 'admin'
 
 interface Stats {
   users: number
@@ -78,22 +85,48 @@ function fmtDate(d: string) {
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub }: { label: string; value: number; sub?: string }) {
+function StatCard({
+  label, value, sub, icon: Icon, iconColor, iconBg,
+}: {
+  label: string
+  value: number
+  sub?: string
+  icon: LucideIcon
+  iconColor: string
+  iconBg: string
+}) {
   return (
     <div style={{
       background: 'var(--surface-card)',
       border: '0.5px solid var(--border-default)',
       borderRadius: 'var(--r-lg)',
-      padding: '18px 20px',
+      padding: '20px',
       display: 'flex',
       flexDirection: 'column',
-      gap: 4,
+      gap: 14,
     }}>
-      <span style={{ fontSize: 26, fontWeight: 500, color: 'var(--text-primary)' }}>
-        {value.toLocaleString()}
-      </span>
-      <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
-      {sub && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{sub}</span>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 30, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+          {value.toLocaleString()}
+        </span>
+        <div style={{
+          width: 36,
+          height: 36,
+          borderRadius: 'var(--r-sm)',
+          background: iconBg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          color: iconColor,
+        }}>
+          <Icon size={17} />
+        </div>
+      </div>
+      <div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</div>
+        {sub && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{sub}</div>}
+      </div>
     </div>
   )
 }
@@ -167,7 +200,7 @@ function AllowedDomainsPanel() {
       background: 'var(--surface-card)',
       border: '0.5px solid var(--border-default)',
       borderRadius: 'var(--r-lg)',
-      padding: '20px',
+      padding: '24px',
       display: 'flex',
       flexDirection: 'column',
       gap: 16,
@@ -177,7 +210,7 @@ function AllowedDomainsPanel() {
           <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
             Allowed email domains
           </span>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
             Only these domains may register. Leave empty to allow any domain.
           </p>
         </div>
@@ -294,19 +327,69 @@ function OverviewTab() {
 
   if (!data) return <Spinner />
 
-  const cards: { label: string; value: number; sub?: string }[] = [
-    { label: 'Total users', value: data.users, sub: `${data.activeUsers} active in last 30 days` },
-    { label: 'Posts', value: data.posts },
-    { label: 'Jobs', value: data.jobs },
-    { label: 'Events', value: data.events },
-    { label: 'Groups', value: data.groups },
-    { label: 'News articles', value: data.news },
-    { label: 'Open reports', value: data.reports },
+  const cards: {
+    label: string
+    value: number
+    sub?: string
+    icon: LucideIcon
+    iconColor: string
+    iconBg: string
+  }[] = [
+    {
+      label: 'Total users',
+      value: data.users,
+      sub: `${data.activeUsers} active in last 30 days`,
+      icon: Users,
+      iconColor: 'var(--uc-indigo-l)',
+      iconBg: 'var(--uc-indigo-bg)',
+    },
+    {
+      label: 'Posts',
+      value: data.posts,
+      icon: FileText,
+      iconColor: 'var(--uc-orange-l)',
+      iconBg: 'var(--uc-orange-bg)',
+    },
+    {
+      label: 'Jobs',
+      value: data.jobs,
+      icon: Briefcase,
+      iconColor: 'var(--uc-mint)',
+      iconBg: 'var(--uc-mint-bg)',
+    },
+    {
+      label: 'Events',
+      value: data.events,
+      icon: Calendar,
+      iconColor: 'var(--uc-cyan)',
+      iconBg: 'var(--uc-cyan-bg)',
+    },
+    {
+      label: 'Groups',
+      value: data.groups,
+      icon: Users,
+      iconColor: 'var(--uc-orange-l)',
+      iconBg: 'var(--uc-orange-bg)',
+    },
+    {
+      label: 'News articles',
+      value: data.news,
+      icon: Newspaper,
+      iconColor: 'var(--uc-indigo-xl)',
+      iconBg: 'var(--uc-indigo-bg)',
+    },
+    {
+      label: 'Open reports',
+      value: data.reports,
+      icon: Flag,
+      iconColor: 'var(--uc-orange-l)',
+      iconBg: 'var(--uc-orange-bg)',
+    },
   ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: 12 }}>
         {cards.map((c) => <StatCard key={c.label} {...c} />)}
       </div>
       <AllowedDomainsPanel />
@@ -350,22 +433,22 @@ function UsersTab() {
         {data.total.toLocaleString()} users total
       </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {data.items.map((u) => (
           <div key={u.id} style={{
             background: 'var(--surface-card)',
             border: '0.5px solid var(--border-default)',
             borderRadius: 'var(--r-md)',
-            padding: '12px 16px',
+            padding: '14px 18px',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
           }}>
             {u.profile.avatarUrl ? (
               <img src={u.profile.avatarUrl} alt={u.profile.fullName}
-                style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
             ) : (
-              <Avatar initials={getInitials(u.profile.fullName)} color={seedColor(u.id)} size={36} />
+              <Avatar initials={getInitials(u.profile.fullName)} color={seedColor(u.id)} size={38} />
             )}
 
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -378,14 +461,14 @@ function UsersTab() {
               <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{u.email}</span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
               <select
                 value={u.role}
                 onChange={(e) => roleMutation.mutate({ userId: u.id, role: e.target.value as UserRole })}
                 disabled={roleMutation.isPending}
                 style={selectStyle}
               >
-                {(['student', 'alumni', 'staff', 'admin'] as UserRole[]).map((r) => (
+                {(['student', 'alumni', 'faculty', 'admin'] as UserRole[]).map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
@@ -503,7 +586,7 @@ function InvitationsTab() {
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
-        padding: '20px',
+        padding: '24px',
         display: 'flex',
         flexDirection: 'column',
         gap: 16,
@@ -558,7 +641,7 @@ function InvitationsTab() {
                 onChange={(e) => setFormRole(e.target.value as UserRole)}
                 style={{ ...selectStyle, flex: '1 1 120px' }}
               >
-                {(['student', 'alumni', 'staff', 'admin'] as UserRole[]).map((r) => (
+                {(['student', 'alumni', 'faculty', 'admin'] as UserRole[]).map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
@@ -596,7 +679,7 @@ function InvitationsTab() {
                 onChange={(e) => setBulkRole(e.target.value as UserRole)}
                 style={{ ...selectStyle, flex: '1 1 120px' }}
               >
-                {(['student', 'alumni', 'staff', 'admin'] as UserRole[]).map((r) => (
+                {(['student', 'alumni', 'faculty', 'admin'] as UserRole[]).map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
@@ -678,13 +761,13 @@ function InvitationsTab() {
             {data.total.toLocaleString()} invitation{data.total === 1 ? '' : 's'} sent
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {data.items.map((inv) => (
               <div key={inv.id} style={{
                 background: 'var(--surface-card)',
                 border: '0.5px solid var(--border-default)',
                 borderRadius: 'var(--r-md)',
-                padding: '12px 16px',
+                padding: '14px 18px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
@@ -764,18 +847,26 @@ function ReportsTab() {
       </p>
 
       {data.items.length === 0 && (
-        <div style={{ padding: '40px 0', textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '48px 0',
+          textAlign: 'center',
+          fontSize: 14,
+          color: 'var(--text-tertiary)',
+        }}>
           No reports yet
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {data.items.map((r) => (
           <div key={r.id} style={{
             background: 'var(--surface-card)',
             border: '0.5px solid var(--border-default)',
             borderRadius: 'var(--r-md)',
-            padding: '14px 16px',
+            padding: '16px 18px',
             display: 'flex',
             flexDirection: 'column',
             gap: 8,
@@ -841,7 +932,9 @@ function Spinner() {
   return (
     <div style={{ padding: '40px 0', display: 'flex', justifyContent: 'center' }}>
       <div style={{
-        width: 24, height: 24, borderRadius: '50%',
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
         border: '2px solid var(--border-default)',
         borderTopColor: 'var(--uc-indigo)',
         animation: 'spin 0.7s linear infinite',
@@ -856,60 +949,128 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--surface-page)' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
-      <div>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: 'var(--text-primary)' }}>
-          Admin panel
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-          Manage users, invitations, and content for United International University
-        </p>
-      </div>
-
-      <nav style={{
+      {/* ── Top bar ── */}
+      <header style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
         background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '4px 8px',
+        borderBottom: '0.5px solid var(--border-default)',
+        padding: '0 24px',
+        height: 58,
         display: 'flex',
-        gap: 2,
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}>
-        {TABS.map(({ label, value, icon }) => {
-          const active = activeTab === value
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setActiveTab(value)}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '7px 0',
-                fontSize: 13,
-                fontWeight: active ? 500 : 400,
-                borderRadius: 'var(--r-pill)',
-                border: 'none',
-                cursor: 'pointer',
-                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                transition: 'background 150ms, color 150ms',
-              }}
-            >
-              {icon} {label}
-            </button>
-          )
-        })}
-      </nav>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Link
+            to={PATHS.FEED}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              color: 'var(--text-secondary)',
+              textDecoration: 'none',
+              fontSize: 13,
+              fontWeight: 500,
+              padding: '6px 12px',
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-default)',
+              transition: 'color 0.15s, background 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--text-primary)'
+              e.currentTarget.style.background = 'var(--surface-hover)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-secondary)'
+              e.currentTarget.style.background = 'var(--surface-raised)'
+            }}
+          >
+            <ArrowLeft size={15} />
+            Back to feed
+          </Link>
 
-      {activeTab === 'overview' && <OverviewTab />}
-      {activeTab === 'users' && <UsersTab />}
-      {activeTab === 'invitations' && <InvitationsTab />}
-      {activeTab === 'reports' && <ReportsTab />}
+          <div style={{ width: 1, height: 20, background: 'var(--border-default)' }} />
+          <BrandLogo height={26} />
+        </div>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          background: 'var(--uc-indigo-bg)',
+          border: '0.5px solid var(--uc-indigo-bdr)',
+          borderRadius: 'var(--r-pill)',
+          padding: '5px 12px',
+        }}>
+          <ShieldCheck size={13} color="var(--uc-indigo-l)" />
+          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--uc-indigo-xl)' }}>Admin panel</span>
+        </div>
+      </header>
+
+      {/* ── Page content ── */}
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: '28px 24px 56px' }}>
+
+        {/* Page heading */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Admin panel
+          </h1>
+          <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+            Manage users, invitations, and content for United International University
+          </p>
+        </div>
+
+        {/* Tab nav */}
+        <nav style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '5px 6px',
+          display: 'flex',
+          gap: 3,
+          marginBottom: 20,
+        }}>
+          {TABS.map(({ label, value, icon }) => {
+            const active = activeTab === value
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveTab(value)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 7,
+                  padding: '9px 0',
+                  fontSize: 13,
+                  fontWeight: active ? 500 : 400,
+                  borderRadius: 'var(--r-pill)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                  color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                  transition: 'background 150ms, color 150ms',
+                }}
+              >
+                {icon} {label}
+              </button>
+            )
+          })}
+        </nav>
+
+        {activeTab === 'overview' && <OverviewTab />}
+        {activeTab === 'users' && <UsersTab />}
+        {activeTab === 'invitations' && <InvitationsTab />}
+        {activeTab === 'reports' && <ReportsTab />}
+      </div>
     </div>
   )
 }
@@ -920,14 +1081,17 @@ const inputStyle: React.CSSProperties = {
   background: 'var(--surface-raised)',
   border: '0.5px solid var(--border-default)',
   borderRadius: 'var(--r-sm)',
-  padding: '8px 12px',
+  padding: '9px 14px',
   fontSize: 13,
   color: 'var(--text-primary)',
   outline: 'none',
   fontFamily: 'inherit',
+  width: '100%',
+  boxSizing: 'border-box',
 }
 
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
+  width: 'auto',
   cursor: 'pointer',
 }

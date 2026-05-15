@@ -13,6 +13,7 @@ import {
   BookOpen,
   BarChart2,
   ExternalLink,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -201,6 +202,9 @@ export function LeftSidebar() {
     { icon: Bus, label: 'Shuttle tracker', path: PATHS.SHUTTLE },
     { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
     { icon: UserCircle2, label: 'My profile', path: profilePath },
+    ...(user?.role === 'admin' || user?.role === 'faculty'
+      ? [{ icon: ShieldCheck, label: 'Admin panel', path: PATHS.ADMIN }]
+      : []),
   ]
 
   function isActive(path: string): boolean {
