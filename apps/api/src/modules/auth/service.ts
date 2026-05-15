@@ -300,6 +300,17 @@ export class AuthService {
     return { message: 'A new 6-digit code was sent to your email.' }
   }
 
+  async peekInvitation(token: string, universityId: string) {
+    const inv = await db('invitations')
+      .where({ token, university_id: universityId, is_used: false })
+      .where('expires_at', '>', db.fn.now())
+      .select('role', 'email')
+      .first<{ role: string; email: string } | undefined>()
+
+    if (!inv) throw new AppError('Invitation not found', 404, 'NOT_FOUND')
+    return { role: inv.role as UserRole, email: inv.email }
+  }
+
   async getMe(userId: string) {
     const user = await findUserWithProfile(userId)
     if (!user) throw new AppError('User not found', 404, 'NOT_FOUND')

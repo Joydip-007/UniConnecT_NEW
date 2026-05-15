@@ -200,3 +200,41 @@ describe('GET /api/v1/auth/me', () => {
     await db('profiles').where({ user_id: userRow.id }).update({ department: null, batch_year: null })
   })
 })
+
+describe('GET /api/v1/auth/invitation/:token', () => {
+  const testToken = `peek-test-${Date.now()}`
+  const testEmail = `peek.${Date.now()}@bscse.uiu.ac.bd`
+
+  beforeAll(async () => {
+    await db('invitations').insert({
+      university_id: TEST_UNIVERSITY_ID,
+      email: testEmail,
+      role: 'student',
+      token: testToken,
+      is_used: false,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000),
+    })
+  })
+
+  afterAll(async () => {
+    await db('invitations').where({ token: testToken }).delete()
+  })
+
+  it('returns 200 with role and email for a valid token', async () => {
+    const res = await api
+      .get(`/api/v1/auth/invitation/${testToken}`)
+      .set(UNI)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.role).toBe('student')
+    expect(res.body.data.email).toBe(testEmail)
+  })
+
+  it('returns 404 for an unknown token', async () => {
+    const res = await api
+      .get('/api/v1/auth/invitation/does-not-exist')
+      .set(UNI)
+
+    expect(res.status).toBe(404)
+  })
+})

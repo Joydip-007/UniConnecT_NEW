@@ -108,6 +108,12 @@ export const me = asyncHandler(async (req: Request, res: Response) => {
   res.json({ data: await authService.getMe(req.user.userId) })
 })
 
+export const checkInvitation = asyncHandler(async (req: Request, res: Response) => {
+  const { token } = req.params as { token: string }
+  const data = await authService.peekInvitation(token, getUniversityId(req))
+  res.json({ data })
+})
+
 function setRefreshCookie(res: Response, refreshToken: string) {
   res.cookie(refreshCookieName, refreshToken, {
     httpOnly: true,
