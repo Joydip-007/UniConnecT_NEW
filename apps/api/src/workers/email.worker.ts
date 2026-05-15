@@ -21,19 +21,48 @@ async function handleTemplateEmail(input: EmailQueueJob) {
   if (!input.text) return false
 
   const parsed = parseTemplatePayload(input.text)
-  if (!parsed || parsed.template !== 'welcome') return false
+  if (!parsed) return false
 
-  const result = await emailService.sendWelcomeEmail(
-    input.to,
-    parsed.userName,
-    parsed.role,
-    parsed.universityName,
-  )
-  if (!result.success) {
-    throw new Error(result.error ?? 'Welcome email failed')
+  if (parsed.template === 'welcome') {
+    const result = await emailService.sendWelcomeEmail(
+      input.to,
+      parsed.userName!,
+      parsed.role!,
+      parsed.universityName!,
+    )
+    if (!result.success) {
+      throw new Error(result.error ?? 'Welcome email failed')
+    }
+    return true
   }
 
-  return true
+  if (parsed.template === 'otp') {
+    const result = await emailService.sendOtpEmail(
+      input.to,
+      parsed.otp!,
+      parsed.purpose as any,
+      parsed.userName!,
+    )
+    if (!result.success) {
+      throw new Error(result.error ?? 'OTP email failed')
+    }
+    return true
+  }
+
+  if (parsed.template === 'invitation') {
+    const result = await emailService.sendInvitationEmail(
+      input.to,
+      parsed.registerUrl!,
+      parsed.role!,
+      parsed.universityName!,
+    )
+    if (!result.success) {
+      throw new Error(result.error ?? 'Invitation email failed')
+    }
+    return true
+  }
+
+  return false
 }
 
 function parseTemplatePayload(value: string) {
@@ -43,23 +72,19 @@ function parseTemplatePayload(value: string) {
       userName: string
       role: string
       universityName: string
+      otp: string
+      purpose: string
+      registerUrl: string
     }>
 
     if (
       typeof parsed.template !== 'string' ||
-      typeof parsed.userName !== 'string' ||
-      typeof parsed.role !== 'string' ||
-      typeof parsed.universityName !== 'string'
+      typeof parsed.userName !== 'string'
     ) {
       return null
     }
 
-    return {
-      template: parsed.template,
-      userName: parsed.userName,
-      role: parsed.role,
-      universityName: parsed.universityName,
-    }
+    return parsed
   } catch {
     return null
   }
