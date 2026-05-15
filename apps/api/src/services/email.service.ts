@@ -65,6 +65,24 @@ export class ResendEmailService {
     })
   }
 
+  async sendInvitationEmail(
+    to: string,
+    registerUrl: string,
+    role: string,
+    universityName: string,
+  ): Promise<EmailResult> {
+    return this.sendEmail({
+      to,
+      subject: "You're invited to join UniConnecT",
+      html: renderInvitationHtml({ registerUrl, role, universityName }),
+      text: `You've been invited to join ${universityName} on UniConnecT as a ${role}. Create your account here: ${registerUrl}`,
+      tags: [
+        { name: 'category', value: 'invitation' },
+        { name: 'app', value: 'uniconnect' },
+      ],
+    })
+  }
+
   async sendJobAlertEmail(
     to: string,
     userName: string,
@@ -226,6 +244,47 @@ function renderSimpleHtml(input: {
                   <h1 style="margin:0 0 14px;font-size:24px;line-height:1.3;font-weight:500;color:#EEF2FF;">${title}</h1>
                   <p style="margin:0;font-size:16px;line-height:1.6;color:#B8C4E6;">${message}</p>
                   ${action}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:18px 24px 24px;border-top:1px solid rgba(255,255,255,0.08);">
+                  <p style="margin:0;font-size:12px;line-height:1.5;color:#7180A3;">UniConnecT — Your campus. One place.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `
+}
+
+function renderInvitationHtml(input: {
+  registerUrl: string
+  role: string
+  universityName: string
+}) {
+  const registerUrl = escapeHtml(input.registerUrl)
+  const role = escapeHtml(input.role)
+  const universityName = escapeHtml(input.universityName)
+
+  return `
+    <div style="margin:0;padding:0;background:#060D1A;color:#EEF2FF;font-family:Arial,Helvetica,sans-serif;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#060D1A;margin:0;padding:0;">
+        <tr>
+          <td align="center" style="padding:32px 16px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;max-width:560px;background:#0A1628;border-radius:16px;overflow:hidden;">
+              <tr>
+                <td style="padding:28px 24px 8px;">
+                  <div style="font-size:18px;line-height:1.3;font-weight:500;color:#F05A28;">UniConnecT</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 24px 28px;">
+                  <h1 style="margin:0 0 14px;font-size:24px;line-height:1.3;font-weight:500;color:#EEF2FF;">You've been invited</h1>
+                  <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#B8C4E6;">You've been invited to join <strong style="color:#DDE6FF;">${universityName}</strong> on UniConnecT as a <strong style="color:#DDE6FF;">${role}</strong>.</p>
+                  <p style="margin:0 0 22px;font-size:16px;line-height:1.6;color:#B8C4E6;">Click below to create your account. This link is personal — please don't share it.</p>
+                  <a href="${registerUrl}" style="display:inline-block;background:#5B5BD6;color:#FFFFFF;text-decoration:none;border-radius:999px;padding:12px 18px;font-size:14px;">Create account</a>
                 </td>
               </tr>
               <tr>
