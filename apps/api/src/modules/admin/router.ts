@@ -28,7 +28,7 @@ import {
 
 export const adminRouter = Router()
 
-adminRouter.use(requireAuth, resolveUniversity, requireRole('staff', 'admin'))
+adminRouter.use(requireAuth, resolveUniversity, requireRole('faculty', 'admin'))
 
 adminRouter.get('/stats', requireRole('admin'), getStats)
 

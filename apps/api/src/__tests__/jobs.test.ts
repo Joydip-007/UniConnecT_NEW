@@ -7,7 +7,7 @@ const api = supertest(app)
 
 let alumniToken: string
 let studentToken: string
-let staffToken: string
+let facultyToken: string
 let createdJobId: string
 
 const createdJobIds: string[] = []
@@ -28,11 +28,11 @@ beforeAll(async () => {
   const [al, st, sf] = await Promise.all([
     loginAs(CREDENTIALS.alumni.email, CREDENTIALS.alumni.password),
     loginAs(CREDENTIALS.student.email, CREDENTIALS.student.password),
-    loginAs(CREDENTIALS.staff.email, CREDENTIALS.staff.password),
+    loginAs(CREDENTIALS.faculty.email, CREDENTIALS.faculty.password),
   ])
   alumniToken = al.accessToken
   studentToken = st.accessToken
-  staffToken = sf.accessToken
+  facultyToken = sf.accessToken
 })
 
 afterAll(async () => {
@@ -111,10 +111,10 @@ describe('GET /api/v1/jobs/:jobId/applications', () => {
   })
 
   it('returns 403 for a different user who is not the poster', async () => {
-    // staffToken belongs to a different user who did not post this job
+    // facultyToken belongs to a different user who did not post this job
     const res = await api
       .get(`/api/v1/jobs/${createdJobId}/applications`)
-      .set(auth(staffToken))
+      .set(auth(facultyToken))
 
     expect(res.status).toBe(403)
   })

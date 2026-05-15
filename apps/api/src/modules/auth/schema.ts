@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const AuthRoleSchema = z.enum(['student', 'alumni', 'staff', 'admin'])
+export const AuthRoleSchema = z.enum(['student', 'alumni', 'faculty', 'admin'])
 export const OtpPurposeSchema = z.enum(['verify', 'login', 'reset'])
 
 export const RegisterSchema = z

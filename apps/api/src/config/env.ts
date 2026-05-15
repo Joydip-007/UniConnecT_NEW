@@ -21,12 +21,12 @@ const envSchema = z.object({
   OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(60),
   DEV_INVITE_TOKEN: z.string().default('dev-invite'),
   DEV_INVITE_EMAIL: z.string().email().default('student@uiu.ac.bd'),
-  DEV_INVITE_ROLE: z.enum(['student', 'alumni', 'staff', 'admin']).default('student'),
+  DEV_INVITE_ROLE: z.enum(['student', 'alumni', 'faculty', 'admin']).default('student'),
 })
 
 const parsedEnv = envSchema.parse(process.env)
 const clientUrl = parsedEnv.CLIENT_URL ?? parsedEnv.WEB_URL ?? 'http://localhost:5173'
-const resendFromEmail = parsedEnv.RESEND_FROM_EMAIL ?? parsedEnv.EMAIL_FROM ?? 'UniConnecT <onboarding@resend.dev>'
+const resendFromEmail = parsedEnv.RESEND_FROM_EMAIL ?? parsedEnv.EMAIL_FROM ?? 'UniConnecT <noreply@uniconnectt.me>'
 
 export const env = {
   ...parsedEnv,

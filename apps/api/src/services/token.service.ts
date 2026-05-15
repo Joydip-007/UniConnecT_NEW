@@ -78,6 +78,15 @@ export class TokenService {
     }
   }
 
+  verifyAccessTokenWithExpiry(token: string): { payload: AccessTokenPayload | null; expired: boolean } {
+    try {
+      const decoded = jwt.verify(token, env.JWT_SECRET)
+      return { payload: isAccessTokenPayload(decoded) ? decoded : null, expired: false }
+    } catch (err) {
+      return { payload: null, expired: err instanceof jwt.TokenExpiredError }
+    }
+  }
+
   verifyRefreshToken(token: string): RefreshTokenPayload | null {
     try {
       const decoded = jwt.verify(token, env.JWT_REFRESH_SECRET)
@@ -200,5 +209,5 @@ function isRefreshTokenPayload(value: unknown): value is RefreshTokenPayload {
 }
 
 function isUserRole(value: unknown): value is UserRole {
-  return value === 'student' || value === 'alumni' || value === 'staff' || value === 'admin'
+  return value === 'student' || value === 'alumni' || value === 'faculty' || value === 'admin'
 }

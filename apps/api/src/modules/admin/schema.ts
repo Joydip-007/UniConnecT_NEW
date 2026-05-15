@@ -6,7 +6,7 @@ export const PaginationQuerySchema = z.object({
 })
 
 export const UpdateUserRoleSchema = z.object({
-  role: z.enum(['student', 'alumni', 'staff', 'admin']),
+  role: z.enum(['student', 'alumni', 'faculty', 'admin']),
 })
 
 export const UpdateUserStatusSchema = z.object({
@@ -19,7 +19,7 @@ export const ResolveReportSchema = z.object({
 
 export const CreateInvitationSchema = z.object({
   email: z.string().email(),
-  role: z.enum(['student', 'alumni', 'staff', 'admin']).default('student'),
+  role: z.enum(['student', 'alumni', 'faculty', 'admin']).default('student'),
   expires_in_days: z.number().int().min(1).max(30).default(7),
 })
 
@@ -31,7 +31,7 @@ export const UpdateAllowedDomainsSchema = z.object({
 
 export const CreateBulkInvitationsSchema = z.object({
   emails: z.array(z.string().email()).min(1).max(50),
-  role: z.enum(['student', 'alumni', 'staff', 'admin']).default('student'),
+  role: z.enum(['student', 'alumni', 'faculty', 'admin']).default('student'),
   expires_in_days: z.number().int().min(1).max(30).default(7),
 })
 

@@ -31,20 +31,20 @@ export const jobsRouter = Router()
 jobsRouter.use(requireAuth, resolveUniversity)
 
 jobsRouter.get('/', validateRequest({ query: JobListQuerySchema }), listJobs)
-jobsRouter.post('/', requireRole('alumni', 'staff', 'admin'), validate(CreateJobSchema), createJob)
+jobsRouter.post('/', requireRole('alumni', 'faculty', 'admin'), validate(CreateJobSchema), createJob)
 jobsRouter.get('/saved', validateRequest({ query: PaginationQuerySchema }), listSavedJobs)
 jobsRouter.get('/my', validateRequest({ query: PaginationQuerySchema }), listMyJobs)
 jobsRouter.get('/applications/my', validateRequest({ query: PaginationQuerySchema }), listMyApplications)
 jobsRouter.get('/:jobId', getJob)
-jobsRouter.patch('/:jobId', requireRole('alumni', 'staff', 'admin'), validate(UpdateJobSchema), updateJob)
-jobsRouter.delete('/:jobId', requireRole('alumni', 'staff', 'admin'), deleteJob)
+jobsRouter.patch('/:jobId', requireRole('alumni', 'faculty', 'admin'), validate(UpdateJobSchema), updateJob)
+jobsRouter.delete('/:jobId', requireRole('alumni', 'faculty', 'admin'), deleteJob)
 jobsRouter.post('/:jobId/apply', validate(ApplyJobSchema), applyToJob)
 jobsRouter.get(
   '/:jobId/applications',
-  requireRole('alumni', 'staff', 'admin'),
+  requireRole('alumni', 'faculty', 'admin'),
   validateRequest({ query: PaginationQuerySchema }),
   listJobApplications,
 )
-jobsRouter.patch('/:jobId/applications/:appId', requireRole('alumni', 'staff', 'admin'), validate(UpdateApplicationSchema), updateApplication)
+jobsRouter.patch('/:jobId/applications/:appId', requireRole('alumni', 'faculty', 'admin'), validate(UpdateApplicationSchema), updateApplication)
 jobsRouter.post('/:jobId/save', saveJob)
 jobsRouter.delete('/:jobId/save', unsaveJob)

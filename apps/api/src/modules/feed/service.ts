@@ -34,6 +34,8 @@ interface PostRow {
   author_full_name: string
   author_avatar_url: string | null
   author_headline: string | null
+  author_department: string | null
+  author_batch_year: string | null
   author_role: UserRole
   reaction_counts: unknown
   comment_count: string | number
@@ -99,7 +101,7 @@ export class FeedService {
       .limit(query.limit)
       .offset(offset)) as PostRow[]
 
-    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id))
+    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId)
     return { items: posts, total, page: query.page, limit: query.limit }
   }
 
@@ -116,7 +118,7 @@ export class FeedService {
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as PostRow[]
 
-    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id))
+    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId)
     return { items: posts, total, page: query.page, limit: query.limit }
   }
 
@@ -186,7 +188,7 @@ export class FeedService {
         .catch((error: unknown) => logger.warn('Failed to increment post view count', { error, postId }))
     }
 
-    const [post] = await this.attachPolls([toPost(row)], [row.id])
+    const [post] = await this.attachPolls([toPost(row)], [row.id], userId)
     return post
   }
 
@@ -426,27 +428,42 @@ export class FeedService {
     return { saved: false }
   }
 
-  private async attachPolls<T extends { id: string }>(posts: T[], postIds: string[]) {
+  private async attachPolls<T extends { id: string }>(posts: T[], postIds: string[], userId: string) {
     if (postIds.length === 0) return posts.map((post) => ({ ...post, poll: null }))
 
     const polls = await db('polls').select<PollRow[]>('id', 'post_id', 'question', 'expires_at').whereIn('post_id', postIds)
     if (polls.length === 0) return posts.map((post) => ({ ...post, poll: null }))
 
-    const options = await getPollOptionsWithCounts(
-      db,
-      polls.map((poll) => poll.id),
-    )
+    const pollIds = polls.map((poll) => poll.id)
+    const options = await getPollOptionsWithCounts(db, pollIds)
     const optionsByPoll = groupBy(options, (option) => option.poll_id)
+
+    const allOptionIds = options.map((o) => o.id)
+    const userVotes = allOptionIds.length > 0
+      ? await db('poll_votes')
+          .select<{ poll_option_id: string }[]>('poll_option_id')
+          .where({ user_id: userId })
+          .whereIn('poll_option_id', allOptionIds)
+      : []
+    const votedOptionIds = new Set(userVotes.map((v) => v.poll_option_id))
+
     const pollByPost = new Map(
-      polls.map((poll) => [
-        poll.post_id,
-        {
-          id: poll.id,
-          question: poll.question,
-          expiresAt: poll.expires_at,
-          options: (optionsByPoll.get(poll.id) ?? []).map(toPollOption),
-        },
-      ]),
+      polls.map((poll) => {
+        const pollOptions = (optionsByPoll.get(poll.id) ?? []).map(toPollOption)
+        const myVote = pollOptions.find((o) => votedOptionIds.has(o.id))?.id ?? null
+        const totalVotes = pollOptions.reduce((sum, o) => sum + o.voteCount, 0)
+        return [
+          poll.post_id,
+          {
+            id: poll.id,
+            question: poll.question,
+            expiresAt: poll.expires_at,
+            options: pollOptions,
+            myVote,
+            totalVotes,
+          },
+        ]
+      }),
     )
 
     return posts.map((post) => ({ ...post, poll: pollByPost.get(post.id) ?? null }))
@@ -477,6 +494,8 @@ function postSelectQuery(knex: Knex, userId: string) {
       'profiles.full_name as author_full_name',
       'profiles.avatar_url as author_avatar_url',
       'profiles.headline as author_headline',
+      'profiles.department as author_department',
+      'profiles.batch_year as author_batch_year',
       'users.role as author_role',
       knex.raw(
         `COALESCE(
@@ -556,8 +575,8 @@ function assertCanMutatePost(context: AuthContext, authorId: string) {
 
 function assertCanUsePostType(role: UserRole, type: PostType) {
   if (type !== 'announcement') return
-  if (role === 'staff' || role === 'admin') return
-  throw forbidden('Only staff and admins can create announcements', 'ANNOUNCEMENT_FORBIDDEN')
+  if (role === 'faculty' || role === 'admin') return
+  throw forbidden('Only faculty and admins can create announcements', 'ANNOUNCEMENT_FORBIDDEN')
 }
 
 async function getReactionCounts(targetId: string, targetType: 'post' | 'comment') {
@@ -619,13 +638,17 @@ function toPost(row: PostRow) {
     author: {
       id: row.author_id,
       fullName: row.author_full_name,
-      avatarUrl: row.author_avatar_url,
-      headline: row.author_headline,
       role: row.author_role,
+      profile: {
+        avatarUrl: row.author_avatar_url,
+        headline: row.author_headline,
+        department: row.author_department,
+        batchYear: row.author_batch_year,
+      },
     },
     reactionCounts: normalizeReactionCounts(row.reaction_counts),
     commentCount: Number(row.comment_count),
-    ownReaction: row.own_reaction,
+    myReaction: row.own_reaction,
     isSaved: Boolean(row.is_saved),
   }
 }

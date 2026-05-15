@@ -7,15 +7,15 @@ const api = supertest(app)
 const UNI = { 'x-university-domain': DOMAIN }
 
 let adminToken: string
-let staffToken: string
+let facultyToken: string
 
 beforeAll(async () => {
-  const [admin, staff] = await Promise.all([
+  const [admin, faculty] = await Promise.all([
     loginAs(CREDENTIALS.admin.email, CREDENTIALS.admin.password),
-    loginAs(CREDENTIALS.staff.email, CREDENTIALS.staff.password),
+    loginAs(CREDENTIALS.faculty.email, CREDENTIALS.faculty.password),
   ])
   adminToken = admin.accessToken
-  staffToken = staff.accessToken
+  facultyToken = faculty.accessToken
 })
 
 afterAll(async () => {
@@ -99,12 +99,12 @@ describe('POST /api/v1/admin/invitations/bulk', () => {
     expect(res.status).toBe(422)
   })
 
-  it('returns 403 for staff role (admin-only endpoint)', async () => {
+  it('returns 403 for faculty role (admin-only endpoint)', async () => {
     const res = await api
       .post('/api/v1/admin/invitations/bulk')
       .set(UNI)
-      .set('Authorization', `Bearer ${staffToken}`)
-      .send({ emails: [`bulk.test.staff.${Date.now()}@uiu.ac.bd`], role: 'student', expires_in_days: 7 })
+      .set('Authorization', `Bearer ${facultyToken}`)
+      .send({ emails: [`bulk.test.faculty.${Date.now()}@uiu.ac.bd`], role: 'student', expires_in_days: 7 })
 
     expect(res.status).toBe(403)
   })

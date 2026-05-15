@@ -17,7 +17,7 @@ export const UpdateProfileSchema = z.object({
 })
 
 export const UserListQuerySchema = z.object({
-  role: z.enum(['student', 'alumni', 'staff', 'admin']).optional(),
+  role: z.enum(['student', 'alumni', 'faculty', 'admin']).optional(),
   department: z.string().trim().min(1).optional(),
   batch_year: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional(),

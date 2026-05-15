@@ -6,7 +6,7 @@ import { db } from '../config/db'
 const api = supertest(app)
 
 let studentToken: string
-let staffToken: string
+let facultyToken: string
 let createdPostId: string
 
 const createdPostIds: string[] = []
@@ -14,10 +14,10 @@ const createdPostIds: string[] = []
 beforeAll(async () => {
   const [st, sf] = await Promise.all([
     loginAs(CREDENTIALS.student.email, CREDENTIALS.student.password),
-    loginAs(CREDENTIALS.staff.email, CREDENTIALS.staff.password),
+    loginAs(CREDENTIALS.faculty.email, CREDENTIALS.faculty.password),
   ])
   studentToken = st.accessToken
-  staffToken = sf.accessToken
+  facultyToken = sf.accessToken
 })
 
 afterAll(async () => {
@@ -55,10 +55,10 @@ describe('POST /api/v1/posts', () => {
     expect(res.body.code).toBe('ANNOUNCEMENT_FORBIDDEN')
   })
 
-  it('returns 201 when staff creates an announcement', async () => {
+  it('returns 201 when faculty creates an announcement', async () => {
     const res = await api
       .post('/api/v1/posts')
-      .set(authHeader(staffToken))
+      .set(authHeader(facultyToken))
       .send({ content: 'Official announcement!', type: 'announcement' })
 
     expect(res.status).toBe(201)
@@ -113,10 +113,10 @@ describe('POST /api/v1/posts/:postId/reactions', () => {
 
 describe('DELETE /api/v1/posts/:postId', () => {
   it('returns 403 when a different user tries to delete', async () => {
-    // staffToken is not the author of createdPostId
+    // facultyToken is not the author of createdPostId
     const res = await api
       .delete(`/api/v1/posts/${createdPostId}`)
-      .set(authHeader(staffToken))
+      .set(authHeader(facultyToken))
 
     expect(res.status).toBe(403)
   })
