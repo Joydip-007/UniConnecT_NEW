@@ -2,6 +2,8 @@ import crypto from 'node:crypto'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { notFound } from '../../utils/errors'
+import { emailQueue } from '../../queues/email.queue'
+import { env } from '../../config/env'
 import type {
   CreateInvitationInput,
   PaginationQuery,
@@ -182,6 +184,7 @@ export class AdminService {
     universityId: string,
     invitedById: string,
     input: CreateInvitationInput,
+    universityName: string,
   ) {
     const token = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date()
@@ -197,6 +200,19 @@ export class AdminService {
         expires_at: expiresAt,
       })
       .returning<InvitationRow[]>('*')
+
+    const registerUrl = `${env.WEB_URL}/register/${token}`
+    void emailQueue.add({
+      to: input.email,
+      subject: "You're invited to join UniConnecT",
+      text: JSON.stringify({
+        template: 'invitation',
+        userName: '',
+        registerUrl,
+        role: input.role,
+        universityName,
+      }),
+    })
 
     return toInvitation(row)
   }

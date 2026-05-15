@@ -49,7 +49,16 @@ export const resolveReport = asyncHandler(async (req: Request, res: Response) =>
 
 export const createInvitation = asyncHandler(async (req: Request, res: Response) => {
   const { universityId, userId } = getAdminContext(req)
-  sendSuccess(res, await adminService.createInvitation(universityId, userId, req.body as CreateInvitationInput), 201)
+  sendSuccess(
+    res,
+    await adminService.createInvitation(
+      universityId,
+      userId,
+      req.body as CreateInvitationInput,
+      req.university!.name,
+    ),
+    201,
+  )
 })
 
 export const listInvitations = asyncHandler(async (req: Request, res: Response) => {
