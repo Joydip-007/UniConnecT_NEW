@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Users, FileText, Mail, Flag, CheckCircle, XCircle, Trash2, Plus, X } from 'lucide-react'
+import { Users, FileText, Mail, Flag, CheckCircle, XCircle, Trash2, X } from 'lucide-react'
 import { api } from '@/lib/axios'
-import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
@@ -105,7 +104,7 @@ type Tab = 'overview' | 'users' | 'invitations' | 'reports'
 const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Overview', value: 'overview', icon: <FileText size={14} /> },
   { label: 'Users', value: 'users', icon: <Users size={14} /> },
-  { label: 'Invitations', value: 'invitations', icon: <Mail size={14} /> },
+  { label: 'Invite', value: 'invitations', icon: <Mail size={14} /> },
   { label: 'Reports', value: 'reports', icon: <Flag size={14} /> },
 ]
 
@@ -425,10 +424,14 @@ function UsersTab() {
 function InvitationsTab() {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
-  const [showForm, setShowForm] = useState(false)
+  const [mode, setMode] = useState<'single' | 'multiple'>('single')
   const [formEmail, setFormEmail] = useState('')
   const [formRole, setFormRole] = useState<UserRole>('student')
   const [formDays, setFormDays] = useState(7)
+  const [bulkText, setBulkText] = useState('')
+  const [bulkRole, setBulkRole] = useState<UserRole>('student')
+  const [bulkDays, setBulkDays] = useState(7)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const limit = 20
 
   const { data, isLoading } = useQuery<Paginated<Invitation>>({
@@ -438,15 +441,26 @@ function InvitationsTab() {
         .then((r) => r.data.data),
   })
 
-  const createMutation = useMutation({
+  const singleMutation = useMutation({
     mutationFn: () =>
       api.post('/admin/invitations', { email: formEmail, role: formRole, expires_in_days: formDays }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] })
-      setShowForm(false)
+      const sent = formEmail
       setFormEmail('')
       setFormRole('student')
       setFormDays(7)
+      flash(`Invitation sent to ${sent}`)
+    },
+  })
+
+  const bulkMutation = useMutation({
+    mutationFn: (emails: string[]) =>
+      api.post('/admin/invitations/bulk', { emails, role: bulkRole, expires_in_days: bulkDays }),
+    onSuccess: (_data, emails) => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] })
+      setBulkText('')
+      flash(`${emails.length} invitation${emails.length === 1 ? '' : 's'} sent`)
     },
   })
 
@@ -455,119 +469,265 @@ function InvitationsTab() {
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] }) },
   })
 
-  if (isLoading || !data) return <Spinner />
+  function flash(msg: string) {
+    setSuccessMsg(msg)
+    setTimeout(() => setSuccessMsg(null), 5000)
+  }
 
-  const totalPages = Math.ceil(data.total / limit)
+  function parseEmails(text: string): string[] {
+    return [
+      ...new Set(
+        text
+          .split(/[,\n]/)
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+      ),
+    ]
+  }
+
+  const parsedEmails = parseEmails(bulkText)
+
+  function handleToggle(next: 'single' | 'multiple') {
+    setMode(next)
+    setSuccessMsg(null)
+    singleMutation.reset()
+    bulkMutation.reset()
+  }
+
+  const totalPages = Math.ceil((data?.total ?? 0) / limit)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-          {data.total.toLocaleString()} invitations
-        </p>
-        <PrimaryBtn onClick={() => setShowForm((v) => !v)} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <Plus size={14} /> New invitation
-        </PrimaryBtn>
-      </div>
-
-      {showForm && (
-        <div style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-        }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Create invitation</span>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <input
-              type="email"
-              placeholder="Email address"
-              value={formEmail}
-              onChange={(e) => setFormEmail(e.target.value)}
-              style={{ ...inputStyle, flex: '2 1 200px' }}
-            />
-            <select
-              value={formRole}
-              onChange={(e) => setFormRole(e.target.value as UserRole)}
-              style={{ ...inputStyle, flex: '1 1 120px' }}
-            >
-              {(['student', 'alumni', 'staff', 'admin'] as UserRole[]).map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-            <select
-              value={formDays}
-              onChange={(e) => setFormDays(Number(e.target.value))}
-              style={{ ...inputStyle, flex: '1 1 120px' }}
-            >
-              {[1, 3, 7, 14, 30, 90, 365].map((d) => (
-                <option key={d} value={d}>Expires in {d}d</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <PrimaryBtn
-              disabled={!formEmail.trim() || createMutation.isPending}
-              onClick={() => createMutation.mutate()}
-            >
-              {createMutation.isPending ? 'Sending…' : 'Send invitation'}
-            </PrimaryBtn>
-            <GhostBtn onClick={() => setShowForm(false)}>Cancel</GhostBtn>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── Send panel ── */}
+      <div style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Send invite
+          </span>
+          <div style={{
+            display: 'flex',
+            background: 'var(--surface-raised)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-pill)',
+            padding: '3px',
+          }}>
+            {(['single', 'multiple'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => handleToggle(m)}
+                style={{
+                  padding: '4px 14px',
+                  fontSize: 12,
+                  borderRadius: 'var(--r-pill)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: mode === m ? 'var(--uc-indigo-bg)' : 'transparent',
+                  color: mode === m ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                  fontWeight: mode === m ? 500 : 400,
+                  transition: 'background 150ms, color 150ms',
+                }}
+              >
+                {m === 'single' ? 'Single' : 'Multiple'}
+              </button>
+            ))}
           </div>
         </div>
-      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {data.items.map((inv) => (
-          <div key={inv.id} style={{
-            background: 'var(--surface-card)',
+        {mode === 'single' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <input
+                type="email"
+                placeholder="Email address"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') singleMutation.mutate() }}
+                style={{ ...inputStyle, flex: '2 1 200px' }}
+              />
+              <select
+                value={formRole}
+                onChange={(e) => setFormRole(e.target.value as UserRole)}
+                style={{ ...selectStyle, flex: '1 1 120px' }}
+              >
+                {(['student', 'alumni', 'staff', 'admin'] as UserRole[]).map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <select
+                value={formDays}
+                onChange={(e) => setFormDays(Number(e.target.value))}
+                style={{ ...selectStyle, flex: '1 1 120px' }}
+              >
+                {[1, 3, 7, 14, 30].map((d) => (
+                  <option key={d} value={d}>Expires in {d}d</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <PrimaryBtn
+                disabled={!formEmail.trim() || singleMutation.isPending}
+                onClick={() => singleMutation.mutate()}
+              >
+                {singleMutation.isPending ? 'Sending…' : 'Send invite'}
+              </PrimaryBtn>
+              {singleMutation.isError && (
+                <span style={{ fontSize: 13, color: 'var(--uc-orange-l)' }}>
+                  Failed to send. Try again.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {mode === 'multiple' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <select
+                value={bulkRole}
+                onChange={(e) => setBulkRole(e.target.value as UserRole)}
+                style={{ ...selectStyle, flex: '1 1 120px' }}
+              >
+                {(['student', 'alumni', 'staff', 'admin'] as UserRole[]).map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+              <select
+                value={bulkDays}
+                onChange={(e) => setBulkDays(Number(e.target.value))}
+                style={{ ...selectStyle, flex: '1 1 120px' }}
+              >
+                {[1, 3, 7, 14, 30].map((d) => (
+                  <option key={d} value={d}>Expires in {d}d</option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder="Enter emails separated by commas or new lines, e.g.&#10;alice@uiu.ac.bd, bob@uiu.ac.bd, carol@uiu.ac.bd"
+              rows={5}
+              style={{
+                ...inputStyle,
+                resize: 'vertical',
+                minHeight: 110,
+                lineHeight: 1.6,
+              }}
+            />
+            {parsedEmails.length > 50 && (
+              <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>
+                Maximum 50 emails per send — {parsedEmails.length} detected. Remove some before sending.
+              </span>
+            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <PrimaryBtn
+                disabled={parsedEmails.length === 0 || parsedEmails.length > 50 || bulkMutation.isPending}
+                onClick={() => bulkMutation.mutate(parsedEmails)}
+              >
+                {bulkMutation.isPending
+                  ? 'Sending…'
+                  : parsedEmails.length === 0
+                    ? 'Send invites'
+                    : `Send ${parsedEmails.length} invite${parsedEmails.length === 1 ? '' : 's'}`}
+              </PrimaryBtn>
+              {bulkMutation.isError && (
+                <span style={{ fontSize: 13, color: 'var(--uc-orange-l)' }}>
+                  Failed to send. Try again.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {successMsg !== null && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'var(--uc-mint-bg)',
             border: '0.5px solid var(--border-default)',
             borderRadius: 'var(--r-md)',
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
+            padding: '10px 14px',
           }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{inv.email}</span>
-                <Badge variant="neutral">{inv.role}</Badge>
-                {inv.isUsed
-                  ? <Badge variant="alumni">used</Badge>
-                  : new Date(inv.expiresAt) < new Date()
-                    ? <Badge variant="neutral">expired</Badge>
-                    : <Badge variant="dept">active</Badge>}
-              </div>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                Expires {fmtDate(inv.expiresAt)}
-              </span>
-            </div>
-            {!inv.isUsed && (
-              <button
-                type="button"
-                title="Delete invitation"
-                onClick={() => deleteMutation.mutate(inv.id)}
-                disabled={deleteMutation.isPending}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-tertiary)' }}
-              >
-                <Trash2 size={16} />
-              </button>
-            )}
+            <span style={{ fontSize: 13, color: 'var(--uc-mint)' }}>{successMsg}</span>
+            <button
+              type="button"
+              onClick={() => setSuccessMsg(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--uc-mint)' }}
+            >
+              <X size={14} />
+            </button>
           </div>
-        ))}
+        )}
       </div>
 
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
-          <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
-            {page} / {totalPages}
-          </span>
-          <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
-        </div>
+      {/* ── Past invitations ── */}
+      {isLoading || !data ? (
+        <Spinner />
+      ) : (
+        <>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
+            {data.total.toLocaleString()} invitation{data.total === 1 ? '' : 's'} sent
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {data.items.map((inv) => (
+              <div key={inv.id} style={{
+                background: 'var(--surface-card)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-md)',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{inv.email}</span>
+                    <Badge variant="neutral">{inv.role}</Badge>
+                    {inv.isUsed
+                      ? <Badge variant="alumni">used</Badge>
+                      : new Date(inv.expiresAt) < new Date()
+                        ? <Badge variant="neutral">expired</Badge>
+                        : <Badge variant="dept">active</Badge>}
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    Expires {fmtDate(inv.expiresAt)}
+                  </span>
+                </div>
+                {!inv.isUsed && (
+                  <button
+                    type="button"
+                    title="Delete invitation"
+                    onClick={() => deleteMutation.mutate(inv.id)}
+                    disabled={deleteMutation.isPending}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-tertiary)' }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+              <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
+                {page} / {totalPages}
+              </span>
+              <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -693,16 +853,7 @@ function Spinner() {
 // ── AdminPage ─────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const user = useAuthStore((s) => s.user)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-
-  if (user?.role !== 'admin' && user?.role !== 'staff') {
-    return (
-      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-        You don't have permission to view this page.
-      </div>
-    )
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
