@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Bell, LogOut, MessageSquare, Search, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { NotificationDropdown } from '@/features/notifications'
+import { SearchPanel } from '@/features/search'
 import { PATHS } from '@/router/paths'
-import logoSrc from '@/assets/logo.svg'
+import { BrandLogo } from '@/components/BrandLogo'
 
 const AVATAR_COLORS = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#1E3A70']
 
@@ -82,10 +83,24 @@ export function TopNav() {
   const { user, clearAuth } = useAuthStore()
   const { messageCount, notificationCount } = useNotificationsStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '')
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchWrapperRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedQuery(searchQuery), 400)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [searchQuery])
+
+  const closePanel = useCallback(() => setPanelOpen(false), [])
 
   useEffect(() => {
     if (!menuOpen && !notifOpen) return
@@ -124,22 +139,18 @@ export function TopNav() {
         gap: 16,
       }}
     >
-      {/* Left: mark + wordmark */}
+      {/* Left: logo */}
       <a
         href={PATHS.FEED}
         onClick={(e) => { e.preventDefault(); navigate(PATHS.FEED) }}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}
+        style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
       >
-        <img src={logoSrc} height={28} alt="UniConnecT mark" style={{ display: 'block', width: 'auto' }} />
-        <span style={{ fontSize: 15, fontWeight: 500, letterSpacing: '-0.01em', lineHeight: 1 }}>
-          <span style={{ color: 'var(--text-primary)' }}>Uni</span>
-          <span style={{ color: 'var(--uc-orange)' }}>ConnecT</span>
-        </span>
+        <BrandLogo height={36} />
       </a>
 
       {/* Center: search */}
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        <div style={{ position: 'relative', minWidth: 200, width: '100%', maxWidth: 400 }}>
+        <div ref={searchWrapperRef} style={{ position: 'relative', minWidth: 200, width: '100%', maxWidth: 400 }}>
           <Search
             size={14}
             style={{
@@ -149,14 +160,29 @@ export function TopNav() {
               transform: 'translateY(-50%)',
               color: 'var(--text-tertiary)',
               pointerEvents: 'none',
+              zIndex: 1,
             }}
           />
           <input
             type="text"
             placeholder="Search people, jobs, events…"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              if (e.target.value.length >= 2) setPanelOpen(true)
+              else setPanelOpen(false)
+            }}
+            onFocus={() => {
+              if (searchQuery.length >= 2) setPanelOpen(true)
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                navigate(`${PATHS.SEARCH}?q=${encodeURIComponent(e.currentTarget.value.trim())}`)
+              if (e.key === 'Enter' && searchQuery.trim().length >= 2) {
+                navigate(`${PATHS.SEARCH}?q=${encodeURIComponent(searchQuery.trim())}`, { replace: true })
+                setPanelOpen(false)
+                e.currentTarget.blur()
+              } else if (e.key === 'Escape') {
+                setPanelOpen(false)
+                e.currentTarget.blur()
               }
             }}
             style={{
@@ -172,6 +198,9 @@ export function TopNav() {
               boxSizing: 'border-box',
             }}
           />
+          {panelOpen && debouncedQuery.length >= 2 && (
+            <SearchPanel query={debouncedQuery} onClose={closePanel} />
+          )}
         </div>
       </div>
 

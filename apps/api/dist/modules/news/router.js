@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.newsRouter = void 0;
+const express_1 = require("express");
+const auth_1 = require("../../middleware/auth");
+const university_1 = require("../../middleware/university");
+const validate_1 = require("../../middleware/validate");
+const controller_1 = require("./controller");
+const schema_1 = require("./schema");
+exports.newsRouter = (0, express_1.Router)();
+exports.newsRouter.use(auth_1.requireAuth, university_1.resolveUniversity);
+exports.newsRouter.get('/', (0, validate_1.validateRequest)({ query: schema_1.NewsListQuerySchema }), controller_1.listNews);
+exports.newsRouter.post('/', (0, auth_1.requireRole)('staff', 'admin'), (0, validate_1.validate)(schema_1.CreateNewsSchema), controller_1.createNews);
+exports.newsRouter.get('/:newsId', controller_1.getNews);
+exports.newsRouter.patch('/:newsId', (0, auth_1.requireRole)('staff', 'admin'), (0, validate_1.validate)(schema_1.UpdateNewsSchema), controller_1.updateNews);
+exports.newsRouter.delete('/:newsId', (0, auth_1.requireRole)('staff', 'admin'), controller_1.deleteNews);

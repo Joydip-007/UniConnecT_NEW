@@ -1,7 +1,10 @@
 export const PATHS = {
   LOGIN: '/login',
+  REGISTER_ENTRY: '/register',
   REGISTER: '/register/:token',
   OTP: '/otp',
+  VERIFY_OTP: '/verify-otp',
+  FORGOT_PASSWORD: '/forgot-password',
 
   FEED: '/feed',
 

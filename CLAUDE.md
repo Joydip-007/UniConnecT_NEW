@@ -25,7 +25,7 @@ npx pnpm --filter web test          # Vitest + React Testing Library
 npx pnpm --filter web test src/features/feed/PostCard.test.tsx  # single file
 npx pnpm --filter web build
 
-# Backend — apps/api (not yet scaffolded)
+# Backend — apps/api
 npx pnpm --filter api dev           # Express + Socket.io :4000
 npx pnpm --filter api test
 npx pnpm --filter api db:migrate
@@ -60,11 +60,15 @@ packages/
 
 ### Multi-tenancy
 
-Every domain table has a `university_id` UUID FK. There is no Postgres RLS — isolation is enforced entirely in the service layer. Every service function signature starts with `(db: Knex, universityId: string, …)`. The value always comes from `req.university.id` set by `authMiddleware` — never from the request body.
+Every domain table has a `university_id` UUID FK. There is no Postgres RLS — isolation is enforced entirely in the service layer. Services import `db` directly (they do not receive it as a parameter); `universityId` always comes from `req.university.id` set by the `resolveUniversity` middleware — never from the request body.
 
 ### Auth flow
 
-JWT access token (15 min, payload: `{ userId, universityId, role }`) + refresh token (256-bit random, stored in `user_sessions`, 7 days, httpOnly cookie). Access token lives in Zustand `authStore` (memory only). Middleware: `src/middleware/auth.ts` → `requireAuth` / `requireRole('alumni')`.
+JWT access token (15 min, payload: `{ userId, universityId, role }`) + refresh token (256-bit random, stored in `user_sessions`, 7 days, httpOnly cookie). Access token lives in Zustand `authStore` (memory only — cleared on page refresh, recovered via the refresh cookie). Middleware: `src/middleware/auth.ts` → `requireAuth` / `requireRole('alumni')`.
+
+- **Login**: `POST /auth/login` → returns `{ accessToken, user }` directly. No OTP step.
+- **Registration**: `POST /auth/register` (requires invite token) → sends email OTP → `POST /auth/verify-otp` to complete.
+- **Axios interceptor** (`apps/web/src/lib/axios.ts`) silently refreshes the access token on 401, but only when a session already exists (access token present) — it does not attempt refresh on unauthenticated 401s (e.g. bad login credentials).
 
 ### Real-time
 
@@ -77,6 +81,14 @@ Presigned S3 PUT URL flow — client calls `POST /api/upload/presign`, uploads d
 ### Background jobs
 
 Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Never inline async work inside HTTP handlers — always enqueue.
+
+### Backend module structure
+
+All feature modules live under `apps/api/src/modules/`. Each module follows the same shape: `router.ts` (route declarations only), `controller.ts` (request/response handling), `service.ts` (all business logic + DB access), `schema.ts` (Zod schemas), `index.ts` (barrel).
+
+Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`.
+
+The `admin` module (`/api/v1/admin`) requires `admin` or `staff` role and exposes: stats, user list + role/status management, invitations (create/list/delete), content reports (list/resolve).
 
 ---
 
@@ -164,7 +176,7 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 
 ## Database
 
-- Migrations: `apps/api/src/db/migrations/`, filename `YYYYMMDDHHMMSS_description.ts`. Never edit a committed migration — create a new one.
+- Migrations: `apps/api/src/database/migrations/`, filename `YYYYMMDDHHMMSS_description.ts`. Never edit a committed migration — create a new one.
 - Column defaults: `id` UUID (`uuid_generate_v4()`), `university_id` UUID FK indexed, `created_at`/`updated_at` timestamptz default `now()`.
 - Always index FK columns used in WHERE, and `(university_id, created_at DESC)` on high-volume tables.
 - Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
@@ -211,6 +223,10 @@ Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`. CI (lint + 
 
 ## Environment variables
 
-`apps/api/.env` (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `AWS_S3_BUCKET`, `AWS_REGION`, `EMAIL_FROM`, `SMTP_HOST/PORT/USER/PASS`.
+`apps/api/.env` (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`, `AWS_S3_BUCKET`, `AWS_REGION`.
 
-`apps/web/.env` (see `.env.example`): `VITE_API_URL`, `VITE_SOCKET_URL`.
+`apps/web/.env`: `VITE_API_URL=http://localhost:4000`, `VITE_SOCKET_URL=http://localhost:4000`, `VITE_UNIVERSITY_DOMAIN=uiu.ac.bd`.
+
+### Dev seed
+
+`npx pnpm --filter api db:seed` inserts UIU (domain `uiu.ac.bd`) and one reusable invitation: token `dev-invite`, email `student@uiu.ac.bd`, role `student`. Use this invite token to register the first account. No admin user is seeded — promote via `PATCH /admin/users/:id/role` or directly in the DB after registering.

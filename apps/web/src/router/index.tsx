@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
+import AdminRoute from './AdminRoute'
 import GuestRoute from './GuestRoute'
 import { FeedLayout } from '@/components/FeedLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -23,10 +24,15 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: page(() => import('@/pages/LandingPage')) },
       { path: PATHS.LOGIN, element: page(() => import('@/pages/LoginPage')) },
+      { path: PATHS.REGISTER_ENTRY, element: page(() => import('@/pages/RegisterPage')) },
       { path: PATHS.REGISTER, element: page(() => import('@/pages/RegisterPage')) },
       { path: PATHS.OTP, element: page(() => import('@/pages/OtpPage')) },
+      { path: PATHS.FORGOT_PASSWORD, element: page(() => import('@/pages/ForgotPasswordPage')) },
     ],
   },
+
+  // Accessible to both authenticated (unverified) and unauthenticated users
+  { path: PATHS.VERIFY_OTP, element: page(() => import('@/pages/OtpPage')) },
 
   {
     element: <ProtectedRoute />,
@@ -65,6 +71,12 @@ export const router = createBrowserRouter([
       { path: PATHS.MESSAGES, element: page(() => import('@/pages/MessagesPage')) },
       { path: PATHS.CONVERSATION, element: page(() => import('@/pages/ConversationPage')) },
 
+    ],
+  },
+
+  {
+    element: <AdminRoute />,
+    children: [
       { path: PATHS.ADMIN, element: page(() => import('@/pages/AdminPage')) },
     ],
   },

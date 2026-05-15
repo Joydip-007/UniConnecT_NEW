@@ -72,7 +72,7 @@ function roleBadgeVariant(role: UserRole): 'dept' | 'alumni' | 'neutral' {
 
 function roleLabel(role: UserRole): string {
   if (role === 'alumni') return 'Alumni · verified'
-  if (role === 'staff') return 'Staff'
+  if (role === 'faculty') return 'Faculty'
   if (role === 'admin') return 'Admin'
   return 'Student'
 }

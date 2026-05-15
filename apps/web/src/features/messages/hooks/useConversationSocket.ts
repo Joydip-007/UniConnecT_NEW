@@ -38,6 +38,8 @@ export function useConversationSocket(convId: string) {
   const [typingUserIds, setTypingUserIds] = useState<string[]>([])
 
   useEffect(() => {
+    if (!convId) return undefined
+
     // Timer map is local to this effect instance; cleaned up on convId change
     const timers = new Map<string, ReturnType<typeof setTimeout>>()
 

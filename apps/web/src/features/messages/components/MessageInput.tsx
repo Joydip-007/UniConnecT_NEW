@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
 import { Send } from 'lucide-react'
-import { api } from '@/lib/axios'
 import { socket } from '@/lib/socket'
-import type { Message } from './ChatView'
+import { useAuthStore } from '@/stores/authStore'
+import { usePendingMsgsStore } from '@/stores/pendingMsgsStore'
 
 // ── MessageInput ──────────────────────────────────────────────────────────────
 
@@ -15,6 +14,8 @@ export function MessageInput({ convId }: MessageInputProps) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastTypingEmitRef = useRef(0)
+  const user = useAuthStore((s) => s.user)
+  const pendingSend = usePendingMsgsStore((s) => s.send)
 
   // Reset state when navigating to a different conversation
   useEffect(() => {
@@ -23,13 +24,6 @@ export function MessageInput({ convId }: MessageInputProps) {
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
   }, [convId])
 
-  const sendMutation = useMutation({
-    mutationFn: (body: string) =>
-      api
-        .post<{ data: Message }>(`/conversations/${convId}/messages`, { body })
-        .then((r) => r.data.data),
-  })
-
   function emitTypingStop() {
     socket.emit('conv:typing:stop', { conversationId: convId })
     lastTypingEmitRef.current = 0
@@ -37,13 +31,17 @@ export function MessageInput({ convId }: MessageInputProps) {
 
   function handleSend() {
     const trimmed = value.trim()
-    if (!trimmed || sendMutation.isPending) return
+    if (!trimmed || !user) return
 
-    sendMutation.mutate(trimmed)
     setValue('')
     emitTypingStop()
-    // Reset textarea height after clearing
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
+
+    pendingSend(convId, trimmed, {
+      id: user.id,
+      fullName: user.profile.fullName,
+      profile: { avatarUrl: user.profile.avatarUrl },
+    })
   }
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -66,7 +64,7 @@ export function MessageInput({ convId }: MessageInputProps) {
       handleSend()
       return
     }
-    // Throttled typing:start — at most once per 2 s (docs/socket-events.md#typing-throttle)
+    // Throttled typing:start — at most once per 2 s
     const now = Date.now()
     if (now - lastTypingEmitRef.current >= 2000) {
       socket.emit('conv:typing:start', { conversationId: convId })
@@ -85,7 +83,7 @@ export function MessageInput({ convId }: MessageInputProps) {
     e.currentTarget.style.borderColor = 'var(--border-hover)'
   }
 
-  const canSend = value.trim().length > 0 && !sendMutation.isPending
+  const canSend = value.trim().length > 0
 
   return (
     <div

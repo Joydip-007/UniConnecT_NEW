@@ -12,8 +12,9 @@ import { api } from '@/lib/axios'
 interface UserResult {
   id: string
   fullName: string
-  role: 'student' | 'alumni' | 'staff' | 'admin'
+  role: 'student' | 'alumni' | 'faculty' | 'admin'
   profile: {
+    fullName?: string | null
     avatarUrl: string | null
     headline: string | null
     department: string | null
@@ -21,12 +22,18 @@ interface UserResult {
 }
 
 interface CreateConversationBody {
-  participantIds: string[]
+  participantId?: string
+  participantIds?: string[]
   name?: string
+  isGroup?: boolean
 }
 
 interface CreatedConversation {
   id: string
+}
+
+interface UsersPage {
+  items: UserResult[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -57,7 +64,7 @@ type BadgeVariant = 'dept' | 'alumni' | 'neutral'
 const ROLE_BADGE: Record<UserResult['role'], BadgeVariant> = {
   student: 'dept',
   alumni: 'alumni',
-  staff: 'neutral',
+  faculty: 'neutral',
   admin: 'neutral',
 }
 
@@ -247,8 +254,13 @@ export function NewConversationModal({ onClose }: Props) {
     queryKey: ['users', 'search', debouncedQuery],
     queryFn: () =>
       api
-        .get<{ data: UserResult[] }>('/users/search', { params: { q: debouncedQuery } })
-        .then((r) => r.data.data),
+        .get<{ data: UsersPage }>('/users', { params: { search: debouncedQuery, limit: 10 } })
+        .then((r) =>
+          r.data.data.items.map((user) => ({
+            ...user,
+            fullName: user.profile?.fullName ?? user.fullName,
+          })),
+        ),
     enabled: debouncedQuery.length >= 2,
     staleTime: 30_000,
   })
@@ -280,10 +292,18 @@ export function NewConversationModal({ onClose }: Props) {
 
   function handleCreate() {
     if (selectedUsers.length === 0) return
-    createMutation.mutate({
-      participantIds: selectedUsers.map((u) => u.id),
-      ...(isGroup && groupName.trim() ? { name: groupName.trim() } : {}),
-    })
+    createMutation.mutate(
+      isGroup
+        ? {
+            isGroup: true,
+            participantIds: selectedUsers.map((u) => u.id),
+            name: groupName.trim(),
+          }
+        : {
+            participantId: selectedUsers[0].id,
+            participantIds: selectedUsers.map((u) => u.id),
+          },
+    )
   }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {

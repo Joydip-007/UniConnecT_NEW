@@ -1,0 +1,3 @@
+{"type":"server-started","port":54373,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:54373","screen_dir":"/Users/joydipdatta/UniConnecT_NEW/.superpowers/brainstorm/19907-1778866321/content","state_dir":"/Users/joydipdatta/UniConnecT_NEW/.superpowers/brainstorm/19907-1778866321/state"}
+{"type":"screen-added","file":"/Users/joydipdatta/UniConnecT_NEW/.superpowers/brainstorm/19907-1778866321/content/search-floating.html"}
+{"type":"server-stopped","reason":"idle timeout"}

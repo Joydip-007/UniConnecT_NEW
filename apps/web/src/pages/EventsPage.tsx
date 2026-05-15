@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { CalendarX, Plus } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
@@ -13,6 +13,8 @@ import { EmptyState } from '@/components/EmptyState'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type EventType = 'all' | 'career_fair' | 'seminar' | 'workshop' | 'alumni_meetup' | 'club'
+
+interface EventsPageData { items: Event[]; hasMore: boolean; page: number }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -38,26 +40,47 @@ export default function EventsPage() {
   const to = searchParams.get('to') ?? ''
 
   const role = useAuthStore((s) => s.user?.role)
-  const canCreate = role === 'staff' || role === 'admin'
+  const canCreate = role === 'faculty' || role === 'admin'
   const [showCreate, setShowCreate] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const queryKey = ['events', 'list', { type: activeType, from, to }] as const
 
-  const { data, isLoading } = useQuery<Event[]>({
-    queryKey,
-    queryFn: () =>
-      api
-        .get<{ data: Event[] }>('/events', {
-          params: {
-            ...(activeType !== 'all' && { type: activeType }),
-            ...(from && { from }),
-            ...(to && { to }),
-          },
-        })
-        .then((r) => r.data.data),
-  })
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+    useInfiniteQuery<EventsPageData>({
+      queryKey,
+      queryFn: ({ pageParam }) =>
+        api
+          .get<{ data: EventsPageData }>('/events', {
+            params: {
+              page: pageParam,
+              limit: 20,
+              ...(activeType !== 'all' && { type: activeType }),
+              ...(from && { from: new Date(from).toISOString() }),
+              ...(to && { to: new Date(to).toISOString() }),
+            },
+          })
+          .then((r) => r.data.data),
+      initialPageParam: 1,
+      getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
+    })
 
-  const events = data ?? []
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
+
+  const events = data?.pages.flatMap((p) => p.items) ?? []
 
   function setType(value: EventType) {
     setSearchParams(
@@ -195,6 +218,13 @@ export default function EventsPage() {
           <EventCard key={event.id} event={event} queryKey={queryKey} />
         ))}
       </div>
+
+      <div ref={sentinelRef} style={{ height: 1 }} />
+      {isFetchingNextPage && (
+        <p style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13, padding: 12 }}>
+          Loading more…
+        </p>
+      )}
 
       {/* ── Empty state ────────────────────────────────────────────────────── */}
       {!isLoading && events.length === 0 && (

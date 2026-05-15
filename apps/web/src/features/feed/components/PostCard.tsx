@@ -29,7 +29,7 @@ export type PostType =
 export interface PostAuthor {
   id: string
   fullName: string
-  role: 'student' | 'alumni' | 'staff' | 'admin'
+  role: 'student' | 'alumni' | 'faculty' | 'admin'
   profile: {
     avatarUrl: string | null
     headline: string | null
@@ -131,7 +131,7 @@ function roleBadgeVariant(role: PostAuthor['role']): 'dept' | 'alumni' | 'neutra
 }
 
 function roleLabel(role: PostAuthor['role']): string {
-  if (role === 'staff') return 'Staff'
+  if (role === 'faculty') return 'Faculty'
   if (role === 'admin') return 'Admin'
   return role.charAt(0).toUpperCase() + role.slice(1)
 }

@@ -1,0 +1,1 @@
+export { campusRouter } from './router'

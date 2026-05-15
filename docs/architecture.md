@@ -136,7 +136,7 @@ Long-running or deferrable work lives in Bull queues, not HTTP handlers.
 
 | Queue | Triggered by | Worker action |
 |-------|-------------|--------------|
-| `email` | Registration, OTP, job application status | Send via SMTP/SES |
+| `email` | Registration, OTP, job application status | Send via Resend |
 | `notifications` | Post reactions, comments, mentions, follows | Write `notifications` rows + emit to `user:{userId}` room |
 | `badge-awards` | Post created, job applied, follow count | Check trigger conditions, award `user_badges` rows |
 | `feed-fan-out` | New post by high-follower user | Pre-cache feed entries in Redis |

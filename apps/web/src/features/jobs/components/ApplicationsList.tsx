@@ -38,6 +38,11 @@ interface JobApplication {
   appliedAt: string
 }
 
+interface ApplicationsResponse {
+  items: JobApplication[]
+  total: number
+}
+
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
@@ -255,8 +260,11 @@ export function ApplicationsList({ jobId }: Props) {
     queryKey,
     queryFn: () =>
       api
-        .get<{ data: JobApplication[] }>(`/jobs/${jobId}/applications`)
-        .then((r) => r.data.data),
+        .get<{ data: ApplicationsResponse | JobApplication[] }>(`/jobs/${jobId}/applications`)
+        .then((r) => {
+          const payload = r.data.data
+          return Array.isArray(payload) ? { items: payload, total: payload.length } : payload
+        }),
   })
 
   if (isPending) {
@@ -291,7 +299,9 @@ export function ApplicationsList({ jobId }: Props) {
     )
   }
 
-  if (!data || data.length === 0) {
+  const applications = data?.items ?? []
+
+  if (applications.length === 0) {
     return (
       <div
         style={{
@@ -329,12 +339,12 @@ export function ApplicationsList({ jobId }: Props) {
           Applications
         </span>
         <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-          {data.length} total
+          {data.total} total
         </span>
       </div>
 
       <div>
-        {data.map((app) => (
+        {applications.map((app) => (
           <ApplicationRow
             key={app.id}
             application={app}

@@ -11,13 +11,17 @@ export interface Notification {
     id: string
     fullName: string
     avatarUrl: string | null
-  }
+  } | null
   content: string
   refUrl: string | null
   createdAt: string
 }
 
 export const NOTIF_QUERY_KEY = ['notifications', 'unread'] as const
+
+interface NotificationNewPayload {
+  notification?: Notification
+}
 
 export function useNotificationsSocket(userId: string | undefined) {
   const queryClient = useQueryClient()
@@ -26,7 +30,8 @@ export function useNotificationsSocket(userId: string | undefined) {
   useEffect(() => {
     if (!userId) return
 
-    function onNew(notif: Notification) {
+    function onNew(payload: Notification | NotificationNewPayload) {
+      const notif = 'notification' in payload && payload.notification ? payload.notification : payload as Notification
       queryClient.setQueryData<Notification[]>(NOTIF_QUERY_KEY, (prev) =>
         prev ? [notif, ...prev] : [notif],
       )

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import logoSrc from '@/assets/logo.svg'
+import { BrandLogo } from '@/components/BrandLogo'
 
 const NAV_LINKS = [
   { label: 'Features',     href: '#features' },
@@ -28,13 +28,9 @@ export function LandingFooter() {
         {/* Left — logo mark + wordmark */}
         <Link
           to="/"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}
+          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
         >
-          <img src={logoSrc} alt="UniConnecT" style={{ height: 26 }} />
-          <span style={{ fontSize: 16, fontWeight: 500 }}>
-            <span style={{ color: 'var(--text-primary)' }}>Uni</span>
-            <span style={{ color: 'var(--uc-orange)' }}>ConnecT</span>
-          </span>
+          <BrandLogo height={30} />
         </Link>
 
         {/* Center — nav links */}

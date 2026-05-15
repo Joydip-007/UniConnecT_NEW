@@ -80,9 +80,9 @@ function Label({
 // ── Presign upload helper ─────────────────────────────────────────────────────
 
 async function uploadFile(file: File): Promise<string> {
-  const res = await api.post<{ data: { uploadUrl: string; publicUrl: string } }>(
+  const res = await api.get<{ data: { uploadUrl: string; publicUrl: string } }>(
     '/upload/presign',
-    { fileName: file.name, fileType: file.type, folder: 'events' },
+    { params: { filename: file.name, contentType: file.type } },
   )
   const { uploadUrl, publicUrl } = res.data.data
   await fetch(uploadUrl, {
@@ -187,7 +187,7 @@ export function CreateEventForm({ onClose }: Props) {
     !!form.endsAt
 
   // Role guard — must be after all hooks
-  if (role !== 'staff' && role !== 'admin') {
+  if (role !== 'faculty' && role !== 'admin') {
     return (
       <div
         style={{
@@ -216,7 +216,7 @@ export function CreateEventForm({ onClose }: Props) {
             Permission required
           </p>
           <p style={{ margin: '0 0 20px', fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-            Only staff and admins can create events.
+            Only faculty and admins can create events.
           </p>
           <GhostBtn onClick={onClose}>Close</GhostBtn>
         </div>

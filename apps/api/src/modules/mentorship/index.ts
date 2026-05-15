@@ -1,0 +1,1 @@
+export { mentorshipRouter } from './router'

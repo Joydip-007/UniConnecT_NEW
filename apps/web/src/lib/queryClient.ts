@@ -3,7 +3,9 @@ import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
 
 function handleGlobalError(error: unknown) {
-  if (isAxiosError(error) && error.response && error.response.status < 500) return
+  // Suppress 4xx client errors (handled per component) and network errors
+  // (already toasted by the axios interceptor). Only surface 5xx server errors.
+  if (isAxiosError(error) && (!error.response || error.response.status < 500)) return
   toast.error('Something went wrong. Please try again.')
 }
 

@@ -45,7 +45,7 @@ export default function JobsPage() {
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const role = useAuthStore((s) => s.user?.role)
-  const canPostJob = role === 'alumni' || role === 'staff' || role === 'admin'
+  const canPostJob = role === 'alumni' || role === 'faculty' || role === 'admin'
   const [postFormOpen, setPostFormOpen] = useState(false)
 
   // Debounce search input 400ms

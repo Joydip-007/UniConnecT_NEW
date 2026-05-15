@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Award } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
-import { PostCard } from '@/features/feed/components/PostCard'
-import type { FeedPost } from '@/features/feed/components/PostCard'
 import { EditProfileModal, FollowModal } from '@/features/profile'
 import type { FollowMode } from '@/features/profile'
 
@@ -16,9 +14,9 @@ import type { FollowMode } from '@/features/profile'
 
 interface ProfileUser {
   id: string
-  fullName: string
-  role: 'student' | 'alumni' | 'staff' | 'admin'
+  role: 'student' | 'alumni' | 'faculty' | 'admin'
   profile: {
+    fullName: string
     avatarUrl: string | null
     headline: string | null
     department: string | null
@@ -30,20 +28,6 @@ interface ProfileUser {
     posts: number
   }
   isFollowing: boolean
-}
-
-interface UserBadge {
-  id: string
-  name: string
-  description: string
-  iconUrl: string | null
-  earnedAt: string
-}
-
-interface PostsPage {
-  items: FeedPost[]
-  hasMore: boolean
-  page: number
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -76,7 +60,7 @@ function roleBadgeVariant(role: ProfileUser['role']): 'dept' | 'alumni' | 'neutr
 }
 
 function roleLabel(role: ProfileUser['role']): string {
-  if (role === 'staff') return 'Staff'
+  if (role === 'faculty') return 'Faculty'
   if (role === 'admin') return 'Admin'
   return role.charAt(0).toUpperCase() + role.slice(1)
 }
@@ -114,241 +98,43 @@ function SkeletonProfile() {
   )
 }
 
-function SkeletonPost() {
-  return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '14px 16px',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div
-          style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--surface-raised)', flexShrink: 0 }}
-        />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ height: 13, width: '35%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
-          <div style={{ height: 11, width: '22%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-        {['90%', '75%', '55%'].map((w) => (
-          <div key={w} style={{ height: 13, width: w, background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ── BadgeGrid ──────────────────────────────────────────────────────────────────
 
-function BadgeGrid({ userId }: { userId: string }) {
-  const { data, isLoading } = useQuery<UserBadge[]>({
-    queryKey: ['user', 'badges', userId],
-    queryFn: () =>
-      api.get<{ data: UserBadge[] }>(`/users/${userId}/badges`).then((r) => r.data.data),
-  })
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-          gap: 10,
-          padding: '4px 0',
-        }}
-      >
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              height: 112,
-              background: 'var(--surface-card)',
-              border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--r-md)',
-            }}
-          />
-        ))}
-      </div>
-    )
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '40px 0',
-          gap: 10,
-        }}
-      >
-        <Award size={32} strokeWidth={1} color="var(--text-tertiary)" />
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-          No badges yet
-        </p>
-      </div>
-    )
-  }
-
+function BadgeGrid() {
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '40px 0',
         gap: 10,
-        padding: '4px 0',
       }}
     >
-      {data.map((badge) => (
-        <div
-          key={badge.id}
-          style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-md)',
-            padding: '14px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 8,
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 'var(--r-sm)',
-              background: 'var(--uc-indigo-bg)',
-              border: '0.5px solid var(--uc-indigo-bdr)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            {badge.iconUrl ? (
-              <img src={badge.iconUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <Award size={20} strokeWidth={1.5} color="var(--uc-indigo-l)" />
-            )}
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-              {badge.name}
-            </p>
-            {badge.description && (
-              <p
-                style={{
-                  margin: '3px 0 0',
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: 'var(--text-tertiary)',
-                  lineHeight: 1.4,
-                }}
-              >
-                {badge.description}
-              </p>
-            )}
-          </div>
-        </div>
-      ))}
+      <Award size={32} strokeWidth={1} color="var(--text-tertiary)" />
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+        No badges yet
+      </p>
     </div>
   )
 }
 
 // ── PostsFeed ─────────────────────────────────────────────────────────────────
 
-function PostsFeed({ userId }: { userId: string }) {
-  const sentinelRef = useRef<HTMLDivElement>(null)
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery<PostsPage>({
-      queryKey: ['user', 'posts', userId],
-      queryFn: ({ pageParam }) =>
-        api
-          .get<{ data: PostsPage }>(`/users/${userId}/posts`, { params: { page: pageParam } })
-          .then((r) => r.data.data),
-      initialPageParam: 1,
-      getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
-    })
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage()
-        }
-      },
-      { threshold: 0.1 },
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
-
-  const posts = data?.pages.flatMap((p) => p.items) ?? []
-  const allCaughtUp = !isLoading && !hasNextPage && posts.length > 0
-
-  if (isLoading) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <SkeletonPost />
-        <SkeletonPost />
-        <SkeletonPost />
-      </div>
-    )
-  }
-
-  if (posts.length === 0) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '40px 0',
-          gap: 10,
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-          No posts yet
-        </p>
-      </div>
-    )
-  }
-
+function PostsFeed() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
-
-      {isFetchingNextPage && (
-        <>
-          <SkeletonPost />
-          <SkeletonPost />
-        </>
-      )}
-
-      <div ref={sentinelRef} style={{ height: 1 }} />
-
-      {allCaughtUp && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0 16px' }}>
-          <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
-          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
-            All posts loaded
-          </span>
-          <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
-        </div>
-      )}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '40px 0',
+        gap: 10,
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+        No posts yet
+      </p>
     </div>
   )
 }
@@ -408,6 +194,7 @@ export default function ProfilePage() {
   }
 
   const avatarColor = seedColor(user.id)
+  const fullName = user.profile.fullName
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -456,11 +243,11 @@ export default function ProfilePage() {
             {user.profile.avatarUrl ? (
               <img
                 src={user.profile.avatarUrl}
-                alt={user.fullName}
+                alt={fullName}
                 style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
               />
             ) : (
-              <Avatar initials={getInitials(user.fullName)} color={avatarColor} size={60} />
+              <Avatar initials={getInitials(fullName)} color={avatarColor} size={60} />
             )}
           </div>
 
@@ -491,7 +278,7 @@ export default function ProfilePage() {
           <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 5 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 17, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                {user.fullName}
+                {fullName}
               </span>
               <Badge variant={roleBadgeVariant(user.role)}>{roleLabel(user.role)}</Badge>
               {user.profile.department && (
@@ -600,9 +387,9 @@ export default function ProfilePage() {
 
       {/* Tab content */}
       {activeTab === 'posts' ? (
-        <PostsFeed userId={user.id} />
+        <PostsFeed />
       ) : (
-        <BadgeGrid userId={user.id} />
+        <BadgeGrid />
       )}
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}

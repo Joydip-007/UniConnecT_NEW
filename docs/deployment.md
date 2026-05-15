@@ -54,7 +54,7 @@ CloudFront (CDN)
 | ALB | Load balancer with sticky sessions for Socket.io |
 | Route 53 | DNS |
 | ACM | TLS certificates |
-| SES | Transactional email |
+| Resend | Transactional email and authentication OTP |
 | CloudWatch | Logs, metrics, alarms |
 | Secrets Manager | Production secrets |
 
@@ -208,11 +208,10 @@ AWS_S3_BUCKET=uniconnect-media-staging
 AWS_CLOUDFRONT_DOMAIN=dxxx.cloudfront.net
 
 # Email
-EMAIL_FROM=no-reply@uniconnect.app
-SMTP_HOST=email-smtp.ap-southeast-1.amazonaws.com
-SMTP_PORT=587
-SMTP_USER=AKIAIOSFODNN7EXAMPLE
-SMTP_PASS=...
+RESEND_API_KEY=re_...
+EMAIL_FROM=UniConnecT <otp@uniconnect.app>
+OTP_EXPIRES_MINUTES=10
+OTP_RESEND_COOLDOWN_SECONDS=60
 
 # App
 NODE_ENV=development

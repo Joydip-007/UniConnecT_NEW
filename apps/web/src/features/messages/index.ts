@@ -8,3 +8,4 @@ export { MessageInput } from './components/MessageInput'
 export { NewConversationModal } from './components/NewConversationModal'
 
 export { useConversationSocket } from './hooks/useConversationSocket'
+export { useConversation } from './hooks/useConversation'

@@ -1,0 +1,1 @@
+export { newsRouter } from './router'

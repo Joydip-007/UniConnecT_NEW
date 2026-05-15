@@ -31,8 +31,9 @@ function getInitials(name: string) {
 // ── NotificationRow ────────────────────────────────────────────────────────────
 
 function NotificationRow({ notif, onNavigate }: { notif: Notification; onNavigate: () => void }) {
-  const color = seedColor(notif.actor.id)
-  const initials = getInitials(notif.actor.fullName)
+  const actor = notif.actor ?? { id: notif.id, fullName: 'UniConnecT', avatarUrl: null }
+  const color = seedColor(actor.id)
+  const initials = getInitials(actor.fullName)
 
   return (
     <button
@@ -59,9 +60,9 @@ function NotificationRow({ notif, onNavigate }: { notif: Notification; onNavigat
       }}
     >
       <div style={{ flexShrink: 0, marginTop: 1 }}>
-        {notif.actor.avatarUrl ? (
+        {actor.avatarUrl ? (
           <img
-            src={notif.actor.avatarUrl}
+            src={actor.avatarUrl}
             alt=""
             style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
           />
@@ -125,8 +126,8 @@ export function NotificationDropdown({ onClose }: Props) {
     queryKey: NOTIF_QUERY_KEY,
     queryFn: () =>
       api
-        .get<{ data: Notification[] }>('/notifications', { params: { limit: 10, unread: true } })
-        .then((r) => r.data.data),
+        .get<{ data: { items: Notification[] } }>('/notifications', { params: { limit: 10, isRead: false } })
+        .then((r) => r.data.data.items),
   })
 
   const markAllMutation = useMutation({

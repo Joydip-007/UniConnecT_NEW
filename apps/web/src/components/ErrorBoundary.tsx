@@ -2,6 +2,52 @@ import React from 'react'
 import { RotateCcw } from 'lucide-react'
 import { PrimaryBtn } from '@/components/Button'
 
+interface RootState { hasError: boolean; error: Error | null }
+
+class RootErrorBoundary extends React.Component<React.PropsWithChildren, RootState> {
+  state: RootState = { hasError: false, error: null }
+
+  static getDerivedStateFromError(error: Error): RootState {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1rem',
+          padding: '2rem',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '16px', color: 'var(--color-text-primary)', fontWeight: 500 }}>
+            Something went wrong
+          </p>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+            {this.state.error?.message ?? 'An unexpected error occurred.'}
+          </p>
+          <button
+            onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload() }}
+          >
+            Reload page
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+export default RootErrorBoundary
+
 interface Props {
   children: React.ReactNode
 }

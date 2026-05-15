@@ -14,7 +14,7 @@ export interface EventAttendee {
   avatarUrl: string | null
 }
 
-export type EventKind = 'career_fair' | 'seminar' | 'workshop' | 'alumni_meetup' | 'club'
+export type EventKind = 'general' | 'career_fair' | 'seminar' | 'workshop' | 'alumni_meetup' | 'club'
 
 export interface Event {
   id: string
@@ -38,6 +38,7 @@ type RsvpStatus = 'going' | 'maybe' | null
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TYPE_META: Record<EventKind, { label: string; bdr: string; color: string; glow: string }> = {
+  general:       { label: 'General',       bdr: 'var(--border-hover)',     color: 'var(--text-secondary)', glow: 'rgba(238,242,255,0.08)' },
   career_fair:   { label: 'Career fair',   bdr: 'var(--uc-indigo-bdr)',   color: 'var(--uc-indigo-xl)',  glow: 'rgba(91,91,214,0.35)' },
   seminar:       { label: 'Seminar',       bdr: 'var(--uc-orange-bdr)',   color: 'var(--uc-orange-l)',   glow: 'rgba(240,90,40,0.28)' },
   workshop:      { label: 'Workshop',      bdr: 'rgba(16,185,129,0.28)',  color: 'var(--uc-mint)',        glow: 'rgba(16,185,129,0.28)' },

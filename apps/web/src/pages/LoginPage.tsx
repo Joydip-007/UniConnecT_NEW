@@ -1,17 +1,18 @@
 import { FormEvent, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { isAxiosError } from 'axios'
+import { ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { PrimaryBtn } from '@/components/Button'
+import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
 import type { User } from '@uniconnect/shared/types'
-import logoSrc from '@/assets/logo.svg'
 
 interface LoginResponse {
   data: {
-    user: User
     accessToken: string
+    user: User
   }
 }
 
@@ -35,8 +36,18 @@ export default function LoginPage() {
       setAuth(data.data.user, data.data.accessToken)
       navigate(PATHS.FEED, { replace: true })
     } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 401) {
-        setError('Invalid email or password')
+      if (isAxiosError(err)) {
+        const status = err.response?.status
+        const code = (err.response?.data as { code?: string } | undefined)?.code
+        if (status === 401) {
+          setError('Invalid email or password')
+        } else if (status === 403 && code === 'ACCOUNT_NOT_VERIFIED') {
+          setError('Your account is not verified. Check your email for a verification code.')
+        } else if (!err.response) {
+          setError('Cannot reach the server. Make sure the API is running.')
+        } else {
+          setError(`Something went wrong (${status ?? 'unknown'}). Please try again.`)
+        }
       } else {
         setError('Something went wrong. Please try again.')
       }
@@ -61,7 +72,40 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px 16px',
+      position: 'relative',
     }}>
+      {/* Back Button */}
+      <div style={{ position: 'absolute', top: 24, left: 24 }}>
+        <Link
+          to="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            color: 'var(--text-secondary)',
+            textDecoration: 'none',
+            fontSize: 14,
+            fontWeight: 500,
+            padding: '8px 12px',
+            borderRadius: 'var(--r-pill)',
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--text-primary)'
+            e.currentTarget.style.background = 'var(--surface-raised)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text-secondary)'
+            e.currentTarget.style.background = 'var(--surface-card)'
+          }}
+        >
+          <ArrowLeft size={16} />
+          Back to home
+        </Link>
+      </div>
+
       <div style={{
         width: '100%',
         maxWidth: 400,
@@ -71,7 +115,7 @@ export default function LoginPage() {
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <img src={logoSrc} alt="UniConnecT" style={{ height: 40 }} />
+          <BrandLogo height={40} />
         </div>
 
         {/* Card */}
@@ -121,9 +165,17 @@ export default function LoginPage() {
             </label>
 
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
-                Password
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                  Password
+                </span>
+                <Link
+                  to={PATHS.FORGOT_PASSWORD}
+                  style={{ fontSize: 12, color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -192,7 +244,7 @@ export default function LoginPage() {
           <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
             Or{' '}
             <Link
-              to={PATHS.REGISTER.replace(':token', 'invite')}
+              to={PATHS.REGISTER_ENTRY}
               style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
             >
               go to register page

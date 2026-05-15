@@ -123,10 +123,10 @@ export function CreatePost() {
 
   if (!user) return null
 
-  const name = user.profile.fullName
+  const name = user.profile.fullName ?? ''
   const color = seedColor(user.id)
   const avatarInitials = getInitials(name)
-  const firstName = name.split(' ')[0]
+  const firstName = name.split(' ')[0] ?? ''
 
   return (
     <div
