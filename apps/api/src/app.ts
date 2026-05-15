@@ -15,6 +15,8 @@ import { messagesRouter } from './modules/messages'
 import { newsRouter } from './modules/news'
 import { notificationsRouter } from './modules/notifications'
 import { campusRouter } from './modules/campus'
+import { mentorshipRouter } from './modules/mentorship'
+import { searchRouter } from './modules/search'
 import { uploadRouter } from './modules/upload'
 import { usersRouter } from './modules/users'
 import { errorHandler } from './middleware/error-handler'
@@ -58,6 +60,8 @@ export function createApp() {
   app.use('/api/v1/conversations', messagesRouter)
   app.use('/api/v1/notifications', notificationsRouter)
   app.use('/api/v1/news', newsRouter)
+  app.use('/api/v1/mentorship', mentorshipRouter)
+  app.use('/api/v1/search', searchRouter)
   app.use('/api/v1', campusRouter)
 
   // Global error handler. Keep this mounted last.
