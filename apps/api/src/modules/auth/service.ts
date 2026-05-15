@@ -25,6 +25,15 @@ interface UserRow {
 interface UserWithProfileRow extends UserRow {
   full_name: string
   avatar_url: string | null
+  cover_url: string | null
+  bio: string | null
+  headline: string | null
+  department: string | null
+  batch_year: string | null
+  linkedin_url: string | null
+  phone: string | null
+  skills: string[] | null
+  is_open_to_work: boolean
 }
 
 interface InvitationRow {
@@ -144,6 +153,8 @@ export class AuthService {
     await db('users').where({ id: user.id }).update({ is_verified: true })
 
     const profile = await findUserWithProfile(user.id)
+    if (!profile) throw new AppError('User not found', 404, 'NOT_FOUND')
+
     const accessToken = tokenService.generateAccessToken({
       userId: user.id,
       universityId: user.university_id,
@@ -155,17 +166,12 @@ export class AuthService {
     })
 
     await tokenService.saveRefreshToken(user.id, refreshToken, deviceInfo ?? null, ipAddress ?? null)
-    await queueWelcomeEmail(user, profile?.full_name ?? user.email)
+    await queueWelcomeEmail(user, profile.full_name ?? user.email)
 
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        universityId: user.university_id,
-      },
+      user: toAuthUser(profile),
     }
   }
 
@@ -325,6 +331,15 @@ async function findUserWithProfile(userId: string) {
       'users.is_active',
       'profiles.full_name',
       'profiles.avatar_url',
+      'profiles.cover_url',
+      'profiles.bio',
+      'profiles.headline',
+      'profiles.department',
+      'profiles.batch_year',
+      'profiles.linkedin_url',
+      'profiles.phone',
+      'profiles.skills',
+      'profiles.is_open_to_work',
     )
     .where('users.id', userId)
     .first<UserWithProfileRow>()
@@ -343,6 +358,15 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
       'users.is_active',
       'profiles.full_name',
       'profiles.avatar_url',
+      'profiles.cover_url',
+      'profiles.bio',
+      'profiles.headline',
+      'profiles.department',
+      'profiles.batch_year',
+      'profiles.linkedin_url',
+      'profiles.phone',
+      'profiles.skills',
+      'profiles.is_open_to_work',
     )
     .where({
       'users.email': email.toLowerCase(),
@@ -360,16 +384,16 @@ function toAuthUser(user: UserWithProfileRow) {
     isVerified: user.is_verified,
     profile: {
       fullName: user.full_name,
-      bio: null,
-      avatarUrl: user.avatar_url,
-      coverUrl: null,
-      headline: null,
-      department: null,
-      batchYear: null,
-      linkedinUrl: null,
-      phone: null,
-      skills: [],
-      isOpenToWork: false,
+      bio: user.bio ?? null,
+      avatarUrl: user.avatar_url ?? null,
+      coverUrl: user.cover_url ?? null,
+      headline: user.headline ?? null,
+      department: user.department ?? null,
+      batchYear: user.batch_year ?? null,
+      linkedinUrl: user.linkedin_url ?? null,
+      phone: user.phone ?? null,
+      skills: user.skills ?? [],
+      isOpenToWork: user.is_open_to_work ?? false,
     },
   }
 }
@@ -411,19 +435,27 @@ async function verifyOtpOrThrow(userId: string, purpose: OtpPurpose, otp: string
 }
 
 async function sendOtpOrThrow(to: string, otp: string, purpose: OtpPurpose, userName: string) {
-  const result = await emailService.sendOtpEmail(to, otp, purpose, userName)
-  if (result.success) return
-
-  logger.warn('OTP email send failed', {
-    to,
-    purpose,
-    error: result.error,
-    devOtp: env.NODE_ENV === 'production' ? undefined : otp,
-  })
-
-  if (env.NODE_ENV === 'production') {
-    throw new AppError('Could not send verification email', 502, 'EMAIL_SEND_FAILED')
+  // Directly log for development convenience before enqueueing
+  if (env.NODE_ENV !== 'production') {
+    logger.info('OTP generated (dev)', { to, purpose, devOtp: otp })
   }
+
+  void emailQueue
+    .add({
+      to,
+      subject: 'otp',
+      text: JSON.stringify({
+        template: 'otp',
+        otp,
+        purpose,
+        userName,
+      }),
+    })
+    .catch((error: unknown) => {
+      logger.warn('OTP email queue enqueue failed', { error })
+      // Fallback for extreme cases (if redis is down briefly)
+      void emailService.sendOtpEmail(to, otp, purpose, userName)
+    })
 }
 
 async function queueWelcomeEmail(user: UserRow, userName: string) {

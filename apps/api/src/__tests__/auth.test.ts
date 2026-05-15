@@ -18,7 +18,7 @@ afterAll(async () => {
 
 describe('POST /api/v1/auth/register', () => {
   it('returns 201 with accessToken on success', async () => {
-    const email = `reg.${Date.now()}@uiu.ac.bd`
+    const email = `reg.${Date.now()}@bscse.uiu.ac.bd`
     createdUserEmails.push(email)
 
     const res = await api.post('/api/v1/auth/register').set(UNI).send({
@@ -28,6 +28,8 @@ describe('POST /api/v1/auth/register', () => {
       role: 'student',
     })
 
+    if (res.status !== 201) console.log(res.body)
+
     expect(res.status).toBe(201)
     expect(res.body.data).toHaveProperty('accessToken')
     expect(res.body.data).toHaveProperty('message')
@@ -36,7 +38,7 @@ describe('POST /api/v1/auth/register', () => {
   })
 
   it('returns 409 when email already exists', async () => {
-    const email = `dup.${Date.now()}@uiu.ac.bd`
+    const email = `dup.${Date.now()}@bscse.uiu.ac.bd`
     createdUserEmails.push(email)
 
     const payload = { email, password: 'TestPass@1234', full_name: 'Dup User', role: 'student' }
@@ -50,7 +52,7 @@ describe('POST /api/v1/auth/register', () => {
 describe('POST /api/v1/auth/verify-otp', () => {
   it('returns 422 with OTP_INVALID when OTP is wrong', async () => {
     // Register a fresh user so an OTP is stored in Redis
-    const email = `otp.${Date.now()}@uiu.ac.bd`
+    const email = `otp.${Date.now()}@bscse.uiu.ac.bd`
     createdUserEmails.push(email)
 
     const reg = await api.post('/api/v1/auth/register').set(UNI).send({
@@ -153,5 +155,26 @@ describe('GET /api/v1/auth/me', () => {
     const res = await api.get('/api/v1/auth/me').set(UNI)
 
     expect(res.status).toBe(401)
+  })
+})
+
+describe('GET /api/v1/auth/me', () => {
+  it('returns real profile data including department', async () => {
+    const { accessToken } = await loginAs(CREDENTIALS.student.email, CREDENTIALS.student.password)
+
+    // Set department directly in DB so we can verify the field comes back
+    const userRow = await db('users').where({ email: CREDENTIALS.student.email }).select('id').first()
+    await db('profiles').where({ user_id: userRow.id }).update({ department: 'CSE', batch_year: '2025' })
+
+    const res = await api.get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .set(UNI)
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.profile.department).toBe('CSE')
+    expect(res.body.data.profile.batchYear).toBe('2025')
+
+    // Clean up
+    await db('profiles').where({ user_id: userRow.id }).update({ department: null, batch_year: null })
   })
 })
