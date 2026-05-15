@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { AlertCircle, Search } from 'lucide-react'
 import {
   useSearchAll,
@@ -49,7 +49,6 @@ function EmptyState({ icon, title, message }: { icon: React.ReactNode; title: st
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
   const q = searchParams.get('q') ?? ''
   const tab = (searchParams.get('tab') ?? 'all') as Tab
 
@@ -84,7 +83,6 @@ export default function SearchPage() {
       fontSize: 13,
       fontWeight: 500,
       color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-      borderBottom: active ? '2px solid var(--uc-indigo)' : '2px solid transparent',
       background: 'none',
       border: 'none',
       borderBottom: active ? '2px solid var(--uc-indigo)' : '2px solid transparent',

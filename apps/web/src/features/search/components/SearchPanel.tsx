@@ -101,7 +101,6 @@ export function SearchPanel({ query, onClose }: Props) {
       fontSize: 12,
       fontWeight: 500,
       color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-      borderBottom: active ? '2px solid var(--uc-indigo)' : '2px solid transparent',
       background: 'none',
       border: 'none',
       borderBottom: active ? '2px solid var(--uc-indigo)' : '2px solid transparent',
