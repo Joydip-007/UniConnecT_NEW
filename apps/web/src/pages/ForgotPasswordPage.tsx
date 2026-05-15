@@ -73,13 +73,20 @@ function EmailStep({ onDone }: { onDone: (email: string) => void }) {
     setError(null)
     setLoading(true)
     try {
-      await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() })
+      await api.post('/auth/resend-otp', { email: email.trim().toLowerCase(), purpose: 'reset' })
       onDone(email.trim().toLowerCase())
     } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 429) {
+      if (!isAxiosError(err) || !err.response) {
+        setError('Connection error. Please check your internet and try again.')
+        return
+      }
+      const status = err.response.status
+      if (status === 429) {
         setError('Too many requests. Please wait a moment and try again.')
+      } else if (status >= 500) {
+        setError('Something went wrong on our end. Please try again.')
       } else {
-        // Always advance — API returns 200 even if email not found (prevents enumeration)
+        // Always advance on 4xx (including 404 for unknown email) — prevents email enumeration
         onDone(email.trim().toLowerCase())
       }
     } finally {

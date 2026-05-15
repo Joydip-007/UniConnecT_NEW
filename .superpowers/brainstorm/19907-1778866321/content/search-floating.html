@@ -1,0 +1,448 @@
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #060D1A; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  /* ── Simulated page behind ── */
+  .page-bg {
+    position: fixed; inset: 0;
+    background: #060D1A;
+    overflow: hidden;
+  }
+  .fake-feed {
+    padding: 80px 20px 20px;
+    max-width: 640px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    opacity: 0.35;
+    filter: blur(1px);
+  }
+  .fake-post {
+    background: #0A1628;
+    border: 0.5px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 16px;
+    height: 100px;
+  }
+
+  /* ── Simulated TopNav ── */
+  .top-nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 60px;
+    background: #0A1628;
+    border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    z-index: 100;
+  }
+  .nav-logo {
+    width: 110px;
+    height: 28px;
+    background: linear-gradient(135deg, #5B5BD6 0%, #7C7CF0 100%);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+
+  /* ── Search wrapper ── */
+  .search-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    position: relative;
+  }
+  .search-inner {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+  }
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(238,242,255,0.28);
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    height: 36px;
+    background: #111D35;
+    border: 0.5px solid rgba(91,91,214,0.45);
+    border-radius: 999px;
+    padding: 0 14px 0 34px;
+    font-size: 13px;
+    color: #EEF2FF;
+    outline: none;
+    font-family: inherit;
+  }
+  .search-input::placeholder { color: rgba(238,242,255,0.28); }
+
+  /* ── Floating results panel ── */
+  .results-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 500px;
+    max-height: 520px;
+    background: #111D35;
+    border: 0.5px solid rgba(255,255,255,0.13);
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    z-index: 200;
+  }
+
+  /* ── Tabs inside panel ── */
+  .panel-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.07);
+    background: #0A1628;
+    flex-shrink: 0;
+  }
+  .panel-tab {
+    padding: 11px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(238,242,255,0.45);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .panel-tab.active {
+    color: #7C7CF0;
+    border-bottom-color: #5B5BD6;
+  }
+
+  /* ── Results body ── */
+  .panel-body {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  /* ── Section group ── */
+  .result-section {
+    padding: 10px 0 4px;
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(238,242,255,0.28);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 16px 6px;
+  }
+  .section-divider {
+    border: none;
+    border-top: 0.5px solid rgba(255,255,255,0.07);
+    margin: 4px 0;
+  }
+
+  /* ── Result row ── */
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .result-row:hover { background: rgba(255,255,255,0.04); }
+
+  .result-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: white;
+  }
+  .result-avatar.sq { border-radius: 8px; }
+
+  .result-text { flex: 1; min-width: 0; }
+  .result-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #EEF2FF;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .result-name mark {
+    background: rgba(91,91,214,0.2);
+    color: #A5A5F8;
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+  .result-meta {
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(238,242,255,0.45);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .result-badge {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  /* ── "See all" footer row ── */
+  .see-all-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(91,91,214,0.9);
+    cursor: pointer;
+    transition: color 0.12s;
+  }
+  .see-all-row:hover { color: #7C7CF0; }
+  .see-all-row svg { opacity: 0.7; }
+
+  /* ── Panel footer ── */
+  .panel-footer {
+    border-top: 0.5px solid rgba(255,255,255,0.07);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0A1628;
+    flex-shrink: 0;
+  }
+  .panel-footer-hint {
+    font-size: 11px;
+    color: rgba(238,242,255,0.28);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .kbd {
+    background: rgba(255,255,255,0.08);
+    border: 0.5px solid rgba(255,255,255,0.13);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+    color: rgba(238,242,255,0.45);
+    font-family: monospace;
+  }
+  .view-all-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(91,91,214,0.85);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .view-all-link:hover { color: #7C7CF0; }
+
+  /* ── Nav right icons ── */
+  .nav-icons { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .nav-icon {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    border: 0.5px solid rgba(255,255,255,0.07);
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(238,242,255,0.45);
+  }
+  .nav-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #5B5BD6;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500; color: white;
+  }
+
+  /* ── Overlay ── */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(6,13,26,0.55);
+    backdrop-filter: blur(2px);
+    z-index: 90;
+  }
+
+  /* ── annotation ── */
+  .annotation {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #0A1628;
+    border: 0.5px solid rgba(255,255,255,0.13);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 12px;
+    color: rgba(238,242,255,0.6);
+    z-index: 300;
+    max-width: 480px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .annotation strong { color: #EEF2FF; }
+</style>
+
+<!-- Simulated page behind -->
+<div class="page-bg">
+  <div class="fake-feed">
+    <div class="fake-post"></div>
+    <div class="fake-post"></div>
+    <div class="fake-post"></div>
+    <div class="fake-post"></div>
+  </div>
+</div>
+
+<!-- Dimming overlay -->
+<div class="overlay"></div>
+
+<!-- Simulated TopNav -->
+<div class="top-nav">
+  <div class="nav-logo">UniConnecT</div>
+
+  <div class="search-wrapper">
+    <div class="search-inner">
+      <!-- Search icon -->
+      <span class="search-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </span>
+      <input class="search-input" value="rafi" readonly />
+
+      <!-- Floating results panel -->
+      <div class="results-panel">
+        <!-- Tabs -->
+        <div class="panel-tabs">
+          <div class="panel-tab active">All</div>
+          <div class="panel-tab">People</div>
+          <div class="panel-tab">Posts</div>
+          <div class="panel-tab">Jobs</div>
+          <div class="panel-tab">Events</div>
+          <div class="panel-tab">Groups</div>
+        </div>
+
+        <!-- Results body -->
+        <div class="panel-body">
+
+          <!-- People section -->
+          <div class="result-section">
+            <div class="section-label">People</div>
+            <div class="result-row">
+              <div class="result-avatar" style="background:#5B5BD6">RI</div>
+              <div class="result-text">
+                <div class="result-name"><mark>Rafi</mark>ul Islam</div>
+                <div class="result-meta">CSE '25 · Software Engineer at Google</div>
+              </div>
+              <span class="result-badge" style="background:rgba(91,91,214,0.12);color:#A5A5F8;border:0.5px solid rgba(91,91,214,0.25)">Alumni</span>
+            </div>
+            <div class="result-row">
+              <div class="result-avatar" style="background:#F05A28">RA</div>
+              <div class="result-text">
+                <div class="result-name"><mark>Rafi</mark>a Ahmed</div>
+                <div class="result-meta">CSE '26 · Research Lab, UIU</div>
+              </div>
+              <span class="result-badge" style="background:rgba(91,91,214,0.08);color:rgba(165,165,248,0.7);border:0.5px solid rgba(91,91,214,0.18)">Student</span>
+            </div>
+            <div class="see-all-row">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              See all people results
+            </div>
+          </div>
+
+          <hr class="section-divider"/>
+
+          <!-- Posts section -->
+          <div class="result-section">
+            <div class="section-label">Posts</div>
+            <div class="result-row">
+              <div class="result-avatar" style="background:#10B981">JD</div>
+              <div class="result-text">
+                <div class="result-name">Joydip Datta</div>
+                <div class="result-meta">Looking for teammates — <mark>Rafi</mark> from CSE any interest in…</div>
+              </div>
+            </div>
+            <div class="see-all-row">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              See all post results
+            </div>
+          </div>
+
+          <hr class="section-divider"/>
+
+          <!-- Jobs section -->
+          <div class="result-section">
+            <div class="section-label">Jobs</div>
+            <div class="result-row">
+              <div class="result-avatar sq" style="background:rgba(16,185,129,0.15);border:0.5px solid rgba(16,185,129,0.28);color:#10B981">R</div>
+              <div class="result-text">
+                <div class="result-name"><mark>Rafi</mark>que Systems · Backend Engineer</div>
+                <div class="result-meta">Remote · Full-time · Closes Jun 30</div>
+              </div>
+            </div>
+            <div class="see-all-row">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              See all job results
+            </div>
+          </div>
+
+        </div><!-- /panel-body -->
+
+        <!-- Footer -->
+        <div class="panel-footer">
+          <div class="panel-footer-hint">
+            <span><span class="kbd">↑↓</span> navigate</span>
+            <span><span class="kbd">↵</span> open</span>
+            <span><span class="kbd">Esc</span> close</span>
+          </div>
+          <div class="view-all-link">
+            View all results for "rafi"
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+          </div>
+        </div>
+      </div><!-- /results-panel -->
+
+    </div><!-- /search-inner -->
+  </div><!-- /search-wrapper -->
+
+  <div class="nav-icons">
+    <div class="nav-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="nav-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+    <div class="nav-avatar">JD</div>
+  </div>
+</div>
+
+<div class="annotation">
+  <strong>Proposed: Floating search panel</strong> — appears below the search bar on any page when you type (debounced 400ms). Shows top 2–3 results per category with tabs to filter. "View all results" opens the full <code>/search</code> page. Backdrop dims the page behind it. Press Esc or click outside to dismiss.
+</div>

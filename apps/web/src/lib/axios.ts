@@ -2,6 +2,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/authStore'
 import { PATHS } from '@/router/paths'
+import { router } from '@/router'
 
 declare module 'axios' {
   interface InternalAxiosRequestConfig {
@@ -15,6 +16,7 @@ const UNIVERSITY_DOMAIN = import.meta.env.VITE_UNIVERSITY_DOMAIN ?? 'uiu.ac.bd'
 export const api = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
+  timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -60,7 +62,7 @@ api.interceptors.response.use(
     // Already retried once — refresh token is invalid or expired
     if (original._retry) {
       useAuthStore.getState().clearAuth()
-      window.location.href = PATHS.LOGIN
+      router.navigate(PATHS.LOGIN, { replace: true })
       return Promise.reject(error)
     }
 
@@ -90,7 +92,7 @@ api.interceptors.response.use(
     } catch (refreshError) {
       drainQueue(refreshError)
       useAuthStore.getState().clearAuth()
-      window.location.href = PATHS.LOGIN
+      router.navigate(PATHS.LOGIN, { replace: true })
       return Promise.reject(refreshError)
     } finally {
       isRefreshing = false

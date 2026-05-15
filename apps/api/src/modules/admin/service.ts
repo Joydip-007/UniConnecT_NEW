@@ -62,7 +62,7 @@ export class AdminService {
   async getStats(universityId: string) {
     const [users, posts, jobs, events, groups, news, reports] = await Promise.all([
       countWhere('users', { university_id: universityId }),
-      countWhere('posts', { university_id: universityId, is_deleted: false }),
+      countWhere('posts', { university_id: universityId }),
       countWhere('jobs', { university_id: universityId }),
       countWhere('events', { university_id: universityId }),
       countWhere('groups', { university_id: universityId }),

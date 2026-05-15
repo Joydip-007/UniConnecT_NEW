@@ -60,6 +60,7 @@ function OtpForm({
   const [resendCountdown, setResendCountdown] = useState(60)
   const [resendLoading, setResendLoading] = useState(false)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
+  const [resendError, setResendError] = useState(false)
 
   const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(6).fill(null))
   const isSubmitting = useRef(false)
@@ -141,9 +142,19 @@ function OtpForm({
     try {
       await api.post('/auth/resend-otp', { email, purpose })
       setResendCountdown(60)
+      setResendError(false)
       setResendMessage('A new code has been sent.')
-    } catch {
-      setResendMessage('Could not resend. Please try again.')
+    } catch (err) {
+      const status = isAxiosError(err) ? err.response?.status : null
+      const serverMsg = isAxiosError(err)
+        ? (err.response?.data as { error?: string } | undefined)?.error
+        : undefined
+      setResendError(true)
+      if (status === 429) {
+        setResendMessage('Too many attempts. Please wait before trying again.')
+      } else {
+        setResendMessage(serverMsg ?? 'Could not resend. Please try again.')
+      }
     } finally {
       setResendLoading(false)
     }
@@ -262,7 +273,7 @@ function OtpForm({
               <p style={{
                 margin: '0 0 8px',
                 fontSize: 13,
-                color: 'var(--text-secondary)',
+                color: resendError ? 'var(--uc-orange-l)' : 'var(--text-secondary)',
               }}>
                 {resendMessage}
               </p>

@@ -18,7 +18,7 @@ interface RegisterResponse {
 function validate(fullName: string, password: string, confirmPassword: string) {
   const errs: Record<string, string> = {}
   if (!fullName.trim()) errs.fullName = 'Full name is required'
-  if (password.length < 8) errs.password = 'Password must be at least 8 characters'
+  if (!/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/.test(password)) errs.password = 'Must be 8+ chars with a number, uppercase, and symbol.'
   if (password !== confirmPassword) errs.confirmPassword = 'Passwords do not match'
   return errs
 }

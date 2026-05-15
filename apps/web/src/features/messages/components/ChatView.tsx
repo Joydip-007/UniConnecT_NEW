@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RotateCcw } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
+import { usePendingMsgsStore, type PendingMsg } from '@/stores/pendingMsgsStore'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,9 +60,32 @@ function initials(name: string): string {
     .join('')
 }
 
+function pendingToMessage(p: PendingMsg): Message {
+  return {
+    id: p.tempId,
+    conversationId: p.convId,
+    senderId: p.senderId,
+    sender: p.sender,
+    body: p.body,
+    sentAt: p.sentAt,
+    isDeleted: false,
+    replyTo: null,
+  }
+}
+
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
-function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
+function MessageBubble({
+  message,
+  isOwn,
+  status,
+  onRetry,
+}: {
+  message: Message
+  isOwn: boolean
+  status?: 'sending' | 'error'
+  onRetry?: () => void
+}) {
   const timeLabel = format(parseISO(message.sentAt), 'HH:mm')
 
   if (message.isDeleted) {
@@ -98,6 +122,8 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
         alignItems: 'flex-end',
         gap: 8,
         padding: '2px 0',
+        opacity: status === 'sending' ? 0.6 : 1,
+        transition: 'opacity 150ms',
       }}
     >
       {/* Avatar — only for others */}
@@ -178,7 +204,13 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
               ? 'var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg)'
               : 'var(--r-lg) var(--r-lg) var(--r-lg) var(--r-sm)',
             background: isOwn ? 'var(--uc-indigo-bg)' : 'var(--surface-raised)',
-            border: `0.5px solid ${isOwn ? 'var(--uc-indigo-bdr)' : 'var(--border-default)'}`,
+            border: `0.5px solid ${
+              status === 'error'
+                ? 'rgba(225, 29, 72, 0.35)'
+                : isOwn
+                  ? 'var(--uc-indigo-bdr)'
+                  : 'var(--border-default)'
+            }`,
             fontSize: 13,
             fontWeight: 400,
             color: 'var(--text-primary)',
@@ -189,17 +221,48 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
           {message.body}
         </div>
 
-        {/* Timestamp */}
-        <span
+        {/* Timestamp + status */}
+        <div
           style={{
-            fontSize: 10,
-            fontWeight: 400,
-            color: 'var(--text-tertiary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
             paddingInline: 2,
           }}
         >
-          {timeLabel}
-        </span>
+          <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+            {timeLabel}
+          </span>
+
+          {status === 'sending' && (
+            <Loader2
+              size={10}
+              strokeWidth={1.5}
+              style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }}
+            />
+          )}
+
+          {status === 'error' && (
+            <button
+              onClick={onRetry}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
+                fontSize: 11,
+                fontWeight: 400,
+                color: 'var(--uc-red)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              <RotateCcw size={10} strokeWidth={1.5} />
+              Retry
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -212,18 +275,23 @@ export function ChatView({ convId }: { convId: string }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
+  const pendingMsgs = usePendingMsgsStore((s) => s.msgs.filter((m) => m.convId === convId))
+  const retryPending = usePendingMsgsStore((s) => s.retry)
+
   // Stable refs to avoid recreating IntersectionObserver on state changes
   const fetchStateRef = useRef({ hasNextPage: false, isFetchingNextPage: false })
   const fetchNextPageRef = useRef<() => void>(() => {})
   const scrollAnchorRef = useRef<{ scrollHeight: number } | null>(null)
   const prevPageCountRef = useRef(0)
   const prevNewestIdRef = useRef<string | null>(null)
+  const prevPendingCountRef = useRef(0)
 
   // Reset scroll tracking when conversation changes
   useEffect(() => {
     prevPageCountRef.current = 0
     prevNewestIdRef.current = null
     scrollAnchorRef.current = null
+    prevPendingCountRef.current = 0
   }, [convId])
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
@@ -255,20 +323,17 @@ export function ChatView({ convId }: { convId: string }) {
     const prevPageCount = prevPageCountRef.current
 
     if (prevPageCount === 0) {
-      // Initial load: jump to bottom
       container.scrollTop = container.scrollHeight
       const firstPage = data.pages[0]
       const newestMsg = firstPage ? firstPage.items[firstPage.items.length - 1] : undefined
       if (newestMsg) prevNewestIdRef.current = newestMsg.id
     } else if (currentPageCount > prevPageCount) {
-      // Older pages were prepended: restore reading position
       if (scrollAnchorRef.current) {
         const delta = container.scrollHeight - scrollAnchorRef.current.scrollHeight
         container.scrollTop += delta
         scrollAnchorRef.current = null
       }
     } else {
-      // Same page count: check for a new inbound/outbound message
       const p0 = data.pages[0]
       const newestMsg = p0 ? p0.items[p0.items.length - 1] : undefined
       if (newestMsg && newestMsg.id !== prevNewestIdRef.current) {
@@ -281,6 +346,15 @@ export function ChatView({ convId }: { convId: string }) {
 
     prevPageCountRef.current = currentPageCount
   }, [data, myUserId])
+
+  // Scroll to bottom when a new pending (own) message is appended
+  useLayoutEffect(() => {
+    if (pendingMsgs.length > prevPendingCountRef.current) {
+      const container = scrollRef.current
+      if (container) container.scrollTop = container.scrollHeight
+    }
+    prevPendingCountRef.current = pendingMsgs.length
+  }, [pendingMsgs.length])
 
   // IntersectionObserver on top sentinel — loads older messages
   useEffect(() => {
@@ -306,10 +380,11 @@ export function ChatView({ convId }: { convId: string }) {
     return () => observer.disconnect()
   }, []) // stable — reads live values from refs
 
-  // Flatten pages chronologically (oldest at top)
-  const allMessages = data
+  // Flatten pages chronologically (oldest at top), then append pending
+  const confirmedMessages = data
     ? [...data.pages].reverse().flatMap((p) => p.items)
     : []
+  const allMessages = [...confirmedMessages, ...pendingMsgs.map(pendingToMessage)]
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -382,9 +457,20 @@ export function ChatView({ convId }: { convId: string }) {
         </div>
       )}
 
-      {/* Message list */}
-      {allMessages.map((msg) => (
+      {/* Confirmed messages */}
+      {confirmedMessages.map((msg) => (
         <MessageBubble key={msg.id} message={msg} isOwn={msg.senderId === myUserId} />
+      ))}
+
+      {/* Pending (optimistic) messages */}
+      {pendingMsgs.map((p) => (
+        <MessageBubble
+          key={p.tempId}
+          message={pendingToMessage(p)}
+          isOwn
+          status={p.status}
+          onRetry={p.status === 'error' ? () => retryPending(p.tempId) : undefined}
+        />
       ))}
     </div>
   )

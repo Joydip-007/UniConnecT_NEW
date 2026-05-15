@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { isAxiosError } from 'axios'
+import { ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { PrimaryBtn } from '@/components/Button'
@@ -35,8 +36,18 @@ export default function LoginPage() {
       setAuth(data.data.user, data.data.accessToken)
       navigate(PATHS.FEED, { replace: true })
     } catch (err) {
-      if (isAxiosError(err) && err.response?.status === 401) {
-        setError('Invalid email or password')
+      if (isAxiosError(err)) {
+        const status = err.response?.status
+        const code = (err.response?.data as { code?: string } | undefined)?.code
+        if (status === 401) {
+          setError('Invalid email or password')
+        } else if (status === 403 && code === 'ACCOUNT_NOT_VERIFIED') {
+          setError('Your account is not verified. Check your email for a verification code.')
+        } else if (!err.response) {
+          setError('Cannot reach the server. Make sure the API is running.')
+        } else {
+          setError(`Something went wrong (${status ?? 'unknown'}). Please try again.`)
+        }
       } else {
         setError('Something went wrong. Please try again.')
       }
@@ -61,7 +72,40 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px 16px',
+      position: 'relative',
     }}>
+      {/* Back Button */}
+      <div style={{ position: 'absolute', top: 24, left: 24 }}>
+        <Link
+          to="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            color: 'var(--text-secondary)',
+            textDecoration: 'none',
+            fontSize: 14,
+            fontWeight: 500,
+            padding: '8px 12px',
+            borderRadius: 'var(--r-pill)',
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--text-primary)'
+            e.currentTarget.style.background = 'var(--surface-raised)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text-secondary)'
+            e.currentTarget.style.background = 'var(--surface-card)'
+          }}
+        >
+          <ArrowLeft size={16} />
+          Back to home
+        </Link>
+      </div>
+
       <div style={{
         width: '100%',
         maxWidth: 400,

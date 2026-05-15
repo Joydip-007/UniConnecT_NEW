@@ -73,6 +73,7 @@ export default function JobDetailPage() {
   function handleApply() {
     if (!job || hasApplied) return
     if (job.applicationUrl) {
+      if (!job.applicationUrl.startsWith('https://')) return
       window.open(job.applicationUrl, '_blank', 'noopener,noreferrer')
       return
     }
