@@ -4,6 +4,7 @@ import { sendPaginated, sendSuccess } from '../../utils/response'
 import { AppError } from '../../utils/errors'
 import { adminService } from './service'
 import type {
+  CreateBulkInvitationsInput,
   CreateInvitationInput,
   PaginationQuery,
   ResolveReportInput,
@@ -55,6 +56,20 @@ export const createInvitation = asyncHandler(async (req: Request, res: Response)
       universityId,
       userId,
       req.body as CreateInvitationInput,
+      req.university!.name,
+    ),
+    201,
+  )
+})
+
+export const createBulkInvitations = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  sendSuccess(
+    res,
+    await adminService.createBulkInvitations(
+      universityId,
+      userId,
+      req.body as CreateBulkInvitationsInput,
       req.university!.name,
     ),
     201,

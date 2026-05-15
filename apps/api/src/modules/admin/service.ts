@@ -5,6 +5,7 @@ import { notFound } from '../../utils/errors'
 import { emailQueue } from '../../queues/email.queue'
 import { env } from '../../config/env'
 import type {
+  CreateBulkInvitationsInput,
   CreateInvitationInput,
   PaginationQuery,
   ResolveReportInput,
@@ -215,6 +216,47 @@ export class AdminService {
     })
 
     return toInvitation(row)
+  }
+
+  async createBulkInvitations(
+    universityId: string,
+    invitedById: string,
+    input: CreateBulkInvitationsInput,
+    universityName: string,
+  ) {
+    const unique = [...new Set(input.emails.map((e) => e.toLowerCase().trim()))]
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + input.expires_in_days)
+
+    const rows = unique.map((email) => ({
+      university_id: universityId,
+      invited_by: invitedById,
+      email,
+      role: input.role,
+      token: crypto.randomBytes(32).toString('hex'),
+      expires_at: expiresAt,
+    }))
+
+    await db.transaction(async (trx) => {
+      await db('invitations').insert(rows).transacting(trx)
+    })
+
+    for (const row of rows) {
+      const registerUrl = `${env.WEB_URL}/register/${row.token}`
+      void emailQueue.add({
+        to: row.email,
+        subject: "You're invited to join UniConnecT",
+        text: JSON.stringify({
+          template: 'invitation',
+          userName: '',
+          registerUrl,
+          role: input.role,
+          universityName,
+        }),
+      })
+    }
+
+    return { created: rows.length, emails: rows.map((r) => r.email) }
   }
 
   async listInvitations(universityId: string, query: PaginationQuery) {

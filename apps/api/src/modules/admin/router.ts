@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
+  createBulkInvitations,
   createInvitation,
   deleteInvitation,
   getAllowedDomains,
@@ -16,6 +17,7 @@ import {
   updateUserStatus,
 } from './controller'
 import {
+  CreateBulkInvitationsSchema,
   CreateInvitationSchema,
   PaginationQuerySchema,
   ResolveReportSchema,
@@ -37,6 +39,7 @@ adminRouter.patch('/users/:userId/status', requireRole('admin'), validate(Update
 adminRouter.get('/reports', validateRequest({ query: PaginationQuerySchema }), listReports)
 adminRouter.patch('/reports/:reportId', validate(ResolveReportSchema), resolveReport)
 
+adminRouter.post('/invitations/bulk', requireRole('admin'), validate(CreateBulkInvitationsSchema), createBulkInvitations)
 adminRouter.post('/invitations', validate(CreateInvitationSchema), createInvitation)
 adminRouter.get('/invitations', validateRequest({ query: PaginationQuerySchema }), listInvitations)
 adminRouter.delete('/invitations/:invitationId', requireRole('admin'), deleteInvitation)

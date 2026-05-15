@@ -29,9 +29,16 @@ export const UpdateAllowedDomainsSchema = z.object({
     .max(20, 'Maximum 20 allowed domains'),
 })
 
+export const CreateBulkInvitationsSchema = z.object({
+  emails: z.array(z.string().email()).min(1).max(50),
+  role: z.enum(['student', 'alumni', 'staff', 'admin']).default('student'),
+  expires_in_days: z.number().int().min(1).max(30).default(7),
+})
+
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>
 export type ResolveReportInput = z.infer<typeof ResolveReportSchema>
 export type CreateInvitationInput = z.infer<typeof CreateInvitationSchema>
 export type UpdateAllowedDomainsInput = z.infer<typeof UpdateAllowedDomainsSchema>
+export type CreateBulkInvitationsInput = z.infer<typeof CreateBulkInvitationsSchema>
