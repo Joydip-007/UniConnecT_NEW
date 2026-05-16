@@ -1,11 +1,11 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
-import type { User } from '@uniconnect/shared/types'
+import type { User, UserRole } from '@uniconnect/shared/types'
 
 interface RegisterResponse {
   data: {
@@ -13,6 +13,15 @@ interface RegisterResponse {
     user: User
     accessToken: string
   }
+}
+
+interface InvitePreview {
+  role: UserRole
+  email: string
+}
+
+interface InvitePreviewResponse {
+  data: InvitePreview
 }
 
 function validate(fullName: string, password: string, confirmPassword: string) {
@@ -34,6 +43,22 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors]         = useState<Record<string, string>>({})
   const [serverError, setServerError]         = useState<string | null>(null)
   const [loading, setLoading]                 = useState(false)
+
+  const [inviteData, setInviteData]         = useState<InvitePreview | null>(null)
+  const [inviteLoading, setInviteLoading]   = useState(false)
+  const [inviteError, setInviteError]       = useState<string | null>(null)
+  const [department, setDepartment]         = useState('')
+
+  const ROLES_WITH_DEPT: UserRole[] = ['student', 'alumni', 'faculty']
+
+  useEffect(() => {
+    if (!token || token === 'invite') return
+    setInviteLoading(true)
+    api.get<InvitePreviewResponse>(`/auth/invitation/${token}`)
+      .then(({ data }) => setInviteData(data.data))
+      .catch(() => setInviteError('Invitation is invalid or has already been used.'))
+      .finally(() => setInviteLoading(false))
+  }, [token])
 
   if (!token || token === 'invite') {
     return (
@@ -115,6 +140,34 @@ export default function RegisterPage() {
     )
   }
 
+  if (inviteLoading) {
+    return (
+      <RegisterShell>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
+          Checking invitation…
+        </p>
+      </RegisterShell>
+    )
+  }
+
+  if (inviteError) {
+    return (
+      <RegisterShell>
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-xl)',
+          padding: '32px 28px',
+          textAlign: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--uc-orange-l)' }}>
+            {inviteError}
+          </p>
+        </div>
+      </RegisterShell>
+    )
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFieldErrors({})
@@ -132,6 +185,9 @@ export default function RegisterPage() {
         token,
         password,
         fullName: fullName.trim(),
+        ...(inviteData && ROLES_WITH_DEPT.includes(inviteData.role) && department.trim()
+          ? { department: department.trim() }
+          : {}),
       })
       navigate(`${PATHS.VERIFY_OTP}?purpose=verify`, {
         state: { email: data.data.user.email },
@@ -228,6 +284,20 @@ export default function RegisterPage() {
               style={inputStyle}
             />
           </Field>
+
+          {inviteData && ROLES_WITH_DEPT.includes(inviteData.role) && (
+            <Field label="Department (optional)">
+              <input
+                type="text"
+                autoComplete="off"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                placeholder="e.g. CSE"
+                maxLength={100}
+                style={inputStyle}
+              />
+            </Field>
+          )}
 
           {serverError && (
             <p style={{
