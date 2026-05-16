@@ -49,8 +49,6 @@ export default function RegisterPage() {
   const [inviteError, setInviteError]       = useState<string | null>(null)
   const [department, setDepartment]         = useState('')
 
-  const ROLES_WITH_DEPT: UserRole[] = ['student', 'alumni', 'faculty']
-
   useEffect(() => {
     if (!token || token === 'invite') return
     setInviteLoading(true)
@@ -185,7 +183,7 @@ export default function RegisterPage() {
         token,
         password,
         fullName: fullName.trim(),
-        ...(inviteData && ROLES_WITH_DEPT.includes(inviteData.role) && department.trim()
+        ...(inviteData && inviteData.role !== 'admin' && department.trim()
           ? { department: department.trim() }
           : {}),
       })
@@ -285,7 +283,7 @@ export default function RegisterPage() {
             />
           </Field>
 
-          {inviteData && ROLES_WITH_DEPT.includes(inviteData.role) && (
+          {inviteData && inviteData.role !== 'admin' && (
             <Field label="Department (optional)">
               <input
                 type="text"
