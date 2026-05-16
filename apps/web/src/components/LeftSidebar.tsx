@@ -270,11 +270,9 @@ export function LeftSidebar() {
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
             {user?.profile.fullName ?? 'Loading…'}
           </div>
-          {deptLabel && (
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-              {deptLabel}
-            </div>
-          )}
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, minHeight: 16 }}>
+            {deptLabel}
+          </div>
 
           <div
             style={{
