@@ -1,3 +1,5 @@
+import type { UserRole } from './user'
+
 export interface FeedPollOption {
   id: string
   text: string
@@ -17,7 +19,7 @@ export interface FeedPoll {
 export interface FeedPostAuthor {
   id: string
   fullName: string
-  role: 'student' | 'alumni' | 'faculty' | 'admin'
+  role: UserRole
   profile: {
     avatarUrl: string | null
     headline: string | null
