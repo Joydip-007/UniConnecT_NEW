@@ -540,6 +540,44 @@ export class FeedService {
 
     return posts.map((post) => ({ ...post, poll: pollByPost.get(post.id) ?? null }))
   }
+
+  async getTrending(universityId: string) {
+    const pinnedRows = await db('posts')
+      .join('profiles', 'profiles.user_id', 'posts.author_id')
+      .select(
+        'posts.id',
+        'posts.content',
+        'posts.created_at',
+        db.raw("profiles.full_name as author_name"),
+      )
+      .where({ 'posts.university_id': universityId, 'posts.is_pinned': true })
+      .orderBy('posts.created_at', 'desc')
+      .limit(3) as Array<{ id: string; content: string; created_at: Date; author_name: string }>
+
+    const tagRows = await db('tags')
+      .join('post_tags', 'post_tags.tag_id', 'tags.id')
+      .join('posts', 'posts.id', 'post_tags.post_id')
+      .select('tags.name')
+      .count<Array<{ name: string; post_count: string }>>('post_tags.post_id as post_count')
+      .where('tags.university_id', universityId)
+      .where('posts.created_at', '>', db.raw("NOW() - INTERVAL '7 days'"))
+      .groupBy('tags.id', 'tags.name')
+      .orderBy('post_count', 'desc')
+      .limit(5) as Array<{ name: string; post_count: string }>
+
+    return {
+      pinnedPosts: pinnedRows.map((p) => ({
+        id: p.id,
+        content: String(p.content).slice(0, 120),
+        authorName: p.author_name,
+        createdAt: p.created_at,
+      })),
+      trendingTags: tagRows.map((t) => ({
+        name: t.name,
+        postCount: Number(t.post_count),
+      })),
+    }
+  }
 }
 
 export const feedService = new FeedService()
