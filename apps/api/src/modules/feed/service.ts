@@ -86,6 +86,7 @@ export class FeedService {
   async listPosts(universityId: string, userId: string, query: PostListQuery) {
     const countQuery = db('posts').where('posts.university_id', universityId)
     if (query.type) countQuery.andWhere('posts.type', query.type)
+    if (query.authorId) countQuery.andWhere('posts.author_id', query.authorId)
 
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
@@ -95,6 +96,7 @@ export class FeedService {
       .where('posts.university_id', universityId)
       .modify((builder) => {
         if (query.type) builder.andWhere('posts.type', query.type)
+        if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
       })
       .orderBy('posts.is_pinned', 'desc')
       .orderBy('posts.created_at', 'desc')
@@ -351,6 +353,43 @@ export class FeedService {
     io.to(`uni:${context.universityId}`).emit('post:comment', { postId, comment })
     io.to(`uni:${context.universityId}`).emit('feed:comment:new', { postId, comment })
     return comment
+  }
+
+  async deleteComment(context: AuthContext, postId: string, commentId: string) {
+    const comment = await db('comments')
+      .select<{ id: string; author_id: string }>('id', 'author_id')
+      .where({ id: commentId, post_id: postId })
+      .first()
+    if (!comment) throw notFound('Comment not found', 'COMMENT_NOT_FOUND')
+    if (comment.author_id !== context.userId && context.role !== 'admin') {
+      throw forbidden('Cannot delete this comment', 'COMMENT_FORBIDDEN')
+    }
+    await db('reactions').where({ target_id: commentId, target_type: 'comment' }).delete()
+    await db('comments').where({ id: commentId }).delete()
+    const io = getIo()
+    io.to(`uni:${context.universityId}`).emit('feed:comment:deleted', { postId, commentId })
+    return { deleted: true }
+  }
+
+  async upsertCommentReaction(context: AuthContext, postId: string, commentId: string, reactionType: ReactionType) {
+    await assertPostInUniversity(postId, context.universityId)
+    const comment = await db('comments').where({ id: commentId, post_id: postId }).first()
+    if (!comment) throw notFound('Comment not found', 'COMMENT_NOT_FOUND')
+
+    await db('reactions')
+      .insert({ user_id: context.userId, target_id: commentId, target_type: 'comment', reaction_type: reactionType })
+      .onConflict(['user_id', 'target_id', 'target_type'])
+      .merge({ reaction_type: reactionType, created_at: db.fn.now() })
+
+    return { reacted: true }
+  }
+
+  async removeCommentReaction(context: AuthContext, postId: string, commentId: string) {
+    await assertPostInUniversity(postId, context.universityId)
+    await db('reactions')
+      .where({ user_id: context.userId, target_id: commentId, target_type: 'comment' })
+      .delete()
+    return { removed: true }
   }
 
   async votePoll(context: AuthContext, postId: string, input: { poll_option_id: string }) {

@@ -138,3 +138,73 @@ describe('DELETE /api/v1/posts/:postId', () => {
     expect(res.status).toBe(200)
   })
 })
+
+describe('DELETE /api/v1/posts/:postId/comments/:commentId', () => {
+  let postId: string
+  let commentId: string
+
+  beforeAll(async () => {
+    const postRes = await api
+      .post('/api/v1/posts')
+      .set(authHeader(studentToken))
+      .send({ content: 'Post for comment delete test', type: 'post' })
+    postId = postRes.body.data.id as string
+    createdPostIds.push(postId)
+
+    const commentRes = await api
+      .post(`/api/v1/posts/${postId}/comments`)
+      .set(authHeader(studentToken))
+      .send({ content: 'Comment to delete' })
+    commentId = commentRes.body.data.id as string
+  })
+
+  it('returns 200 when the author deletes their comment', async () => {
+    const res = await api
+      .delete(`/api/v1/posts/${postId}/comments/${commentId}`)
+      .set(authHeader(studentToken))
+    expect(res.status).toBe(200)
+    expect(res.body.data.deleted).toBe(true)
+  })
+
+  it('returns 404 for an already-deleted comment', async () => {
+    const res = await api
+      .delete(`/api/v1/posts/${postId}/comments/${commentId}`)
+      .set(authHeader(studentToken))
+    expect(res.status).toBe(404)
+  })
+})
+
+describe('POST /api/v1/posts/:postId/comments/:commentId/reactions', () => {
+  let postId: string
+  let commentId: string
+
+  beforeAll(async () => {
+    const postRes = await api
+      .post('/api/v1/posts')
+      .set(authHeader(studentToken))
+      .send({ content: 'Post for comment reaction test', type: 'post' })
+    postId = postRes.body.data.id as string
+    createdPostIds.push(postId)
+
+    const commentRes = await api
+      .post(`/api/v1/posts/${postId}/comments`)
+      .set(authHeader(studentToken))
+      .send({ content: 'Comment to react to' })
+    commentId = commentRes.body.data.id as string
+  })
+
+  it('returns 200 when adding a reaction', async () => {
+    const res = await api
+      .post(`/api/v1/posts/${postId}/comments/${commentId}/reactions`)
+      .set(authHeader(studentToken))
+      .send({ reaction_type: 'like' })
+    expect(res.status).toBe(200)
+  })
+
+  it('returns 200 when removing a reaction', async () => {
+    const res = await api
+      .delete(`/api/v1/posts/${postId}/comments/${commentId}/reactions`)
+      .set(authHeader(studentToken))
+    expect(res.status).toBe(200)
+  })
+})

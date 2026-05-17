@@ -66,6 +66,22 @@ export const createComment = asyncHandler(async (req: Request, res: Response) =>
   sendSuccess(res, await feedService.createComment(context, getPostIdParam(req), req.body as CreateCommentInput), 201)
 })
 
+export const deleteComment = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await feedService.deleteComment(context, getPostIdParam(req), getCommentIdParam(req)))
+})
+
+export const addCommentReaction = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { reaction_type } = req.body as { reaction_type: 'like' | 'love' | 'insightful' | 'celebrate' }
+  sendSuccess(res, await feedService.upsertCommentReaction(context, getPostIdParam(req), getCommentIdParam(req), reaction_type))
+})
+
+export const removeCommentReaction = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await feedService.removeCommentReaction(context, getPostIdParam(req), getCommentIdParam(req)))
+})
+
 export const votePoll = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   const pollId = getPollIdParam(req)
@@ -103,5 +119,10 @@ function getPostIdParam(req: Request) {
 
 function getPollIdParam(req: Request) {
   const value = req.params.pollId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getCommentIdParam(req: Request) {
+  const value = req.params.commentId
   return Array.isArray(value) ? value[0] : value
 }
