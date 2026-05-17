@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   MapPin,
-  Hash,
   CheckCircle2,
   Circle,
   Lock,
@@ -14,6 +12,7 @@ import { Badge } from '@/components/Badge'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import type { UserRole } from '@uniconnect/shared/types'
+import { avatarColor, getInitials } from '@/utils/avatar'
 
 // ── Local types ──────────────────────────────────────────
 
@@ -34,26 +33,19 @@ interface EventItem {
   startAt: string
 }
 
-interface TrendingTag {
-  tag: string
-  postCount: number
+interface TrendingData {
+  pinnedPosts: Array<{
+    id: string
+    content: string
+    authorName: string
+    createdAt: string
+  }>
+  trendingTags: Array<{
+    name: string
+    postCount: number
+  }>
 }
 
-// ── Helpers ──────────────────────────────────────────────
-
-const AVATAR_COLORS = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#1E3A70']
-
-function avatarColor(id: string): string {
-  let sum = 0
-  for (const ch of id) sum += ch.charCodeAt(0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function getInitials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0][0].toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -87,6 +79,7 @@ function Widget({ children }: { children: React.ReactNode }) {
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
         padding: 16,
+        flexShrink: 0,
       }}
     >
       {children}
@@ -141,7 +134,7 @@ function SkeletonLine({ width = '100%', height = 12 }: { width?: string | number
         height,
         borderRadius: 'var(--r-sm)',
         background: 'var(--surface-raised)',
-        opacity: 0.7,
+        animation: 'shimmer 1.4s ease-in-out infinite',
       }}
     />
   )
@@ -149,7 +142,6 @@ function SkeletonLine({ width = '100%', height = 12 }: { width?: string | number
 
 function PersonRow({ user }: { user: SuggestedUser }) {
   const navigate = useNavigate()
-  const [sent, setSent] = useState(false)
   const initials = getInitials(user.profile.fullName)
   const color = avatarColor(user.id)
 
@@ -203,24 +195,6 @@ function PersonRow({ user }: { user: SuggestedUser }) {
         </Badge>
       </div>
 
-      <button
-        onClick={() => setSent(true)}
-        disabled={sent}
-        style={{
-          flexShrink: 0,
-          background: sent ? 'var(--surface-raised)' : 'var(--uc-indigo-bg)',
-          border: `0.5px solid ${sent ? 'var(--border-default)' : 'var(--uc-indigo-bdr)'}`,
-          borderRadius: 'var(--r-pill)',
-          padding: '5px 12px',
-          fontSize: 12,
-          fontWeight: 500,
-          color: sent ? 'var(--text-tertiary)' : 'var(--uc-indigo-xl)',
-          cursor: sent ? 'default' : 'pointer',
-          transition: 'background 0.15s, color 0.15s',
-        }}
-      >
-        {sent ? 'Sent' : 'Connect'}
-      </button>
     </div>
   )
 }
@@ -315,37 +289,6 @@ function EventMini({ event }: { event: EventItem }) {
   )
 }
 
-function TrendingRow({ tag, rank, postCount }: { tag: string; rank: number; postCount: number }) {
-  const navigate = useNavigate()
-  return (
-    <button
-      onClick={() => navigate(`${PATHS.SEARCH}?q=${encodeURIComponent('#' + tag)}`)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        width: '100%',
-        padding: '7px 0',
-        background: 'none',
-        border: 'none',
-        borderBottom: '0.5px solid var(--border-default)',
-        cursor: 'pointer',
-        textAlign: 'left',
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.75' }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-    >
-      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', width: 14, textAlign: 'right', flexShrink: 0 }}>
-        {rank}
-      </span>
-      <Hash size={12} style={{ color: 'var(--uc-indigo-l)', flexShrink: 0 }} />
-      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{tag}</span>
-      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>
-        {postCount >= 1000 ? `${(postCount / 1000).toFixed(1)}k` : postCount} posts
-      </span>
-    </button>
-  )
-}
 
 // ── Badge progress (hardcoded until Phase 9) ─────────────
 
@@ -430,18 +373,22 @@ export function RightSidebar() {
 
   const { data: events, isLoading: loadingEvents } = useQuery({
     queryKey: ['events', 'list', { from: 'today' }],
-    queryFn: () =>
-      api
-        .get<{ data: EventItem[] }>('/events', { params: { from: 'today', limit: 3 } })
-        .then((r) => r.data.data),
+    queryFn: () => {
+      const startOfDay = new Date()
+      startOfDay.setHours(0, 0, 0, 0)
+      return api
+        .get<{ data: EventItem[] }>('/events', { params: { from: startOfDay.toISOString(), limit: 3 } })
+        .then((r) => r.data.data)
+    },
   })
 
-  const { data: tags, isLoading: loadingTags } = useQuery({
-    queryKey: ['search', 'tags', { type: 'tags' }],
+  const { data: trending, isLoading: loadingTrending } = useQuery({
+    queryKey: ['feed', 'trending'],
     queryFn: () =>
       api
-        .get<{ data: TrendingTag[] }>('/search', { params: { type: 'tags', limit: 5 } })
+        .get<{ data: TrendingData }>('/feed/trending')
         .then((r) => r.data.data),
+    staleTime: 60_000,
   })
 
   return (
@@ -528,26 +475,93 @@ export function RightSidebar() {
       <Widget>
         <SectionHeader title="Trending on campus" />
 
-        {loadingTags ? (
+        {loadingTrending ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8 }}>
-                <SkeletonLine width={14} height={10} />
-                <SkeletonLine width="55%" />
-                <SkeletonLine width={30} height={10} />
+            {[0, 1].map((i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10 }}>
+                <SkeletonLine width="80%" />
+                <SkeletonLine width="50%" height={10} />
               </div>
             ))}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {[0, 1, 2].map((i) => (
+                <SkeletonLine key={i} width={64} height={22} />
+              ))}
+            </div>
           </div>
-        ) : tags && tags.length > 0 ? (
-          <div>
-            {tags.slice(0, 5).map((t, i) => (
-              <TrendingRow key={t.tag} tag={t.tag} rank={i + 1} postCount={t.postCount} />
-            ))}
-          </div>
-        ) : (
+        ) : !trending || (trending.pinnedPosts.length === 0 && trending.trendingTags.length === 0) ? (
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
             Nothing trending yet.
           </p>
+        ) : (
+          <div>
+            {trending.pinnedPosts.map((post) => (
+              <div
+                key={post.id}
+                style={{
+                  padding: '8px 0',
+                  borderBottom: '0.5px solid var(--border-default)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: 'var(--uc-orange-l)',
+                      background: 'var(--uc-orange-bg)',
+                      borderRadius: 'var(--r-pill)',
+                      padding: '1px 6px',
+                    }}
+                  >
+                    Pinned
+                  </span>
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{post.authorName}</span>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 12,
+                    fontWeight: 400,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.45,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {post.content}
+                </p>
+              </div>
+            ))}
+
+            {trending.pinnedPosts.length > 0 && trending.trendingTags.length > 0 && (
+              <div style={{ height: '0.5px', background: 'var(--border-default)', margin: '8px 0' }} />
+            )}
+
+            {trending.trendingTags.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {trending.trendingTags.map((tag) => (
+                  <span
+                    key={tag.name}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 500,
+                      color: 'var(--uc-indigo-l)',
+                      background: 'var(--uc-indigo-bg)',
+                      border: '0.5px solid var(--uc-indigo-bdr)',
+                      borderRadius: 'var(--r-pill)',
+                      padding: '3px 8px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    #{tag.name} · {tag.postCount}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </Widget>
 
