@@ -4,10 +4,12 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tansta
 import { ArrowLeft, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
+import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { PostCard } from '@/features/feed/components/PostCard'
-import type { FeedPost } from '@/features/feed/components/PostCard'
+import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
+import type { FeedPost } from '@uniconnect/shared'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -48,20 +50,6 @@ interface FeedPageData {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const AVATAR_PALETTE = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#8B5CF6']
-
-function seedColor(id: string): string {
-  let hash = 0
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
 
 // ── Role badge colors ─────────────────────────────────────────────────────────
 
@@ -200,7 +188,7 @@ function GroupHeader({ group }: { group: GroupDetail }) {
       {group.coverUrl ? (
         <img
           src={group.coverUrl}
-          alt=""
+          alt={`${group.name} cover`}
           style={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }}
         />
       ) : (
@@ -452,6 +440,7 @@ function MembersTab({ groupId }: { groupId: string }) {
 
 function FeedTab({ groupId }: { groupId: string }) {
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const [openPost, setOpenPost] = useState<FeedPost | null>(null)
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery<FeedPageData>({
@@ -516,9 +505,15 @@ function FeedTab({ groupId }: { groupId: string }) {
   }
 
   return (
+    <>
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard
+          key={post.id}
+          post={post}
+          onCommentClick={(postId) => setOpenPost(posts.find((p) => p.id === postId) ?? null)}
+          onEditPost={() => {}}
+        />
       ))}
 
       {isFetchingNextPage && (
@@ -540,6 +535,8 @@ function FeedTab({ groupId }: { groupId: string }) {
         </div>
       )}
     </div>
+    {openPost && <CommentDrawer post={openPost} onClose={() => setOpenPost(null)} />}
+    </>
   )
 }
 
