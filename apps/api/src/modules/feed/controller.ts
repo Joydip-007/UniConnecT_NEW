@@ -101,6 +101,11 @@ export const unsavePost = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await feedService.unsavePost(context, getPostIdParam(req)))
 })
 
+export const getTrending = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await feedService.getTrending(context.universityId))
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
   if (!req.university) throw new AppError('University not resolved', 500, 'UNIVERSITY_NOT_RESOLVED')

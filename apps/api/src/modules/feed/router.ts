@@ -11,6 +11,7 @@ import {
   deletePost,
   getComments,
   getPost,
+  getTrending,
   listPosts,
   removeCommentReaction,
   removeReaction,
@@ -36,6 +37,7 @@ feedRouter.use(requireAuth, resolveUniversity)
 
 feedRouter.get('/', validateRequest({ query: PostListQuerySchema }), listPosts)
 feedRouter.post('/', validate(CreatePostSchema), createPost)
+feedRouter.get('/trending', getTrending)
 feedRouter.get('/:postId', getPost)
 feedRouter.patch('/:postId', validate(UpdatePostSchema), updatePost)
 feedRouter.delete('/:postId', deletePost)
