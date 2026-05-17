@@ -35,7 +35,7 @@ function SkeletonRow() {
         margin: '6px 12px',
         borderRadius: 'var(--r-sm)',
         background: 'var(--surface-raised)',
-        animation: 'pulse 1.4s ease-in-out infinite',
+        animation: 'pulse 1.4s linear infinite',
       }}
     />
   )
@@ -307,7 +307,14 @@ export function SearchPanel({ query, onClose }: Props) {
         }}
       />
       {/* Panel */}
-      <div style={panelStyle}>
+      <div
+        id="search-panel"
+        role="listbox"
+        aria-label="Search results"
+        className="dropdown-enter"
+        data-origin="top-center"
+        style={panelStyle}
+      >
         <div style={tabBarStyle}>
           {TABS.map(({ key, label }) => (
             <button key={key} style={tabStyle(tab === key)} onClick={() => setTab(key)}>

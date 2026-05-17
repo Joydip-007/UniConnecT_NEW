@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Users, FileText, Mail, Flag, CheckCircle, XCircle, Trash2, X,
-  ArrowLeft, ShieldCheck, Briefcase, Calendar, Newspaper,
-  type LucideIcon,
+  ArrowLeft, ShieldCheck, LayoutGrid,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
+import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
+import { ContentTab } from '@/pages/admin/ContentTab'
+import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -71,61 +73,84 @@ interface Paginated<T> {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const AVATAR_PALETTE = ['var(--uc-indigo)', 'var(--uc-orange)', 'var(--uc-cyan)', 'var(--uc-mint)']
-function seedColor(id: string) {
-  const sum = [...id].reduce((a, c) => a + c.charCodeAt(0), 0)
-  return AVATAR_PALETTE[sum % AVATAR_PALETTE.length]
-}
-function getInitials(name: string) {
-  return name.split(' ').slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase()
-}
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// ── Stat card ─────────────────────────────────────────────────────────────────
+// ── Stat cards ────────────────────────────────────────────────────────────────
 
-function StatCard({
-  label, value, sub, icon: Icon, iconColor, iconBg,
-}: {
-  label: string
-  value: number
-  sub?: string
-  icon: LucideIcon
-  iconColor: string
-  iconBg: string
-}) {
+function UsersStatCard({ total, active }: { total: number; active: number }) {
+  const pct = total > 0 ? Math.round((active / total) * 100) : 0
   return (
     <div style={{
       background: 'var(--surface-card)',
       border: '0.5px solid var(--border-default)',
       borderRadius: 'var(--r-lg)',
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 14,
+      padding: '20px 24px',
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 30, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
-          {value.toLocaleString()}
-        </span>
-        <div style={{
-          width: 36,
-          height: 36,
-          borderRadius: 'var(--r-sm)',
-          background: iconBg,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          color: iconColor,
-        }}>
-          <Icon size={17} />
-        </div>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
+        Total users
       </div>
-      <div>
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>{sub}</div>}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
+        <span style={{ fontSize: 40, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+          {total.toLocaleString()}
+        </span>
+        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+          {active.toLocaleString()} active
+        </span>
+      </div>
+      <div style={{ marginTop: 14, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)' }}>
+        <div style={{
+          height: '100%',
+          width: `${pct}%`,
+          background: 'var(--uc-indigo)',
+          borderRadius: 'var(--r-pill)',
+          transition: 'width 0.6s var(--ease-out-strong)',
+        }} />
+      </div>
+      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
+        {pct}% active in 30 days
+      </div>
+    </div>
+  )
+}
+
+function ReportsStatCard({ count }: { count: number }) {
+  const hot = count > 0
+  return (
+    <div style={{
+      background: hot ? 'var(--uc-orange-bg)' : 'var(--surface-card)',
+      border: `0.5px solid ${hot ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
+      borderRadius: 'var(--r-lg)',
+      padding: '20px 24px',
+      transition: 'background 0.3s, border-color 0.3s',
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
+        Open reports
+      </div>
+      <div style={{ fontSize: 40, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>
+        {count.toLocaleString()}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 12, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)', opacity: hot ? 0.85 : 1 }}>
+        {hot ? 'Needs review' : 'All clear'}
+      </div>
+    </div>
+  )
+}
+
+function MetricCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{
+      background: 'var(--surface-card)',
+      border: '0.5px solid var(--border-default)',
+      borderRadius: 'var(--r-lg)',
+      padding: '16px 20px',
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+        {value.toLocaleString()}
       </div>
     </div>
   )
@@ -133,11 +158,12 @@ function StatCard({
 
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'users' | 'invitations' | 'reports'
+type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'reports'
 const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Overview', value: 'overview', icon: <FileText size={14} /> },
   { label: 'Users', value: 'users', icon: <Users size={14} /> },
   { label: 'Invite', value: 'invitations', icon: <Mail size={14} /> },
+  { label: 'Content', value: 'content', icon: <LayoutGrid size={14} /> },
   { label: 'Reports', value: 'reports', icon: <Flag size={14} /> },
 ]
 
@@ -327,70 +353,18 @@ function OverviewTab() {
 
   if (!data) return <Spinner />
 
-  const cards: {
-    label: string
-    value: number
-    sub?: string
-    icon: LucideIcon
-    iconColor: string
-    iconBg: string
-  }[] = [
-    {
-      label: 'Total users',
-      value: data.users,
-      sub: `${data.activeUsers} active in last 30 days`,
-      icon: Users,
-      iconColor: 'var(--uc-indigo-l)',
-      iconBg: 'var(--uc-indigo-bg)',
-    },
-    {
-      label: 'Posts',
-      value: data.posts,
-      icon: FileText,
-      iconColor: 'var(--uc-orange-l)',
-      iconBg: 'var(--uc-orange-bg)',
-    },
-    {
-      label: 'Jobs',
-      value: data.jobs,
-      icon: Briefcase,
-      iconColor: 'var(--uc-mint)',
-      iconBg: 'var(--uc-mint-bg)',
-    },
-    {
-      label: 'Events',
-      value: data.events,
-      icon: Calendar,
-      iconColor: 'var(--uc-cyan)',
-      iconBg: 'var(--uc-cyan-bg)',
-    },
-    {
-      label: 'Groups',
-      value: data.groups,
-      icon: Users,
-      iconColor: 'var(--uc-orange-l)',
-      iconBg: 'var(--uc-orange-bg)',
-    },
-    {
-      label: 'News articles',
-      value: data.news,
-      icon: Newspaper,
-      iconColor: 'var(--uc-indigo-xl)',
-      iconBg: 'var(--uc-indigo-bg)',
-    },
-    {
-      label: 'Open reports',
-      value: data.reports,
-      icon: Flag,
-      iconColor: 'var(--uc-orange-l)',
-      iconBg: 'var(--uc-orange-bg)',
-    },
-  ]
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: 12 }}>
-        {cards.map((c) => <StatCard key={c.label} {...c} />)}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <UsersStatCard total={data.users} active={data.activeUsers} />
+        <ReportsStatCard count={data.reports} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
+        <MetricCard label="Posts"         value={data.posts}  />
+        <MetricCard label="Jobs"          value={data.jobs}   />
+        <MetricCard label="Events"        value={data.events} />
+        <MetricCard label="Groups"        value={data.groups} />
+        <MetricCard label="News articles" value={data.news}   />
       </div>
       <AllowedDomainsPanel />
     </div>
@@ -946,7 +920,12 @@ function Spinner() {
 // ── AdminPage ─────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
+  const user = useAuthStore((s) => s.user)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+
+  if (user && user.role !== 'admin') {
+    return <Navigate to={PATHS.FEED} replace />
+  }
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--surface-page)' }}>
@@ -966,36 +945,6 @@ export default function AdminPage() {
         justifyContent: 'space-between',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link
-            to={PATHS.FEED}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              color: 'var(--text-secondary)',
-              textDecoration: 'none',
-              fontSize: 13,
-              fontWeight: 500,
-              padding: '6px 12px',
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--surface-raised)',
-              border: '0.5px solid var(--border-default)',
-              transition: 'color 0.15s, background 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--text-primary)'
-              e.currentTarget.style.background = 'var(--surface-hover)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)'
-              e.currentTarget.style.background = 'var(--surface-raised)'
-            }}
-          >
-            <ArrowLeft size={15} />
-            Back to feed
-          </Link>
-
-          <div style={{ width: 1, height: 20, background: 'var(--border-default)' }} />
           <BrandLogo height={26} />
         </div>
 
@@ -1017,13 +966,36 @@ export default function AdminPage() {
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '28px 24px 56px' }}>
 
         {/* Page heading */}
-        <div style={{ marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Admin panel
-          </h1>
-          <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Manage users, invitations, and content for United International University
-          </p>
+        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <Link
+            to={PATHS.FEED}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-secondary)',
+              textDecoration: 'none',
+              width: 32,
+              height: 32,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-default)',
+              transition: 'color 150ms, background 150ms',
+              marginTop: 1,
+            }}
+            className="back-nav-hover"
+            aria-label="Back to feed"
+          >
+            <ArrowLeft size={16} />
+          </Link>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>
+              Admin panel
+            </h1>
+            <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+              Manage users, invitations, and content for United International University
+            </p>
+          </div>
         </div>
 
         {/* Tab nav */}
@@ -1069,6 +1041,7 @@ export default function AdminPage() {
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'users' && <UsersTab />}
         {activeTab === 'invitations' && <InvitationsTab />}
+        {activeTab === 'content' && <ContentTab />}
         {activeTab === 'reports' && <ReportsTab />}
       </div>
     </div>

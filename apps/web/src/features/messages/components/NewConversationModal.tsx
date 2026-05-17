@@ -40,10 +40,10 @@ interface UsersPage {
 
 const AVATAR_COLORS = [
   'var(--uc-indigo)',
-  '#2E7D8C',
-  '#6B4E9B',
-  '#1A6B4A',
-  '#8C4A2E',
+  'var(--uc-orange)',
+  'var(--uc-cyan)',
+  'var(--uc-mint)',
+  'var(--uc-navy)',
 ]
 
 function seedColor(seed: string): string {
@@ -104,6 +104,7 @@ function UserResultRow({
     <button
       type="button"
       onClick={onClick}
+      className="row-hover-bg"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -116,12 +117,6 @@ function UserResultRow({
         cursor: 'pointer',
         textAlign: 'left',
         transition: 'background 120ms',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--surface-hover)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent'
       }}
     >
       <Avatar initials={initials(user.fullName)} color={seedColor(user.id)} size={34} />
@@ -222,6 +217,7 @@ export function NewConversationModal({ onClose }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const overlayRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -240,13 +236,33 @@ export function NewConversationModal({ onClose }: Props) {
     return () => clearTimeout(t)
   }, [query])
 
-  // Escape key to close
+  // Escape key to close + focus trap
   useEffect(() => {
+    const prevFocus = document.activeElement as HTMLElement | null
+    dialogRef.current?.focus()
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key !== 'Tab' || !dialogRef.current) return
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.closest('[aria-hidden]'))
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus() }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus() }
+      }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      prevFocus?.focus()
+    }
   }, [onClose])
 
   // User search
@@ -324,7 +340,7 @@ export function NewConversationModal({ onClose }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(6,13,26,0.72)',
+        background: 'var(--overlay-bg)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -333,6 +349,11 @@ export function NewConversationModal({ onClose }: Props) {
       }}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-conv-modal-title"
+        tabIndex={-1}
         style={{
           width: '100%',
           maxWidth: 440,
@@ -343,11 +364,13 @@ export function NewConversationModal({ onClose }: Props) {
           display: 'flex',
           flexDirection: 'column',
           gap: 16,
+          outline: 'none',
         }}
       >
         {/* ── Header ───────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2
+            id="new-conv-modal-title"
             style={{
               margin: 0,
               fontSize: 16,
@@ -420,6 +443,7 @@ export function NewConversationModal({ onClose }: Props) {
             onFocus={focusBorder}
             onBlur={blurBorder}
             placeholder="Search classmates and alumni…"
+            aria-label="Search people"
             style={{ ...inputStyle, paddingLeft: 34 }}
           />
           {isSearching && (

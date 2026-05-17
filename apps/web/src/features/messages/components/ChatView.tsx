@@ -41,10 +41,10 @@ export interface MessagesPage {
 
 const AVATAR_COLORS = [
   'var(--uc-indigo)',
-  '#2E7D8C',
-  '#6B4E9B',
-  '#1A6B4A',
-  '#8C4A2E',
+  'var(--uc-orange)',
+  'var(--uc-cyan)',
+  'var(--uc-mint)',
+  'var(--uc-navy)',
 ]
 
 function seedColor(seed: string): string {
@@ -166,8 +166,8 @@ function MessageBubble({
               maxWidth: '100%',
               padding: '4px 10px',
               borderRadius: 'var(--r-sm)',
-              background: 'var(--surface-card)',
-              borderLeft: '2px solid var(--uc-indigo)',
+              background: 'var(--uc-indigo-bg)',
+              border: '0.5px solid var(--uc-indigo-bdr)',
               overflow: 'hidden',
             }}
           >
@@ -206,7 +206,7 @@ function MessageBubble({
             background: isOwn ? 'var(--uc-indigo-bg)' : 'var(--surface-raised)',
             border: `0.5px solid ${
               status === 'error'
-                ? 'rgba(225, 29, 72, 0.35)'
+                ? 'var(--uc-red-bdr)'
                 : isOwn
                   ? 'var(--uc-indigo-bdr)'
                   : 'var(--border-default)'
@@ -238,7 +238,8 @@ function MessageBubble({
             <Loader2
               size={10}
               strokeWidth={1.5}
-              style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }}
+              className="spin"
+              style={{ color: 'var(--text-tertiary)' }}
             />
           )}
 
@@ -399,7 +400,7 @@ export function ChatView({ convId }: { convId: string }) {
           color: 'var(--text-tertiary)',
         }}
       >
-        <Loader2 size={20} strokeWidth={1.5} style={{ animation: 'spin 1s linear infinite' }} />
+        <Loader2 size={20} strokeWidth={1.5} className="spin" />
       </div>
     )
   }
@@ -453,7 +454,7 @@ export function ChatView({ convId }: { convId: string }) {
             color: 'var(--text-tertiary)',
           }}
         >
-          <Loader2 size={14} strokeWidth={1.5} style={{ animation: 'spin 1s linear infinite' }} />
+          <Loader2 size={14} strokeWidth={1.5} className="spin" />
         </div>
       )}
 

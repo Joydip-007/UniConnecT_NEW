@@ -193,7 +193,7 @@ export function CreateEventForm({ onClose }: Props) {
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(6,13,26,0.72)',
+          background: 'var(--overlay-bg)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -231,7 +231,7 @@ export function CreateEventForm({ onClose }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(6,13,26,0.72)',
+        background: 'var(--overlay-bg)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
@@ -468,7 +468,7 @@ export function CreateEventForm({ onClose }: Props) {
                       width: 28,
                       height: 28,
                       borderRadius: '50%',
-                      background: 'rgba(6,13,26,0.72)',
+                      background: 'var(--overlay-bg)',
                       border: '0.5px solid var(--border-default)',
                       display: 'flex',
                       alignItems: 'center',
@@ -545,7 +545,7 @@ export function CreateEventForm({ onClose }: Props) {
                 style={{
                   ...fieldStyle,
                   colorScheme: 'dark',
-                  ...(dateErr ? { borderColor: 'rgba(225,29,72,0.65)' } : {}),
+                  ...(dateErr ? { borderColor: 'var(--uc-red)' } : {}),
                 }}
                 onFocus={focusBorder}
                 onBlur={blurBorder}

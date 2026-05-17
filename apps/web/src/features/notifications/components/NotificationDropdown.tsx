@@ -150,6 +150,8 @@ export function NotificationDropdown({ onClose }: Props) {
 
   return (
     <div
+      className="dropdown-enter"
+      data-origin="top-right"
       style={{
         position: 'absolute',
         top: 'calc(100% + 8px)',

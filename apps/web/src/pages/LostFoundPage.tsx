@@ -55,7 +55,7 @@ const FILTER_TABS: { label: string; value: FilterTab }[] = [
   { label: 'Found', value: 'found' },
 ]
 
-const AVATAR_PALETTE = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#8B5CF6']
+const AVATAR_PALETTE = ['var(--uc-indigo)', 'var(--uc-orange)', 'var(--uc-cyan)', 'var(--uc-mint)', 'var(--uc-navy)']
 const MAX_IMAGES = 3
 const MAX_IMG_BYTES = 5 * 1024 * 1024
 
@@ -299,7 +299,7 @@ function LostFoundCard({ item, currentUserId }: LostFoundCardProps) {
                 flexShrink: 0,
               }}
             >
-              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={url} alt={`Photo ${i + 1} of ${item.itemName}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               {i === 2 && item.imageUrls.length > 3 && (
                 <div
                   style={{
@@ -687,7 +687,7 @@ function PostItemModal({ onClose }: PostItemModalProps) {
                 >
                   <img
                     src={img.preview}
-                    alt=""
+                    alt={`Upload preview ${i + 1}`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                   <button

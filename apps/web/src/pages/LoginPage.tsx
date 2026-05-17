@@ -64,7 +64,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{
+    <main style={{
       minHeight: '100dvh',
       background: 'var(--surface-page)',
       display: 'flex',
@@ -90,16 +90,9 @@ export default function LoginPage() {
             borderRadius: 'var(--r-pill)',
             background: 'var(--surface-card)',
             border: '0.5px solid var(--border-default)',
-            transition: 'background 0.15s, color 0.15s',
+            transition: 'background 150ms, color 150ms',
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--text-primary)'
-            e.currentTarget.style.background = 'var(--surface-raised)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--text-secondary)'
-            e.currentTarget.style.background = 'var(--surface-card)'
-          }}
+          className="back-nav-hover"
         >
           <ArrowLeft size={16} />
           Back to home
@@ -188,7 +181,7 @@ export default function LoginPage() {
             </label>
 
             {error && (
-              <p style={{
+              <p role="alert" style={{
                 margin: 0,
                 fontSize: 13,
                 color: 'var(--uc-orange-l)',
@@ -252,7 +245,7 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
 
@@ -267,5 +260,5 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
   fontFamily: 'inherit',
-  transition: 'border-color 0.15s',
+  transition: 'border-color 150ms',
 }

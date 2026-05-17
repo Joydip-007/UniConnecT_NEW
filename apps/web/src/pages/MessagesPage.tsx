@@ -25,12 +25,13 @@ export default function MessagesPage() {
                 type="button"
                 onClick={() => navigate(PATHS.FEED)}
                 aria-label="Back to feed"
+                className="row-hover-bg card-hover-border"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 32,
-                  height: 32,
+                  width: 44,
+                  height: 44,
                   borderRadius: 'var(--r-pill)',
                   background: 'var(--surface-raised)',
                   border: '0.5px solid var(--border-default)',
@@ -38,14 +39,6 @@ export default function MessagesPage() {
                   cursor: 'pointer',
                   flexShrink: 0,
                   transition: 'border-color 150ms, background 150ms',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--surface-hover)'
-                  e.currentTarget.style.borderColor = 'var(--border-hover)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'var(--surface-raised)'
-                  e.currentTarget.style.borderColor = 'var(--border-default)'
                 }}
               >
                 <ArrowLeft size={16} strokeWidth={1.5} />

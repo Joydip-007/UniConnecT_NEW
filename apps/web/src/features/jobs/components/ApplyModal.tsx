@@ -137,7 +137,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(6,13,26,0.72)',
+        background: 'var(--overlay-bg)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -226,7 +226,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
                 height: 52,
                 borderRadius: '50%',
                 background: 'var(--uc-mint-bg)',
-                border: '0.5px solid rgba(16,185,129,0.28)',
+                border: '0.5px solid var(--uc-mint-bdr)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -305,12 +305,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
                     transition: 'border-color 150ms, background 150ms',
                     width: '100%',
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--surface-hover)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--surface-raised)'
-                  }}
+                  className="row-hover-bg"
                 >
                   <Upload
                     size={20}
@@ -398,7 +393,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
                     gap: 10,
                     padding: '11px 14px',
                     background: 'var(--uc-mint-bg)',
-                    border: '0.5px solid rgba(16,185,129,0.28)',
+                    border: '0.5px solid var(--uc-mint-bdr)',
                     borderRadius: 'var(--r-md)',
                   }}
                 >

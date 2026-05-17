@@ -67,7 +67,12 @@ export class AdminService {
       countWhere('events', { university_id: universityId }),
       countWhere('groups', { university_id: universityId }),
       countWhere('news', { university_id: universityId }),
-      countWhere('reports', {}),
+      db('reports')
+        .whereIn('reporter_id', db('users').where('university_id', universityId).select('id'))
+        .where('status', 'pending')
+        .count<CountRow[]>({ count: '*' })
+        .first()
+        .then((r) => Number(r?.count ?? 0)),
     ])
 
     const activeUsers = await countActive(universityId)
@@ -168,9 +173,11 @@ export class AdminService {
     }
   }
 
-  async resolveReport(resolvedById: string, reportId: string, input: ResolveReportInput) {
+  async resolveReport(universityId: string, resolvedById: string, reportId: string, input: ResolveReportInput) {
+    const universityUserIds = db('users').where('university_id', universityId).select('id')
     const updated = await db('reports')
       .where({ id: reportId })
+      .whereIn('reporter_id', universityUserIds)
       .update({
         status: input.status,
         resolved_by: resolvedById,
@@ -212,6 +219,7 @@ export class AdminService {
         registerUrl,
         role: input.role,
         universityName,
+        token,
       }),
     })
 
@@ -252,6 +260,7 @@ export class AdminService {
           registerUrl,
           role: input.role,
           universityName,
+          token: row.token,
         }),
       })
     }

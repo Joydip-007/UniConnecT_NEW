@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Camera, X } from 'lucide-react'
+import type { User, UserProfile } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -172,6 +174,7 @@ function TagInput({
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={tags.length === 0 ? 'Type a skill and press Enter' : ''}
+        aria-label="Add skill"
         style={{
           flex: 1,
           minWidth: 120,
@@ -219,7 +222,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
           width: 16,
           height: 16,
           borderRadius: '50%',
-          background: '#fff',
+          background: 'var(--text-primary)',
           transition: 'left 200ms',
         }}
       />
@@ -227,23 +230,6 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   )
 }
 
-// ── AVATAR_PALETTE (mirrors PostCard) ──────────────────────────────────────────
-
-const AVATAR_PALETTE = ['var(--uc-indigo)', 'var(--uc-orange)', 'var(--uc-cyan)', 'var(--uc-mint)']
-
-function seedColor(id: string) {
-  const sum = [...id].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_PALETTE[sum % AVATAR_PALETTE.length]
-}
-
-function getInitials(name: string) {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0] ?? '')
-    .join('')
-    .toUpperCase()
-}
 
 // ── EditProfileModal ───────────────────────────────────────────────────────────
 
@@ -253,6 +239,7 @@ export function EditProfileModal({ onClose }: Props) {
   const coverInputRef = useRef<HTMLInputElement>(null)
   const updateProfile = useAuthStore((s) => s.updateProfile)
   const user = useAuthStore((s) => s.user)
+  const queryClient = useQueryClient()
 
   const p = user?.profile
 
@@ -336,7 +323,7 @@ export function EditProfileModal({ onClose }: Props) {
   const saveMutation = useMutation({
     mutationFn: () =>
       api
-        .patch<{ data: typeof p }>('/users/me', {
+        .patch<{ data: User }>('/users/me', {
           fullName: fullName.trim(),
           headline: headline.trim() || null,
           bio: bio.trim() || null,
@@ -349,7 +336,12 @@ export function EditProfileModal({ onClose }: Props) {
         })
         .then((r) => r.data.data),
     onSuccess: (updated) => {
-      if (updated) updateProfile(updated)
+      if (updated?.profile) {
+        updateProfile(updated.profile as Partial<UserProfile>)
+      }
+      if (updated?.id) {
+        queryClient.invalidateQueries({ queryKey: ['user', updated.id] })
+      }
       onClose()
     },
   })
@@ -376,7 +368,7 @@ export function EditProfileModal({ onClose }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(6,13,26,0.80)',
+        background: 'var(--overlay-bg)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -486,7 +478,7 @@ export function EditProfileModal({ onClose }: Props) {
               {coverPreview ? (
                 <img
                   src={coverPreview}
-                  alt=""
+                  alt="Cover photo preview"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
               ) : (
@@ -524,8 +516,8 @@ export function EditProfileModal({ onClose }: Props) {
                   <Spinner />
                 ) : (
                   <>
-                    <Camera size={16} strokeWidth={1.5} color="#fff" />
-                    <span style={{ fontSize: 12, fontWeight: 500, color: '#fff' }}>
+                    <Camera size={16} strokeWidth={1.5} color="var(--text-primary)" />
+                    <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>
                       {uploadError === 'cover' ? 'Upload failed — retry' : 'Change cover'}
                     </span>
                   </>
@@ -555,7 +547,7 @@ export function EditProfileModal({ onClose }: Props) {
                 {avatarPreview ? (
                   <img
                     src={avatarPreview}
-                    alt=""
+                    alt="Avatar preview"
                     style={{ width: 64, height: 64, objectFit: 'cover', display: 'block' }}
                   />
                 ) : (
@@ -585,7 +577,7 @@ export function EditProfileModal({ onClose }: Props) {
                   {uploading === 'avatar' ? (
                     <Spinner size={16} />
                   ) : (
-                    <Camera size={14} strokeWidth={1.5} color="#fff" />
+                    <Camera size={14} strokeWidth={1.5} color="var(--text-primary)" />
                   )}
                 </div>
               </div>
@@ -805,8 +797,8 @@ function Spinner({ size = 20 }: { size?: number }) {
           width: size,
           height: size,
           borderRadius: '50%',
-          border: `2px solid rgba(255,255,255,0.25)`,
-          borderTopColor: '#fff',
+          border: `2px solid var(--border-strong)`,
+          borderTopColor: 'var(--text-primary)',
           animation: 'uc-spin 0.7s linear infinite',
           flexShrink: 0,
         }}

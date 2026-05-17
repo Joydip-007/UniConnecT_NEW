@@ -324,6 +324,6 @@ const otpInputStyle: React.CSSProperties = {
   outline: 'none',
   fontFamily: 'monospace',
   caretColor: 'var(--uc-indigo)',
-  transition: 'border-color 0.15s',
+  transition: 'border-color 150ms',
   boxSizing: 'border-box',
 }

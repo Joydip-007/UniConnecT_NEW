@@ -18,15 +18,21 @@ export default function LandingPage() {
         minHeight: '100dvh',
       }}
     >
-      <LandingNav />
-      <HeroSection />
-      <TickerStrip />
-      <StatsSection />
-      <FeaturesSection />
-      <HowItWorks />
-      <TestimonialsSection />
-      <CtaSection />
-      <LandingFooter />
+      <header>
+        <LandingNav />
+      </header>
+      <main>
+        <HeroSection />
+        <TickerStrip />
+        <StatsSection />
+        <FeaturesSection />
+        <HowItWorks />
+        <TestimonialsSection />
+        <CtaSection />
+      </main>
+      <footer>
+        <LandingFooter />
+      </footer>
     </div>
   )
 }

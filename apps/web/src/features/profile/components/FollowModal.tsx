@@ -142,7 +142,7 @@ function FollowRow({
         {user.profile.avatarUrl ? (
           <img
             src={user.profile.avatarUrl}
-            alt=""
+            alt={user.fullName}
             style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
           />
         ) : (
@@ -262,7 +262,7 @@ export function FollowModal({ userId, mode, count, onClose }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(6,13,26,0.80)',
+        background: 'var(--overlay-bg)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

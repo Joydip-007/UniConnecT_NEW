@@ -51,10 +51,10 @@ const STATUS_CONFIG: Record<
 > = {
   pending:     { label: 'Pending',     bg: 'var(--surface-raised)',  color: 'var(--text-secondary)', border: 'var(--border-default)' },
   reviewed:    { label: 'Reviewed',    bg: 'var(--uc-indigo-bg)',    color: 'var(--uc-indigo-l)',    border: 'var(--uc-indigo-bdr)' },
-  shortlisted: { label: 'Shortlisted', bg: 'var(--uc-cyan-bg)',      color: 'var(--uc-cyan)',        border: 'rgba(6,182,212,0.28)' },
+  shortlisted: { label: 'Shortlisted', bg: 'var(--uc-cyan-bg)',      color: 'var(--uc-cyan)',        border: 'var(--uc-cyan-bdr)' },
   interviewed: { label: 'Interviewed', bg: 'var(--uc-orange-bg)',    color: 'var(--uc-orange-l)',    border: 'var(--uc-orange-bdr)' },
-  offered:     { label: 'Offered',     bg: 'var(--uc-mint-bg)',      color: 'var(--uc-mint)',        border: 'rgba(16,185,129,0.28)' },
-  rejected:    { label: 'Rejected',    bg: 'rgba(225,29,72,0.08)',   color: 'var(--uc-red)',         border: 'rgba(225,29,72,0.25)' },
+  offered:     { label: 'Offered',     bg: 'var(--uc-mint-bg)',      color: 'var(--uc-mint)',        border: 'var(--uc-mint-bdr)' },
+  rejected:    { label: 'Rejected',    bg: 'var(--uc-red-bg)',       color: 'var(--uc-red)',         border: 'var(--uc-red-bdr)' },
 }
 
 const ALL_STATUSES: ApplicationStatus[] = [

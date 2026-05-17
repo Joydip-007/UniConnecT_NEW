@@ -191,7 +191,7 @@
 
 /* ── Mobile nav drawer ──────────────────────────────── */
 .uc-nav-mobile-drawer {
-  display: none;
+  display: flex;
   position: fixed;
   top: 66px;
   left: 0;
@@ -203,9 +203,24 @@
   padding: 16px 20px 20px;
   border-bottom: 0.5px solid var(--border-default);
   backdrop-filter: blur(14px);
+  transform: translateY(-100%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease-out,
+    visibility 0s linear 280ms;
 }
 .uc-nav-mobile-drawer.open {
-  display: flex;
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease-out,
+    visibility 0s linear 0s;
 }
 
 /* ── Responsive breakpoints ─────────────────────────── */

@@ -4,6 +4,7 @@ import { BookOpen, CheckCircle, XCircle, Users } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { socket } from '@/lib/socket'
 import { useAuthStore } from '@/stores/authStore'
+import { avatarColor, getInitials as initials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { EmptyState } from '@/components/EmptyState'
@@ -65,27 +66,6 @@ interface IncomingRequest {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Brand-aligned palette for generated avatars
-const AVATAR_PALETTE = ['#5B5BD6', '#F05A28', '#10B981', '#06B6D4', '#8B5CF6', '#F59E0B']
-
-function avatarColor(id: string): string {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash << 5) - hash + id.charCodeAt(i)
-    hash |= 0
-  }
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length]!
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
-
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short',
@@ -140,7 +120,7 @@ function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
                 : t.type === 'info'
                   ? 'var(--uc-indigo)'
                   : 'var(--uc-mint)',
-            color: '#fff',
+            color: 'var(--text-primary)',
             borderRadius: 'var(--r-md)',
             fontSize: 13,
             fontWeight: 500,
@@ -1107,7 +1087,7 @@ function AlumniView({
               width: 18,
               height: 18,
               borderRadius: '50%',
-              background: '#fff',
+              background: 'var(--text-primary)',
               transition: 'left 200ms',
             }}
           />

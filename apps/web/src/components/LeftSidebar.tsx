@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   Home,
   Compass,
@@ -16,24 +17,13 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
+import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
+import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
-
-const AVATAR_COLORS = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#1E3A70']
-
-function avatarColor(userId: string): string {
-  let sum = 0
-  for (const ch of userId) sum += ch.charCodeAt(0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function getInitials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0][0].toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
+import { avatarColor, getInitials } from '@/utils/avatar'
 
 // ── NavItem ─────────────────────────────────────────────
 
@@ -50,6 +40,8 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, o
   return (
     <button
       onClick={onClick}
+      aria-current={isActive ? 'page' : undefined}
+      className="nav-sidebar-item press-feedback"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -64,13 +56,6 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, o
         fontWeight: 500,
         color: isActive ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
         textAlign: 'left',
-        transition: 'background 0.15s, color 0.15s',
-      }}
-      onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = 'var(--surface-hover)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = isActive ? 'var(--uc-indigo-bg)' : 'transparent'
       }}
     >
       <div style={{ position: 'relative', flexShrink: 0, lineHeight: 0 }}>
@@ -100,7 +85,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, o
             height: 18,
             borderRadius: 'var(--r-pill)',
             background: 'var(--uc-indigo)',
-            color: '#fff',
+            color: 'var(--text-primary)',
             fontSize: 10,
             fontWeight: 500,
             display: 'flex',
@@ -141,11 +126,10 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, onClick }: CampusToo
         border: 'none',
         borderRadius: 'var(--r-sm)',
         cursor: 'pointer',
-        transition: 'background 0.15s',
+        transition: 'background 150ms',
         textAlign: 'left',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)' }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+      className="row-hover-bg"
     >
       <div
         style={{
@@ -176,6 +160,18 @@ export function LeftSidebar() {
   const { user } = useAuthStore()
   const { messageCount } = useNotificationsStore()
 
+  const { data: profileData } = useQuery<PublicUserProfile>({
+    queryKey: ['user', user?.id],
+    queryFn: async () => {
+      const r = await api.get<{ data: unknown }>(`/users/${user!.id}`)
+      const parsed = publicUserProfileSchema.safeParse(r.data.data)
+      if (!parsed.success) throw new Error('Unexpected profile shape')
+      return parsed.data
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  })
+
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const avatarBg = user ? avatarColor(user.id) : 'var(--uc-indigo)'
 
@@ -202,7 +198,7 @@ export function LeftSidebar() {
     { icon: Bus, label: 'Shuttle tracker', path: PATHS.SHUTTLE },
     { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
     { icon: UserCircle2, label: 'My profile', path: profilePath },
-    ...(user?.role === 'admin' || user?.role === 'faculty'
+    ...(user?.role === 'admin'
       ? [{ icon: ShieldCheck, label: 'Admin panel', path: PATHS.ADMIN }]
       : []),
   ]
@@ -237,6 +233,7 @@ export function LeftSidebar() {
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-lg)',
           overflow: 'hidden',
+          flexShrink: 0,
         }}
       >
         {/* Cover with dot pattern */}
@@ -248,14 +245,17 @@ export function LeftSidebar() {
               'var(--surface-raised)',
             ].join(', '),
             backgroundSize: '14px 14px',
-            position: 'relative',
           }}
-        >
+        />
+
+        {/* Name + dept + stats */}
+        <div style={{ padding: '0 14px 14px' }}>
+          {/* Avatar pulled up over the cover with negative margin */}
           <div
             style={{
-              position: 'absolute',
-              bottom: -20,
-              left: 14,
+              marginTop: -20,
+              marginBottom: 8,
+              display: 'inline-block',
               borderRadius: '50%',
               border: '2.5px solid var(--surface-card)',
               lineHeight: 0,
@@ -263,10 +263,6 @@ export function LeftSidebar() {
           >
             <Avatar initials={initials} color={avatarBg} size={40} online />
           </div>
-        </div>
-
-        {/* Name + dept + stats */}
-        <div style={{ padding: '24px 14px 12px' }}>
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
             {user?.profile.fullName ?? 'Loading…'}
           </div>
@@ -274,34 +270,17 @@ export function LeftSidebar() {
             {deptLabel}
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              marginTop: 12,
-              borderTop: '0.5px solid var(--border-default)',
-              paddingTop: 10,
-            }}
-          >
+          {/* Follower / following stats */}
+          <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
             {[
-              { label: 'following', value: 0 },
-              { label: 'followers', value: 0 },
-              { label: 'posts', value: 0 },
-            ].map((stat, i) => (
-              <div
-                key={stat.label}
-                style={{
-                  flex: 1,
-                  textAlign: 'center',
-                  borderLeft: i > 0 ? '0.5px solid var(--border-default)' : 'none',
-                  padding: '0 4px',
-                }}
-              >
-                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {stat.value}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
-                  {stat.label}
-                </div>
+              { label: 'followers', value: profileData?.stats.followers ?? 0 },
+              { label: 'following', value: profileData?.stats.following ?? 0 },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+                  {value}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -315,6 +294,7 @@ export function LeftSidebar() {
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-lg)',
           padding: '6px',
+          flexShrink: 0,
         }}
       >
         {navItems.map((item) => (
@@ -337,6 +317,7 @@ export function LeftSidebar() {
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-lg)',
           padding: '10px 8px 6px',
+          flexShrink: 0,
         }}
       >
         <div

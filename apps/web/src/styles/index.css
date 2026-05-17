@@ -1,13 +1,322 @@
 /* Tokens must be imported before Tailwind so utilities can reference the CSS variables */
 @import './tokens.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 html { scroll-behavior: smooth; }
+
+/* ── Focus indicators (WCAG 2.4.7) ──────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--uc-indigo-l);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+[role='tab']:focus-visible,
+[role='switch']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--uc-indigo-l);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none !important;
+  border-color: var(--uc-indigo) !important;
+  box-shadow: 0 0 0 3px var(--uc-indigo-bg);
+}
 
 @keyframes shimmer {
   0%, 100% { opacity: 0.4; }
   50%       { opacity: 0.9; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.7; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Popover / dropdown entrance ─────────────────────────────────────
+   Each dropdown sets transform-origin to its trigger position so it
+   scales in from where it's anchored, not from its own center. */
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.dropdown-enter {
+  animation: dropdown-in 150ms var(--ease-out-strong) both;
+}
+
+.dropdown-enter[data-origin="top-right"]    { transform-origin: top right; }
+.dropdown-enter[data-origin="top-left"]     { transform-origin: top left; }
+.dropdown-enter[data-origin="top-center"]   { transform-origin: top center; }
+
+/* ── Press feedback for icon buttons (no Button component) ───────── */
+
+.press-feedback {
+  transition: transform 120ms var(--ease-out-strong), background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.press-feedback:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+/* ── Staggered list entrance ─────────────────────────────────────── */
+
+@keyframes list-item-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.list-item-enter {
+  opacity: 0;
+  animation: list-item-in 280ms var(--ease-out-strong) forwards;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+/* ── Reduced motion: respect user preference globally ────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Feed 3-column layout ─────────────────────────────────── */
+.feed-layout-grid {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 20px 0;
+  display: grid;
+  grid-template-columns: 232px 1fr 272px;
+  gap: 18px;
+}
+
+@media (max-width: 1100px) {
+  .feed-layout-grid {
+    grid-template-columns: 232px 1fr;
+  }
+  .feed-layout-right {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .feed-layout-grid {
+    grid-template-columns: 1fr;
+    padding: 12px 12px 0;
+    gap: 12px;
+  }
+  .feed-layout-left {
+    display: none;
+  }
+}
+
+/* ── Hover utilities (replace JS onMouseEnter/Leave mutations) ───────
+   Gated behind `hover: hover` so touch devices don't fire hover-on-tap. */
+@media (hover: hover) and (pointer: fine) {
+  .nav-menu-item:hover    { background: var(--surface-hover) !important; }
+  .trending-row:hover     { opacity: 0.75; }
+  .card-hover-border:hover { border-color: var(--border-hover) !important; }
+  .row-hover-bg:hover     { background: var(--surface-hover) !important; }
+  .action-chip-hover:hover {
+    background: var(--surface-raised) !important;
+    border-color: var(--border-hover) !important;
+  }
+  .back-nav-hover:hover {
+    background: var(--surface-hover) !important;
+    color: var(--text-primary) !important;
+  }
+  .nav-link-hover:hover   { color: var(--text-primary) !important; }
+  .nav-sidebar-item:hover:not([aria-current="page"]) {
+    background: var(--surface-hover) !important;
+  }
+}
+
+/* ── Mobile bottom nav ──────────────────────────────────────────────── */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-bottom-nav {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .topnav-mobile-hidden {
+    display: none;
+  }
+
+  .feed-layout-main {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ── Admin Content tab — stagger reveal & press feedback ─────────────── */
+
+@keyframes admin-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-content-card {
+  opacity: 0;
+  animation: admin-card-enter 220ms var(--ease-out-strong) forwards;
+  animation-delay: calc(var(--admin-card-index, 0) * 38ms);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-content-card {
+    opacity: 1;
+    animation: none;
+    transition: none;
+  }
+}
+
+.admin-content-card:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-raised);
+}
+
+.admin-icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  border: 0.5px solid var(--border-default);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform 120ms var(--ease-out-strong), background 160ms ease,
+    color 160ms ease, border-color 160ms ease;
+}
+
+.admin-icon-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.admin-icon-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.admin-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.admin-icon-btn[data-active='true'] {
+  background: var(--uc-indigo-bg);
+  border-color: var(--uc-indigo-bdr);
+  color: var(--uc-indigo-xl);
+}
+
+.admin-icon-btn[data-danger='true'] {
+  background: var(--uc-orange-bg);
+  border-color: var(--uc-orange-bdr);
+  color: var(--uc-orange-l);
+}
+
+.admin-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 500;
+  border: 0.5px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform 120ms var(--ease-out-strong), background 180ms ease,
+    color 180ms ease, border-color 180ms ease;
+}
+
+.admin-pill-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  background: var(--surface-raised);
+}
+
+.admin-pill-btn:active {
+  transform: scale(0.97);
+}
+
+.admin-pill-btn[data-active='true'] {
+  background: var(--uc-indigo-bg);
+  border-color: var(--uc-indigo-bdr);
+  color: var(--uc-indigo-xl);
+}
+
+.admin-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 500;
+  border: 0.5px solid var(--border-default);
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: background 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+
+.admin-skeleton-card {
+  background: var(--surface-card);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--r-md);
+  height: 76px;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-skeleton-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.04),
+    transparent
+  );
+  animation: admin-skeleton-shimmer 1.4s linear infinite;
+}
+
+@keyframes admin-skeleton-shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-skeleton-card::after { animation: none; }
 }

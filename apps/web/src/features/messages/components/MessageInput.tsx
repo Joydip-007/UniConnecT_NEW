@@ -130,8 +130,8 @@ export function MessageInput({ convId }: MessageInputProps) {
         aria-label="Send message"
         style={{
           flexShrink: 0,
-          width: 36,
-          height: 36,
+          width: 44,
+          height: 44,
           borderRadius: 'var(--r-pill)',
           background: 'var(--uc-indigo)',
           border: 'none',
@@ -139,7 +139,7 @@ export function MessageInput({ convId }: MessageInputProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#fff',
+          color: 'var(--text-primary)',
           opacity: canSend ? 1 : 0.38,
           transition: 'opacity 150ms',
           padding: 0,

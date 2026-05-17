@@ -70,12 +70,13 @@ export class ResendEmailService {
     registerUrl: string,
     role: string,
     universityName: string,
+    token: string,
   ): Promise<EmailResult> {
     return this.sendEmail({
       to,
       subject: "You're invited to join UniConnecT",
-      html: renderInvitationHtml({ registerUrl, role, universityName }),
-      text: `You've been invited to join ${universityName} on UniConnecT as a ${role}. Create your account here: ${registerUrl}`,
+      html: renderInvitationHtml({ registerUrl, role, universityName, token }),
+      text: `You've been invited to join ${universityName} on UniConnecT as a ${role}. Create your account here: ${registerUrl}\n\nYour invite token: ${token}`,
       tags: [
         { name: 'category', value: 'invitation' },
         { name: 'app', value: 'uniconnect' },
@@ -263,10 +264,12 @@ function renderInvitationHtml(input: {
   registerUrl: string
   role: string
   universityName: string
+  token: string
 }) {
   const registerUrl = escapeHtml(input.registerUrl)
   const role = escapeHtml(input.role)
   const universityName = escapeHtml(input.universityName)
+  const token = escapeHtml(input.token)
 
   return `
     <div style="margin:0;padding:0;background:#060D1A;color:#EEF2FF;font-family:Arial,Helvetica,sans-serif;">
@@ -285,6 +288,8 @@ function renderInvitationHtml(input: {
                   <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#B8C4E6;">You've been invited to join <strong style="color:#DDE6FF;">${universityName}</strong> on UniConnecT as a <strong style="color:#DDE6FF;">${role}</strong>.</p>
                   <p style="margin:0 0 22px;font-size:16px;line-height:1.6;color:#B8C4E6;">Click below to create your account. This link is personal — please don't share it.</p>
                   <a href="${registerUrl}" style="display:inline-block;background:#5B5BD6;color:#FFFFFF;text-decoration:none;border-radius:999px;padding:12px 18px;font-size:14px;">Create account</a>
+                  <p style="margin:22px 0 8px;font-size:14px;line-height:1.6;color:#B8C4E6;">Or enter this invite token on the registration page:</p>
+                  <div style="font-family:'Courier New',Courier,monospace;font-size:14px;line-height:1.4;letter-spacing:1px;color:#DDE6FF;background:#111D35;border-radius:10px;padding:14px 16px;word-break:break-all;">${token}</div>
                 </td>
               </tr>
               <tr>

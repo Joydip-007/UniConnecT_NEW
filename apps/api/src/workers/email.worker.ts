@@ -55,6 +55,7 @@ async function handleTemplateEmail(input: EmailQueueJob) {
       parsed.registerUrl!,
       parsed.role!,
       parsed.universityName!,
+      parsed.token!,
     )
     if (!result.success) {
       throw new Error(result.error ?? 'Invitation email failed')
@@ -75,6 +76,7 @@ function parseTemplatePayload(value: string) {
       otp: string
       purpose: string
       registerUrl: string
+      token: string
     }>
 
     if (

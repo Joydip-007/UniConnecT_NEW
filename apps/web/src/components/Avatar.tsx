@@ -20,7 +20,7 @@ export function Avatar({ initials, color, size = 40, online = false }: AvatarPro
         justifyContent: 'center',
         fontSize: size * 0.34,
         fontWeight: 500,
-        color: '#fff',
+        color: 'var(--text-primary)',
         flexShrink: 0,
         position: 'relative',
       }}

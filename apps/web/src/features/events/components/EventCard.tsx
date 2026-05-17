@@ -41,8 +41,8 @@ const TYPE_META: Record<EventKind, { label: string; bdr: string; color: string; 
   general:       { label: 'General',       bdr: 'var(--border-hover)',     color: 'var(--text-secondary)', glow: 'rgba(238,242,255,0.08)' },
   career_fair:   { label: 'Career fair',   bdr: 'var(--uc-indigo-bdr)',   color: 'var(--uc-indigo-xl)',  glow: 'rgba(91,91,214,0.35)' },
   seminar:       { label: 'Seminar',       bdr: 'var(--uc-orange-bdr)',   color: 'var(--uc-orange-l)',   glow: 'rgba(240,90,40,0.28)' },
-  workshop:      { label: 'Workshop',      bdr: 'rgba(16,185,129,0.28)',  color: 'var(--uc-mint)',        glow: 'rgba(16,185,129,0.28)' },
-  alumni_meetup: { label: 'Alumni meetup', bdr: 'rgba(6,182,212,0.28)',   color: 'var(--uc-cyan)',        glow: 'rgba(6,182,212,0.28)' },
+  workshop:      { label: 'Workshop',      bdr: 'var(--uc-mint-bdr)',    color: 'var(--uc-mint)',        glow: 'var(--uc-mint-bdr)' },
+  alumni_meetup: { label: 'Alumni meetup', bdr: 'var(--uc-cyan-bdr)',    color: 'var(--uc-cyan)',        glow: 'var(--uc-cyan-bdr)' },
   club:          { label: 'Club',          bdr: 'rgba(139,92,246,0.28)',  color: 'rgba(196,181,253,1)',   glow: 'rgba(139,92,246,0.32)' },
 }
 
@@ -102,7 +102,7 @@ function FaceStack({ attendees, total }: { attendees: EventAttendee[]; total: nu
               justifyContent: 'center',
               fontSize: 8,
               fontWeight: 500,
-              color: '#fff',
+              color: 'var(--text-primary)',
               marginLeft: i === 0 ? 0 : -7,
               zIndex: shown.length - i,
               position: 'relative',
@@ -232,6 +232,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
   return (
     <article
       onClick={() => navigate(`/events/${event.id}`)}
+      className="card-hover-border"
       style={{
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
@@ -242,8 +243,6 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
         display: 'flex',
         flexDirection: 'column',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
     >
       {/* ── Cover ─────────────────────────────────────────────────────────── */}
       <div
@@ -396,7 +395,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
                   borderRadius: 'var(--r-pill)',
                   border: goingActive ? 'none' : '0.5px solid var(--border-hover)',
                   background: goingActive ? 'var(--uc-indigo)' : 'transparent',
-                  color: goingActive ? '#fff' : full ? 'var(--text-tertiary)' : 'var(--text-secondary)',
+                  color: goingActive ? 'var(--text-primary)' : full ? 'var(--text-tertiary)' : 'var(--text-secondary)',
                   cursor: (!goingActive && full) || rsvpMutation.isPending ? 'not-allowed' : 'pointer',
                   transition: 'background 150ms, color 150ms',
                   opacity: rsvpMutation.isPending ? 0.55 : 1,

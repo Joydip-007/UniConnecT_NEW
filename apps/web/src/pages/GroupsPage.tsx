@@ -4,6 +4,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
+import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 
@@ -61,26 +62,10 @@ const TYPE_COLORS: Record<GroupType, { bg: string; border: string; text: string 
     text: 'var(--uc-mint)',
   },
   interest: {
-    bg: 'rgba(139, 92, 246, 0.10)',
-    border: 'rgba(139, 92, 246, 0.28)',
-    text: '#A78BFA',
+    bg: 'var(--uc-indigo-bg)',
+    border: 'var(--uc-indigo-bdr)',
+    text: 'var(--uc-indigo-xl)',
   },
-}
-
-const AVATAR_PALETTE = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#8B5CF6']
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function seedColor(id: string): string {
-  let hash = 0
-  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
-  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 // ── TypeBadge ─────────────────────────────────────────────────────────────────

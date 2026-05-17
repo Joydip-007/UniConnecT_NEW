@@ -254,7 +254,7 @@ export function PostJobForm({ onClose }: Props) {
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(6,13,26,0.72)',
+        background: 'var(--overlay-bg)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',

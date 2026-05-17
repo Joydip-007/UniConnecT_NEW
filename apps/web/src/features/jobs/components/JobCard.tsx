@@ -52,8 +52,8 @@ const TYPE_LABELS: Record<Job['type'], string> = {
 const LOGO_PALETTE = [
   { bg: 'var(--uc-indigo-bg)', border: 'var(--uc-indigo-bdr)', color: 'var(--uc-indigo-l)' },
   { bg: 'var(--uc-orange-bg)', border: 'var(--uc-orange-bdr)', color: 'var(--uc-orange-l)' },
-  { bg: 'var(--uc-mint-bg)',   border: 'rgba(16,185,129,0.28)', color: 'var(--uc-mint)' },
-  { bg: 'var(--uc-cyan-bg)',   border: 'rgba(6,182,212,0.28)',  color: 'var(--uc-cyan)' },
+  { bg: 'var(--uc-mint-bg)',   border: 'var(--uc-mint-bdr)', color: 'var(--uc-mint)' },
+  { bg: 'var(--uc-cyan-bg)',   border: 'var(--uc-cyan-bdr)', color: 'var(--uc-cyan)' },
 ]
 
 function seedLogoStyle(company: string) {
@@ -73,8 +73,8 @@ function DeadlineChip({ deadline }: { deadline: string }) {
     color = 'var(--text-tertiary)'
   } else if (daysLeft < 3) {
     color = 'var(--uc-red)'
-    bg = 'rgba(225,29,72,0.08)'
-    border = 'rgba(225,29,72,0.25)'
+    bg = 'var(--uc-red-bg)'
+    border = 'var(--uc-red-bdr)'
   } else if (daysLeft < 7) {
     color = 'var(--uc-orange-l)'
     bg = 'var(--uc-orange-bg)'
@@ -140,6 +140,7 @@ export function JobCard({ job, queryKey }: { job: Job; queryKey: unknown[] }) {
     <>
       <article
         onClick={() => navigate(`/jobs/${job.id}`)}
+        className="card-hover-border"
         style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
@@ -150,12 +151,6 @@ export function JobCard({ job, queryKey }: { job: Job; queryKey: unknown[] }) {
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border-hover)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'var(--border-default)'
         }}
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}

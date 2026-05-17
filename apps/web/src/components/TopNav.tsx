@@ -8,35 +8,21 @@ import { NotificationDropdown } from '@/features/notifications'
 import { SearchPanel } from '@/features/search'
 import { PATHS } from '@/router/paths'
 import { BrandLogo } from '@/components/BrandLogo'
-
-const AVATAR_COLORS = ['#5B5BD6', '#F05A28', '#06B6D4', '#10B981', '#1E3A70']
-
-function avatarColor(userId: string): string {
-  let sum = 0
-  for (const ch of userId) sum += ch.charCodeAt(0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function getInitials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0][0].toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
+import { avatarColor, getInitials } from '@/utils/avatar'
 
 const iconBtnStyle: React.CSSProperties = {
   position: 'relative',
-  width: 34,
-  height: 34,
+  width: 44,
+  height: 44,
   borderRadius: '50%',
   background: 'transparent',
-  border: '0.5px solid var(--border-default)',
+  border: 'none',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   cursor: 'pointer',
   color: 'var(--text-secondary)',
   flexShrink: 0,
-  transition: 'border-color 0.15s, background 0.15s',
 }
 
 const badgeStyle: React.CSSProperties = {
@@ -47,7 +33,7 @@ const badgeStyle: React.CSSProperties = {
   height: 16,
   borderRadius: 'var(--r-pill)',
   background: 'var(--uc-red)',
-  color: '#fff',
+  color: 'var(--text-primary)',
   fontSize: 10,
   fontWeight: 500,
   display: 'flex',
@@ -112,8 +98,30 @@ export function TopNav() {
         setNotifOpen(false)
       }
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setMenuOpen(false)
+        setNotifOpen(false)
+      }
+      if (menuOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault()
+        const menu = menuRef.current?.querySelector('[role="menu"]')
+        if (!menu) return
+        const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+        const focused = document.activeElement as HTMLElement
+        const idx = items.indexOf(focused)
+        const next = e.key === 'ArrowDown'
+          ? items[(idx + 1) % items.length]
+          : items[(idx - 1 + items.length) % items.length]
+        next?.focus()
+      }
+    }
     document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside)
+      document.removeEventListener('keydown', onKeyDown)
+    }
   }, [menuOpen, notifOpen])
 
   function handleSignOut() {
@@ -165,6 +173,12 @@ export function TopNav() {
           />
           <input
             type="text"
+            role="combobox"
+            aria-label="Search"
+            aria-expanded={panelOpen}
+            aria-controls="search-panel"
+            aria-autocomplete="list"
+            aria-haspopup="listbox"
             placeholder="Search people, jobs, events…"
             value={searchQuery}
             onChange={(e) => {
@@ -206,24 +220,37 @@ export function TopNav() {
 
       {/* Right: icon actions + avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {/* Visually-hidden live region — announces count changes to screen readers */}
+        <span
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          style={{ position: 'absolute', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+        >
+          {messageCount > 0 ? `${messageCount} unread message${messageCount !== 1 ? 's' : ''}` : ''}
+          {notificationCount > 0 ? ` · ${notificationCount} unread notification${notificationCount !== 1 ? 's' : ''}` : ''}
+        </span>
+
         <button
           onClick={() => navigate(PATHS.MESSAGES)}
+          className="topnav-mobile-hidden press-feedback row-hover-bg"
           style={iconBtnStyle}
-          aria-label="Messages"
+          aria-label={messageCount > 0 ? `Messages (${messageCount} unread)` : 'Messages'}
         >
           <MessageSquare size={16} />
           <BadgeCount count={messageCount} />
         </button>
 
-        <div style={{ position: 'relative' }} ref={notifRef}>
+        <div className="topnav-mobile-hidden" style={{ position: 'relative' }} ref={notifRef}>
           <button
             onClick={() => setNotifOpen((o) => !o)}
+            className="press-feedback row-hover-bg"
             style={{
               ...iconBtnStyle,
               borderColor: notifOpen ? 'var(--border-hover)' : undefined,
               background: notifOpen ? 'var(--surface-raised)' : undefined,
             }}
-            aria-label="Notifications"
+            aria-label={notificationCount > 0 ? `Notifications (${notificationCount} unread)` : 'Notifications'}
             aria-expanded={notifOpen}
           >
             <Bell size={16} />
@@ -236,6 +263,7 @@ export function TopNav() {
         <div style={{ position: 'relative' }} ref={menuRef}>
           <button
             onClick={() => setMenuOpen((o) => !o)}
+            className="press-feedback"
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', borderRadius: '50%' }}
             aria-label="Profile menu"
             aria-expanded={menuOpen}
@@ -245,6 +273,10 @@ export function TopNav() {
 
           {menuOpen && (
             <div
+              role="menu"
+              aria-label="Profile menu"
+              className="dropdown-enter"
+              data-origin="top-right"
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 8px)',
@@ -275,20 +307,20 @@ export function TopNav() {
               )}
 
               <button
+                role="menuitem"
                 onClick={() => { setMenuOpen(false); navigate(PATHS.PROFILE.replace(':id', user?.id ?? '')) }}
+                className="nav-menu-item"
                 style={menuItemStyle}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
               >
                 <User size={14} />
                 View profile
               </button>
 
               <button
+                role="menuitem"
                 onClick={handleSignOut}
+                className="nav-menu-item"
                 style={menuItemStyle}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
               >
                 <LogOut size={14} />
                 Sign out

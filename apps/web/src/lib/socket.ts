@@ -10,6 +10,7 @@ export const socket = io(SOCKET_URL, {
   autoConnect: false,
   reconnection: true,
   reconnectionAttempts: 5,
+  transports: ['websocket'],
   auth: (cb: (data: { token: string | null }) => void) => {
     cb({ token: useAuthStore.getState().accessToken })
   },

@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { TopNav } from '@/components/TopNav'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { RightSidebar } from '@/components/RightSidebar'
+import { MobileBottomNav } from '@/components/MobileBottomNav'
 import { useAuthStore } from '@/stores/authStore'
 import { useSocketStore } from '@/stores/socketStore'
 import { useNotificationsSocket } from '@/features/notifications'
@@ -34,21 +35,17 @@ export function FeedLayout() {
         </div>
       )}
       <TopNav />
-      <div
-        style={{
-          maxWidth: 1280,
-          margin: '0 auto',
-          padding: '18px 20px 0',
-          display: 'grid',
-          gridTemplateColumns: '232px 1fr 272px',
-          gap: 18,
-        }}
-      >
-        <LeftSidebar />
-        <main style={{ minWidth: 0 }}>
+      <MobileBottomNav />
+      <div className="feed-layout-grid">
+        <div className="feed-layout-left">
+          <LeftSidebar />
+        </div>
+        <main className="feed-layout-main" style={{ minWidth: 0 }}>
           <Outlet />
         </main>
-        <RightSidebar />
+        <div className="feed-layout-right">
+          <RightSidebar />
+        </div>
       </div>
     </div>
   )

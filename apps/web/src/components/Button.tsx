@@ -5,14 +5,14 @@ type BaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  'inline-flex items-center justify-center gap-[7px] text-[13px] font-medium cursor-pointer transition-[opacity,transform] duration-150 ' +
-  'hover:opacity-90 hover:-translate-y-px active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center gap-[7px] text-[13px] font-medium cursor-pointer transition-[opacity,transform] duration-150 ease-out ' +
+  'hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed';
 
 export function PrimaryBtn({ className = '', ...props }: BaseProps) {
   return (
     <button
       {...props}
-      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-indigo)] text-white border-none ${className}`}
+      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-indigo)] text-[var(--text-primary)] border-none ${className}`}
     />
   );
 }
@@ -21,7 +21,7 @@ export function OrangeBtn({ className = '', ...props }: BaseProps) {
   return (
     <button
       {...props}
-      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-orange)] text-white border-none ${className}`}
+      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-orange)] text-[var(--text-primary)] border-none ${className}`}
     />
   );
 }
@@ -30,7 +30,7 @@ export function MintBtn({ className = '', ...props }: BaseProps) {
   return (
     <button
       {...props}
-      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-mint)] text-white border-none ${className}`}
+      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-mint)] text-[var(--text-primary)] border-none ${className}`}
     />
   );
 }

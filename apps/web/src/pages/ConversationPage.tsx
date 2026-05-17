@@ -12,10 +12,10 @@ import { PATHS } from '@/router/paths'
 
 const AVATAR_COLORS = [
   'var(--uc-indigo)',
-  '#2E7D8C',
-  '#6B4E9B',
-  '#1A6B4A',
-  '#8C4A2E',
+  'var(--uc-orange)',
+  'var(--uc-cyan)',
+  'var(--uc-mint)',
+  'var(--uc-navy)',
 ]
 
 function seedColor(seed: string): string {
@@ -81,12 +81,13 @@ export default function ConversationPage() {
           type="button"
           onClick={() => navigate(PATHS.MESSAGES)}
           aria-label="Back to messages"
+          className="row-hover-bg"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 32,
-            height: 32,
+            width: 44,
+            height: 44,
             borderRadius: 'var(--r-pill)',
             background: 'transparent',
             border: 'none',
@@ -95,8 +96,6 @@ export default function ConversationPage() {
             flexShrink: 0,
             transition: 'background 150ms',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)' }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
           <ArrowLeft size={18} strokeWidth={1.5} />
         </button>

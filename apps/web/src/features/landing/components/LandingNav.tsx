@@ -50,7 +50,7 @@ export function LandingNav() {
           alignItems: 'center',
           padding: '0 52px',
           gap: 36,
-          backdropFilter: 'blur(14px)',
+          background: 'var(--surface-card)',
           borderBottom: '0.5px solid var(--border-default)',
         }}
       >
@@ -68,14 +68,13 @@ export function LandingNav() {
             <a
               key={label}
               href={href}
+              className="nav-link-hover"
               style={{
                 fontSize: 14,
                 color: 'var(--text-secondary)',
                 textDecoration: 'none',
-                transition: 'color 0.2s',
+                transition: 'color 150ms ease',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
             >
               {label}
             </a>

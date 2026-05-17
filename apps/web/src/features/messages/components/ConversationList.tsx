@@ -38,10 +38,10 @@ export interface Conversation {
 
 const AVATAR_COLORS = [
   'var(--uc-indigo)',
-  '#2E7D8C',
-  '#6B4E9B',
-  '#1A6B4A',
-  '#8C4A2E',
+  'var(--uc-orange)',
+  'var(--uc-cyan)',
+  'var(--uc-mint)',
+  'var(--uc-navy)',
 ]
 
 function seedColor(seed: string): string {
@@ -93,6 +93,7 @@ function ConversationRow({
   return (
     <button
       onClick={onClick}
+      className="row-hover-bg"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -105,12 +106,6 @@ function ConversationRow({
         cursor: 'pointer',
         textAlign: 'left',
         transition: 'background 150ms',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = 'var(--surface-hover)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = 'transparent'
       }}
     >
       <Avatar initials={avatarInitials} color={avatarColor} size={42} />
@@ -168,7 +163,7 @@ function ConversationRow({
                 height: 18,
                 borderRadius: 'var(--r-pill)',
                 background: 'var(--uc-indigo)',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontSize: 11,
                 fontWeight: 500,
                 display: 'flex',

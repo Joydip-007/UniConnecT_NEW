@@ -11,6 +11,7 @@ export const PaginationQuerySchema = z.object({
 
 export const PostListQuerySchema = PaginationQuerySchema.extend({
   type: PostTypeSchema.optional(),
+  authorId: z.string().uuid().optional(),
 })
 
 export const CreatePostSchema = z.object({

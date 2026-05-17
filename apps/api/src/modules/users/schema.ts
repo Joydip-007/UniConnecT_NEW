@@ -2,19 +2,21 @@ import { z } from 'zod'
 
 const optionalString = z.string().trim().nullable().optional()
 
-export const UpdateProfileSchema = z.object({
-  full_name: z.string().trim().min(1).optional(),
-  bio: optionalString,
-  headline: optionalString,
-  department: optionalString,
-  batch_year: optionalString,
-  linkedin_url: optionalString,
-  phone: optionalString,
-  skills: z.array(z.string().trim().min(1)).optional(),
-  avatar_url: optionalString,
-  cover_url: optionalString,
-  is_open_to_work: z.boolean().optional(),
-})
+export const UpdateProfileSchema = z
+  .object({
+    fullName: z.string().trim().min(1).optional(),
+    bio: optionalString,
+    headline: optionalString,
+    department: optionalString,
+    batchYear: optionalString,
+    linkedinUrl: optionalString,
+    phone: optionalString,
+    skills: z.array(z.string().trim().min(1)).optional(),
+    avatarUrl: optionalString,
+    coverUrl: optionalString,
+    isOpenToWork: z.boolean().optional(),
+  })
+  .strict()
 
 export const UserListQuerySchema = z.object({
   role: z.enum(['student', 'alumni', 'faculty', 'admin']).optional(),

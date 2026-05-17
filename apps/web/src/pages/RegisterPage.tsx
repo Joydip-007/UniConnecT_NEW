@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { isAxiosError } from 'axios'
 import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
@@ -341,7 +342,7 @@ export default function RegisterPage() {
 
 function RegisterShell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
+    <main style={{
       minHeight: '100dvh',
       background: 'var(--surface-page)',
       display: 'flex',
@@ -349,7 +350,40 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px 16px',
+      position: 'relative',
     }}>
+      {/* Back Button */}
+      <div style={{ position: 'absolute', top: 24, left: 24 }}>
+        <Link
+          to="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            color: 'var(--text-secondary)',
+            textDecoration: 'none',
+            fontSize: 14,
+            fontWeight: 500,
+            padding: '8px 12px',
+            borderRadius: 'var(--r-pill)',
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--text-primary)'
+            e.currentTarget.style.background = 'var(--surface-raised)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--text-secondary)'
+            e.currentTarget.style.background = 'var(--surface-card)'
+          }}
+        >
+          <ArrowLeft size={16} />
+          Back to home
+        </Link>
+      </div>
+
       <div style={{
         width: '100%',
         maxWidth: 400,
@@ -363,7 +397,7 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
 
         {children}
       </div>
-    </div>
+    </main>
   )
 }
 

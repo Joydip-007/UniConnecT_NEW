@@ -19,12 +19,22 @@
   --uc-orange-bg:     rgba(240, 90, 40, 0.10);
   --uc-orange-bdr:    rgba(240, 90, 40, 0.28);
 
+  /* ── Brand — UC navy (avatar fallback 5th slot) ───── */
+  --uc-navy:          #1E3A70;
+
   /* ── Semantic ─────────────────────────────────────── */
   --uc-cyan:          #06B6D4;
   --uc-cyan-bg:       rgba(6, 182, 212, 0.10);
+  --uc-cyan-bdr:      rgba(6, 182, 212, 0.28);
   --uc-mint:          #10B981;
   --uc-mint-bg:       rgba(16, 185, 129, 0.10);
-  --uc-red:           #E11D48;   /* unread badges, errors */
+  --uc-mint-bdr:      rgba(16, 185, 129, 0.28);
+  --uc-red:           #E11D48;
+  --uc-red-bg:        rgba(225, 29, 72, 0.08);
+  --uc-red-bdr:       rgba(225, 29, 72, 0.25);
+
+  /* ── Overlay ──────────────────────────────────────── */
+  --overlay-bg:       rgba(6, 13, 26, 0.75);
 
   /* ── Text ─────────────────────────────────────────── */
   --text-primary:     #EEF2FF;
@@ -42,4 +52,8 @@
   --r-lg:   16px;
   --r-xl:   20px;
   --r-pill: 999px;
+
+  /* ── Easing — custom curves for snappy UI motion ──── */
+  --ease-out-strong:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
 }

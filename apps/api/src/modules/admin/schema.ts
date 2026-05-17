@@ -35,6 +35,24 @@ export const CreateBulkInvitationsSchema = z.object({
   expires_in_days: z.number().int().min(1).max(30).default(7),
 })
 
+export const ContentKindSchema = z.enum(['posts', 'events', 'jobs', 'news'])
+
+export const ContentListQuerySchema = PaginationQuerySchema.extend({
+  filter: z.enum(['all', 'pinned', 'published', 'unpublished', 'active', 'closed']).default('all'),
+})
+
+export const TogglePinSchema = z.object({
+  is_pinned: z.boolean(),
+})
+
+export const TogglePublishSchema = z.object({
+  is_published: z.boolean(),
+})
+
+export const ToggleActiveSchema = z.object({
+  is_active: z.boolean(),
+})
+
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>
@@ -42,3 +60,8 @@ export type ResolveReportInput = z.infer<typeof ResolveReportSchema>
 export type CreateInvitationInput = z.infer<typeof CreateInvitationSchema>
 export type UpdateAllowedDomainsInput = z.infer<typeof UpdateAllowedDomainsSchema>
 export type CreateBulkInvitationsInput = z.infer<typeof CreateBulkInvitationsSchema>
+export type ContentKind = z.infer<typeof ContentKindSchema>
+export type ContentListQuery = z.infer<typeof ContentListQuerySchema>
+export type TogglePinInput = z.infer<typeof TogglePinSchema>
+export type TogglePublishInput = z.infer<typeof TogglePublishSchema>
+export type ToggleActiveInput = z.infer<typeof ToggleActiveSchema>
