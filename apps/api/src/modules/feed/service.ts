@@ -543,7 +543,8 @@ export class FeedService {
 
   async getTrending(universityId: string) {
     const pinnedRows = await db('posts')
-      .join('profiles', 'profiles.user_id', 'posts.author_id')
+      .join('users', 'users.id', 'posts.author_id')
+      .join('profiles', 'profiles.user_id', 'users.id')
       .select(
         'posts.id',
         'posts.content',
@@ -558,11 +559,12 @@ export class FeedService {
       .join('post_tags', 'post_tags.tag_id', 'tags.id')
       .join('posts', 'posts.id', 'post_tags.post_id')
       .select('tags.name')
-      .count<Array<{ name: string; post_count: string }>>('post_tags.post_id as post_count')
+      .count('post_tags.post_id as post_count')
       .where('tags.university_id', universityId)
+      .where('posts.university_id', universityId)
       .where('posts.created_at', '>', db.raw("NOW() - INTERVAL '7 days'"))
       .groupBy('tags.id', 'tags.name')
-      .orderBy('post_count', 'desc')
+      .orderByRaw('COUNT(post_tags.post_id) DESC')
       .limit(5) as Array<{ name: string; post_count: string }>
 
     return {
