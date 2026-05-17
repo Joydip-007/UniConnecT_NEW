@@ -46,6 +46,13 @@ interface TrendingData {
   }>
 }
 
+interface UserProgress {
+  profileScore: number
+  hasMadePost: boolean
+  followerCount: number
+  isVerified: boolean
+}
+
 
 function formatDate(iso: string) {
   const d = new Date(iso)
@@ -290,8 +297,6 @@ function EventMini({ event }: { event: EventItem }) {
 }
 
 
-// ── Badge progress (hardcoded until Phase 9) ─────────────
-
 interface BadgeProgressItem {
   icon: LucideIcon
   label: string
@@ -299,13 +304,6 @@ interface BadgeProgressItem {
   progress?: number
   total?: number
 }
-
-const BADGE_ITEMS: BadgeProgressItem[] = [
-  { icon: CheckCircle2, label: 'Profile complete', state: 'in-progress', progress: 80, total: 100 },
-  { icon: CheckCircle2, label: 'First post', state: 'done' },
-  { icon: Circle, label: '10 connections', state: 'in-progress', progress: 7, total: 10 },
-  { icon: Lock, label: 'Get verified', state: 'locked' },
-]
 
 function BadgeProgressRow({ item }: { item: BadgeProgressItem }) {
   const Icon = item.icon
@@ -389,6 +387,15 @@ export function RightSidebar() {
         .get<{ data: TrendingData }>('/feed/trending')
         .then((r) => r.data.data),
     staleTime: 60_000,
+  })
+
+  const { data: progress, isLoading: loadingProgress } = useQuery({
+    queryKey: ['users', 'me', 'progress'],
+    queryFn: () =>
+      api
+        .get<{ data: UserProgress }>('/users/me/progress')
+        .then((r) => r.data.data),
+    staleTime: 30_000,
   })
 
   return (
@@ -565,17 +572,58 @@ export function RightSidebar() {
         )}
       </Widget>
 
-      {/* Badge progress */}
+      {/* Your progress */}
       <Widget>
         <SectionHeader title="Your progress" />
-        <div>
-          {BADGE_ITEMS.map((item) => (
-            <BadgeProgressRow key={item.label} item={item} />
-          ))}
-        </div>
-        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
-          Earn badges by being active — posting, connecting, and getting verified.
-        </p>
+
+        {loadingProgress ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SkeletonLine width={14} height={14} />
+                <SkeletonLine width="60%" />
+              </div>
+            ))}
+          </div>
+        ) : progress ? (
+          <>
+            <div>
+              {(
+                [
+                  {
+                    icon: progress.profileScore === 100 ? CheckCircle2 : Circle,
+                    label: 'Profile complete',
+                    state: progress.profileScore === 100 ? 'done' : 'in-progress',
+                    progress: progress.profileScore,
+                    total: 100,
+                  },
+                  {
+                    icon: progress.hasMadePost ? CheckCircle2 : Circle,
+                    label: 'First post',
+                    state: progress.hasMadePost ? 'done' : 'in-progress',
+                  },
+                  {
+                    icon: progress.followerCount >= 10 ? CheckCircle2 : Circle,
+                    label: '10 connections',
+                    state: progress.followerCount >= 10 ? 'done' : 'in-progress',
+                    progress: Math.min(progress.followerCount, 10),
+                    total: 10,
+                  },
+                  {
+                    icon: progress.isVerified ? CheckCircle2 : Lock,
+                    label: 'Get verified',
+                    state: progress.isVerified ? 'done' : 'locked',
+                  },
+                ] as BadgeProgressItem[]
+              ).map((item) => (
+                <BadgeProgressRow key={item.label} item={item} />
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
+              Earn badges by being active — posting, connecting, and getting verified.
+            </p>
+          </>
+        ) : null}
       </Widget>
     </aside>
   )
