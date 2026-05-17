@@ -5,6 +5,7 @@ import { getIo } from '../../socket'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
 import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput } from './schema'
+import { notificationsService } from '../notifications/service'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
 type ReactionType = 'like' | 'love' | 'insightful' | 'celebrate'
@@ -86,6 +87,7 @@ export class FeedService {
   async listPosts(universityId: string, userId: string, query: PostListQuery) {
     const countQuery = db('posts').where('posts.university_id', universityId)
     if (query.type) countQuery.andWhere('posts.type', query.type)
+    if (query.authorId) countQuery.andWhere('posts.author_id', query.authorId)
 
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
@@ -95,6 +97,7 @@ export class FeedService {
       .where('posts.university_id', universityId)
       .modify((builder) => {
         if (query.type) builder.andWhere('posts.type', query.type)
+        if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
       })
       .orderBy('posts.is_pinned', 'desc')
       .orderBy('posts.created_at', 'desc')
@@ -251,11 +254,27 @@ export class FeedService {
     const payload = { postId, userId: context.userId, reactionType, reactionCounts }
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit('post:reaction', payload)
-    io.to(`uni:${context.universityId}`).emit('feed:reaction:new', {
-      postId,
-      reactionType,
-      count: reactionCounts[reactionType],
-    })
+    io.to(`uni:${context.universityId}`).emit('feed:reaction:updated', { postId, reactionCounts })
+
+    // Notify post author (fire-and-forget)
+    const post = await db('posts')
+      .select<{ author_id: string }>('author_id')
+      .where({ id: postId })
+      .first()
+    if (post && post.author_id !== context.userId) {
+      const actorName = await notificationsService.getActorName(context.userId)
+      notificationsService
+        .createNotification({
+          userId: post.author_id,
+          type: 'post_reaction',
+          actorId: context.userId,
+          referenceId: postId,
+          referenceType: 'post',
+          content: `${actorName} reacted to your post`,
+        })
+        .catch((err: unknown) => logger.warn('Failed to create reaction notification', { err }))
+    }
+
     return payload
   }
 
@@ -274,11 +293,7 @@ export class FeedService {
     const payload = { postId, userId: context.userId, reactionType: null, reactionCounts }
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit('post:reaction', payload)
-    io.to(`uni:${context.universityId}`).emit('feed:reaction:new', {
-      postId,
-      reactionType: 'like',
-      count: reactionCounts.like,
-    })
+    io.to(`uni:${context.universityId}`).emit('feed:reaction:updated', { postId, reactionCounts })
     return payload
   }
 
@@ -350,7 +365,64 @@ export class FeedService {
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit('post:comment', { postId, comment })
     io.to(`uni:${context.universityId}`).emit('feed:comment:new', { postId, comment })
+
+    // Notify post author (fire-and-forget)
+    const postForNotif = await db('posts')
+      .select<{ author_id: string }>('author_id')
+      .where({ id: postId })
+      .first()
+    if (postForNotif && postForNotif.author_id !== context.userId) {
+      const actorName = await notificationsService.getActorName(context.userId)
+      notificationsService
+        .createNotification({
+          userId: postForNotif.author_id,
+          type: 'post_comment',
+          actorId: context.userId,
+          referenceId: postId,
+          referenceType: 'post',
+          content: `${actorName} commented on your post`,
+        })
+        .catch((err: unknown) => logger.warn('Failed to create comment notification', { err }))
+    }
+
     return comment
+  }
+
+  async deleteComment(context: AuthContext, postId: string, commentId: string) {
+    const comment = await db('comments')
+      .select<{ id: string; author_id: string }>('id', 'author_id')
+      .where({ id: commentId, post_id: postId })
+      .first()
+    if (!comment) throw notFound('Comment not found', 'COMMENT_NOT_FOUND')
+    if (comment.author_id !== context.userId && context.role !== 'admin') {
+      throw forbidden('Cannot delete this comment', 'COMMENT_FORBIDDEN')
+    }
+    await db('reactions').where({ target_id: commentId, target_type: 'comment' }).delete()
+    await db('comments').where({ id: commentId }).delete()
+    const io = getIo()
+    io.to(`uni:${context.universityId}`).emit('feed:comment:deleted', { postId, commentId })
+    return { deleted: true }
+  }
+
+  async upsertCommentReaction(context: AuthContext, postId: string, commentId: string, reactionType: ReactionType) {
+    await assertPostInUniversity(postId, context.universityId)
+    const comment = await db('comments').where({ id: commentId, post_id: postId }).first()
+    if (!comment) throw notFound('Comment not found', 'COMMENT_NOT_FOUND')
+
+    await db('reactions')
+      .insert({ user_id: context.userId, target_id: commentId, target_type: 'comment', reaction_type: reactionType })
+      .onConflict(['user_id', 'target_id', 'target_type'])
+      .merge({ reaction_type: reactionType, created_at: db.fn.now() })
+
+    return { reacted: true }
+  }
+
+  async removeCommentReaction(context: AuthContext, postId: string, commentId: string) {
+    await assertPostInUniversity(postId, context.universityId)
+    await db('reactions')
+      .where({ user_id: context.userId, target_id: commentId, target_type: 'comment' })
+      .delete()
+    return { removed: true }
   }
 
   async votePoll(context: AuthContext, postId: string, input: { poll_option_id: string }) {
@@ -467,6 +539,46 @@ export class FeedService {
     )
 
     return posts.map((post) => ({ ...post, poll: pollByPost.get(post.id) ?? null }))
+  }
+
+  async getTrending(universityId: string) {
+    const pinnedRows = await db('posts')
+      .join('users', 'users.id', 'posts.author_id')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .select(
+        'posts.id',
+        'posts.content',
+        'posts.created_at',
+        db.raw("profiles.full_name as author_name"),
+      )
+      .where({ 'posts.university_id': universityId, 'posts.is_pinned': true })
+      .orderBy('posts.created_at', 'desc')
+      .limit(3) as Array<{ id: string; content: string; created_at: Date; author_name: string }>
+
+    const tagRows = await db('tags')
+      .join('post_tags', 'post_tags.tag_id', 'tags.id')
+      .join('posts', 'posts.id', 'post_tags.post_id')
+      .select('tags.name')
+      .count('post_tags.post_id as post_count')
+      .where('tags.university_id', universityId)
+      .where('posts.university_id', universityId)
+      .where('posts.created_at', '>', db.raw("NOW() - INTERVAL '7 days'"))
+      .groupBy('tags.id', 'tags.name')
+      .orderByRaw('COUNT(post_tags.post_id) DESC')
+      .limit(5) as Array<{ name: string; post_count: string }>
+
+    return {
+      pinnedPosts: pinnedRows.map((p) => ({
+        id: p.id,
+        content: String(p.content).slice(0, 120),
+        authorName: p.author_name,
+        createdAt: p.created_at,
+      })),
+      trendingTags: tagRows.map((t) => ({
+        name: t.name,
+        postCount: Number(t.post_count),
+      })),
+    }
   }
 }
 

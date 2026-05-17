@@ -11,4 +11,6 @@ export interface ApiError {
 }
 
 export type { User, UserProfile, UserRole } from './types/user'
+export type { FeedPost, FeedPoll, FeedPollOption, FeedPostAuthor, FeedComment } from './types/feed'
 export * from './schemas/auth'
+export * from './schemas/users'

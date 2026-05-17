@@ -64,6 +64,11 @@ export const getSuggestions = asyncHandler(async (req: Request, res: Response) =
   sendSuccess(res, await usersService.getSuggestions(context.userId, context.universityId))
 })
 
+export const getProgress = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await usersService.getProgress(context.userId, context.universityId))
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
   return req.user

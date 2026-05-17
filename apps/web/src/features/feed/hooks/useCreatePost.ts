@@ -1,0 +1,33 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/axios'
+import type { FeedPost } from '@uniconnect/shared'
+import { POSTS_FEED_KEY, type FeedInfiniteData, type FeedPage } from './usePosts'
+
+export interface CreatePostInput {
+  type: 'post' | 'announcement' | 'lost_found' | 'event_promo'
+  content: string
+  media_urls?: string[]
+  poll?: { question: string; options: string[]; expires_at?: string | null }
+  group_id?: string | null
+}
+
+export function useCreatePost() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreatePostInput) =>
+      api.post<{ data: FeedPost }>('/posts', input).then((r) => r.data.data),
+    onSuccess: (newPost) => {
+      queryClient.setQueriesData<FeedInfiniteData>(
+        { queryKey: POSTS_FEED_KEY },
+        (old) => {
+          if (!old || old.pages.length === 0) return old
+          const [first, ...rest] = old.pages as [FeedPage, ...FeedPage[]]
+          return {
+            ...old,
+            pages: [{ ...first, items: [newPost, ...first.items], total: first.total + 1 }, ...rest],
+          }
+        },
+      )
+    },
+  })
+}

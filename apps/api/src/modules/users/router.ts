@@ -5,6 +5,7 @@ import { validate, validateRequest } from '../../middleware/validate'
 import {
   followUser,
   getMe,
+  getProgress,
   getSuggestions,
   getUser,
   listFollowers,
@@ -21,6 +22,7 @@ usersRouter.use(requireAuth, resolveUniversity)
 
 usersRouter.get('/me', getMe)
 usersRouter.patch('/me', validate(UpdateProfileSchema), updateMe)
+usersRouter.get('/me/progress', getProgress)
 usersRouter.get('/suggestions', getSuggestions)
 usersRouter.get('/', validateRequest({ query: UserListQuerySchema }), listUsers)
 usersRouter.get('/:userId', getUser)

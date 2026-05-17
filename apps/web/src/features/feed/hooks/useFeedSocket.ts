@@ -2,15 +2,10 @@ import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { InfiniteData } from '@tanstack/react-query'
 import { socket } from '@/lib/socket'
-import type { FeedPost } from '@/features/feed/components/PostCard'
+import type { FeedPost, FeedPoll } from '@uniconnect/shared'
+import { POSTS_FEED_KEY, type FeedInfiniteData, type FeedPage } from './usePosts'
 
 // ── Cache shapes ───────────────────────────────────────────────────────────────
-
-interface FeedPage {
-  items: FeedPost[]
-  hasMore: boolean
-  page: number
-}
 
 // NewsPage not yet built — key and shape follow project conventions.
 interface NewsItem {
@@ -25,20 +20,14 @@ interface NewsPage {
 
 // ── Socket payload shapes (docs/socket-events.md#feed-events) ─────────────────
 
-interface FeedPostNewPayload {
-  post: FeedPost
-}
-
-interface FeedReactionNewPayload {
+interface FeedPostNewPayload { post: FeedPost }
+interface FeedReactionUpdatedPayload {
   postId: string
-  reactionType: keyof FeedPost['reactionCounts']
-  count: number
+  reactionCounts: FeedPost['reactionCounts']
 }
-
-interface FeedCommentNewPayload {
-  postId: string
-  comment: unknown
-}
+interface FeedCommentNewPayload { postId: string; comment: unknown }
+interface FeedCommentDeletedPayload { postId: string; commentId: string }
+interface FeedPollUpdatedPayload { pollId: string; options: FeedPoll['options'] }
 
 interface NewsPublishedPayload {
   news: NewsItem
@@ -46,7 +35,6 @@ interface NewsPublishedPayload {
 
 // ── Partial query key prefixes for fuzzy matching ─────────────────────────────
 
-const FEED_KEY_PREFIX = ['posts', 'feed'] as const
 const NEWS_KEY_PREFIX = ['news', 'list'] as const
 
 // ── Hook ───────────────────────────────────────────────────────────────────────
@@ -58,36 +46,28 @@ export function useFeedSocket(universityId: string | undefined) {
     if (!universityId) return
 
     function onPostNew({ post }: FeedPostNewPayload) {
-      queryClient.setQueriesData<InfiniteData<FeedPage>>(
-        { queryKey: FEED_KEY_PREFIX },
+      queryClient.setQueriesData<FeedInfiniteData>(
+        { queryKey: POSTS_FEED_KEY },
         (old) => {
           if (!old || old.pages.length === 0) return old
           const [first, ...rest] = old.pages as [FeedPage, ...FeedPage[]]
-          return {
-            ...old,
-            pages: [{ ...first, items: [post, ...first.items] }, ...rest],
-          }
+          // Avoid duplicates (post may already be in cache from optimistic insert)
+          if (first.items.some((p) => p.id === post.id)) return old
+          return { ...old, pages: [{ ...first, items: [post, ...first.items] }, ...rest] }
         },
       )
     }
 
-    function onReactionNew({ postId, reactionType, count }: FeedReactionNewPayload) {
-      queryClient.setQueriesData<InfiniteData<FeedPage>>(
-        { queryKey: FEED_KEY_PREFIX },
+    function onReactionUpdated({ postId, reactionCounts }: FeedReactionUpdatedPayload) {
+      queryClient.setQueriesData<FeedInfiniteData>(
+        { queryKey: POSTS_FEED_KEY },
         (old) => {
           if (!old) return old
           return {
             ...old,
             pages: old.pages.map((page) => ({
               ...page,
-              items: page.items.map((post) =>
-                post.id === postId
-                  ? {
-                      ...post,
-                      reactionCounts: { ...post.reactionCounts, [reactionType]: count },
-                    }
-                  : post,
-              ),
+              items: page.items.map((p) => (p.id === postId ? { ...p, reactionCounts } : p)),
             })),
           }
         },
@@ -95,18 +75,61 @@ export function useFeedSocket(universityId: string | undefined) {
     }
 
     function onCommentNew({ postId }: FeedCommentNewPayload) {
-      queryClient.setQueriesData<InfiniteData<FeedPage>>(
-        { queryKey: FEED_KEY_PREFIX },
+      queryClient.setQueriesData<FeedInfiniteData>(
+        { queryKey: POSTS_FEED_KEY },
         (old) => {
           if (!old) return old
           return {
             ...old,
             pages: old.pages.map((page) => ({
               ...page,
-              items: page.items.map((post) =>
-                post.id === postId
-                  ? { ...post, commentCount: post.commentCount + 1 }
-                  : post,
+              items: page.items.map((p) =>
+                p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p,
+              ),
+            })),
+          }
+        },
+      )
+    }
+
+    function onCommentDeleted({ postId }: FeedCommentDeletedPayload) {
+      queryClient.setQueriesData<FeedInfiniteData>(
+        { queryKey: POSTS_FEED_KEY },
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((p) =>
+                p.id === postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p,
+              ),
+            })),
+          }
+        },
+      )
+    }
+
+    function onPollUpdated({ pollId, options }: FeedPollUpdatedPayload) {
+      queryClient.setQueriesData<FeedInfiniteData>(
+        { queryKey: POSTS_FEED_KEY },
+        (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items.map((p) =>
+                p.poll?.id === pollId
+                  ? {
+                      ...p,
+                      poll: {
+                        ...p.poll,
+                        options,
+                        totalVotes: options.reduce((sum, o) => sum + o.voteCount, 0),
+                      },
+                    }
+                  : p,
               ),
             })),
           }
@@ -129,14 +152,18 @@ export function useFeedSocket(universityId: string | undefined) {
     }
 
     socket.on('feed:post:new', onPostNew)
-    socket.on('feed:reaction:new', onReactionNew)
+    socket.on('feed:reaction:updated', onReactionUpdated)
     socket.on('feed:comment:new', onCommentNew)
+    socket.on('feed:comment:deleted', onCommentDeleted)
+    socket.on('feed:poll:updated', onPollUpdated)
     socket.on('news:published', onNewsPublished)
 
     return () => {
       socket.off('feed:post:new', onPostNew)
-      socket.off('feed:reaction:new', onReactionNew)
+      socket.off('feed:reaction:updated', onReactionUpdated)
       socket.off('feed:comment:new', onCommentNew)
+      socket.off('feed:comment:deleted', onCommentDeleted)
+      socket.off('feed:poll:updated', onPollUpdated)
       socket.off('news:published', onNewsPublished)
     }
   }, [universityId, queryClient])
