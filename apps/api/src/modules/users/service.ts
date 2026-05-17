@@ -47,12 +47,20 @@ export class UsersService {
     const exists = await db('users').where({ id: userId, university_id: universityId }).first()
     if (!exists) throw notFound('User not found')
 
-    await db('profiles')
-      .where({ user_id: userId })
-      .update({
-        ...input,
-        updated_at: db.fn.now(),
-      })
+    const update: Record<string, unknown> = { updated_at: db.fn.now() }
+    if (input.fullName !== undefined) update.full_name = input.fullName
+    if (input.bio !== undefined) update.bio = input.bio
+    if (input.headline !== undefined) update.headline = input.headline
+    if (input.department !== undefined) update.department = input.department
+    if (input.batchYear !== undefined) update.batch_year = input.batchYear
+    if (input.linkedinUrl !== undefined) update.linkedin_url = input.linkedinUrl
+    if (input.phone !== undefined) update.phone = input.phone
+    if (input.skills !== undefined) update.skills = input.skills
+    if (input.avatarUrl !== undefined) update.avatar_url = input.avatarUrl
+    if (input.coverUrl !== undefined) update.cover_url = input.coverUrl
+    if (input.isOpenToWork !== undefined) update.is_open_to_work = input.isOpenToWork
+
+    await db('profiles').where({ user_id: userId }).update(update)
 
     return this.getCurrentUser(userId, universityId)
   }
@@ -70,7 +78,7 @@ export class UsersService {
     const [followers, following, posts, isFollowingRow] = await Promise.all([
       countFollows('following_id', targetUserId, universityId),
       countFollows('follower_id', targetUserId, universityId),
-      db('posts').where({ user_id: targetUserId, is_deleted: false }).count<CountRow[]>({ count: '*' }).then(([r]) => Number(r.count)),
+      db('posts').where({ author_id: targetUserId }).count<CountRow[]>({ count: '*' }).then(([r]) => Number(r.count)),
       currentUserId !== targetUserId
         ? db('follows').where({ follower_id: currentUserId, following_id: targetUserId }).first()
         : Promise.resolve(null),
@@ -212,6 +220,63 @@ export class UsersService {
       .limit(10) as UserProfileRow[]
 
     return rows.map((row) => toUserProfile(row, { includePhone: false }))
+  }
+
+  async getProgress(userId: string, universityId: string) {
+    const row = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .select(
+        'users.is_verified',
+        'profiles.bio',
+        'profiles.headline',
+        'profiles.department',
+        'profiles.batch_year',
+        'profiles.avatar_url',
+        'profiles.skills',
+        'profiles.linkedin_url',
+      )
+      .where({ 'users.id': userId, 'users.university_id': universityId })
+      .first<{
+        is_verified: boolean
+        bio: string | null
+        headline: string | null
+        department: string | null
+        batch_year: string | null
+        avatar_url: string | null
+        skills: string[] | null
+        linkedin_url: string | null
+      }>()
+
+    if (!row) throw notFound('User not found')
+
+    const fields = [
+      Boolean(row.bio),
+      Boolean(row.headline),
+      Boolean(row.department),
+      Boolean(row.batch_year),
+      Boolean(row.avatar_url),
+      Array.isArray(row.skills) && row.skills.length >= 1,
+      Boolean(row.linkedin_url),
+    ]
+    const profileScore = Math.round((fields.filter(Boolean).length / fields.length) * 100)
+
+    const [postResult] = await db('posts')
+      .where({ author_id: userId, university_id: universityId })
+      .count<[{ count: string }]>({ count: '*' })
+    const hasMadePost = Number(postResult.count) > 0
+
+    const [followerResult] = await db('follows')
+      .join('users', 'users.id', 'follows.follower_id')
+      .where({ 'follows.following_id': userId, 'users.university_id': universityId })
+      .count<[{ count: string }]>({ count: '*' })
+    const followerCount = Number(followerResult.count)
+
+    return {
+      profileScore,
+      hasMadePost,
+      followerCount,
+      isVerified: row.is_verified,
+    }
   }
 }
 
