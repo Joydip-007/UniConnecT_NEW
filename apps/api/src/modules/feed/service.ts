@@ -5,6 +5,7 @@ import { getIo } from '../../socket'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
 import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput } from './schema'
+import { notificationsService } from '../notifications/service'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
 type ReactionType = 'like' | 'love' | 'insightful' | 'celebrate'
@@ -253,11 +254,27 @@ export class FeedService {
     const payload = { postId, userId: context.userId, reactionType, reactionCounts }
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit('post:reaction', payload)
-    io.to(`uni:${context.universityId}`).emit('feed:reaction:new', {
-      postId,
-      reactionType,
-      count: reactionCounts[reactionType],
-    })
+    io.to(`uni:${context.universityId}`).emit('feed:reaction:updated', { postId, reactionCounts })
+
+    // Notify post author (fire-and-forget)
+    const post = await db('posts')
+      .select<{ author_id: string }>('author_id')
+      .where({ id: postId })
+      .first()
+    if (post && post.author_id !== context.userId) {
+      const actorName = await notificationsService.getActorName(context.userId)
+      notificationsService
+        .createNotification({
+          userId: post.author_id,
+          type: 'post_reaction',
+          actorId: context.userId,
+          referenceId: postId,
+          referenceType: 'post',
+          content: `${actorName} reacted to your post`,
+        })
+        .catch((err: unknown) => logger.warn('Failed to create reaction notification', { err }))
+    }
+
     return payload
   }
 
@@ -276,11 +293,7 @@ export class FeedService {
     const payload = { postId, userId: context.userId, reactionType: null, reactionCounts }
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit('post:reaction', payload)
-    io.to(`uni:${context.universityId}`).emit('feed:reaction:new', {
-      postId,
-      reactionType: 'like',
-      count: reactionCounts.like,
-    })
+    io.to(`uni:${context.universityId}`).emit('feed:reaction:updated', { postId, reactionCounts })
     return payload
   }
 
@@ -352,6 +365,26 @@ export class FeedService {
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit('post:comment', { postId, comment })
     io.to(`uni:${context.universityId}`).emit('feed:comment:new', { postId, comment })
+
+    // Notify post author (fire-and-forget)
+    const postForNotif = await db('posts')
+      .select<{ author_id: string }>('author_id')
+      .where({ id: postId })
+      .first()
+    if (postForNotif && postForNotif.author_id !== context.userId) {
+      const actorName = await notificationsService.getActorName(context.userId)
+      notificationsService
+        .createNotification({
+          userId: postForNotif.author_id,
+          type: 'post_comment',
+          actorId: context.userId,
+          referenceId: postId,
+          referenceType: 'post',
+          content: `${actorName} commented on your post`,
+        })
+        .catch((err: unknown) => logger.warn('Failed to create comment notification', { err }))
+    }
+
     return comment
   }
 
