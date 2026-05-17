@@ -3,7 +3,15 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import { groupsService } from './service'
-import type { CreateGroupInput, GroupListQuery, PaginationQuery, UpdateGroupInput, UpdateMemberInput } from './schema'
+import type {
+  CreateGroupInput,
+  GroupListQuery,
+  InviteToGroupInput,
+  MembersQuery,
+  PaginationQuery,
+  UpdateGroupInput,
+  UpdateMemberInput,
+} from './schema'
 
 export const listGroups = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
@@ -52,7 +60,7 @@ export const listGroupMembers = asyncHandler(async (req: Request, res: Response)
   const result = await groupsService.listMembers(
     context,
     getGroupIdParam(req),
-    req.query as unknown as PaginationQuery,
+    req.query as unknown as MembersQuery,
   )
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
@@ -83,6 +91,36 @@ export const listGroupPosts = asyncHandler(async (req: Request, res: Response) =
     req.query as unknown as PaginationQuery,
   )
   sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const listGroupEvents = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listGroupEvents(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const listGroupCollaborations = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listGroupCollaborations(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const inviteToGroup = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.inviteToGroup(
+    context,
+    getGroupIdParam(req),
+    (req.body as InviteToGroupInput).userId,
+  )
+  sendSuccess(res, result, 201)
 })
 
 function getAuthContext(req: Request) {

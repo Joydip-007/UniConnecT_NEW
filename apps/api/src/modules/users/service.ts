@@ -2,6 +2,7 @@ import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, conflict, notFound } from '../../utils/errors'
+import { systemGroupsService } from '../groups/system-groups.service'
 import type { PaginationQuery, UpdateProfileInput, UserListQuery } from './schema'
 
 interface UserProfileRow {
@@ -44,8 +45,12 @@ export class UsersService {
   }
 
   async updateCurrentUser(userId: string, universityId: string, input: UpdateProfileInput) {
-    const exists = await db('users').where({ id: userId, university_id: universityId }).first()
-    if (!exists) throw notFound('User not found')
+    const existing = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId })
+      .select<{ role: UserRole; department: string | null }[]>('users.role', 'profiles.department')
+      .first()
+    if (!existing) throw notFound('User not found')
 
     const update: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.fullName !== undefined) update.full_name = input.fullName
@@ -61,6 +66,15 @@ export class UsersService {
     if (input.isOpenToWork !== undefined) update.is_open_to_work = input.isOpenToWork
 
     await db('profiles').where({ user_id: userId }).update(update)
+
+    if (input.department !== undefined && input.department !== existing.department) {
+      await systemGroupsService.syncUserMembership(
+        userId,
+        universityId,
+        { role: existing.role, department: existing.department },
+        { role: existing.role, department: input.department },
+      )
+    }
 
     return this.getCurrentUser(userId, universityId)
   }

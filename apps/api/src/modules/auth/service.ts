@@ -10,6 +10,7 @@ import { tokenService } from '../../services/token.service'
 import { AppError } from '../../utils/errors'
 import { env } from '../../config/env'
 import { logger } from '../../utils/logger'
+import { systemGroupsService } from '../groups/system-groups.service'
 import type { LoginInput, OtpPurpose, RegisterInput } from './schema'
 
 interface UserRow {
@@ -155,6 +156,10 @@ export class AuthService {
 
     const profile = await findUserWithProfile(user.id)
     if (!profile) throw new AppError('User not found', 404, 'NOT_FOUND')
+
+    await systemGroupsService
+      .addUserToSystemGroups(user.id, user.university_id, user.role, profile.department)
+      .catch((error: unknown) => logger.warn('System-groups add failed on verify', { error, userId: user.id }))
 
     const accessToken = tokenService.generateAccessToken({
       userId: user.id,

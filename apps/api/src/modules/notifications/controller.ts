@@ -27,6 +27,23 @@ export const markAllRead = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await notificationsService.markAllRead(context.userId))
 })
 
+export const deleteNotification = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await notificationsService.deleteNotification(context.userId, getNotificationIdParam(req)))
+})
+
+export const acceptGroupInvite = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const universityId = req.university?.id ?? context.universityId
+  const result = await notificationsService.acceptGroupInvite(
+    context.userId,
+    universityId,
+    context.role,
+    getNotificationIdParam(req),
+  )
+  sendSuccess(res, result)
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
   return req.user

@@ -4,6 +4,7 @@ import { db } from '../../config/db'
 import { notFound } from '../../utils/errors'
 import { emailQueue } from '../../queues/email.queue'
 import { env } from '../../config/env'
+import { systemGroupsService } from '../groups/system-groups.service'
 import type {
   CreateBulkInvitationsInput,
   CreateInvitationInput,
@@ -117,20 +118,67 @@ export class AdminService {
   }
 
   async updateUserRole(universityId: string, userId: string, input: UpdateUserRoleInput) {
+    const previous = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId })
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+        'users.role',
+        'profiles.department',
+      )
+      .first()
+
+    if (!previous) throw notFound('User not found')
+
     const updated = await db('users')
       .where({ id: userId, university_id: universityId })
       .update({ role: input.role })
 
     if (updated === 0) throw notFound('User not found')
+
+    await systemGroupsService.syncUserMembership(
+      userId,
+      universityId,
+      { role: previous.role, department: previous.department },
+      { role: input.role, department: previous.department },
+    )
+
     return { userId, role: input.role }
   }
 
   async updateUserStatus(universityId: string, userId: string, input: UpdateUserStatusInput) {
+    const previous = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId })
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+        'users.role',
+        'profiles.department',
+      )
+      .first()
+
+    if (!previous) throw notFound('User not found')
+
     const updated = await db('users')
       .where({ id: userId, university_id: universityId })
       .update({ is_active: input.is_active })
 
     if (updated === 0) throw notFound('User not found')
+
+    if (!input.is_active) {
+      await systemGroupsService.removeUserFromSystemGroups(
+        userId,
+        universityId,
+        previous.role,
+        previous.department,
+      )
+    } else {
+      await systemGroupsService.addUserToSystemGroups(
+        userId,
+        universityId,
+        previous.role,
+        previous.department,
+      )
+    }
+
     return { userId, isActive: input.is_active }
   }
 

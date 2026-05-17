@@ -6,8 +6,11 @@ import {
   createGroup,
   deleteGroup,
   getGroup,
+  inviteToGroup,
   joinGroup,
   leaveGroup,
+  listGroupCollaborations,
+  listGroupEvents,
   listGroupMembers,
   listGroupPosts,
   listGroups,
@@ -19,6 +22,8 @@ import {
 import {
   CreateGroupSchema,
   GroupListQuerySchema,
+  InviteToGroupSchema,
+  MembersQuerySchema,
   PaginationQuerySchema,
   UpdateGroupSchema,
   UpdateMemberSchema,
@@ -38,7 +43,14 @@ groupsRouter.post('/:groupId/join', joinGroup)
 groupsRouter.delete('/:groupId/leave', leaveGroup)
 groupsRouter.post('/:groupId/members', joinGroup)
 groupsRouter.delete('/:groupId/members/me', leaveGroup)
-groupsRouter.get('/:groupId/members', validateRequest({ query: PaginationQuerySchema }), listGroupMembers)
+groupsRouter.get('/:groupId/members', validateRequest({ query: MembersQuerySchema }), listGroupMembers)
 groupsRouter.patch('/:groupId/members/:userId', validate(UpdateMemberSchema), updateMember)
 groupsRouter.delete('/:groupId/members/:userId', removeMember)
 groupsRouter.get('/:groupId/posts', validateRequest({ query: PaginationQuerySchema }), listGroupPosts)
+groupsRouter.get('/:groupId/events', validateRequest({ query: PaginationQuerySchema }), listGroupEvents)
+groupsRouter.get(
+  '/:groupId/collaborations',
+  validateRequest({ query: PaginationQuerySchema }),
+  listGroupCollaborations,
+)
+groupsRouter.post('/:groupId/invitations', validate(InviteToGroupSchema), inviteToGroup)
