@@ -14,6 +14,8 @@ export const userProfileFieldsSchema = z.object({
   phone: z.string().nullable(),
   skills: z.array(z.string()),
   isOpenToWork: z.boolean(),
+  isOpenToMentorship: z.boolean(),
+  mentorshipPoints: z.number().int().nonnegative(),
 })
 
 export const publicUserProfileSchema = z.object({
@@ -35,3 +37,13 @@ export const publicUserProfileSchema = z.object({
 })
 
 export type PublicUserProfile = z.infer<typeof publicUserProfileSchema>
+
+export const themePreferenceSchema = z.enum(['light', 'dark', 'system'])
+export type ThemePreferenceInput = z.infer<typeof themePreferenceSchema>
+
+export const updateUserPreferencesSchema = z
+  .object({
+    themePreference: themePreferenceSchema.optional(),
+  })
+  .strict()
+export type UpdateUserPreferencesInput = z.infer<typeof updateUserPreferencesSchema>
