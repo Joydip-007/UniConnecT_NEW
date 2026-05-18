@@ -35,6 +35,9 @@ interface UserWithProfileRow extends UserRow {
   phone: string | null
   skills: string[] | null
   is_open_to_work: boolean
+  is_open_to_mentorship: boolean
+  mentorship_points: number
+  theme_preference: 'light' | 'dark' | 'system'
 }
 
 interface InvitationRow {
@@ -337,7 +340,7 @@ async function findUserByEmail(email: string, universityId: string) {
 
 async function findUserWithProfile(userId: string) {
   return db<UserRow>('users')
-    .join('profiles', 'profiles.user_id', 'users.id')
+    .leftJoin('profiles', 'profiles.user_id', 'users.id')
     .select(
       'users.id',
       'users.university_id',
@@ -357,6 +360,9 @@ async function findUserWithProfile(userId: string) {
       'profiles.phone',
       'profiles.skills',
       'profiles.is_open_to_work',
+      'profiles.is_open_to_mentorship',
+      'profiles.mentorship_points',
+      'users.theme_preference',
     )
     .where('users.id', userId)
     .first<UserWithProfileRow>()
@@ -364,7 +370,7 @@ async function findUserWithProfile(userId: string) {
 
 async function findUserWithProfileByEmail(email: string, universityId: string) {
   return db<UserRow>('users')
-    .join('profiles', 'profiles.user_id', 'users.id')
+    .leftJoin('profiles', 'profiles.user_id', 'users.id')
     .select(
       'users.id',
       'users.university_id',
@@ -384,6 +390,9 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
       'profiles.phone',
       'profiles.skills',
       'profiles.is_open_to_work',
+      'profiles.is_open_to_mentorship',
+      'profiles.mentorship_points',
+      'users.theme_preference',
     )
     .where({
       'users.email': email.toLowerCase(),
@@ -399,6 +408,7 @@ function toAuthUser(user: UserWithProfileRow) {
     role: user.role,
     universityId: user.university_id,
     isVerified: user.is_verified,
+    themePreference: user.theme_preference ?? 'system',
     profile: {
       fullName: user.full_name ?? '',
       bio: user.bio ?? null,
@@ -411,6 +421,8 @@ function toAuthUser(user: UserWithProfileRow) {
       phone: user.phone ?? null,
       skills: user.skills ?? [],
       isOpenToWork: user.is_open_to_work ?? false,
+      isOpenToMentorship: user.is_open_to_mentorship ?? false,
+      mentorshipPoints: user.mentorship_points ?? 0,
     },
   }
 }

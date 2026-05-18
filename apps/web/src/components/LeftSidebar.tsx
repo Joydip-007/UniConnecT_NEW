@@ -15,6 +15,7 @@ import {
   BarChart2,
   ExternalLink,
   ShieldCheck,
+  Handshake,
   type LucideIcon,
 } from 'lucide-react'
 import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
@@ -199,6 +200,7 @@ export function LeftSidebar() {
         { icon: Calendar, label: 'Events', path: PATHS.EVENTS },
         { icon: Briefcase, label: 'Jobs', path: PATHS.JOBS },
         { icon: Newspaper, label: 'News', path: PATHS.NEWS },
+        { icon: Handshake, label: 'Mentorship', path: PATHS.MENTORSHIP },
       ],
     },
     {

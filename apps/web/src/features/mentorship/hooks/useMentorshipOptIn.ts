@@ -8,7 +8,7 @@ export function useMentorshipOptIn() {
   return useMutation({
     mutationFn: (next: boolean) =>
       api
-        .patch('/users/me/profile', { isOpenToMentorship: next })
+        .patch('/users/me', { isOpenToMentorship: next })
         .then((r) => r.data.data as { profile: { isOpenToMentorship: boolean } }),
     onMutate: (next) => {
       updateProfile({ isOpenToMentorship: next })
