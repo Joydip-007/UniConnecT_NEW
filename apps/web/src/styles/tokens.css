@@ -1,25 +1,26 @@
-/* Design tokens — Warm Futuristic Dark theme. Always use var(--token) in components, never raw hex. */
-:root {
-  /* ── Surfaces (dark-mode default) ─────────────────── */
+/* Design tokens — Warm Futuristic Dark + Warm Neutral Light. */
+/* Always use var(--token) in components, never raw hex. */
+:root,
+:root[data-theme='dark'] {
+  /* ── Surfaces ─────────────────────────────────────── */
   --surface-page:     #060D1A;
   --surface-card:     #0A1628;
   --surface-raised:   #111D35;
   --surface-hover:    #1A2D4A;
 
-  /* ── Brand — UC indigo (primary interactive) ──────── */
+  /* ── Brand — UC indigo ────────────────────────────── */
   --uc-indigo:        #5B5BD6;
   --uc-indigo-l:      #7C7CF0;
   --uc-indigo-xl:     #A5A5F8;
   --uc-indigo-bg:     rgba(91, 91, 214, 0.10);
   --uc-indigo-bdr:    rgba(91, 91, 214, 0.28);
 
-  /* ── Brand — UIU orange (identity & attention) ────── */
+  /* ── Brand — UIU orange ───────────────────────────── */
   --uc-orange:        #F05A28;
   --uc-orange-l:      #F5845A;
   --uc-orange-bg:     rgba(240, 90, 40, 0.10);
   --uc-orange-bdr:    rgba(240, 90, 40, 0.28);
 
-  /* ── Brand — UC navy (avatar fallback 5th slot) ───── */
   --uc-navy:          #1E3A70;
 
   /* ── Semantic ─────────────────────────────────────── */
@@ -34,7 +35,12 @@
   --uc-red-bdr:       rgba(225, 29, 72, 0.25);
 
   /* ── Overlay ──────────────────────────────────────── */
-  --overlay-bg:       rgba(6, 13, 26, 0.75);
+  --overlay-bg:        rgba(6, 13, 26, 0.75);
+  --overlay-bg-soft:   rgba(6, 13, 26, 0.56);
+  --overlay-bg-strong: rgba(6, 13, 26, 0.86);
+  --overlay-media:     rgba(6, 13, 26, 0.68);
+  --uc-indigo-dot:     rgba(91, 91, 214, 0.30);
+  --surface-glint:     rgba(255, 255, 255, 0.04);
 
   /* ── Text ─────────────────────────────────────────── */
   --text-primary:     #EEF2FF;
@@ -53,7 +59,74 @@
   --r-xl:   20px;
   --r-pill: 999px;
 
-  /* ── Easing — custom curves for snappy UI motion ──── */
+  /* ── Easing ───────────────────────────────────────── */
   --ease-out-strong:    cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-out-expo:      cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer:        cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ── Type ─────────────────────────────────────────── */
+  --font-display: 'Satoshi', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+:root[data-theme='light'] {
+  /* ── Surfaces — Warm Neutral Light ─────────────────── */
+  --surface-page:     #FAF7F2;
+  --surface-card:     #FFFFFF;
+  --surface-raised:   #F4F0E8;
+  --surface-hover:    #EDE7DA;
+
+  /* ── Brand — darkened for AA contrast on white ─────── */
+  --uc-indigo:        #4747C2;
+  --uc-indigo-l:      #5B5BD6;
+  --uc-indigo-xl:     #7C7CF0;
+  --uc-indigo-bg:     rgba(71, 71, 194, 0.08);
+  --uc-indigo-bdr:    rgba(71, 71, 194, 0.22);
+
+  --uc-orange:        #D44A1F;
+  --uc-orange-l:      #F05A28;
+  --uc-orange-bg:     rgba(212, 74, 31, 0.10);
+  --uc-orange-bdr:    rgba(212, 74, 31, 0.28);
+
+  --uc-navy:          #1E3A70;
+
+  --uc-cyan:          #0891B2;
+  --uc-cyan-bg:       rgba(8, 145, 178, 0.08);
+  --uc-cyan-bdr:      rgba(8, 145, 178, 0.25);
+  --uc-mint:          #059669;
+  --uc-mint-bg:       rgba(5, 150, 105, 0.08);
+  --uc-mint-bdr:      rgba(5, 150, 105, 0.25);
+  --uc-red:           #BE123C;
+  --uc-red-bg:        rgba(190, 18, 60, 0.08);
+  --uc-red-bdr:       rgba(190, 18, 60, 0.22);
+
+  --overlay-bg:        rgba(250, 247, 242, 0.78);
+  --overlay-bg-soft:   rgba(250, 247, 242, 0.56);
+  --overlay-bg-strong: rgba(250, 247, 242, 0.90);
+  --overlay-media:     rgba(20, 20, 20, 0.50);
+  --uc-indigo-dot:     rgba(71, 71, 194, 0.28);
+  --surface-glint:     rgba(0, 0, 0, 0.04);
+
+  --text-primary:     #1A1F2E;
+  --text-secondary:   rgba(26, 31, 46, 0.62);
+  --text-tertiary:    rgba(26, 31, 46, 0.36);
+
+  --border-default:   rgba(0, 0, 0, 0.08);
+  --border-hover:     rgba(0, 0, 0, 0.14);
+  --border-strong:    rgba(0, 0, 0, 0.22);
+
+  /* Radius, easing, typography are theme-invariant — inherit from :root above. */
+}
+
+html[data-theme] body {
+  transition:
+    background-color 280ms var(--ease-out-strong),
+    color            280ms var(--ease-out-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme] body {
+    transition: none;
+  }
 }
