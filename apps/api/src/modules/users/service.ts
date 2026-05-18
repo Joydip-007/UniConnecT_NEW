@@ -83,6 +83,25 @@ export class UsersService {
     return this.getCurrentUser(userId, universityId)
   }
 
+  async updatePreferences(
+    userId: string,
+    universityId: string,
+    input: { themePreference?: 'light' | 'dark' | 'system' },
+  ) {
+    const update: Record<string, unknown> = { updated_at: db.fn.now() }
+    if (input.themePreference !== undefined) {
+      update.theme_preference = input.themePreference
+    }
+
+    const affected = await db('users')
+      .where({ id: userId, university_id: universityId })
+      .update(update)
+
+    if (affected === 0) throw notFound('User not found')
+
+    return this.getCurrentUser(userId, universityId)
+  }
+
   async getPublicProfile(currentUserId: string, targetUserId: string, universityId: string) {
     const user = await getUserProfileQuery()
       .where({
