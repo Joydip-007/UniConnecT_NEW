@@ -70,8 +70,7 @@ function scheduleApi(mode: ThemeMode) {
   if (apiDebounce) clearTimeout(apiDebounce)
   apiDebounce = setTimeout(() => {
     updateUserPreferences({ themePreference: mode }).catch(() => {
-      // eslint-disable-next-line no-console
-      console.warn('[themeStore] failed to persist theme preference')
+      // silently ignore — theme is already applied locally
     })
   }, API_DEBOUNCE_MS)
 }
@@ -88,7 +87,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       applyDom(mode, nextResolved)
       set({ mode, resolved: nextResolved, phase: 'idle', targetColor: null })
       if (opts.persist) {
-        try { localStorage.setItem(STORAGE_KEY, mode) } catch {}
+        try { localStorage.setItem(STORAGE_KEY, mode) } catch { /* storage unavailable */ }
         scheduleApi(mode)
       }
       bindSystemListener(mode)
@@ -101,7 +100,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       applyDom(mode, nextResolved)
       set({ mode, resolved: nextResolved, phase: 'rising' })
       if (opts.persist) {
-        try { localStorage.setItem(STORAGE_KEY, mode) } catch {}
+        try { localStorage.setItem(STORAGE_KEY, mode) } catch { /* storage unavailable */ }
         scheduleApi(mode)
       }
       bindSystemListener(mode)
