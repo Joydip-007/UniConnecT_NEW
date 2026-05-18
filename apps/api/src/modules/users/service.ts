@@ -88,7 +88,7 @@ export class UsersService {
     universityId: string,
     input: { themePreference?: 'light' | 'dark' | 'system' },
   ) {
-    const update: Record<string, unknown> = { updated_at: db.fn.now() }
+    const update: Record<string, unknown> = {}
     if (input.themePreference !== undefined) {
       update.theme_preference = input.themePreference
     }
