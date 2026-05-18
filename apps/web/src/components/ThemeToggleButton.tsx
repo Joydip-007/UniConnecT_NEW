@@ -22,7 +22,6 @@ export function ThemeToggleButton({ size = 36, className }: ThemeToggleButtonPro
     background: hovered ? 'var(--surface-hover)' : 'var(--surface-raised)',
     color: 'var(--text-primary)',
     border: '0.5px solid var(--border-default)',
-    boxShadow: '0 0 0 0.5px var(--border-strong)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
