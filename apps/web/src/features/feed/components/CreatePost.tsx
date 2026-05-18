@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { BarChart2, Bold, Image, Italic, Link, X } from 'lucide-react'
+import { BarChart2, Bold, Image, Italic, Link, Sparkles, X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import type { FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
@@ -8,6 +9,8 @@ import { avatarColor, getInitials } from '@/utils/avatar'
 import { api } from '@/lib/axios'
 import { useCreatePost } from '@/features/feed/hooks/useCreatePost'
 import { useUpdatePost } from '@/features/feed/hooks/useUpdatePost'
+
+const FIRST_POST_HINT_KEY = 'uc:onboard:first-post-dismissed'
 
 type TabMode = 'photo' | 'poll' | null
 type PostType = 'post' | 'announcement'
@@ -33,6 +36,7 @@ interface Props {
 export function CreatePost({ editPost, onDismissEdit }: Props) {
   const user = useAuthStore((s) => s.user)
   const [open, setOpen] = useState(false)
+  const [instantOpen, setInstantOpen] = useState(false)
   const [text, setText] = useState('')
   const [postType, setPostType] = useState<PostType>('post')
   const [activeTab, setActiveTab] = useState<TabMode>(null)
@@ -58,9 +62,38 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
   const isSubmitting = createPost.isPending || updatePost.isPending
   const canAnnounce = user?.role === 'faculty' || user?.role === 'admin'
 
+  // First-post hint — dedupes the React Query call shared with RightSidebar
+  const { data: progress } = useQuery({
+    queryKey: ['users', 'me', 'progress'],
+    queryFn: () =>
+      api
+        .get<{ data: { profileScore: number; hasMadePost: boolean; followerCount: number; isVerified: boolean } }>(
+          '/users/me/progress',
+        )
+        .then((r) => r.data.data),
+    staleTime: 30_000,
+  })
+  const [firstHintDismissed, setFirstHintDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(FIRST_POST_HINT_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const showFirstPostHint = !isEditMode && progress != null && !progress.hasMadePost && !firstHintDismissed
+  function dismissFirstPostHint() {
+    setFirstHintDismissed(true)
+    try {
+      localStorage.setItem(FIRST_POST_HINT_KEY, '1')
+    } catch {
+      /* localStorage may be blocked; the in-memory flag still hides the hint for this session */
+    }
+  }
+
   // Pre-fill when entering edit mode
   useEffect(() => {
     if (!editPost) return
+    setInstantOpen(false)
     setOpen(true)
     setText(editPost.content)
     setPostType(editPost.type === 'announcement' ? 'announcement' : 'post')
@@ -83,6 +116,17 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
     if (open) setTimeout(() => textareaRef.current?.focus(), 50)
   }, [open])
 
+  // Open when the `c` keyboard shortcut fires
+  useEffect(() => {
+    function handleOpenEvent(event: Event) {
+      const customEvent = event as CustomEvent<{ instant?: boolean }>
+      setInstantOpen(customEvent.detail?.instant === true)
+      setOpen(true)
+    }
+    window.addEventListener('uc:open-create-post', handleOpenEvent)
+    return () => window.removeEventListener('uc:open-create-post', handleOpenEvent)
+  }, [])
+
   if (!user) return null
 
   const name = user.profile.fullName ?? ''
@@ -90,6 +134,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
 
   function handleClose() {
     setOpen(false)
+    setInstantOpen(false)
     resetForm()
     onDismissEdit?.()
   }
@@ -241,10 +286,54 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
           padding: 16,
         }}
       >
+        {showFirstPostHint && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              background: 'var(--uc-orange-bg)',
+              border: '0.5px solid var(--uc-orange-bdr)',
+              borderRadius: 'var(--r-md)',
+              padding: '10px 12px',
+              marginBottom: 12,
+            }}
+          >
+            <Sparkles size={14} style={{ color: 'var(--uc-orange-l)', flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--uc-orange-l)' }}>
+                Say hi to your campus
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Your first post helps people find you. Share a question, intro, or something happening this week.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={dismissFirstPostHint}
+              aria-label="Dismiss"
+              className="press-feedback"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                padding: 2,
+                lineHeight: 0,
+              }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar initials={getInitials(name)} color={avatarColor(user.id)} size={40} />
           <button
-            onClick={() => setOpen(true)}
+            className="interactive-surface"
+            onClick={() => {
+              setInstantOpen(false)
+              setOpen(true)
+            }}
             style={{
               flex: 1,
               height: 40,
@@ -281,12 +370,13 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
         >
           {/* Backdrop */}
           <div
-            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }}
+            style={{ position: 'absolute', inset: 0, background: 'var(--overlay-bg-strong)' }}
             onClick={handleClose}
           />
 
           {/* Modal panel */}
           <div
+            className={instantOpen ? undefined : 'modal-panel-enter'}
             style={{
               position: 'relative',
               width: '100%',
@@ -356,7 +446,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                           postType === t ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
                         border: 'none',
                         cursor: 'pointer',
-                        transition: 'background 150ms, color 150ms',
+                        transition: 'background 150ms ease, color 150ms ease',
                       }}
                     >
                       {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -368,6 +458,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
               <button
                 type="button"
                 onClick={handleClose}
+                className="press-feedback row-hover-bg"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -397,6 +488,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                     type="button"
                     title={title}
                     onClick={action}
+                    className="interactive-surface"
                     style={{
                       background: 'transparent',
                       border: '0.5px solid var(--border-default)',
@@ -459,11 +551,12 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                           <button
                             type="button"
                             onClick={() => removePhoto(p.previewUrl)}
+                            className="press-feedback"
                             style={{
                               position: 'absolute',
                               top: 6,
                               right: 6,
-                              background: 'rgba(0,0,0,0.6)',
+                              background: 'var(--overlay-media)',
                               border: 'none',
                               borderRadius: '50%',
                               width: 24,
@@ -472,7 +565,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                               alignItems: 'center',
                               justifyContent: 'center',
                               cursor: 'pointer',
-                              color: '#fff',
+                              color: 'var(--text-primary)',
                             }}
                           >
                             <X size={12} strokeWidth={2} />
@@ -482,13 +575,13 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                               style={{
                                 position: 'absolute',
                                 inset: 0,
-                                background: 'rgba(0,0,0,0.4)',
+                                background: 'var(--overlay-bg-soft)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                               }}
                             >
-                              <span style={{ color: '#fff', fontSize: 12 }}>Uploading…</span>
+                              <span style={{ color: 'var(--text-primary)', fontSize: 12 }}>Uploading…</span>
                             </div>
                           )}
                         </div>
@@ -509,6 +602,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading}
+                        className="interactive-surface"
                         style={{
                           width: '100%',
                           padding: '10px',
@@ -570,6 +664,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                         <button
                           type="button"
                           onClick={() => removePollOption(opt.id)}
+                          className="press-feedback"
                           style={{
                             background: 'transparent',
                             border: 'none',
@@ -589,6 +684,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                     <button
                       type="button"
                       onClick={addPollOption}
+                      className="press-feedback"
                       style={{
                         fontSize: 12,
                         color: 'var(--uc-indigo-xl)',
@@ -690,6 +786,7 @@ function TabBtn({ active, disabled, title, activeColor, activeBg, onClick, child
       title={title}
       onClick={onClick}
       disabled={disabled}
+      className="press-feedback"
       style={{
         padding: '6px 10px',
         border: '0.5px solid var(--border-default)',
@@ -698,7 +795,7 @@ function TabBtn({ active, disabled, title, activeColor, activeBg, onClick, child
         display: 'flex',
         alignItems: 'center',
         gap: 4,
-        transition: 'background 150ms, color 150ms',
+        transition: 'background 150ms ease, color 150ms ease',
         color: active ? activeColor : 'var(--text-secondary)',
         background: active ? activeBg : 'transparent',
         opacity: disabled ? 0.4 : 1,

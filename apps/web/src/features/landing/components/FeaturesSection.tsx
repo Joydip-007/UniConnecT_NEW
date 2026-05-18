@@ -1,36 +1,13 @@
 import { MessageCircle, Briefcase, MessageSquare, Calendar, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
-
-function Skel({ w, h = 7 }: { w: number | string; h?: number }) {
-  return (
-    <div
-      style={{
-        height: h,
-        borderRadius: 4,
-        background: 'var(--border-strong)',
-        width: w,
-        flexShrink: 0,
-      }}
-    />
-  )
-}
+import { Skel } from './Skel'
 
 const CARD_BASE: React.CSSProperties = {
   background: 'var(--surface-card)',
   border: '0.5px solid var(--border-default)',
   borderRadius: 22,
   padding: 30,
-  transition: 'border-color 0.3s, transform 0.3s',
-}
-
-function hoverOn(e: React.MouseEvent<HTMLDivElement>) {
-  e.currentTarget.style.borderColor = 'var(--border-hover)'
-  e.currentTarget.style.transform = 'translateY(-4px)'
-}
-function hoverOff(e: React.MouseEvent<HTMLDivElement>) {
-  e.currentTarget.style.borderColor = 'var(--border-default)'
-  e.currentTarget.style.transform = 'translateY(0)'
 }
 
 interface IconCircleProps {
@@ -99,19 +76,17 @@ export function FeaturesSection() {
                 margin: '0 0 13px',
                 fontSize: 12,
                 fontWeight: 500,
-                letterSpacing: '.1em',
-                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
                 color: 'var(--uc-indigo-l)',
               }}
             >
               Everything in one place
             </p>
-            {/* font-weight 800 — section heading exception for landing page */}
             <h2
               style={{
                 margin: '0 0 16px',
                 fontSize: 'clamp(32px, 4vw, 48px)',
-                fontWeight: 800,
+                fontWeight: 500,
                 letterSpacing: '-2px',
                 lineHeight: 1.12,
                 color: 'var(--text-primary)',
@@ -129,7 +104,7 @@ export function FeaturesSection() {
               }}
             >
               Eight deeply integrated modules covering everything from career growth to daily campus
-              logistics — all inside one private, university-verified network.
+              logistics, all inside one private, university-verified network.
             </p>
           </div>
         </div>
@@ -146,11 +121,9 @@ export function FeaturesSection() {
         >
           {/* Card 1 — Social feed (span 2) */}
           <div
-            className="reveal uc-span-2"
+            className="reveal uc-span-2 card-hover-border"
             data-delay="0"
             style={{ ...CARD_BASE, gridColumn: 'span 2' }}
-            onMouseEnter={hoverOn}
-            onMouseLeave={hoverOff}
           >
             <IconCircle icon={MessageCircle} bg="var(--uc-indigo-bg)" color="var(--uc-indigo-l)" />
             <h3 style={{ margin: '0 0 9px', fontSize: 19, fontWeight: 500, letterSpacing: '-.3px', color: 'var(--text-primary)' }}>
@@ -158,7 +131,7 @@ export function FeaturesSection() {
             </h3>
             <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
               A university-scoped feed where students, alumni, and faculty post updates, share
-              resources, and celebrate campus moments — with reactions, comments, and rich media.
+              resources, and celebrate campus moments, with reactions, comments, and rich media.
             </p>
             <Tag label="Must-have" bg="var(--uc-indigo-bg)" color="var(--uc-indigo-l)" />
 
@@ -177,32 +150,30 @@ export function FeaturesSection() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--uc-indigo)', flexShrink: 0 }} />
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Skel w="88%" />
-                  <Skel w="70%" />
-                  <Skel w="48%" />
+                  <Skel w="88%" h={7} />
+                  <Skel w="70%" h={7} />
+                  <Skel w="48%" h={7} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 7 }}>
                 <div style={{ background: 'var(--uc-indigo-bg)', border: '0.5px solid var(--uc-indigo-bdr)', borderRadius: 999, padding: '2px 10px', fontSize: 11, color: 'var(--uc-indigo-l)' }}>👍 18</div>
-                <div style={{ background: 'var(--uc-cyan-bg)', border: '0.5px solid rgba(6,182,212,.28)', borderRadius: 999, padding: '2px 10px', fontSize: 11, color: 'var(--uc-cyan)' }}>💬 6</div>
+                <div style={{ background: 'var(--uc-cyan-bg)', border: '0.5px solid var(--uc-cyan-bdr)', borderRadius: 999, padding: '2px 10px', fontSize: 11, color: 'var(--uc-cyan)' }}>💬 6</div>
               </div>
             </div>
           </div>
 
           {/* Card 2 — Job board (1 col) */}
           <div
-            className="reveal"
+            className="reveal card-hover-border"
             data-delay="80"
             style={CARD_BASE}
-            onMouseEnter={hoverOn}
-            onMouseLeave={hoverOff}
           >
             <IconCircle icon={Briefcase} bg="var(--uc-mint-bg)" color="var(--uc-mint)" />
             <h3 style={{ margin: '0 0 9px', fontSize: 19, fontWeight: 500, letterSpacing: '-.3px', color: 'var(--text-primary)' }}>
               Job board
             </h3>
             <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-              Internships and full-time roles posted by verified alumni and hiring partners — filtered
+              Internships and full-time roles posted by verified alumni and hiring partners, filtered
               for your university and major.
             </p>
             <Tag label="Alumni-powered" bg="var(--uc-mint-bg)" color="var(--uc-mint)" />
@@ -236,18 +207,16 @@ export function FeaturesSection() {
 
           {/* Card 3 — Real-time chat (1 col) */}
           <div
-            className="reveal"
+            className="reveal card-hover-border"
             data-delay="160"
             style={CARD_BASE}
-            onMouseEnter={hoverOn}
-            onMouseLeave={hoverOff}
           >
             <IconCircle icon={MessageSquare} bg="var(--uc-cyan-bg)" color="var(--uc-cyan)" />
             <h3 style={{ margin: '0 0 9px', fontSize: 19, fontWeight: 500, letterSpacing: '-.3px', color: 'var(--text-primary)' }}>
               Real-time chat
             </h3>
             <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-              Private and group conversations with instant delivery — powered by Socket.io so
+              Private and group conversations with instant delivery, powered by Socket.io so
               messages appear the moment they're sent.
             </p>
             <Tag label="Live" bg="var(--uc-cyan-bg)" color="var(--uc-cyan)" />
@@ -255,11 +224,9 @@ export function FeaturesSection() {
 
           {/* Card 4 — Events (1 col) */}
           <div
-            className="reveal"
+            className="reveal card-hover-border"
             data-delay="240"
             style={CARD_BASE}
-            onMouseEnter={hoverOn}
-            onMouseLeave={hoverOff}
           >
             <IconCircle icon={Calendar} bg="var(--uc-orange-bg)" color="var(--uc-orange-l)" />
             <h3 style={{ margin: '0 0 9px', fontSize: 19, fontWeight: 500, letterSpacing: '-.3px', color: 'var(--text-primary)' }}>
@@ -274,11 +241,9 @@ export function FeaturesSection() {
 
           {/* Card 5 — Groups & clubs (span 2) */}
           <div
-            className="reveal uc-span-2"
+            className="reveal uc-span-2 card-hover-border"
             data-delay="320"
             style={{ ...CARD_BASE, gridColumn: 'span 2' }}
-            onMouseEnter={hoverOn}
-            onMouseLeave={hoverOff}
           >
             <IconCircle icon={Users} bg="rgba(124,124,240,.12)" color="var(--uc-indigo-xl)" />
             <h3 style={{ margin: '0 0 9px', fontSize: 19, fontWeight: 500, letterSpacing: '-.3px', color: 'var(--text-primary)' }}>

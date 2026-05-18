@@ -5,6 +5,8 @@ import { AppError } from '../../utils/errors'
 import { adminService } from './service'
 import { adminContentService } from './content.service'
 import type {
+  AdminFulfillRedemptionInput,
+  AdminRedemptionListQuery,
   ContentKind,
   ContentListQuery,
   CreateBulkInvitationsInput,
@@ -154,4 +156,27 @@ export const toggleActive = asyncHandler(async (req: Request, res: Response) => 
   const id = req.params.id as string
   const { is_active } = req.body as ToggleActiveInput
   sendSuccess(res, await adminContentService.toggleActive(kind, universityId, id, is_active))
+})
+
+export const listAdminRedemptions = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const result = await adminService.listRedemptions(
+    universityId,
+    req.query as unknown as AdminRedemptionListQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const updateAdminRedemption = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  const redemptionId = req.params.redemptionId as string
+  sendSuccess(
+    res,
+    await adminService.updateRedemption(
+      universityId,
+      userId,
+      redemptionId,
+      req.body as AdminFulfillRedemptionInput,
+    ),
+  )
 })

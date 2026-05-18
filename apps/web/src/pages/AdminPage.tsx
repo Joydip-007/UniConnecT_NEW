@@ -99,13 +99,15 @@ function UsersStatCard({ total, active }: { total: number; active: number }) {
           {active.toLocaleString()} active
         </span>
       </div>
-      <div style={{ marginTop: 14, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)' }}>
+      <div style={{ marginTop: 14, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
         <div style={{
           height: '100%',
-          width: `${pct}%`,
+          width: '100%',
           background: 'var(--uc-indigo)',
           borderRadius: 'var(--r-pill)',
-          transition: 'width 0.6s var(--ease-out-strong)',
+          transform: `scaleX(${pct / 100})`,
+          transformOrigin: 'left center',
+          transition: 'transform 0.6s var(--ease-out-strong)',
         }} />
       </div>
       <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>

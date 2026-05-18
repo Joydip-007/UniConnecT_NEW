@@ -263,7 +263,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
             fontWeight: 500,
             padding: '2px 10px',
             borderRadius: 'var(--r-pill)',
-            background: 'rgba(6,13,26,0.65)',
+            background: 'var(--overlay-media)',
             border: `0.5px solid ${meta.bdr}`,
             color: meta.color,
           }}
@@ -282,7 +282,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
             alignItems: 'center',
             lineHeight: 1,
             gap: 3,
-            background: 'rgba(6,13,26,0.70)',
+            background: 'var(--overlay-media)',
             border: '0.5px solid var(--border-default)',
             borderRadius: 'var(--r-md)',
             padding: '5px 10px',
@@ -307,7 +307,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
               fontWeight: 400,
               padding: '2px 8px',
               borderRadius: 'var(--r-pill)',
-              background: 'rgba(6,13,26,0.70)',
+              background: 'var(--overlay-media)',
               border: '0.5px solid var(--border-default)',
               color: 'var(--text-tertiary)',
             }}

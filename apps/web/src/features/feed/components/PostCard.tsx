@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import rehypeSanitize from 'rehype-sanitize'
 import { formatDistanceToNow, parseISO } from 'date-fns'
+import { AnimatePresence, motion } from 'framer-motion'
+import { toast } from 'sonner'
+import { useMutation } from '@tanstack/react-query'
 import {
   Bookmark,
   MessageCircle,
@@ -18,6 +22,7 @@ import { avatarColor, getInitials } from '@/utils/avatar'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
 import { useSavePost } from '@/features/feed/hooks/useSavePost'
 import { useDeletePost } from '@/features/feed/hooks/useDeletePost'
+import { api } from '@/lib/axios'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -38,6 +43,7 @@ function roleLabel(role: FeedPost['author']['role']): string {
 function PinnedBar() {
   return (
     <div
+      className="feed-pinned-bar"
       style={{
         background: 'var(--uc-orange-bg)',
         borderBottom: '0.5px solid var(--uc-orange-bdr)',
@@ -57,18 +63,30 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
   const [localVote, setLocalVote] = useState<string | null>(poll.myVote)
   const [counts, setCounts] = useState(() => poll.options.map((o) => o.voteCount))
   const [animated, setAnimated] = useState(false)
+  const voteMutation = useMutation({
+    mutationFn: (optionId: string) =>
+      api.post(`/polls/${poll.id}/vote`, { optionId }).then((r) => r.data),
+  })
   const voted = localVote !== null
   const totalVotes = counts.reduce((a, b) => a + b, 0)
 
   function handleVote(optionId: string) {
-    if (voted) return
+    if (voted || voteMutation.isPending) return
     const idx = poll.options.findIndex((o) => o.id === optionId)
+    const previousVote = localVote
+    const previousCounts = counts
+    setAnimated(false)
     if (idx !== -1) setCounts((prev) => prev.map((c, i) => (i === idx ? c + 1 : c)))
     setLocalVote(optionId)
-    setTimeout(() => setAnimated(true), 16)
-    import('@/lib/axios').then(({ api }) =>
-      api.post(`/polls/${poll.id}/vote`, { optionId }).catch(() => {}),
-    )
+    window.setTimeout(() => setAnimated(true), 16)
+    voteMutation.mutate(optionId, {
+      onError: () => {
+        setLocalVote(previousVote)
+        setCounts(previousCounts)
+        setAnimated(false)
+        toast.error('Could not record your vote. Try again.')
+      },
+    })
   }
 
   return (
@@ -80,6 +98,7 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
         padding: '14px 16px',
         marginTop: 8,
       }}
+      aria-busy={voteMutation.isPending}
     >
       <p style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
         {poll.question}
@@ -93,7 +112,7 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
             <button
               key={option.id}
               type="button"
-              disabled={voted}
+              disabled={voted || voteMutation.isPending}
               onClick={() => handleVote(option.id)}
               style={{
                 width: '100%',
@@ -102,18 +121,21 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
                 border: `0.5px solid ${isChosen ? 'var(--uc-indigo-bdr)' : 'var(--border-default)'}`,
                 borderRadius: 'var(--r-sm)',
                 padding: '9px 12px',
-                cursor: voted ? 'default' : 'pointer',
+                cursor: voted || voteMutation.isPending ? 'default' : 'pointer',
                 overflow: 'hidden',
                 textAlign: 'left',
               }}
+              aria-pressed={isChosen}
             >
               <div
                 style={{
                   position: 'absolute',
                   top: 0, bottom: 0, left: 0,
-                  width: animated ? `${pct}%` : '0%',
-                  background: isChosen ? 'var(--uc-indigo-bg)' : 'rgba(255,255,255,0.04)',
-                  transition: 'width 600ms cubic-bezier(0.4,0,0.2,1)',
+                  width: '100%',
+                  background: isChosen ? 'var(--uc-indigo-bg)' : 'var(--surface-hover)',
+                  transform: `scaleX(${animated ? pct / 100 : 0})`,
+                  transformOrigin: 'left center',
+                  transition: 'transform 250ms cubic-bezier(0.23, 1, 0.32, 1)',
                 }}
               />
               <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
@@ -126,7 +148,7 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
           )
         })}
       </div>
-      <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+      <p aria-live="polite" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
         {totalVotes.toLocaleString()} vote{totalVotes !== 1 ? 's' : ''}
         {poll.expiresAt && ` · closes ${formatDistanceToNow(parseISO(poll.expiresAt), { addSuffix: true })}`}
       </p>
@@ -156,6 +178,7 @@ function ThreeDotMenu({ onEdit, onDelete }: ThreeDotMenuProps) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        className="press-feedback row-hover-bg"
         style={{
           background: 'transparent',
           border: 'none',
@@ -169,31 +192,38 @@ function ThreeDotMenu({ onEdit, onDelete }: ThreeDotMenuProps) {
       >
         <MoreVertical size={16} strokeWidth={1.5} />
       </button>
-      {open && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 49 }}
-            onClick={() => setOpen(false)}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              right: 0,
-              zIndex: 50,
-              background: 'var(--surface-raised)',
-              border: '0.5px solid var(--border-hover)',
-              borderRadius: 'var(--r-md)',
-              padding: 4,
-              minWidth: 140,
-              marginTop: 4,
-            }}
-          >
-            <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={() => { setOpen(false); onEdit() }} />
-            <MenuBtn icon={<Trash2 size={13} strokeWidth={1.5} />} label="Delete" onClick={handleDelete} danger />
-          </div>
-        </>
-      )}
+      <AnimatePresence>
+        {open && (
+          <>
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 49 }}
+              onClick={() => setOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: -4 }}
+              transition={{ type: 'tween', duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                zIndex: 50,
+                background: 'var(--surface-raised)',
+                border: '0.5px solid var(--border-hover)',
+                borderRadius: 'var(--r-md)',
+                padding: 4,
+                minWidth: 140,
+                marginTop: 4,
+                transformOrigin: 'top right',
+              }}
+            >
+              <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={() => { setOpen(false); onEdit() }} />
+              <MenuBtn icon={<Trash2 size={13} strokeWidth={1.5} />} label="Delete" onClick={handleDelete} danger />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -203,6 +233,7 @@ function MenuBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; labe
     <button
       type="button"
       onClick={onClick}
+      className="nav-menu-item"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -256,7 +287,24 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   function handleSave() {
     const wasSaved = localSaved
     setLocalSaved(!wasSaved)
-    saveMutation.mutate({ wasSaved }, { onError: () => setLocalSaved(wasSaved) })
+    saveMutation.mutate(
+      { wasSaved },
+      {
+        onSuccess: () => {
+          if (wasSaved) return
+          toast.success('Saved to your bookmarks', {
+            action: {
+              label: 'Undo',
+              onClick: () => {
+                setLocalSaved(false)
+                saveMutation.mutate({ wasSaved: true })
+              },
+            },
+          })
+        },
+        onError: () => setLocalSaved(wasSaved),
+      },
+    )
   }
 
   const canEdit = user && (user.id === post.author.id || user.role === 'admin')
@@ -265,20 +313,22 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
 
   return (
     <article
-      className="card-hover-border"
+      data-feed-post={post.id}
+      className="feed-post-card card-hover-border"
       style={{
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
         overflow: 'hidden',
-        transition: 'border-color 200ms',
+        transition: 'border-color 200ms ease',
+        outline: 'none',
       }}
     >
       {isAnnouncement && <PinnedBar />}
 
-      <div style={{ padding: '14px 16px 12px' }}>
+      <div className="feed-post-inner" style={{ padding: '14px 16px 12px' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+        <div className="feed-post-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
           <Avatar initials={getInitials(author.fullName)} color={avatarColor(author.id)} size={40} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
@@ -313,6 +363,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         {/* Body — rendered as markdown */}
         {post.content && (
           <div
+            className="feed-post-body"
             style={{
               fontSize: 15,
               fontWeight: 400,
@@ -321,7 +372,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               marginBottom: 12,
             }}
           >
-            <ReactMarkdown>{post.content}</ReactMarkdown>
+            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{post.content}</ReactMarkdown>
           </div>
         )}
 
@@ -383,7 +434,12 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             )}
           </ReactionBtn>
 
-          <ReactionBtn active={localSaved} onClick={handleSave} style={{ marginLeft: 'auto' }}>
+          <ReactionBtn
+            active={localSaved}
+            activeTone="orange"
+            onClick={handleSave}
+            style={{ marginLeft: 'auto' }}
+          >
             <Bookmark size={15} strokeWidth={1.5} fill={localSaved ? 'currentColor' : 'none'} />
             Save
           </ReactionBtn>

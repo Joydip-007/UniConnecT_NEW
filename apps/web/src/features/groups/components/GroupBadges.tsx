@@ -3,8 +3,8 @@ import type { AllowedRole, GroupType } from '../types'
 const TYPE_COLORS: Record<GroupType, { bg: string; border: string; text: string }> = {
   department: { bg: 'var(--uc-indigo-bg)', border: 'var(--uc-indigo-bdr)', text: 'var(--uc-indigo-xl)' },
   club: { bg: 'var(--uc-orange-bg)', border: 'var(--uc-orange-bdr)', text: 'var(--uc-orange-l)' },
-  batch: { bg: 'var(--uc-cyan-bg)', border: 'rgba(6, 182, 212, 0.28)', text: 'var(--uc-cyan)' },
-  research: { bg: 'var(--uc-mint-bg)', border: 'rgba(16, 185, 129, 0.28)', text: 'var(--uc-mint)' },
+  batch: { bg: 'var(--uc-cyan-bg)', border: 'var(--uc-cyan-bdr)', text: 'var(--uc-cyan)' },
+  research: { bg: 'var(--uc-mint-bg)', border: 'var(--uc-mint-bdr)', text: 'var(--uc-mint)' },
   interest: { bg: 'var(--uc-indigo-bg)', border: 'var(--uc-indigo-bdr)', text: 'var(--uc-indigo-xl)' },
   other: { bg: 'var(--surface-raised)', border: 'var(--border-default)', text: 'var(--text-secondary)' },
 }

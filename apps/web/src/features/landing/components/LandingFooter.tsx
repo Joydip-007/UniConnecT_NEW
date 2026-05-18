@@ -58,7 +58,7 @@ export function LandingFooter() {
           style={{
             margin: 0,
             fontSize: 13,
-            color: 'rgba(255,255,255,.25)',
+            color: 'var(--text-tertiary)',
             flexShrink: 0,
           }}
         >

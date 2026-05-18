@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
+import { GhostBtn } from '@/components/Button'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import type { UserRole } from '@uniconnect/shared/types'
@@ -30,20 +32,12 @@ interface EventItem {
   id: string
   title: string
   location: string | null
-  startAt: string
+  startsAt: string
 }
 
-interface TrendingData {
-  pinnedPosts: Array<{
-    id: string
-    content: string
-    authorName: string
-    createdAt: string
-  }>
-  trendingTags: Array<{
-    name: string
-    postCount: number
-  }>
+interface TrendingTag {
+  name: string
+  postCount: number
 }
 
 interface UserProgress {
@@ -94,6 +88,20 @@ function Widget({ children }: { children: React.ReactNode }) {
   )
 }
 
+function Section({ children, withTopDivider = false }: { children: React.ReactNode; withTopDivider?: boolean }) {
+  return (
+    <div
+      style={{
+        padding: '14px 4px 4px',
+        flexShrink: 0,
+        borderTop: withTopDivider ? '0.5px solid var(--border-default)' : 'none',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
 function SectionHeader({
   title,
   onSeeAll,
@@ -116,6 +124,7 @@ function SectionHeader({
       {onSeeAll && (
         <button
           onClick={onSeeAll}
+          className="press-feedback"
           style={{
             background: 'none',
             border: 'none',
@@ -147,10 +156,25 @@ function SkeletonLine({ width = '100%', height = 12 }: { width?: string | number
   )
 }
 
-function PersonRow({ user }: { user: SuggestedUser }) {
+function PersonRow({ user, isLast = false }: { user: SuggestedUser; isLast?: boolean }) {
   const navigate = useNavigate()
   const initials = getInitials(user.profile.fullName)
   const color = avatarColor(user.id)
+  const [isFollowing, setIsFollowing] = useState(false)
+
+  async function handleFollow() {
+    const prev = isFollowing
+    setIsFollowing(!prev)
+    try {
+      if (prev) {
+        await api.delete(`/users/${user.id}/follow`)
+      } else {
+        await api.post(`/users/${user.id}/follow`)
+      }
+    } catch {
+      setIsFollowing(prev)
+    }
+  }
 
   return (
     <div
@@ -159,7 +183,7 @@ function PersonRow({ user }: { user: SuggestedUser }) {
         alignItems: 'center',
         gap: 10,
         padding: '8px 0',
-        borderBottom: '0.5px solid var(--border-default)',
+        borderBottom: isLast ? 'none' : '0.5px solid var(--border-default)',
       }}
     >
       <button
@@ -202,17 +226,24 @@ function PersonRow({ user }: { user: SuggestedUser }) {
         </Badge>
       </div>
 
+      <GhostBtn
+        onClick={handleFollow}
+        style={{ flexShrink: 0, padding: '4px 10px', fontSize: 12, opacity: isFollowing ? 0.6 : 1 }}
+      >
+        {isFollowing ? 'Following' : 'Follow'}
+      </GhostBtn>
     </div>
   )
 }
 
-function EventMini({ event }: { event: EventItem }) {
+function EventMini({ event, isLast = false }: { event: EventItem; isLast?: boolean }) {
   const navigate = useNavigate()
-  const { day, month, time } = formatDate(event.startAt)
+  const { day, month, time } = formatDate(event.startsAt)
 
   return (
     <button
       onClick={() => navigate(PATHS.EVENT_DETAIL.replace(':id', event.id))}
+      className="interactive-surface"
       style={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -221,7 +252,7 @@ function EventMini({ event }: { event: EventItem }) {
         padding: '8px 0',
         background: 'none',
         border: 'none',
-        borderBottom: '0.5px solid var(--border-default)',
+        borderBottom: isLast ? 'none' : '0.5px solid var(--border-default)',
         cursor: 'pointer',
         textAlign: 'left',
       }}
@@ -242,7 +273,7 @@ function EventMini({ event }: { event: EventItem }) {
         }}
       >
         <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--uc-indigo-xl)' }}>{day}</span>
-        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--uc-indigo-l)', marginTop: 2 }}>
+        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--uc-indigo-l)', marginTop: 2 }}>
           {month}
         </span>
       </div>
@@ -269,13 +300,13 @@ function EventMini({ event }: { event: EventItem }) {
             alignItems: 'center',
             gap: 3,
             marginTop: 3,
-            fontSize: 11,
+            fontSize: 12,
             color: 'var(--text-tertiary)',
           }}
         >
           {event.location && (
             <>
-              <MapPin size={10} />
+              <MapPin size={11} />
               <span
                 style={{
                   whiteSpace: 'nowrap',
@@ -312,7 +343,7 @@ function BadgeProgressRow({ item }: { item: BadgeProgressItem }) {
       ? 'var(--uc-mint)'
       : item.state === 'locked'
       ? 'var(--text-tertiary)'
-      : 'var(--uc-indigo-l)'
+      : 'var(--uc-orange-l)'
 
   return (
     <div style={{ padding: '8px 0', borderBottom: '0.5px solid var(--border-default)' }}>
@@ -341,17 +372,64 @@ function BadgeProgressRow({ item }: { item: BadgeProgressItem }) {
             marginLeft: 22,
           }}
         >
-          <div
-            style={{
-              height: '100%',
-              width: `${Math.min(100, (item.progress / item.total) * 100)}%`,
-              background: 'var(--uc-indigo)',
-              borderRadius: 'var(--r-pill)',
-              transition: 'width 0.4s ease',
-            }}
-          />
+              <div
+                style={{
+                  height: '100%',
+                  width: '100%',
+                  background: 'var(--uc-orange)',
+                  borderRadius: 'var(--r-pill)',
+                  transform: `scaleX(${Math.min(100, (item.progress / item.total) * 100) / 100})`,
+                  transformOrigin: 'left center',
+                  transition: 'transform 250ms cubic-bezier(0.23, 1, 0.32, 1)',
+                }}
+              />
         </div>
       )}
+    </div>
+  )
+}
+
+function TrendingTagStrip({ tags }: { tags: TrendingTag[] }) {
+  const navigate = useNavigate()
+  if (tags.length === 0) return null
+
+  return (
+    <div style={{ padding: '14px 4px 0', borderTop: '0.5px solid var(--border-default)' }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 500,
+          color: 'var(--text-tertiary)',
+          letterSpacing: 0,
+          marginBottom: 8,
+          paddingLeft: 2,
+        }}
+      >
+        trending now
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {tags.map((tag) => (
+          <button
+            key={tag.name}
+            type="button"
+            onClick={() => navigate(`${PATHS.SEARCH}?q=%23${encodeURIComponent(tag.name)}`)}
+            className="press-feedback"
+            style={{
+              fontSize: 11,
+              fontWeight: 500,
+              color: 'var(--uc-indigo-l)',
+              background: 'var(--uc-indigo-bg)',
+              border: '0.5px solid var(--uc-indigo-bdr)',
+              borderRadius: 'var(--r-pill)',
+              padding: '3px 9px',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+            }}
+          >
+            #{tag.name} · {tag.postCount}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -375,17 +453,19 @@ export function RightSidebar() {
       const startOfDay = new Date()
       startOfDay.setHours(0, 0, 0, 0)
       return api
-        .get<{ data: EventItem[] }>('/events', { params: { from: startOfDay.toISOString(), limit: 3 } })
-        .then((r) => r.data.data)
+        .get<{ data: { items: EventItem[] } }>('/events', {
+          params: { from: startOfDay.toISOString(), limit: 3 },
+        })
+        .then((r) => r.data.data.items)
     },
   })
 
-  const { data: trending, isLoading: loadingTrending } = useQuery({
+  const { data: trendingTags } = useQuery({
     queryKey: ['feed', 'trending'],
     queryFn: () =>
       api
-        .get<{ data: TrendingData }>('/feed/trending')
-        .then((r) => r.data.data),
+        .get<{ data: { trendingTags: TrendingTag[] } }>('/posts/trending')
+        .then((r) => r.data.data.trendingTags),
     staleTime: 60_000,
   })
 
@@ -397,6 +477,10 @@ export function RightSidebar() {
         .then((r) => r.data.data),
     staleTime: 30_000,
   })
+
+  const progressIncomplete =
+    progress != null &&
+    (progress.profileScore < 100 || !progress.hasMadePost || progress.followerCount < 10 || !progress.isVerified)
 
   return (
     <aside
@@ -411,11 +495,65 @@ export function RightSidebar() {
         flexDirection: 'column',
         gap: 10,
         paddingBottom: 20,
-        scrollbarWidth: 'none',
       }}
+      className="rail-scroll"
     >
-      {/* People you may know */}
-      <Widget>
+      {/* Your progress — hero widget when incomplete, hidden when done */}
+      {loadingProgress ? (
+        <Widget>
+          <SectionHeader title="Your progress" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SkeletonLine width={14} height={14} />
+                <SkeletonLine width="60%" />
+              </div>
+            ))}
+          </div>
+        </Widget>
+      ) : progressIncomplete && progress ? (
+        <Widget>
+          <SectionHeader title="Your progress" />
+          <div>
+            {(
+              [
+                {
+                  icon: progress.profileScore === 100 ? CheckCircle2 : Circle,
+                  label: 'Profile complete',
+                  state: progress.profileScore === 100 ? 'done' : 'in-progress',
+                  progress: progress.profileScore,
+                  total: 100,
+                },
+                {
+                  icon: progress.hasMadePost ? CheckCircle2 : Circle,
+                  label: 'First post',
+                  state: progress.hasMadePost ? 'done' : 'in-progress',
+                },
+                {
+                  icon: progress.followerCount >= 10 ? CheckCircle2 : Circle,
+                  label: '10 connections',
+                  state: progress.followerCount >= 10 ? 'done' : 'in-progress',
+                  progress: Math.min(progress.followerCount, 10),
+                  total: 10,
+                },
+                {
+                  icon: progress.isVerified ? CheckCircle2 : Lock,
+                  label: 'Get verified',
+                  state: progress.isVerified ? 'done' : 'locked',
+                },
+              ] as BadgeProgressItem[]
+            ).map((item) => (
+              <BadgeProgressRow key={item.label} item={item} />
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
+            Finish your profile to unlock the campus directory.
+          </p>
+        </Widget>
+      ) : null}
+
+      {/* People you may know — flat section */}
+      <Section>
         <SectionHeader
           title="People you may know"
           onSeeAll={() => navigate(PATHS.SEARCH + '?type=people')}
@@ -435,8 +573,8 @@ export function RightSidebar() {
           </div>
         ) : suggestions && suggestions.length > 0 ? (
           <div>
-            {suggestions.slice(0, 3).map((user) => (
-              <PersonRow key={user.id} user={user} />
+            {suggestions.slice(0, 3).map((user, i, arr) => (
+              <PersonRow key={user.id} user={user} isLast={i === arr.length - 1} />
             ))}
           </div>
         ) : (
@@ -444,10 +582,10 @@ export function RightSidebar() {
             No suggestions right now.
           </p>
         )}
-      </Widget>
+      </Section>
 
-      {/* Upcoming events */}
-      <Widget>
+      {/* Upcoming events — flat section with leading divider */}
+      <Section withTopDivider>
         <SectionHeader
           title="Upcoming events"
           onSeeAll={() => navigate(PATHS.EVENTS)}
@@ -467,8 +605,8 @@ export function RightSidebar() {
           </div>
         ) : events && events.length > 0 ? (
           <div>
-            {events.slice(0, 3).map((event) => (
-              <EventMini key={event.id} event={event} />
+            {events.slice(0, 3).map((event, i, arr) => (
+              <EventMini key={event.id} event={event} isLast={i === arr.length - 1} />
             ))}
           </div>
         ) : (
@@ -476,155 +614,10 @@ export function RightSidebar() {
             No upcoming events.
           </p>
         )}
-      </Widget>
+      </Section>
 
-      {/* Trending on campus */}
-      <Widget>
-        <SectionHeader title="Trending on campus" />
-
-        {loadingTrending ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[0, 1].map((i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10 }}>
-                <SkeletonLine width="80%" />
-                <SkeletonLine width="50%" height={10} />
-              </div>
-            ))}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {[0, 1, 2].map((i) => (
-                <SkeletonLine key={i} width={64} height={22} />
-              ))}
-            </div>
-          </div>
-        ) : !trending || (trending.pinnedPosts.length === 0 && trending.trendingTags.length === 0) ? (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
-            Nothing trending yet.
-          </p>
-        ) : (
-          <div>
-            {trending.pinnedPosts.map((post) => (
-              <div
-                key={post.id}
-                style={{
-                  padding: '8px 0',
-                  borderBottom: '0.5px solid var(--border-default)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 500,
-                      color: 'var(--uc-orange-l)',
-                      background: 'var(--uc-orange-bg)',
-                      borderRadius: 'var(--r-pill)',
-                      padding: '1px 6px',
-                    }}
-                  >
-                    Pinned
-                  </span>
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{post.authorName}</span>
-                </div>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 12,
-                    fontWeight: 400,
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.45,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {post.content}
-                </p>
-              </div>
-            ))}
-
-            {trending.pinnedPosts.length > 0 && trending.trendingTags.length > 0 && (
-              <div style={{ height: '0.5px', background: 'var(--border-default)', margin: '8px 0' }} />
-            )}
-
-            {trending.trendingTags.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {trending.trendingTags.map((tag) => (
-                  <span
-                    key={tag.name}
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: 'var(--uc-indigo-l)',
-                      background: 'var(--uc-indigo-bg)',
-                      border: '0.5px solid var(--uc-indigo-bdr)',
-                      borderRadius: 'var(--r-pill)',
-                      padding: '3px 8px',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    #{tag.name} · {tag.postCount}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </Widget>
-
-      {/* Your progress */}
-      <Widget>
-        <SectionHeader title="Your progress" />
-
-        {loadingProgress ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <SkeletonLine width={14} height={14} />
-                <SkeletonLine width="60%" />
-              </div>
-            ))}
-          </div>
-        ) : progress ? (
-          <>
-            <div>
-              {(
-                [
-                  {
-                    icon: progress.profileScore === 100 ? CheckCircle2 : Circle,
-                    label: 'Profile complete',
-                    state: progress.profileScore === 100 ? 'done' : 'in-progress',
-                    progress: progress.profileScore,
-                    total: 100,
-                  },
-                  {
-                    icon: progress.hasMadePost ? CheckCircle2 : Circle,
-                    label: 'First post',
-                    state: progress.hasMadePost ? 'done' : 'in-progress',
-                  },
-                  {
-                    icon: progress.followerCount >= 10 ? CheckCircle2 : Circle,
-                    label: '10 connections',
-                    state: progress.followerCount >= 10 ? 'done' : 'in-progress',
-                    progress: Math.min(progress.followerCount, 10),
-                    total: 10,
-                  },
-                  {
-                    icon: progress.isVerified ? CheckCircle2 : Lock,
-                    label: 'Get verified',
-                    state: progress.isVerified ? 'done' : 'locked',
-                  },
-                ] as BadgeProgressItem[]
-              ).map((item) => (
-                <BadgeProgressRow key={item.label} item={item} />
-              ))}
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
-              Earn badges by being active — posting, connecting, and getting verified.
-            </p>
-          </>
-        ) : null}
-      </Widget>
+      {/* Trending tags — borderless strip, no card chrome */}
+      {trendingTags && trendingTags.length > 0 && <TrendingTagStrip tags={trendingTags} />}
     </aside>
   )
 }

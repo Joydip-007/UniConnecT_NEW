@@ -47,6 +47,7 @@ export function TickerStrip() {
 
   return (
     <div
+      aria-hidden="true"
       style={{
         overflow: 'hidden',
         borderTop: '0.5px solid var(--border-default)',

@@ -1,11 +1,14 @@
 import crypto from 'node:crypto'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
-import { notFound } from '../../utils/errors'
+import { badRequest, notFound } from '../../utils/errors'
 import { emailQueue } from '../../queues/email.queue'
 import { env } from '../../config/env'
+import { getIo } from '../../socket'
 import { systemGroupsService } from '../groups/system-groups.service'
 import type {
+  AdminFulfillRedemptionInput,
+  AdminRedemptionListQuery,
   CreateBulkInvitationsInput,
   CreateInvitationInput,
   PaginationQuery,
@@ -13,6 +16,24 @@ import type {
   UpdateUserRoleInput,
   UpdateUserStatusInput,
 } from './schema'
+
+interface RedemptionListRow {
+  id: string
+  status: 'pending' | 'fulfilled' | 'rejected'
+  points_spent: number
+  code_text: string | null
+  admin_note: string | null
+  requested_at: Date
+  fulfilled_at: Date | null
+  user_id: string
+  user_full_name: string
+  user_avatar_url: string | null
+  user_email: string
+  gift_card_id: string
+  gift_card_vendor: string
+  gift_card_title: string
+  gift_card_value_usd_cents: number
+}
 
 interface CountRow {
   count: string | number
@@ -362,6 +383,100 @@ export class AdminService {
 
     return { allowedEmailDomains: unique }
   }
+
+  async listRedemptions(universityId: string, query: AdminRedemptionListQuery) {
+    const base = db('mentor_redemptions')
+      .where('mentor_redemptions.university_id', universityId)
+      .modify((builder) => {
+        if (query.status) builder.where('mentor_redemptions.status', query.status)
+      })
+
+    const [{ count }] = await base.clone().count<CountRow[]>({ count: '*' })
+    const total = Number(count)
+
+    const rows = await base
+      .clone()
+      .join('users', 'users.id', 'mentor_redemptions.user_id')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .join('gift_cards', 'gift_cards.id', 'mentor_redemptions.gift_card_id')
+      .select<RedemptionListRow[]>(
+        'mentor_redemptions.id',
+        'mentor_redemptions.status',
+        'mentor_redemptions.points_spent',
+        'mentor_redemptions.code_text',
+        'mentor_redemptions.admin_note',
+        'mentor_redemptions.requested_at',
+        'mentor_redemptions.fulfilled_at',
+        'users.id as user_id',
+        'users.email as user_email',
+        'profiles.full_name as user_full_name',
+        'profiles.avatar_url as user_avatar_url',
+        'gift_cards.id as gift_card_id',
+        'gift_cards.vendor as gift_card_vendor',
+        'gift_cards.title as gift_card_title',
+        'gift_cards.value_usd_cents as gift_card_value_usd_cents',
+      )
+      .orderBy('mentor_redemptions.requested_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map(toAdminRedemption),
+      total,
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async updateRedemption(
+    universityId: string,
+    adminUserId: string,
+    redemptionId: string,
+    input: AdminFulfillRedemptionInput,
+  ) {
+    return db.transaction(async (trx) => {
+      const row = await trx('mentor_redemptions')
+        .where({ id: redemptionId, university_id: universityId })
+        .forUpdate()
+        .select<{
+          id: string
+          user_id: string
+          points_spent: number
+          status: 'pending' | 'fulfilled' | 'rejected'
+        }[]>('id', 'user_id', 'points_spent', 'status')
+        .first()
+
+      if (!row) throw notFound('Redemption not found', 'REDEMPTION_NOT_FOUND')
+      if (row.status !== 'pending') {
+        throw badRequest('Redemption has already been processed', 'REDEMPTION_ALREADY_PROCESSED')
+      }
+
+      if (input.status === 'rejected') {
+        await trx('profiles')
+          .where({ user_id: row.user_id })
+          .increment('mentorship_points', row.points_spent)
+      }
+
+      await trx('mentor_redemptions')
+        .where({ id: redemptionId })
+        .update({
+          status: input.status,
+          code_text: input.codeText ?? null,
+          admin_note: input.adminNote ?? null,
+          fulfilled_at: trx.fn.now(),
+          fulfilled_by: adminUserId,
+        })
+
+      getIo()
+        .to(`user:${row.user_id}`)
+        .emit('mentorship:redemption:updated', {
+          redemptionId,
+          status: input.status,
+        })
+
+      return { id: redemptionId, status: input.status }
+    })
+  }
 }
 
 export const adminService = new AdminService()
@@ -413,6 +528,30 @@ function toReport(row: ReportRow) {
     resolvedBy: row.resolved_by,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
+  }
+}
+
+function toAdminRedemption(row: RedemptionListRow) {
+  return {
+    id: row.id,
+    status: row.status,
+    pointsSpent: row.points_spent,
+    codeText: row.code_text,
+    adminNote: row.admin_note,
+    requestedAt: row.requested_at,
+    fulfilledAt: row.fulfilled_at,
+    user: {
+      id: row.user_id,
+      email: row.user_email,
+      fullName: row.user_full_name,
+      avatarUrl: row.user_avatar_url,
+    },
+    giftCard: {
+      id: row.gift_card_id,
+      vendor: row.gift_card_vendor,
+      title: row.gift_card_title,
+      valueUsdCents: row.gift_card_value_usd_cents,
+    },
   }
 }
 

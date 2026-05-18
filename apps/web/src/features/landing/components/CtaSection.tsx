@@ -68,15 +68,14 @@ export function CtaSection() {
                 marginBottom: 22,
               }}
             >
-              Join UniConnecT — always free for students
+              Join UniConnecT, always free for students
             </div>
 
-            {/* H2 — font-weight 800 (CTA heading exception for landing) */}
             <h2
               style={{
                 margin: '0 0 17px',
                 fontSize: 'clamp(36px, 4vw, 52px)',
-                fontWeight: 800,
+                fontWeight: 500,
                 letterSpacing: '-2px',
                 lineHeight: 1.1,
                 color: 'var(--text-primary)',
@@ -95,7 +94,7 @@ export function CtaSection() {
               }}
             >
               UniConnecT brings students, alumni, faculty, and staff onto one private,
-              university-verified network — for free, forever.
+              university-verified network, free forever.
             </p>
 
             {/* Button row */}

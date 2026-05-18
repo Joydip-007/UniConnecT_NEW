@@ -1,3 +1,5 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500&display=swap');
+
 /* Tokens must be imported before Tailwind so utilities can reference the CSS variables */
 @import './tokens.css';
 
@@ -5,7 +7,30 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+html, body {
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-mono);
+}
+
 html { scroll-behavior: smooth; }
+
+/* ── Reduced motion (WCAG 2.3.3) ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* ── Focus indicators (WCAG 2.4.7) ──────────────────────────────────── */
 :focus-visible {
@@ -63,6 +88,25 @@ select:focus-visible {
 .dropdown-enter[data-origin="top-left"]     { transform-origin: top left; }
 .dropdown-enter[data-origin="top-center"]   { transform-origin: top center; }
 
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.modal-panel-enter {
+  animation: modal-panel-in 220ms var(--ease-out-strong) both;
+  transform-origin: center;
+}
+
+.sheet-enter {
+  animation: sheet-in 260ms var(--ease-drawer) both;
+}
+
 /* ── Press feedback for icon buttons (no Button component) ───────── */
 
 .press-feedback {
@@ -86,6 +130,39 @@ select:focus-visible {
   animation-delay: calc(var(--i, 0) * 35ms);
 }
 
+.interactive-surface {
+  transition: transform 120ms var(--ease-out-strong), background 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+.interactive-surface:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.feed-filter-tab {
+  transition: transform 120ms var(--ease-out-strong), background 150ms ease, color 150ms ease;
+}
+
+.feed-filter-tab:active {
+  transform: scale(0.98);
+}
+
+.topnav-search-input {
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.topnav-search-input:focus {
+  background: var(--surface-card) !important;
+  border-color: var(--uc-indigo) !important;
+}
+
+.search-section-label {
+  padding: 8px 12px 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0;
+}
+
 /* ── Reduced motion: respect user preference globally ────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -95,6 +172,26 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ── Rail scroll — thin, only on hover, never hidden ─────────────────
+   Replaces inline `scrollbar-width: none` so users see the affordance. */
+.rail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+.rail-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.rail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rail-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: 999px;
+}
+.rail-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: var(--border-hover);
 }
 
 /* ── Feed 3-column layout ─────────────────────────────────── */
@@ -131,7 +228,6 @@ select:focus-visible {
    Gated behind `hover: hover` so touch devices don't fire hover-on-tap. */
 @media (hover: hover) and (pointer: fine) {
   .nav-menu-item:hover    { background: var(--surface-hover) !important; }
-  .trending-row:hover     { opacity: 0.75; }
   .card-hover-border:hover { border-color: var(--border-hover) !important; }
   .row-hover-bg:hover     { background: var(--surface-hover) !important; }
   .action-chip-hover:hover {
@@ -146,6 +242,17 @@ select:focus-visible {
   .nav-sidebar-item:hover:not([aria-current="page"]) {
     background: var(--surface-hover) !important;
   }
+  .interactive-surface:hover:not(:disabled) {
+    background: var(--surface-hover) !important;
+    border-color: var(--border-hover) !important;
+  }
+  .feed-filter-tab:hover:not([aria-selected="true"]) {
+    background: var(--surface-raised) !important;
+    color: var(--text-primary) !important;
+  }
+  .topnav-search-input:hover {
+    border-color: var(--border-hover) !important;
+  }
 }
 
 /* ── Mobile bottom nav ──────────────────────────────────────────────── */
@@ -153,7 +260,59 @@ select:focus-visible {
   display: none;
 }
 
+.feed-post-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 420px;
+}
+
 @media (max-width: 767px) {
+  .topnav-shell {
+    height: 56px !important;
+    padding: 0 12px !important;
+    gap: 8px !important;
+    overflow: hidden;
+  }
+
+  .topnav-brand-link {
+    width: 44px;
+    height: 44px;
+    overflow: hidden;
+  }
+
+  .topnav-brand-link img {
+    width: 82px !important;
+    height: 36px !important;
+    max-width: none !important;
+    object-fit: contain !important;
+    clip-path: inset(0 60px 0 0);
+  }
+
+  .topnav-search-slot {
+    min-width: 0;
+    justify-content: stretch !important;
+  }
+
+  .topnav-search-wrap {
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .topnav-actions {
+    gap: 0 !important;
+  }
+
+  .topnav-profile-menu button[aria-label='Profile menu'] img,
+  .topnav-profile-menu button[aria-label='Profile menu'] > div {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .topnav-profile-menu button[aria-label='Profile menu'] {
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+  }
+
   .mobile-bottom-nav {
     display: flex;
     align-items: stretch;
@@ -165,6 +324,42 @@ select:focus-visible {
 
   .feed-layout-main {
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .feed-post-card {
+    border-radius: var(--r-md) !important;
+  }
+
+  .feed-post-inner {
+    padding: 12px 12px 10px !important;
+  }
+
+  .feed-post-header {
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .feed-post-body {
+    font-size: 14px !important;
+    line-height: 1.58 !important;
+    margin-bottom: 10px !important;
+  }
+
+  .feed-post-body p {
+    margin-top: 0;
+    margin-bottom: 8px;
+  }
+
+  .feed-pinned-bar {
+    padding: 6px 12px !important;
+  }
+
+  .search-panel-responsive {
+    left: 0 !important;
+    right: 0 !important;
+    width: calc(100vw - 24px) !important;
+    transform: none !important;
+    margin: 0 auto;
   }
 }
 

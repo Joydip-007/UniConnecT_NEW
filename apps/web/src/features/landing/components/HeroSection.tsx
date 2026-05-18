@@ -3,25 +3,19 @@ import { useNavigate } from 'react-router-dom'
 import { OrangeBtn, GhostBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
-
-function Skel({ w, h = 8 }: { w: number | string; h?: number }) {
-  return (
-    <div
-      style={{
-        height: h,
-        borderRadius: 4,
-        background: 'var(--border-strong)',
-        width: w,
-        flexShrink: 0,
-      }}
-    />
-  )
-}
+import { Skel } from './Skel'
 
 export function HeroSection() {
   const navigate  = useNavigate()
   // threshold: 0 → fires immediately since section is above the fold
   const leftRef = useScrollReveal<HTMLDivElement>(0)
+
+  function scrollToFeatures() {
+    const target = document.querySelector('#features')
+    if (!target) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
+  }
 
   return (
     <section style={{ position: 'relative', overflow: 'hidden' }}>
@@ -112,14 +106,13 @@ export function HeroSection() {
             </span>
           </div>
 
-          {/* H1 — font-weight 800 is intentional (hero headline exception) */}
           <h1
             className="reveal"
             data-delay="100"
             style={{
               margin: 0,
               fontSize: 'clamp(44px, 6vw, 68px)',
-              fontWeight: 800,
+              fontWeight: 500,
               lineHeight: 1.07,
               letterSpacing: '-2.5px',
             }}
@@ -141,7 +134,7 @@ export function HeroSection() {
               maxWidth: 450,
             }}
           >
-            UniConnecT is the private social network built for universities — connecting students,
+            UniConnecT is the private social network built for universities. It connects students,
             alumni, faculty, and staff with a feed, jobs, real-time chat, and campus tools, all in
             one place.
           </p>
@@ -159,7 +152,10 @@ export function HeroSection() {
               <Rocket size={16} />
               Get started free
             </OrangeBtn>
-            <GhostBtn style={{ padding: '11px 22px', fontSize: 15, gap: 9 }}>
+            <GhostBtn
+              style={{ padding: '11px 22px', fontSize: 15, gap: 9 }}
+              onClick={scrollToFeatures}
+            >
               <Play size={16} />
               Watch demo
             </GhostBtn>
@@ -194,7 +190,7 @@ export function HeroSection() {
                     justifyContent: 'center',
                     fontSize: 12,
                     fontWeight: 500,
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     marginLeft: ml,
                     flexShrink: 0,
                   }}
@@ -231,10 +227,9 @@ export function HeroSection() {
               className="phone-float"
               style={{
                 width: 218,
-                background: 'var(--surface-card)',
+                background: 'var(--surface-raised)',
                 border: '1.5px solid var(--border-hover)',
                 borderRadius: 34,
-                boxShadow: '0 32px 80px rgba(0,0,0,.45)',
                 overflow: 'hidden',
               }}
             >
@@ -269,14 +264,14 @@ export function HeroSection() {
 
                 {/* Mini post 1 */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--uc-indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: 'white', flexShrink: 0 }}>JD</div>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--uc-indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: 'var(--text-primary)', flexShrink: 0 }}>JD</div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <Skel w="100%" />
                     <Skel w="82%" />
                     <Skel w="58%" />
                     <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
                       <div style={{ background: 'var(--uc-indigo-bg)', border: '0.5px solid var(--uc-indigo-bdr)', borderRadius: 999, padding: '2px 8px', fontSize: 9, color: 'var(--uc-indigo-l)' }}>👍 4</div>
-                      <div style={{ background: 'var(--uc-cyan-bg)', border: '0.5px solid rgba(6,182,212,.28)', borderRadius: 999, padding: '2px 8px', fontSize: 9, color: 'var(--uc-cyan)' }}>💬 2</div>
+                      <div style={{ background: 'var(--uc-cyan-bg)', border: '0.5px solid var(--uc-cyan-bdr)', borderRadius: 999, padding: '2px 8px', fontSize: 9, color: 'var(--uc-cyan)' }}>💬 2</div>
                     </div>
                   </div>
                 </div>
@@ -285,9 +280,9 @@ export function HeroSection() {
 
                 {/* Mini post 2 */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--uc-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: 'white', flexShrink: 0 }}>SF</div>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--uc-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: 'var(--text-primary)', flexShrink: 0 }}>SF</div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <div style={{ background: 'var(--uc-mint-bg)', border: '0.5px solid rgba(16,185,129,.28)', borderRadius: 6, padding: '5px 7px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <div style={{ background: 'var(--uc-mint-bg)', border: '0.5px solid var(--uc-mint-bdr)', borderRadius: 6, padding: '5px 7px', display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <Skel w="90%" h={7} />
                       <Skel w="65%" h={6} />
                     </div>
@@ -311,13 +306,13 @@ export function HeroSection() {
           <div
             style={{
               position: 'absolute', left: 0, top: 48, width: 188,
-              background: 'var(--surface-raised)', border: '0.5px solid var(--border-hover)',
+              background: 'var(--surface-hover)', border: '0.5px solid var(--border-hover)',
               borderRadius: 14, padding: '13px 15px',
               animation: 'floatAlt 4.8s ease-in-out infinite',
             }}
           >
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-mint-bg)', border: '0.5px solid rgba(16,185,129,.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-mint-bg)', border: '0.5px solid var(--uc-mint-bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Briefcase size={14} style={{ color: 'var(--uc-mint)' }} />
               </div>
               <div>
@@ -326,7 +321,7 @@ export function HeroSection() {
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-              <div style={{ background: 'var(--uc-mint-bg)', border: '0.5px solid rgba(16,185,129,.28)', borderRadius: 999, padding: '2px 8px', fontSize: 10, color: 'var(--uc-mint)' }}>New</div>
+              <div style={{ background: 'var(--uc-mint-bg)', border: '0.5px solid var(--uc-mint-bdr)', borderRadius: 999, padding: '2px 8px', fontSize: 10, color: 'var(--uc-mint)' }}>New</div>
               <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>by alumni</span>
             </div>
           </div>
@@ -335,13 +330,13 @@ export function HeroSection() {
           <div
             style={{
               position: 'absolute', left: 14, bottom: 64, width: 178,
-              background: 'var(--surface-raised)', border: '0.5px solid var(--border-hover)',
+              background: 'var(--surface-hover)', border: '0.5px solid var(--border-hover)',
               borderRadius: 14, padding: '13px 15px',
               display: 'flex', gap: 10, alignItems: 'center',
               animation: 'uc-float 4s 0.6s ease-in-out infinite',
             }}
           >
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: 'white', flexShrink: 0 }}>MH</div>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', flexShrink: 0 }}>MH</div>
             <div>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.35 }}>Mentorship accepted</p>
               <p style={{ margin: 0, fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.35 }}>Monnabur · Alumni '21</p>
@@ -352,13 +347,13 @@ export function HeroSection() {
           <div
             style={{
               position: 'absolute', right: 4, bottom: 32, width: 155,
-              background: 'var(--surface-raised)', border: '0.5px solid var(--border-hover)',
+              background: 'var(--surface-hover)', border: '0.5px solid var(--border-hover)',
               borderRadius: 14, padding: '13px 15px',
               animation: 'floatAlt 5.2s 1.2s ease-in-out infinite',
             }}
           >
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-cyan-bg)', border: '0.5px solid rgba(6,182,212,.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-cyan-bg)', border: '0.5px solid var(--uc-cyan-bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <MessageSquare size={14} style={{ color: 'var(--uc-cyan)' }} />
               </div>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>Live chat</p>

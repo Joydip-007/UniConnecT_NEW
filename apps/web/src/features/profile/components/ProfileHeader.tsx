@@ -55,7 +55,7 @@ export function ProfileHeader({
           position: 'relative',
           background: user.profile.coverUrl
             ? `center / cover no-repeat url(${user.profile.coverUrl})`
-            : 'linear-gradient(135deg, var(--uc-indigo-bg) 0%, rgba(6,13,26,0.6) 100%)',
+            : 'linear-gradient(135deg, var(--uc-indigo-bg) 0%, var(--overlay-bg-soft) 100%)',
           overflow: 'hidden',
         }}
       >

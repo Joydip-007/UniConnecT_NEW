@@ -443,7 +443,7 @@ export function CreateEventForm({ onClose }: Props) {
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'rgba(6,13,26,0.65)',
+                      background: 'var(--overlay-media)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

@@ -85,8 +85,7 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(6, 13, 26, 0.6)',
-        backdropFilter: 'blur(4px)',
+        background: 'var(--overlay-bg-soft)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

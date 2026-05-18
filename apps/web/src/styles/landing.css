@@ -9,6 +9,12 @@
   background: rgba(10, 22, 40, 0.96);
 }
 
+/* Desktop nav links — declared on <a> via className */
+.nav-link-hover:hover,
+.nav-link-hover:focus-visible {
+  color: var(--text-primary);
+}
+
 @keyframes uc-fade-up {
   from { opacity: 0; transform: translateY(24px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -73,7 +79,7 @@
 
 .uc-fade-up {
   opacity: 0;
-  animation: uc-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: uc-fade-up 0.7s var(--ease-out-expo) forwards;
 }
 
 .uc-d1 { animation-delay: 0.08s; }
@@ -114,8 +120,8 @@
 .reveal.revealed {
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.65s var(--ease-out-expo),
+              transform 0.65s var(--ease-out-expo);
 }
 
 /* ── Hero section helpers ───────────────────────────── */
@@ -199,16 +205,15 @@
   z-index: 49;
   flex-direction: column;
   gap: 4px;
-  background: rgba(10, 22, 40, 0.98);
+  background: var(--surface-card);
   padding: 16px 20px 20px;
   border-bottom: 0.5px solid var(--border-default);
-  backdrop-filter: blur(14px);
   transform: translateY(-100%);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transition:
-    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 280ms var(--ease-drawer),
     opacity 200ms ease-out,
     visibility 0s linear 280ms;
 }
@@ -218,7 +223,7 @@
   visibility: visible;
   pointer-events: auto;
   transition:
-    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 280ms var(--ease-drawer),
     opacity 200ms ease-out,
     visibility 0s linear 0s;
 }
@@ -255,16 +260,14 @@
     display: none !important;
   }
 
-  /* Stats */
-  .uc-stats-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
+  /* Stats band */
+  .uc-stats-band {
+    grid-template-columns: 1fr !important;
+    padding: 36px 20px !important;
+    row-gap: 18px !important;
   }
-  .uc-stats-grid > *:nth-child(even) {
-    border-right: none !important;
-  }
-  .uc-stats-grid > *:nth-child(1),
-  .uc-stats-grid > *:nth-child(2) {
-    border-bottom: 0.5px solid var(--border-default);
+  .uc-stats-rail {
+    justify-content: flex-start !important;
   }
 
   /* Features */
@@ -314,5 +317,43 @@
   /* Landing nav padding */
   .uc-landing-nav {
     padding: 0 16px !important;
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────── */
+/* Honor the OS-level opt-out: hold visual state, drop continuous motion.
+   Reveal/transition durations collapse so content is visible without animation. */
+@media (prefers-reduced-motion: reduce) {
+  .uc-fade-up,
+  .uc-float,
+  .uc-orb,
+  .uc-orb-delayed,
+  .uc-ticker-track,
+  .phone-float,
+  .hero-col-right,
+  .online-dot {
+    animation: none !important;
+  }
+
+  .hero-pulse-dot::after {
+    animation: none !important;
+    opacity: 0;
+  }
+
+  /* Floating hero cards animate via inline style; this catches them by section. */
+  .uc-hero-right > * {
+    animation: none !important;
+  }
+
+  .reveal,
+  .reveal.revealed {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .uc-nav-mobile-drawer,
+  .uc-nav-mobile-drawer.open {
+    transition: none !important;
   }
 }

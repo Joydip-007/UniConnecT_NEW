@@ -61,8 +61,8 @@ const TYPE_META: Record<EventKind, { label: string; bdr: string; color: string; 
   general:       { label: 'General',       bdr: 'var(--border-hover)',      color: 'var(--text-secondary)', glow: 'rgba(238,242,255,0.08)' },
   career_fair:   { label: 'Career fair',   bdr: 'var(--uc-indigo-bdr)',     color: 'var(--uc-indigo-xl)',   glow: 'rgba(91,91,214,0.35)'   },
   seminar:       { label: 'Seminar',       bdr: 'var(--uc-orange-bdr)',     color: 'var(--uc-orange-l)',    glow: 'rgba(240,90,40,0.28)'   },
-  workshop:      { label: 'Workshop',      bdr: 'rgba(16,185,129,0.28)',    color: 'var(--uc-mint)',         glow: 'rgba(16,185,129,0.28)'  },
-  alumni_meetup: { label: 'Alumni meetup', bdr: 'rgba(6,182,212,0.28)',     color: 'var(--uc-cyan)',         glow: 'rgba(6,182,212,0.28)'   },
+  workshop:      { label: 'Workshop',      bdr: 'var(--uc-mint-bdr)',       color: 'var(--uc-mint)',         glow: 'var(--uc-mint-bdr)'     },
+  alumni_meetup: { label: 'Alumni meetup', bdr: 'var(--uc-cyan-bdr)',       color: 'var(--uc-cyan)',         glow: 'var(--uc-cyan-bdr)'     },
   club:          { label: 'Club',          bdr: 'rgba(139,92,246,0.28)',    color: 'rgba(196,181,253,1)',    glow: 'rgba(139,92,246,0.32)'  },
 }
 
@@ -480,7 +480,7 @@ export default function EventDetailPage() {
             left: 0,
             right: 0,
             height: '55%',
-            background: 'linear-gradient(to top, rgba(6,13,26,0.80) 0%, transparent 100%)',
+            background: 'linear-gradient(to top, var(--overlay-bg-strong) 0%, transparent 100%)',
           }}
         />
 
@@ -494,7 +494,7 @@ export default function EventDetailPage() {
             fontWeight: 500,
             padding: '3px 12px',
             borderRadius: 'var(--r-pill)',
-            background: 'rgba(6,13,26,0.70)',
+            background: 'var(--overlay-media)',
             border: `0.5px solid ${meta.bdr}`,
             color: meta.color,
           }}
@@ -513,7 +513,7 @@ export default function EventDetailPage() {
               fontWeight: 400,
               padding: '3px 10px',
               borderRadius: 'var(--r-pill)',
-              background: 'rgba(6,13,26,0.70)',
+              background: 'var(--overlay-media)',
               border: '0.5px solid var(--border-default)',
               color: 'var(--text-tertiary)',
             }}

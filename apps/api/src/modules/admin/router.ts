@@ -10,6 +10,7 @@ import {
   deleteInvitation,
   getAllowedDomains,
   getStats,
+  listAdminRedemptions,
   listContent,
   listInvitations,
   listReports,
@@ -18,11 +19,14 @@ import {
   toggleActive,
   togglePin,
   togglePublish,
+  updateAdminRedemption,
   updateAllowedDomains,
   updateUserRole,
   updateUserStatus,
 } from './controller'
 import {
+  AdminFulfillRedemptionSchema,
+  AdminRedemptionListSchema,
   ContentKindSchema,
   ContentListQuerySchema,
   CreateBulkInvitationsSchema,
@@ -76,3 +80,16 @@ adminRouter.delete('/content/:kind/:id', validateContentKind, deleteContentItem)
 adminRouter.patch('/content/:kind/:id/pin', validateContentKind, validate(TogglePinSchema), togglePin)
 adminRouter.patch('/content/:kind/:id/publish', validateContentKind, validate(TogglePublishSchema), togglePublish)
 adminRouter.patch('/content/:kind/:id/active', validateContentKind, validate(ToggleActiveSchema), toggleActive)
+
+adminRouter.get(
+  '/mentorship/redemptions',
+  requireRole('admin'),
+  validateRequest({ query: AdminRedemptionListSchema }),
+  listAdminRedemptions,
+)
+adminRouter.patch(
+  '/mentorship/redemptions/:redemptionId',
+  requireRole('admin'),
+  validate(AdminFulfillRedemptionSchema),
+  updateAdminRedemption,
+)

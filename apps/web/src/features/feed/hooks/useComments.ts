@@ -43,6 +43,7 @@ export function useComments(postId: string, enabled: boolean) {
         if (!old || old.pages.length === 0) return old
         const [first, ...rest] = old.pages as [CommentsPage, ...CommentsPage[]]
         if (!comment.parentId) {
+          if (first.items.some((c) => c.id === comment.id)) return old
           return {
             ...old,
             pages: [{ ...first, items: [{ ...comment, replies: [] }, ...first.items], total: first.total + 1 }, ...rest],
@@ -52,9 +53,13 @@ export function useComments(postId: string, enabled: boolean) {
           ...old,
           pages: old.pages.map((page) => ({
             ...page,
-            items: page.items.map((c) =>
-              c.id === comment.parentId ? { ...c, replies: [...c.replies, comment] } : c,
-            ),
+            items: page.items.map((c) => {
+              if (c.id === comment.parentId) {
+                if (c.replies.some((r) => r.id === comment.id)) return c
+                return { ...c, replies: [...c.replies, comment] }
+              }
+              return c
+            }),
           })),
         }
       })

@@ -65,7 +65,7 @@ const menuItemStyle: React.CSSProperties = {
 
 function BadgeCount({ count }: { count: number }) {
   if (count <= 0) return null
-  return <span style={badgeStyle}>{count > 99 ? '99+' : count}</span>
+  return <span style={badgeStyle} aria-hidden="true">{count > 99 ? '99+' : count}</span>
 }
 
 export function TopNav() {
@@ -314,7 +314,7 @@ export function TopNav() {
               initial={{ opacity: 0, scale: 0.96, y: -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ type: 'spring', stiffness: 360, damping: 30, mass: 0.7 }}
+              transition={{ type: 'tween', duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 8px)',
@@ -356,6 +356,7 @@ export function TopNav() {
                   return (
                     <button
                       key={value}
+                      ref={value === 'light' ? firstMenuItemRef : undefined}
                       role="menuitemradio"
                       aria-checked={checked}
                       onClick={() => setThemeMode(value)}
@@ -373,7 +374,6 @@ export function TopNav() {
               </div>
 
               <button
-                ref={firstMenuItemRef}
                 role="menuitem"
                 onClick={() => { setMenuOpen(false); navigate(PATHS.PROFILE.replace(':id', user?.id ?? '')) }}
                 className="nav-menu-item"

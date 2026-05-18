@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow, parseISO } from 'date-fns'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/axios'
@@ -9,6 +10,9 @@ import {
   NOTIF_QUERY_KEY,
   type Notification,
 } from '@/features/notifications/hooks/useNotificationsSocket'
+
+const DROPDOWN_SPRING = { type: 'tween' as const, duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
+const ROW_SPRING = { type: 'tween' as const, duration: 0.18, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,9 +40,15 @@ function NotificationRow({ notif, onNavigate }: { notif: Notification; onNavigat
   const initials = getInitials(actor.fullName)
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onNavigate}
+      className={notif.refUrl ? 'row-hover-bg' : undefined}
+      layout
+      initial={{ opacity: 0, x: 8 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -8 }}
+      transition={ROW_SPRING}
       style={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -50,13 +60,7 @@ function NotificationRow({ notif, onNavigate }: { notif: Notification; onNavigat
         borderBottom: '0.5px solid var(--border-default)',
         cursor: notif.refUrl ? 'pointer' : 'default',
         textAlign: 'left',
-        transition: 'background 150ms',
-      }}
-      onMouseEnter={(e) => {
-        if (notif.refUrl) e.currentTarget.style.background = 'var(--surface-hover)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = notif.isRead ? 'transparent' : 'var(--uc-indigo-bg)'
+        transition: 'background 150ms ease',
       }}
     >
       <div style={{ flexShrink: 0, marginTop: 1 }}>
@@ -107,7 +111,7 @@ function NotificationRow({ notif, onNavigate }: { notif: Notification; onNavigat
           }}
         />
       )}
-    </button>
+    </motion.button>
   )
 }
 
@@ -149,9 +153,11 @@ export function NotificationDropdown({ onClose }: Props) {
   }
 
   return (
-    <div
-      className="dropdown-enter"
-      data-origin="top-right"
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, y: -4 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96, y: -4 }}
+      transition={DROPDOWN_SPRING}
       style={{
         position: 'absolute',
         top: 'calc(100% + 8px)',
@@ -163,6 +169,7 @@ export function NotificationDropdown({ onClose }: Props) {
         zIndex: 100,
         overflow: 'hidden',
         boxSizing: 'border-box',
+        transformOrigin: 'top right',
       }}
     >
       {/* Header */}
@@ -250,15 +257,17 @@ export function NotificationDropdown({ onClose }: Props) {
             </p>
           </div>
         ) : (
-          notifications.map((n) => (
-            <NotificationRow
-              key={n.id}
-              notif={n}
-              onNavigate={() => handleItemClick(n)}
-            />
-          ))
+          <AnimatePresence initial={false}>
+            {notifications.map((n) => (
+              <NotificationRow
+                key={n.id}
+                notif={n}
+                onNavigate={() => handleItemClick(n)}
+              />
+            ))}
+          </AnimatePresence>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -6,7 +6,10 @@ import {
   createRequest,
   getIncomingRequests,
   getMyRequests,
+  getMyRewards,
   listAlumni,
+  listGiftCards,
+  redeemGiftCard,
   updateRequest,
 } from './controller'
 import {
@@ -14,6 +17,7 @@ import {
   CreateRequestSchema,
   IncomingRequestsQuerySchema,
   PaginationQuerySchema,
+  RedeemGiftCardSchema,
   UpdateRequestSchema,
 } from './schema'
 
@@ -49,4 +53,13 @@ mentorshipRouter.patch(
   requireRole('alumni', 'admin'),
   validate(UpdateRequestSchema),
   updateRequest,
+)
+
+mentorshipRouter.get('/rewards/me', requireRole('alumni'), getMyRewards)
+mentorshipRouter.get('/gift-cards', listGiftCards)
+mentorshipRouter.post(
+  '/redeem',
+  requireRole('alumni'),
+  validate(RedeemGiftCardSchema),
+  redeemGiftCard,
 )

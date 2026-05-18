@@ -41,6 +41,10 @@ function SkeletonRow() {
   )
 }
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <div className="search-section-label">{children}</div>
+}
+
 export function SearchPanel({ query, onClose }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('all')
@@ -106,6 +110,7 @@ export function SearchPanel({ query, onClose }: Props) {
       borderBottom: active ? '2px solid var(--uc-indigo)' : '2px solid transparent',
       cursor: 'pointer',
       marginBottom: -1,
+      transition: 'color 150ms ease, border-color 150ms ease',
     }
   }
 
@@ -164,21 +169,21 @@ export function SearchPanel({ query, onClose }: Props) {
       <>
         {allData.people.length > 0 && (
           <div>
-            <div style={{ padding: '8px 12px 2px', fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>People</div>
+            <SectionLabel>People</SectionLabel>
             {allData.people.map((p) => <PeopleResultCard key={p.id} person={p} query={query} />)}
             <button style={seeAllLinkStyle} onClick={() => goToSearch('people')}>See all people results →</button>
           </div>
         )}
         {allData.posts.length > 0 && (
           <div>
-            <div style={{ padding: '8px 12px 2px', fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Posts</div>
+            <SectionLabel>Posts</SectionLabel>
             {allData.posts.map((p) => <PostResultCard key={p.id} post={p} query={query} />)}
             <button style={seeAllLinkStyle} onClick={() => goToSearch('posts')}>See all post results →</button>
           </div>
         )}
         {allData.jobs.length > 0 && (
           <div>
-            <div style={{ padding: '8px 12px 2px', fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Jobs</div>
+            <SectionLabel>Jobs</SectionLabel>
             {allData.jobs.map((j) => (
               <div key={j.id} style={{ padding: '8px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13 }}>
                 <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{j.title}</div>
@@ -190,7 +195,7 @@ export function SearchPanel({ query, onClose }: Props) {
         )}
         {allData.events.length > 0 && (
           <div>
-            <div style={{ padding: '8px 12px 2px', fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Events</div>
+            <SectionLabel>Events</SectionLabel>
             {allData.events.map((ev) => (
               <div key={ev.id} style={{ padding: '8px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13 }}>
                 <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{ev.title}</div>
@@ -202,7 +207,7 @@ export function SearchPanel({ query, onClose }: Props) {
         )}
         {allData.groups.length > 0 && (
           <div>
-            <div style={{ padding: '8px 12px 2px', fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Groups</div>
+            <SectionLabel>Groups</SectionLabel>
             {allData.groups.map((g) => <GroupResultCard key={g.id} group={g} />)}
             <button style={seeAllLinkStyle} onClick={() => goToSearch('groups')}>See all group results →</button>
           </div>
@@ -311,7 +316,7 @@ export function SearchPanel({ query, onClose }: Props) {
         id="search-panel"
         role="listbox"
         aria-label="Search results"
-        className="dropdown-enter"
+        className="dropdown-enter search-panel-responsive"
         data-origin="top-center"
         style={panelStyle}
       >

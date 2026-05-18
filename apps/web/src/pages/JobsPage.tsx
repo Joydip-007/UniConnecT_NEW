@@ -260,7 +260,6 @@ export default function JobsPage() {
             position: 'fixed',
             bottom: 28,
             right: 28,
-            boxShadow: '0 4px 16px rgba(240,90,40,0.30)',
             zIndex: 50,
           }}
         >
