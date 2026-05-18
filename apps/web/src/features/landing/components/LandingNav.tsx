@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BrandLogo } from '@/components/BrandLogo'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { ThemeToggleButton } from '@/components/ThemeToggleButton'
 import { PATHS } from '@/router/paths'
 
 const NAV_LINKS = [
@@ -29,11 +30,13 @@ export function LandingNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  /* Close drawer when a nav link is clicked */
+  /* Smooth-scroll to in-page anchors; honor prefers-reduced-motion. */
   function handleLinkClick(href: string) {
     setMenuOpen(false)
     const target = document.querySelector(href)
-    if (target) target.scrollIntoView({ behavior: 'smooth' })
+    if (!target) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
   }
 
   return (
@@ -68,6 +71,7 @@ export function LandingNav() {
             <a
               key={label}
               href={href}
+              onClick={(e) => { e.preventDefault(); handleLinkClick(href) }}
               className="nav-link-hover"
               style={{
                 fontSize: 14,
@@ -82,7 +86,8 @@ export function LandingNav() {
         </div>
 
         {/* Right CTAs */}
-        <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginLeft: 'auto' }}>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginLeft: 'auto', alignItems: 'center' }}>
+          <ThemeToggleButton size={36} />
           <GhostBtn onClick={() => navigate(PATHS.LOGIN)}>Sign in</GhostBtn>
           <OrangeBtn onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}>
             Join free
@@ -103,6 +108,10 @@ export function LandingNav() {
 
       {/* Mobile drawer */}
       <div className={`uc-nav-mobile-drawer${menuOpen ? ' open' : ''}`}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 12px' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Theme</span>
+          <ThemeToggleButton size={32} />
+        </div>
         {NAV_LINKS.map(({ label, href }) => (
           <a
             key={label}
