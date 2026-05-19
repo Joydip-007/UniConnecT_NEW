@@ -8,8 +8,10 @@ import {
   createInvitation,
   deleteContentItem,
   deleteInvitation,
+  deleteUser,
   getAllowedDomains,
   getStats,
+  listAdminRedemptions,
   listContent,
   listInvitations,
   listReports,
@@ -18,11 +20,14 @@ import {
   toggleActive,
   togglePin,
   togglePublish,
+  updateAdminRedemption,
   updateAllowedDomains,
   updateUserRole,
   updateUserStatus,
 } from './controller'
 import {
+  AdminFulfillRedemptionSchema,
+  AdminRedemptionListSchema,
   ContentKindSchema,
   ContentListQuerySchema,
   CreateBulkInvitationsSchema,
@@ -54,6 +59,7 @@ adminRouter.get('/stats', requireRole('admin'), getStats)
 adminRouter.get('/users', validateRequest({ query: PaginationQuerySchema }), listUsers)
 adminRouter.patch('/users/:userId/role', requireRole('admin'), validate(UpdateUserRoleSchema), updateUserRole)
 adminRouter.patch('/users/:userId/status', requireRole('admin'), validate(UpdateUserStatusSchema), updateUserStatus)
+adminRouter.delete('/users/:userId', requireRole('admin'), deleteUser)
 
 adminRouter.get('/reports', validateRequest({ query: PaginationQuerySchema }), listReports)
 adminRouter.patch('/reports/:reportId', validate(ResolveReportSchema), resolveReport)
@@ -76,3 +82,16 @@ adminRouter.delete('/content/:kind/:id', validateContentKind, deleteContentItem)
 adminRouter.patch('/content/:kind/:id/pin', validateContentKind, validate(TogglePinSchema), togglePin)
 adminRouter.patch('/content/:kind/:id/publish', validateContentKind, validate(TogglePublishSchema), togglePublish)
 adminRouter.patch('/content/:kind/:id/active', validateContentKind, validate(ToggleActiveSchema), toggleActive)
+
+adminRouter.get(
+  '/mentorship/redemptions',
+  requireRole('admin'),
+  validateRequest({ query: AdminRedemptionListSchema }),
+  listAdminRedemptions,
+)
+adminRouter.patch(
+  '/mentorship/redemptions/:redemptionId',
+  requireRole('admin'),
+  validate(AdminFulfillRedemptionSchema),
+  updateAdminRedemption,
+)

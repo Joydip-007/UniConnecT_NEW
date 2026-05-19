@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
+import { motion } from 'framer-motion'
 import { CornerDownRight, ThumbsUp, Trash2, X } from 'lucide-react'
 import type { FeedComment, FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
@@ -146,6 +147,7 @@ function ActionBtn({ active, activeColor = 'var(--text-primary)', danger, onClic
     <button
       type="button"
       onClick={onClick}
+      className="press-feedback"
       style={{
         background: 'none',
         border: 'none',
@@ -176,18 +178,11 @@ export function CommentDrawer({ post, onClose }: Props) {
   const [replyTo, setReplyTo] = useState<{ parentId: string; authorName: string } | null>(null)
   const [inputText, setInputText] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const [visible, setVisible] = useState(false)
 
   const commentsQuery = useComments(post.id, true)
   const createComment = useCreateComment(post.id)
 
   const comments = commentsQuery.data?.pages.flatMap((p) => p.items) ?? []
-
-  // Slide-in on mount
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setVisible(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   function handleReply(parentId: string, authorName: string) {
     setReplyTo({ parentId, authorName })
@@ -225,20 +220,26 @@ export function CommentDrawer({ post, onClose }: Props) {
   return (
     <>
       {/* Backdrop */}
-      <div
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
         style={{
           position: 'fixed',
           inset: 0,
           zIndex: 100,
-          background: 'rgba(0,0,0,0.4)',
-          opacity: visible ? 1 : 0,
-          transition: 'opacity 250ms ease',
+          background: 'var(--overlay-bg-soft)',
         }}
         onClick={onClose}
       />
 
       {/* Drawer panel */}
-      <div
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'tween', duration: 0.26, ease: [0.32, 0.72, 0, 1] as [number, number, number, number] }}
         style={{
           position: 'fixed',
           top: 0,
@@ -251,8 +252,6 @@ export function CommentDrawer({ post, onClose }: Props) {
           borderLeft: '0.5px solid var(--border-default)',
           display: 'flex',
           flexDirection: 'column',
-          transform: visible ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 250ms ease',
         }}
       >
         {/* Header — post summary */}
@@ -302,6 +301,7 @@ export function CommentDrawer({ post, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
+            className="press-feedback row-hover-bg"
             style={{
               background: 'transparent',
               border: 'none',
@@ -413,6 +413,7 @@ export function CommentDrawer({ post, onClose }: Props) {
                 <button
                   type="button"
                   onClick={() => setReplyTo(null)}
+                  className="press-feedback"
                   style={{
                     marginLeft: 'auto',
                     background: 'none',
@@ -474,6 +475,7 @@ export function CommentDrawer({ post, onClose }: Props) {
                   type="button"
                   onClick={handleSend}
                   disabled={!inputText.trim() || createComment.isPending}
+                  className="press-feedback"
                   style={{
                     background: 'var(--uc-indigo)',
                     border: 'none',
@@ -494,7 +496,7 @@ export function CommentDrawer({ post, onClose }: Props) {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </>
   )
 }

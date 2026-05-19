@@ -1,10 +1,14 @@
 import crypto from 'node:crypto'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
-import { notFound } from '../../utils/errors'
+import { badRequest, notFound } from '../../utils/errors'
 import { emailQueue } from '../../queues/email.queue'
 import { env } from '../../config/env'
+import { getIo } from '../../socket'
+import { systemGroupsService } from '../groups/system-groups.service'
 import type {
+  AdminFulfillRedemptionInput,
+  AdminRedemptionListQuery,
   CreateBulkInvitationsInput,
   CreateInvitationInput,
   PaginationQuery,
@@ -12,6 +16,24 @@ import type {
   UpdateUserRoleInput,
   UpdateUserStatusInput,
 } from './schema'
+
+interface RedemptionListRow {
+  id: string
+  status: 'pending' | 'fulfilled' | 'rejected'
+  points_spent: number
+  code_text: string | null
+  admin_note: string | null
+  requested_at: Date
+  fulfilled_at: Date | null
+  user_id: string
+  user_full_name: string
+  user_avatar_url: string | null
+  user_email: string
+  gift_card_id: string
+  gift_card_vendor: string
+  gift_card_title: string
+  gift_card_value_usd_cents: number
+}
 
 interface CountRow {
   count: string | number
@@ -84,6 +106,7 @@ export class AdminService {
     const baseQuery = db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where('users.university_id', universityId)
+      .where('users.is_deleted', false)
       .select<AdminUserRow[]>(
         'users.id',
         'users.university_id',
@@ -100,7 +123,7 @@ export class AdminService {
       )
 
     const [{ count }] = await db('users')
-      .where({ university_id: universityId })
+      .where({ university_id: universityId, is_deleted: false })
       .count<CountRow[]>({ count: '*' })
 
     const rows = await baseQuery
@@ -117,20 +140,92 @@ export class AdminService {
   }
 
   async updateUserRole(universityId: string, userId: string, input: UpdateUserRoleInput) {
+    const previous = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId })
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+        'users.role',
+        'profiles.department',
+      )
+      .first()
+
+    if (!previous) throw notFound('User not found')
+
     const updated = await db('users')
       .where({ id: userId, university_id: universityId })
       .update({ role: input.role })
 
     if (updated === 0) throw notFound('User not found')
+
+    await systemGroupsService.syncUserMembership(
+      userId,
+      universityId,
+      { role: previous.role, department: previous.department },
+      { role: input.role, department: previous.department },
+    )
+
     return { userId, role: input.role }
   }
 
+  async deleteUser(universityId: string, adminUserId: string, userId: string) {
+    if (userId === adminUserId) throw badRequest('You cannot delete your own account', 'SELF_ACTION')
+
+    const user = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId, 'users.is_deleted': false })
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+        'users.role',
+        'profiles.department',
+      )
+      .first()
+
+    if (!user) throw notFound('User not found')
+
+    await db('users')
+      .where({ id: userId, university_id: universityId })
+      .update({ is_deleted: true, is_active: false })
+
+    await db('user_sessions').where({ user_id: userId }).delete()
+
+    await systemGroupsService.removeUserFromSystemGroups(userId, universityId, user.role, user.department)
+
+    return { userId, deleted: true }
+  }
+
   async updateUserStatus(universityId: string, userId: string, input: UpdateUserStatusInput) {
+    const previous = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId })
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+        'users.role',
+        'profiles.department',
+      )
+      .first()
+
+    if (!previous) throw notFound('User not found')
+
     const updated = await db('users')
       .where({ id: userId, university_id: universityId })
       .update({ is_active: input.is_active })
 
     if (updated === 0) throw notFound('User not found')
+
+    if (!input.is_active) {
+      await systemGroupsService.removeUserFromSystemGroups(
+        userId,
+        universityId,
+        previous.role,
+        previous.department,
+      )
+    } else {
+      await systemGroupsService.addUserToSystemGroups(
+        userId,
+        universityId,
+        previous.role,
+        previous.department,
+      )
+    }
+
     return { userId, isActive: input.is_active }
   }
 
@@ -314,6 +409,100 @@ export class AdminService {
 
     return { allowedEmailDomains: unique }
   }
+
+  async listRedemptions(universityId: string, query: AdminRedemptionListQuery) {
+    const base = db('mentor_redemptions')
+      .where('mentor_redemptions.university_id', universityId)
+      .modify((builder) => {
+        if (query.status) builder.where('mentor_redemptions.status', query.status)
+      })
+
+    const [{ count }] = await base.clone().count<CountRow[]>({ count: '*' })
+    const total = Number(count)
+
+    const rows = await base
+      .clone()
+      .join('users', 'users.id', 'mentor_redemptions.user_id')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .join('gift_cards', 'gift_cards.id', 'mentor_redemptions.gift_card_id')
+      .select<RedemptionListRow[]>(
+        'mentor_redemptions.id',
+        'mentor_redemptions.status',
+        'mentor_redemptions.points_spent',
+        'mentor_redemptions.code_text',
+        'mentor_redemptions.admin_note',
+        'mentor_redemptions.requested_at',
+        'mentor_redemptions.fulfilled_at',
+        'users.id as user_id',
+        'users.email as user_email',
+        'profiles.full_name as user_full_name',
+        'profiles.avatar_url as user_avatar_url',
+        'gift_cards.id as gift_card_id',
+        'gift_cards.vendor as gift_card_vendor',
+        'gift_cards.title as gift_card_title',
+        'gift_cards.value_usd_cents as gift_card_value_usd_cents',
+      )
+      .orderBy('mentor_redemptions.requested_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map(toAdminRedemption),
+      total,
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async updateRedemption(
+    universityId: string,
+    adminUserId: string,
+    redemptionId: string,
+    input: AdminFulfillRedemptionInput,
+  ) {
+    return db.transaction(async (trx) => {
+      const row = await trx('mentor_redemptions')
+        .where({ id: redemptionId, university_id: universityId })
+        .forUpdate()
+        .select<{
+          id: string
+          user_id: string
+          points_spent: number
+          status: 'pending' | 'fulfilled' | 'rejected'
+        }[]>('id', 'user_id', 'points_spent', 'status')
+        .first()
+
+      if (!row) throw notFound('Redemption not found', 'REDEMPTION_NOT_FOUND')
+      if (row.status !== 'pending') {
+        throw badRequest('Redemption has already been processed', 'REDEMPTION_ALREADY_PROCESSED')
+      }
+
+      if (input.status === 'rejected') {
+        await trx('profiles')
+          .where({ user_id: row.user_id })
+          .increment('mentorship_points', row.points_spent)
+      }
+
+      await trx('mentor_redemptions')
+        .where({ id: redemptionId })
+        .update({
+          status: input.status,
+          code_text: input.codeText ?? null,
+          admin_note: input.adminNote ?? null,
+          fulfilled_at: trx.fn.now(),
+          fulfilled_by: adminUserId,
+        })
+
+      getIo()
+        .to(`user:${row.user_id}`)
+        .emit('mentorship:redemption:updated', {
+          redemptionId,
+          status: input.status,
+        })
+
+      return { id: redemptionId, status: input.status }
+    })
+  }
 }
 
 export const adminService = new AdminService()
@@ -365,6 +554,30 @@ function toReport(row: ReportRow) {
     resolvedBy: row.resolved_by,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
+  }
+}
+
+function toAdminRedemption(row: RedemptionListRow) {
+  return {
+    id: row.id,
+    status: row.status,
+    pointsSpent: row.points_spent,
+    codeText: row.code_text,
+    adminNote: row.admin_note,
+    requestedAt: row.requested_at,
+    fulfilledAt: row.fulfilled_at,
+    user: {
+      id: row.user_id,
+      email: row.user_email,
+      fullName: row.user_full_name,
+      avatarUrl: row.user_avatar_url,
+    },
+    giftCard: {
+      id: row.gift_card_id,
+      vendor: row.gift_card_vendor,
+      title: row.gift_card_title,
+      valueUsdCents: row.gift_card_value_usd_cents,
+    },
   }
 }
 

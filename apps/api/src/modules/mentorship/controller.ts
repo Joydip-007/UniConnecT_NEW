@@ -8,6 +8,7 @@ import type {
   CreateRequestInput,
   IncomingRequestsQuery,
   PaginationQuery,
+  RedeemGiftCardInput,
   UpdateRequestInput,
 } from './schema'
 
@@ -52,4 +53,18 @@ export const updateRequest = asyncHandler(async (req: Request, res: Response) =>
   const context = getAuthContext(req)
   const requestId = req.params.id as string
   sendSuccess(res, await mentorshipService.updateRequest(context, requestId, req.body as UpdateRequestInput))
+})
+
+export const getMyRewards = asyncHandler(async (req: Request, res: Response) => {
+  const { userId, universityId } = getAuthContext(req)
+  sendSuccess(res, await mentorshipService.getMyRewards(universityId, userId))
+})
+
+export const listGiftCards = asyncHandler(async (_req: Request, res: Response) => {
+  sendSuccess(res, await mentorshipService.listGiftCards())
+})
+
+export const redeemGiftCard = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await mentorshipService.redeem(context, req.body as RedeemGiftCardInput), 201)
 })

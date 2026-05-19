@@ -6,7 +6,8 @@ type BaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const base =
   'inline-flex items-center justify-center gap-[7px] text-[13px] font-medium cursor-pointer transition-[opacity,transform] duration-150 ease-out ' +
-  'hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed';
+  'hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ' +
+  'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--uc-indigo-xl)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-page)]';
 
 export function PrimaryBtn({ className = '', ...props }: BaseProps) {
   return (
@@ -58,13 +59,18 @@ export function ContextualBtn({ icon, children, className = '', ...props }: Cont
   );
 }
 
-type ReactionBtnProps = BaseProps & { active?: boolean };
+type ReactionBtnProps = BaseProps & { active?: boolean; activeTone?: 'indigo' | 'orange' };
 
-export function ReactionBtn({ active = false, className = '', ...props }: ReactionBtnProps) {
+export function ReactionBtn({ active = false, activeTone = 'indigo', className = '', ...props }: ReactionBtnProps) {
+  const activeColor = active
+    ? activeTone === 'orange'
+      ? 'text-[var(--uc-orange-l)]'
+      : 'text-[var(--uc-indigo)]'
+    : '';
   return (
     <button
       {...props}
-      className={`${base} rounded-[var(--r-sm)] px-[10px] py-[6px] bg-transparent border-none text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] ${active ? 'text-[var(--uc-indigo)]' : ''} ${className}`}
+      className={`${base} rounded-[var(--r-sm)] px-[10px] py-[6px] bg-transparent border-none text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] ${activeColor} ${className}`}
     />
   );
 }

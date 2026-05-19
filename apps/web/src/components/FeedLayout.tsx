@@ -13,9 +13,11 @@ export function FeedLayout() {
   useNotificationsSocket(userId)
 
   return (
-    <div style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--surface-page)', minHeight: '100dvh' }}>
       {hasConnected && !connected && (
         <div
+          role="alert"
+          aria-live="polite"
           style={{
             position: 'fixed',
             top: 0,

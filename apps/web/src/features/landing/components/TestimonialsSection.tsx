@@ -1,3 +1,5 @@
+import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
+
 const TESTIMONIALS = [
   {
     quote:
@@ -18,28 +20,24 @@ const TESTIMONIALS = [
 ] as const
 
 export function TestimonialsSection() {
+  const sectionRef = useScrollReveal<HTMLDivElement>()
+
   return (
     <section id="testimonials">
-      <div className="uc-testimonials-wrap" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 52px 96px' }}>
+      <div
+        ref={sectionRef}
+        className="uc-testimonials-wrap"
+        style={{ maxWidth: 920, margin: '0 auto', padding: '24px 52px 88px' }}
+      >
 
         {/* Header */}
-        <p
-          style={{
-            margin: '0 0 13px',
-            fontSize: 12,
-            fontWeight: 500,
-            letterSpacing: '.1em',
-            textTransform: 'uppercase',
-            color: 'var(--uc-indigo-l)',
-          }}
-        >
-          From the campus
-        </p>
         <h2
+          className="reveal"
+          data-delay="0"
           style={{
             margin: '0 0 48px',
             fontSize: 'clamp(32px, 4vw, 48px)',
-            fontWeight: 800,
+            fontWeight: 500,
             letterSpacing: '-2px',
             lineHeight: 1.12,
             color: 'var(--text-primary)',
@@ -57,15 +55,17 @@ export function TestimonialsSection() {
             gap: 16,
           }}
         >
-          {TESTIMONIALS.map(({ quote, name, role, initials, avatarColor }) => (
+          {TESTIMONIALS.map(({ quote, name, role, initials, avatarColor }, i) => (
             <div
               key={name}
+              className="reveal"
+              data-delay={String(180 + i * 100)}
               style={{
                 background: 'var(--surface-card)',
                 border: '0.5px solid var(--border-default)',
                 borderRadius: 22,
                 padding: 32,
-                transition: 'border-color 0.3s',
+                transition: 'border-color 0.3s, opacity 0.65s var(--ease-out-expo), transform 0.65s var(--ease-out-expo)',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
@@ -111,7 +111,7 @@ export function TestimonialsSection() {
                     justifyContent: 'center',
                     fontSize: 13,
                     fontWeight: 500,
-                    color: 'white',
+                    color: 'var(--text-primary)',
                     flexShrink: 0,
                   }}
                 >

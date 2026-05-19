@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { PrimaryBtn } from '@/components/Button'
+import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 
 export default function NotFoundPage() {
   const navigate = useNavigate()
@@ -13,6 +14,7 @@ export default function NotFoundPage() {
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px',
+        position: 'relative',
       }}
     >
       <div
@@ -69,6 +71,7 @@ export default function NotFoundPage() {
           Back to feed
         </PrimaryBtn>
       </div>
+      <MinimalPageFooter />
     </div>
   )
 }

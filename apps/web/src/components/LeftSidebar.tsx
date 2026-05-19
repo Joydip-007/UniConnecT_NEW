@@ -15,6 +15,7 @@ import {
   BarChart2,
   ExternalLink,
   ShieldCheck,
+  Handshake,
   type LucideIcon,
 } from 'lucide-react'
 import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
@@ -126,10 +127,9 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, onClick }: CampusToo
         border: 'none',
         borderRadius: 'var(--r-sm)',
         cursor: 'pointer',
-        transition: 'background 150ms',
         textAlign: 'left',
       }}
-      className="row-hover-bg"
+      className="interactive-surface"
     >
       <div
         style={{
@@ -181,26 +181,38 @@ export function LeftSidebar() {
 
   const profilePath = user ? PATHS.PROFILE.replace(':id', user.id) : PATHS.FEED
 
-  const navItems: Array<{
-    icon: LucideIcon
-    label: string
-    path: string
-    badge?: number
-    hasDot?: boolean
+  const navGroups: Array<{
+    groupLabel: string
+    items: Array<{ icon: LucideIcon; label: string; path: string; badge?: number; hasDot?: boolean }>
   }> = [
-    { icon: Home, label: 'Home', path: PATHS.FEED },
-    { icon: Compass, label: 'Explore', path: PATHS.SEARCH },
-    { icon: Users, label: 'Groups', path: PATHS.GROUPS, hasDot: true },
-    { icon: Calendar, label: 'Events', path: PATHS.EVENTS },
-    { icon: Briefcase, label: 'Jobs', path: PATHS.JOBS },
-    { icon: Newspaper, label: 'News', path: PATHS.NEWS },
-    { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES, badge: messageCount },
-    { icon: Bus, label: 'Shuttle tracker', path: PATHS.SHUTTLE },
-    { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
-    { icon: UserCircle2, label: 'My profile', path: profilePath },
-    ...(user?.role === 'admin'
-      ? [{ icon: ShieldCheck, label: 'Admin panel', path: PATHS.ADMIN }]
-      : []),
+    {
+      groupLabel: 'main',
+      items: [
+        { icon: Home, label: 'Home', path: PATHS.FEED },
+        { icon: Compass, label: 'Explore', path: PATHS.SEARCH },
+        { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES, badge: messageCount },
+      ],
+    },
+    {
+      groupLabel: 'community',
+      items: [
+        { icon: Users, label: 'Groups', path: PATHS.GROUPS, hasDot: false },
+        { icon: Calendar, label: 'Events', path: PATHS.EVENTS },
+        { icon: Briefcase, label: 'Jobs', path: PATHS.JOBS },
+        { icon: Newspaper, label: 'News', path: PATHS.NEWS },
+        { icon: Handshake, label: 'Mentorship', path: PATHS.MENTORSHIP },
+      ],
+    },
+    {
+      groupLabel: 'you',
+      items: [
+        { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
+        { icon: UserCircle2, label: 'My profile', path: profilePath },
+        ...(user?.role === 'admin'
+          ? [{ icon: ShieldCheck, label: 'Admin panel', path: PATHS.ADMIN }]
+          : []),
+      ],
+    },
   ]
 
   function isActive(path: string): boolean {
@@ -223,8 +235,8 @@ export function LeftSidebar() {
         flexDirection: 'column',
         gap: 6,
         paddingBottom: 20,
-        scrollbarWidth: 'none',
       }}
+      className="rail-scroll"
     >
       {/* Profile mini-card */}
       <div
@@ -241,7 +253,7 @@ export function LeftSidebar() {
           style={{
             height: 60,
             background: [
-              'radial-gradient(circle, rgba(91,91,214,0.30) 1px, transparent 1px)',
+              'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
               'var(--surface-raised)',
             ].join(', '),
             backgroundSize: '14px 14px',
@@ -257,11 +269,20 @@ export function LeftSidebar() {
               marginBottom: 8,
               display: 'inline-block',
               borderRadius: '50%',
-              border: '2.5px solid var(--surface-card)',
+              background: 'var(--uc-orange)',
+              padding: 1.5,
               lineHeight: 0,
             }}
           >
-            <Avatar initials={initials} color={avatarBg} size={40} online />
+            <div
+              style={{
+                borderRadius: '50%',
+                border: '2px solid var(--surface-card)',
+                lineHeight: 0,
+              }}
+            >
+              <Avatar initials={initials} color={avatarBg} size={40} online />
+            </div>
           </div>
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
             {user?.profile.fullName ?? 'Loading…'}
@@ -287,36 +308,42 @@ export function LeftSidebar() {
         </div>
       </div>
 
-      {/* Nav list */}
-      <nav
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '6px',
-          flexShrink: 0,
-        }}
-      >
-        {navItems.map((item) => (
-          <NavItem
-            key={item.label}
-            icon={item.icon}
-            label={item.label}
-            badge={item.badge}
-            hasDot={item.hasDot}
-            isActive={isActive(item.path)}
-            onClick={() => navigate(item.path)}
-          />
+      {/* Nav list — grouped, no card chrome */}
+      <nav style={{ padding: '2px 2px', flexShrink: 0 }}>
+        {navGroups.map((group, gi) => (
+          <div key={group.groupLabel} style={{ marginTop: gi === 0 ? 0 : 6 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                color: 'var(--text-tertiary)',
+                padding: '6px 10px 2px',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {group.groupLabel}
+            </div>
+            {group.items.map((item) => (
+              <NavItem
+                key={item.label}
+                icon={item.icon}
+                label={item.label}
+                badge={item.badge}
+                hasDot={item.hasDot}
+                isActive={isActive(item.path)}
+                onClick={() => navigate(item.path)}
+              />
+            ))}
+          </div>
         ))}
       </nav>
 
-      {/* Campus tools */}
+      {/* Campus tools — flat section with leading divider */}
       <div
         style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '10px 8px 6px',
+          borderTop: '0.5px solid var(--border-default)',
+          paddingTop: 14,
+          marginTop: 2,
           flexShrink: 0,
         }}
       >
@@ -325,7 +352,7 @@ export function LeftSidebar() {
             fontSize: 11,
             fontWeight: 500,
             color: 'var(--text-tertiary)',
-            padding: '0 4px 6px',
+            padding: '0 6px 6px',
             letterSpacing: '0.04em',
           }}
         >

@@ -1,3 +1,4 @@
+import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { getIo } from '../../socket'
 import { notFound } from '../../utils/errors'
@@ -96,6 +97,39 @@ export class NotificationsService {
     await db('notifications').where({ user_id: userId, is_read: false }).update({ is_read: true })
     getIo().to(`user:${userId}`).emit('notification:read-all', {})
     return { read: true }
+  }
+
+  async deleteNotification(userId: string, notificationId: string) {
+    const deleted = await db('notifications').where({ id: notificationId, user_id: userId }).delete()
+    if (deleted === 0) throw notFound('Notification not found', 'NOTIFICATION_NOT_FOUND')
+    getIo().to(`user:${userId}`).emit('notification:deleted', { notificationId })
+    return { deleted: true }
+  }
+
+  async acceptGroupInvite(
+    userId: string,
+    universityId: string,
+    userRole: UserRole,
+    notificationId: string,
+  ) {
+    const notification = await db('notifications')
+      .where({ id: notificationId, user_id: userId, type: 'group_invite' })
+      .select<{ id: string; reference_id: string | null }[]>('id', 'reference_id')
+      .first()
+    if (!notification || !notification.reference_id) {
+      throw notFound('Group invitation not found', 'GROUP_INVITE_NOT_FOUND')
+    }
+
+    const { groupsService } = await import('../groups/service')
+    const group = await groupsService.joinGroupViaInvite(
+      { userId, universityId, role: userRole },
+      notification.reference_id,
+    )
+
+    await db('notifications').where({ id: notificationId, user_id: userId }).update({ is_read: true })
+    getIo().to(`user:${userId}`).emit('notification:read', { notificationId })
+
+    return { group, notificationId }
   }
 
   async getActorName(actorId: string): Promise<string> {

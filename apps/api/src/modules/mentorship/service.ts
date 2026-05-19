@@ -7,10 +7,39 @@ import type {
   CreateRequestInput,
   IncomingRequestsQuery,
   PaginationQuery,
+  RedeemGiftCardInput,
   UpdateRequestInput,
 } from './schema'
 
+export const POINTS_PER_SESSION = 10
+export const POINTS_PER_USD = 100
+
 type RequestStatus = 'pending' | 'accepted' | 'declined' | 'completed'
+
+interface GiftCardRow {
+  id: string
+  vendor: string
+  title: string
+  description: string | null
+  image_url: string | null
+  value_usd_cents: number
+  threshold_points: number
+}
+
+interface RedemptionHistoryRow {
+  id: string
+  points_spent: number
+  status: 'pending' | 'fulfilled' | 'rejected'
+  code_text: string | null
+  admin_note: string | null
+  requested_at: Date
+  fulfilled_at: Date | null
+  gift_card_id: string | null
+  vendor: string | null
+  title: string | null
+  value_usd_cents: number | null
+  image_url: string | null
+}
 
 interface AuthContext {
   userId: string
@@ -64,7 +93,7 @@ export class MentorshipService {
       .where({
         'users.university_id': universityId,
         'users.role': 'alumni',
-        'profiles.is_open_to_work': true,
+        'profiles.is_open_to_mentorship': true,
       })
 
     const [{ count }] = await base.clone().count<CountRow[]>({ count: '*' })
@@ -106,7 +135,7 @@ export class MentorshipService {
         'users.id': input.alumniId,
         'users.university_id': context.universityId,
         'users.role': 'alumni',
-        'profiles.is_open_to_work': true,
+        'profiles.is_open_to_mentorship': true,
       })
       .select<{ id: string; full_name: string }[]>('users.id', 'profiles.full_name')
       .first()
@@ -267,7 +296,127 @@ export class MentorshipService {
       .where({ id: requestId, university_id: context.universityId })
       .update(updates)
 
+    // Award points when transitioning into 'completed' (forward-only; no retroactive backfill)
+    if (
+      input.status === 'completed' &&
+      request.status !== 'completed'
+    ) {
+      await db('profiles')
+        .where({ user_id: request.alumni_id })
+        .increment('mentorship_points', POINTS_PER_SESSION)
+    }
+
     return this.getRequestById(requestId)
+  }
+
+  async getMyRewards(universityId: string, userId: string) {
+    const profile = await db('profiles')
+      .where({ user_id: userId })
+      .select<{ mentorship_points: number }[]>('mentorship_points')
+      .first()
+    const points = profile?.mentorship_points ?? 0
+
+    const history = await db('mentor_redemptions')
+      .leftJoin('gift_cards', 'gift_cards.id', 'mentor_redemptions.gift_card_id')
+      .where({
+        'mentor_redemptions.university_id': universityId,
+        'mentor_redemptions.user_id': userId,
+      })
+      .orderBy('mentor_redemptions.requested_at', 'desc')
+      .select<RedemptionHistoryRow[]>(
+        'mentor_redemptions.id',
+        'mentor_redemptions.points_spent',
+        'mentor_redemptions.status',
+        'mentor_redemptions.code_text',
+        'mentor_redemptions.admin_note',
+        'mentor_redemptions.requested_at',
+        'mentor_redemptions.fulfilled_at',
+        'gift_cards.id as gift_card_id',
+        'gift_cards.vendor',
+        'gift_cards.title',
+        'gift_cards.value_usd_cents',
+        'gift_cards.image_url',
+      )
+
+    return {
+      points,
+      pointsPerSession: POINTS_PER_SESSION,
+      pointsPerUsd: POINTS_PER_USD,
+      history: history.map(toRedemption),
+    }
+  }
+
+  async listGiftCards() {
+    const rows = await db('gift_cards')
+      .where({ is_active: true })
+      .orderBy('threshold_points', 'asc')
+      .select<GiftCardRow[]>(
+        'id',
+        'vendor',
+        'title',
+        'description',
+        'image_url',
+        'value_usd_cents',
+        'threshold_points',
+      )
+    return rows.map(toGiftCard)
+  }
+
+  async redeem(context: AuthContext, input: RedeemGiftCardInput) {
+    if (context.role !== 'alumni') {
+      throw forbidden('Only alumni can redeem mentorship rewards', 'REDEEM_ALUMNI_ONLY')
+    }
+
+    return db.transaction(async (trx) => {
+      const card = await trx('gift_cards')
+        .where({ id: input.giftCardId, is_active: true })
+        .select<{ id: string; threshold_points: number; title: string }[]>(
+          'id',
+          'threshold_points',
+          'title',
+        )
+        .first()
+      if (!card) throw notFound('Gift card not available', 'GIFT_CARD_NOT_FOUND')
+
+      const profile = await trx('profiles')
+        .where({ user_id: context.userId })
+        .forUpdate()
+        .select<{ mentorship_points: number; is_open_to_mentorship: boolean }[]>(
+          'mentorship_points',
+          'is_open_to_mentorship',
+        )
+        .first()
+
+      if (!profile) throw notFound('Profile not found', 'PROFILE_NOT_FOUND')
+      if (!profile.is_open_to_mentorship) {
+        throw badRequest('Enable mentorship to redeem rewards', 'MENTORSHIP_NOT_ENABLED')
+      }
+      const balance = profile.mentorship_points
+      if (balance < card.threshold_points) {
+        throw badRequest('Not enough points to redeem this card', 'INSUFFICIENT_POINTS')
+      }
+
+      await trx('profiles')
+        .where({ user_id: context.userId })
+        .decrement('mentorship_points', card.threshold_points)
+
+      const [row] = await trx('mentor_redemptions')
+        .insert({
+          university_id: context.universityId,
+          user_id: context.userId,
+          gift_card_id: card.id,
+          points_spent: card.threshold_points,
+          status: 'pending',
+        })
+        .returning<{ id: string }[]>('id')
+
+      if (!row) throw badRequest('Redemption could not be created', 'REDEMPTION_CREATE_FAILED')
+
+      return {
+        redemptionId: row.id,
+        remainingPoints: balance - card.threshold_points,
+      }
+    })
   }
 
   private async getRequestById(requestId: string) {
@@ -354,4 +503,37 @@ function toIncomingRequest(row: RequestRow) {
 
 function isUniqueViolation(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
+}
+
+function toGiftCard(row: GiftCardRow) {
+  return {
+    id: row.id,
+    vendor: row.vendor,
+    title: row.title,
+    description: row.description,
+    imageUrl: row.image_url,
+    valueUsdCents: row.value_usd_cents,
+    thresholdPoints: row.threshold_points,
+  }
+}
+
+function toRedemption(row: RedemptionHistoryRow) {
+  return {
+    id: row.id,
+    pointsSpent: row.points_spent,
+    status: row.status,
+    codeText: row.code_text,
+    adminNote: row.admin_note,
+    requestedAt: row.requested_at,
+    fulfilledAt: row.fulfilled_at,
+    giftCard: row.gift_card_id
+      ? {
+          id: row.gift_card_id,
+          vendor: row.vendor ?? '',
+          title: row.title ?? '',
+          valueUsdCents: row.value_usd_cents ?? 0,
+          imageUrl: row.image_url,
+        }
+      : null,
+  }
 }

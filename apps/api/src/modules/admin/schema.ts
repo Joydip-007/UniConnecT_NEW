@@ -53,6 +53,21 @@ export const ToggleActiveSchema = z.object({
   is_active: z.boolean(),
 })
 
+export const AdminRedemptionListSchema = PaginationQuerySchema.extend({
+  status: z.enum(['pending', 'fulfilled', 'rejected']).optional(),
+})
+
+export const AdminFulfillRedemptionSchema = z
+  .object({
+    status: z.enum(['fulfilled', 'rejected']),
+    codeText: z.string().trim().min(1).max(200).optional(),
+    adminNote: z.string().trim().max(500).optional(),
+  })
+  .refine((v) => v.status !== 'fulfilled' || (v.codeText !== undefined && v.codeText.length > 0), {
+    message: 'codeText is required when fulfilling a redemption',
+    path: ['codeText'],
+  })
+
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>
@@ -65,3 +80,5 @@ export type ContentListQuery = z.infer<typeof ContentListQuerySchema>
 export type TogglePinInput = z.infer<typeof TogglePinSchema>
 export type TogglePublishInput = z.infer<typeof TogglePublishSchema>
 export type ToggleActiveInput = z.infer<typeof ToggleActiveSchema>
+export type AdminRedemptionListQuery = z.infer<typeof AdminRedemptionListSchema>
+export type AdminFulfillRedemptionInput = z.infer<typeof AdminFulfillRedemptionSchema>

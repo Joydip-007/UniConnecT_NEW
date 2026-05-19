@@ -15,6 +15,7 @@ export const UpdateProfileSchema = z
     avatarUrl: optionalString,
     coverUrl: optionalString,
     isOpenToWork: z.boolean().optional(),
+    isOpenToMentorship: z.boolean().optional(),
   })
   .strict()
 
@@ -35,3 +36,11 @@ export const PaginationQuerySchema = z.object({
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>
 export type UserListQuery = z.infer<typeof UserListQuerySchema>
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
+
+export const UpdatePreferencesSchema = z
+  .object({
+    themePreference: z.enum(['light', 'dark', 'system']).optional(),
+  })
+  .strict()
+
+export type UpdatePreferencesInput = z.infer<typeof UpdatePreferencesSchema>

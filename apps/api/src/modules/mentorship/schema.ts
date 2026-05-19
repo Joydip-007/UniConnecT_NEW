@@ -33,8 +33,13 @@ export const UpdateRequestSchema = z
     session_notes: v.session_notes ?? v.sessionNotes,
   }))
 
+export const RedeemGiftCardSchema = z.object({
+  giftCardId: z.string().uuid(),
+})
+
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type AlumniListQuery = z.infer<typeof AlumniListQuerySchema>
 export type IncomingRequestsQuery = z.infer<typeof IncomingRequestsQuerySchema>
 export type CreateRequestInput = z.infer<typeof CreateRequestSchema>
 export type UpdateRequestInput = z.infer<typeof UpdateRequestSchema>
+export type RedeemGiftCardInput = z.infer<typeof RedeemGiftCardSchema>

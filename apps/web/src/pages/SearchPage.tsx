@@ -95,8 +95,7 @@ export default function SearchPage() {
     fontSize: 11,
     fontWeight: 500,
     color: 'var(--text-secondary)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
+    letterSpacing: '0.04em',
     marginBottom: 8,
     marginTop: 20,
   }

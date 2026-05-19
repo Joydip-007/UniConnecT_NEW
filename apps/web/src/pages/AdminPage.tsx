@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  Users, FileText, Mail, Flag, CheckCircle, XCircle, Trash2, X,
-  ArrowLeft, ShieldCheck, LayoutGrid,
+  Users, FileText, Mail, Flag, Trash2, X,
+  ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
@@ -99,13 +99,15 @@ function UsersStatCard({ total, active }: { total: number; active: number }) {
           {active.toLocaleString()} active
         </span>
       </div>
-      <div style={{ marginTop: 14, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)' }}>
+      <div style={{ marginTop: 14, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
         <div style={{
           height: '100%',
-          width: `${pct}%`,
+          width: '100%',
           background: 'var(--uc-indigo)',
           borderRadius: 'var(--r-pill)',
-          transition: 'width 0.6s var(--ease-out-strong)',
+          transform: `scaleX(${pct / 100})`,
+          transformOrigin: 'left center',
+          transition: 'transform 0.6s var(--ease-out-strong)',
         }} />
       </div>
       <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
@@ -371,12 +373,222 @@ function OverviewTab() {
   )
 }
 
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+
+type ModalVariant = 'ban' | 'unban' | 'delete'
+
+interface ConfirmModalProps {
+  variant: ModalVariant
+  user: AdminUser
+  isPending: boolean
+  onConfirm: () => void
+  onClose: () => void
+}
+
+function ConfirmModal({ variant, user, isPending, onConfirm, onClose }: ConfirmModalProps) {
+  const isBan = variant === 'ban'
+  const isDelete = variant === 'delete'
+
+  const palette = isDelete
+    ? { accent: 'var(--uc-red)', bg: 'var(--uc-red-bg)', bdr: 'var(--uc-red-bdr)', text: 'var(--uc-red)' }
+    : isBan
+      ? { accent: 'var(--uc-orange)', bg: 'var(--uc-orange-bg)', bdr: 'var(--uc-orange-bdr)', text: 'var(--uc-orange-l)' }
+      : { accent: 'var(--uc-mint)', bg: 'var(--uc-mint-bg)', bdr: 'var(--uc-mint-bdr)', text: 'var(--uc-mint)' }
+
+  const title = isDelete ? 'Delete account?' : isBan ? 'Ban user?' : 'Remove ban?'
+  const description = isDelete
+    ? `This permanently disables ${user.profile.fullName}'s account. Their posts and content remain visible.`
+    : isBan
+      ? `${user.profile.fullName} won't be able to log in until you remove the ban.`
+      : `${user.profile.fullName} will regain access and be able to log in again.`
+  const confirmLabel = isDelete ? 'Delete account' : isBan ? 'Ban user' : 'Remove ban'
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 16px',
+        background: 'var(--overlay-bg-strong)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        animation: 'modal-backdrop-in 180ms var(--ease-out-expo) both',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{
+        width: '100%',
+        maxWidth: 420,
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-strong)',
+        borderRadius: 'var(--r-lg)',
+        overflow: 'hidden',
+        animation: 'modal-card-in 200ms var(--ease-out-expo) both',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '20px 20px 0',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 14,
+        }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            borderRadius: 'var(--r-md)',
+            background: palette.bg,
+            border: `0.5px solid ${palette.bdr}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            {isDelete
+              ? <Trash2 size={16} color={palette.text} />
+              : isBan
+                ? <ShieldOff size={16} color={palette.text} />
+                : <ShieldCheckIcon size={16} color={palette.text} />}
+          </div>
+
+          <div style={{ flex: 1, paddingTop: 2 }}>
+            <p id="modal-title" style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
+              {title}
+            </p>
+            <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              {description}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 4,
+              display: 'flex',
+              color: 'var(--text-tertiary)',
+              borderRadius: 'var(--r-sm)',
+              flexShrink: 0,
+              marginTop: -2,
+            }}
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* User preview */}
+        <div style={{
+          margin: '16px 20px',
+          padding: '12px 14px',
+          background: 'var(--surface-raised)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-md)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          {user.profile.avatarUrl
+            ? <img src={user.profile.avatarUrl} alt={user.profile.fullName}
+                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+            : <Avatar initials={getInitials(user.profile.fullName)} color={seedColor(user.id)} size={32} />}
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {user.profile.fullName}
+            </p>
+            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {user.email}
+            </p>
+          </div>
+        </div>
+
+        {/* Warning strip — delete only */}
+        {isDelete && (
+          <div style={{
+            margin: '0 20px 16px',
+            padding: '10px 12px',
+            background: 'var(--uc-red-bg)',
+            border: `0.5px solid var(--uc-red-bdr)`,
+            borderRadius: 'var(--r-sm)',
+            display: 'flex',
+            gap: 8,
+            alignItems: 'flex-start',
+          }}>
+            <AlertTriangle size={13} color="var(--uc-red)" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--uc-red)', lineHeight: 1.5 }}>
+              This action cannot be undone. The account will be permanently disabled.
+            </p>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{
+          padding: '0 20px 20px',
+          display: 'flex',
+          gap: 8,
+          justifyContent: 'flex-end',
+        }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            style={{
+              background: 'none',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-pill)',
+              padding: '8px 16px',
+              fontSize: 13,
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'border-color 150ms, color 150ms',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            style={{
+              background: palette.bg,
+              border: `0.5px solid ${palette.bdr}`,
+              borderRadius: 'var(--r-pill)',
+              padding: '8px 16px',
+              fontSize: 13,
+              fontWeight: 500,
+              color: palette.text,
+              cursor: isPending ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit',
+              opacity: isPending ? 0.6 : 1,
+              transition: 'opacity 150ms',
+            }}
+          >
+            {isPending ? 'Working…' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Users tab ─────────────────────────────────────────────────────────────────
 
 function UsersTab() {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
   const limit = 20
+  const currentUser = useAuthStore((s) => s.user)
+  const [modal, setModal] = useState<{ variant: ModalVariant; user: AdminUser } | null>(null)
 
   const { data, isLoading } = useQuery<Paginated<AdminUser>>({
     queryKey: ['admin', 'users', page],
@@ -391,88 +603,198 @@ function UsersTab() {
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'users'] }) },
   })
 
-  const statusMutation = useMutation({
+  const banMutation = useMutation({
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
       api.patch(`/admin/users/${userId}/status`, { is_active: isActive }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'users'] }) },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+      setModal(null)
+    },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: (userId: string) => api.delete(`/admin/users/${userId}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+      setModal(null)
+    },
+  })
+
+  function handleConfirm() {
+    if (!modal) return
+    if (modal.variant === 'delete') {
+      deleteMutation.mutate(modal.user.id)
+    } else {
+      banMutation.mutate({ userId: modal.user.id, isActive: modal.variant === 'unban' })
+    }
+  }
 
   if (isLoading || !data) return <Spinner />
 
   const totalPages = Math.ceil(data.total / limit)
+  const mutationPending = banMutation.isPending || deleteMutation.isPending
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-        {data.total.toLocaleString()} users total
-      </p>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {data.items.map((u) => (
-          <div key={u.id} style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-md)',
-            padding: '14px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}>
-            {u.profile.avatarUrl ? (
-              <img src={u.profile.avatarUrl} alt={u.profile.fullName}
-                style={{ width: 38, height: 38, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-            ) : (
-              <Avatar initials={getInitials(u.profile.fullName)} color={seedColor(u.id)} size={38} />
-            )}
-
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {u.profile.fullName}
-                </span>
-                {!u.isVerified && <Badge variant="neutral">unverified</Badge>}
-              </div>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{u.email}</span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <select
-                value={u.role}
-                onChange={(e) => roleMutation.mutate({ userId: u.id, role: e.target.value as UserRole })}
-                disabled={roleMutation.isPending}
-                style={selectStyle}
-              >
-                {(['student', 'alumni', 'faculty', 'admin'] as UserRole[]).map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                title={u.isActive ? 'Deactivate' : 'Activate'}
-                onClick={() => statusMutation.mutate({ userId: u.id, isActive: !u.isActive })}
-                disabled={statusMutation.isPending}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
-              >
-                {u.isActive
-                  ? <CheckCircle size={18} color="var(--uc-mint)" />
-                  : <XCircle size={18} color="var(--uc-orange)" />}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
-          <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
-            {page} / {totalPages}
-          </span>
-          <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
-        </div>
+    <>
+      {modal && (
+        <ConfirmModal
+          variant={modal.variant}
+          user={modal.user}
+          isPending={mutationPending}
+          onConfirm={handleConfirm}
+          onClose={() => setModal(null)}
+        />
       )}
-    </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
+          {data.total.toLocaleString()} users total
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {data.items.map((u) => {
+            const isSelf = u.id === currentUser?.id
+            return (
+              <div key={u.id} style={{
+                background: 'var(--surface-card)',
+                border: `0.5px solid ${!u.isActive ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
+                borderRadius: 'var(--r-md)',
+                padding: '14px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                transition: 'border-color 200ms',
+              }}>
+                {/* Avatar */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  {u.profile.avatarUrl
+                    ? <img src={u.profile.avatarUrl} alt={u.profile.fullName}
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          opacity: u.isActive ? 1 : 0.45,
+                          transition: 'opacity 200ms',
+                        }} />
+                    : <div style={{ opacity: u.isActive ? 1 : 0.45, transition: 'opacity 200ms' }}>
+                        <Avatar initials={getInitials(u.profile.fullName)} color={seedColor(u.id)} size={38} />
+                      </div>}
+                </div>
+
+                {/* Identity */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: u.isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                      transition: 'color 200ms',
+                    }}>
+                      {u.profile.fullName}
+                    </span>
+                    {!u.isVerified && <Badge variant="neutral">unverified</Badge>}
+                    {!u.isActive && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: 'var(--uc-orange-bg)',
+                        border: '0.5px solid var(--uc-orange-bdr)',
+                        borderRadius: 'var(--r-pill)',
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: 'var(--uc-orange-l)',
+                        letterSpacing: '0.02em',
+                      }}>
+                        <ShieldOff size={10} />
+                        banned
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{u.email}</span>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <select
+                    value={u.role}
+                    onChange={(e) => roleMutation.mutate({ userId: u.id, role: e.target.value as UserRole })}
+                    disabled={roleMutation.isPending || isSelf}
+                    style={{ ...selectStyle, opacity: isSelf ? 0.5 : 1 }}
+                  >
+                    {(['student', 'alumni', 'faculty', 'admin'] as UserRole[]).map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+
+                  {!isSelf && (
+                    <>
+                      {/* Ban / Unban */}
+                      <button
+                        type="button"
+                        title={u.isActive ? 'Ban user' : 'Remove ban'}
+                        onClick={() => setModal({ variant: u.isActive ? 'ban' : 'unban', user: u })}
+                        className={u.isActive ? 'user-action-btn-ban' : ''}
+                        style={{
+                          background: u.isActive ? 'none' : 'var(--uc-mint-bg)',
+                          border: u.isActive ? '0.5px solid transparent' : '0.5px solid var(--uc-mint-bdr)',
+                          borderRadius: 'var(--r-sm)',
+                          cursor: 'pointer',
+                          padding: '5px 6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'background 150ms, border-color 150ms, color 150ms',
+                          color: u.isActive ? 'var(--text-tertiary)' : 'var(--uc-mint)',
+                        }}
+                      >
+                        {u.isActive
+                          ? <ShieldOff size={15} />
+                          : <ShieldCheckIcon size={15} />}
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        title="Delete account"
+                        onClick={() => setModal({ variant: 'delete', user: u })}
+                        className="user-action-btn-delete"
+                        style={{
+                          background: 'none',
+                          border: '0.5px solid transparent',
+                          borderRadius: 'var(--r-sm)',
+                          cursor: 'pointer',
+                          padding: '5px 6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'background 150ms, border-color 150ms, color 150ms',
+                          color: 'var(--text-tertiary)',
+                        }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+            <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
+            <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
+              {page} / {totalPages}
+            </span>
+            <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -929,7 +1251,32 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--surface-page)' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes modal-backdrop-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes modal-card-in {
+          from { opacity: 0; transform: scale(0.95) translateY(6px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0);   }
+        }
+        .user-action-btn:hover {
+          background: var(--surface-hover) !important;
+          border-color: var(--border-hover) !important;
+          color: var(--text-primary) !important;
+        }
+        .user-action-btn-ban:hover {
+          background: var(--uc-orange-bg) !important;
+          border-color: var(--uc-orange-bdr) !important;
+          color: var(--uc-orange-l) !important;
+        }
+        .user-action-btn-delete:hover {
+          background: var(--uc-red-bg) !important;
+          border-color: var(--uc-red-bdr) !important;
+          color: var(--uc-red) !important;
+        }
+      `}</style>
 
       {/* ── Top bar ── */}
       <header style={{

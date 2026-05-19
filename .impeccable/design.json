@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-17T15:58:33Z",
+  "title": "Design System: UniConnecT",
+  "extensions": {
+    "colorMeta": {
+      "surface-page":   { "role": "neutral", "displayName": "Midnight Quad",        "canonical": "oklch(8% 0.015 260)",  "tonalRamp": ["oklch(8% 0.015 260)","oklch(15% 0.015 260)","oklch(22% 0.018 260)","oklch(30% 0.02 260)","oklch(45% 0.02 260)","oklch(60% 0.015 260)","oklch(80% 0.01 260)","oklch(95% 0.005 260)"] },
+      "surface-card":   { "role": "neutral", "displayName": "Lecture-Hall Slate",   "canonical": "oklch(13% 0.018 260)", "tonalRamp": ["oklch(8% 0.015 260)","oklch(13% 0.018 260)","oklch(18% 0.02 260)","oklch(26% 0.022 260)","oklch(42% 0.022 260)","oklch(58% 0.018 260)","oklch(78% 0.01 260)","oklch(94% 0.005 260)"] },
+      "surface-raised": { "role": "neutral", "displayName": "Window-Lit Slate",     "canonical": "oklch(18% 0.022 260)", "tonalRamp": ["oklch(10% 0.018 260)","oklch(18% 0.022 260)","oklch(25% 0.024 260)","oklch(34% 0.024 260)","oklch(50% 0.022 260)","oklch(64% 0.018 260)","oklch(82% 0.012 260)","oklch(95% 0.006 260)"] },
+      "surface-hover":  { "role": "neutral", "displayName": "Reading-Lamp Slate",   "canonical": "oklch(24% 0.025 260)", "tonalRamp": ["oklch(12% 0.02 260)","oklch(20% 0.025 260)","oklch(28% 0.026 260)","oklch(38% 0.024 260)","oklch(52% 0.022 260)","oklch(66% 0.018 260)","oklch(84% 0.012 260)","oklch(95% 0.006 260)"] },
+      "uc-orange":      { "role": "primary", "displayName": "UIU Cinder Orange",    "canonical": "oklch(67% 0.18 35)",   "tonalRamp": ["oklch(20% 0.06 35)","oklch(30% 0.10 35)","oklch(42% 0.14 35)","oklch(54% 0.17 35)","oklch(67% 0.18 35)","oklch(78% 0.14 35)","oklch(88% 0.08 35)","oklch(96% 0.03 35)"] },
+      "uc-orange-l":    { "role": "primary", "displayName": "UIU Cinder Light",     "canonical": "oklch(74% 0.13 35)",   "tonalRamp": ["oklch(28% 0.05 35)","oklch(40% 0.09 35)","oklch(54% 0.12 35)","oklch(64% 0.13 35)","oklch(74% 0.13 35)","oklch(84% 0.10 35)","oklch(91% 0.06 35)","oklch(97% 0.02 35)"] },
+      "uc-indigo":      { "role": "secondary", "displayName": "Campus Twilight Indigo", "canonical": "oklch(53% 0.17 280)", "tonalRamp": ["oklch(18% 0.06 280)","oklch(28% 0.10 280)","oklch(38% 0.14 280)","oklch(45% 0.16 280)","oklch(53% 0.17 280)","oklch(66% 0.15 280)","oklch(80% 0.10 280)","oklch(95% 0.03 280)"] },
+      "uc-indigo-l":    { "role": "secondary", "displayName": "Network Indigo Light",   "canonical": "oklch(64% 0.16 280)", "tonalRamp": ["oklch(22% 0.06 280)","oklch(34% 0.11 280)","oklch(46% 0.14 280)","oklch(56% 0.16 280)","oklch(64% 0.16 280)","oklch(74% 0.14 280)","oklch(86% 0.09 280)","oklch(96% 0.03 280)"] },
+      "uc-indigo-xl":   { "role": "secondary", "displayName": "Network Indigo Pale",    "canonical": "oklch(75% 0.12 280)", "tonalRamp": ["oklch(26% 0.05 280)","oklch(38% 0.09 280)","oklch(50% 0.11 280)","oklch(62% 0.12 280)","oklch(75% 0.12 280)","oklch(84% 0.10 280)","oklch(91% 0.06 280)","oklch(97% 0.02 280)"] },
+      "uc-cyan":        { "role": "tertiary", "displayName": "Shuttle Beacon Cyan",  "canonical": "oklch(70% 0.13 200)",  "tonalRamp": ["oklch(20% 0.05 200)","oklch(32% 0.09 200)","oklch(46% 0.11 200)","oklch(58% 0.12 200)","oklch(70% 0.13 200)","oklch(80% 0.10 200)","oklch(90% 0.06 200)","oklch(97% 0.02 200)"] },
+      "uc-mint":        { "role": "tertiary", "displayName": "Verified Mint",       "canonical": "oklch(68% 0.16 160)",  "tonalRamp": ["oklch(18% 0.05 160)","oklch(28% 0.09 160)","oklch(40% 0.12 160)","oklch(54% 0.14 160)","oklch(68% 0.16 160)","oklch(78% 0.13 160)","oklch(88% 0.08 160)","oklch(96% 0.03 160)"] },
+      "uc-red":         { "role": "tertiary", "displayName": "Alert Crimson",       "canonical": "oklch(56% 0.20 10)",   "tonalRamp": ["oklch(20% 0.07 10)","oklch(30% 0.11 10)","oklch(42% 0.16 10)","oklch(50% 0.19 10)","oklch(56% 0.20 10)","oklch(70% 0.17 10)","oklch(84% 0.10 10)","oklch(96% 0.03 10)"] },
+      "uc-navy":        { "role": "neutral",  "displayName": "Library Carrel Navy", "canonical": "oklch(35% 0.10 260)",  "tonalRamp": ["oklch(15% 0.04 260)","oklch(22% 0.07 260)","oklch(28% 0.09 260)","oklch(35% 0.10 260)","oklch(48% 0.10 260)","oklch(62% 0.08 260)","oklch(80% 0.05 260)","oklch(95% 0.02 260)"] },
+      "uc-indigo-dot":  { "role": "neutral",  "displayName": "Indigo Dot (30%)",     "canonical": "oklch(53% 0.17 280 / 0.30)" },
+      "text-primary":   { "role": "neutral", "displayName": "Page Ivory",           "canonical": "oklch(97% 0.012 270)" },
+      "text-secondary": { "role": "neutral", "displayName": "Reading Ivory (58%)",  "canonical": "oklch(97% 0.012 270 / 0.58)" },
+      "text-tertiary":  { "role": "neutral", "displayName": "Tertiary Ivory (28%)", "canonical": "oklch(97% 0.012 270 / 0.28)" },
+      "border-default": { "role": "neutral", "displayName": "Frosted Glass (7%)",   "canonical": "oklch(100% 0 0 / 0.07)" },
+      "border-hover":   { "role": "neutral", "displayName": "Stronger Glass (13%)", "canonical": "oklch(100% 0 0 / 0.13)" },
+      "border-strong":  { "role": "neutral", "displayName": "Etched Glass (22%)",   "canonical": "oklch(100% 0 0 / 0.22)" }
+    },
+    "typographyMeta": {
+      "display":  { "displayName": "Display",  "purpose": "Hero headlines on landing, registration, OTP, empty-feed first-visit. Never inside the app shell." },
+      "headline": { "displayName": "Headline", "purpose": "Page titles inside the shell. Section anchors like 'People you may know'." },
+      "title":    { "displayName": "Title",    "purpose": "Post author names, profile names, nav-item labels at the larger end." },
+      "body":     { "displayName": "Body",     "purpose": "Post content, comment content, long-form copy. Cap at 65–75ch." },
+      "meta":     { "displayName": "Meta",     "purpose": "Captions, department/batch strings, timestamps, helper text under inputs." },
+      "label":    { "displayName": "Label",    "purpose": "Eyebrows ('campus tools', 'trending now') and badge text. Letter-spaced, not uppercased." }
+    },
+    "shadows": [
+      { "name": "focus-ring",    "value": "0 0 0 2px var(--uc-indigo-l)", "purpose": "The only permitted box-shadow. Used on :focus-visible for keyboard navigation indicators." },
+      { "name": "input-focus",   "value": "0 0 0 3px var(--uc-indigo-bg)", "purpose": "Wider, soft focus ring on text inputs, paired with a border shift to --uc-indigo." }
+    ],
+    "motion": [
+      { "name": "ease-out-strong",    "value": "cubic-bezier(0.23, 1, 0.32, 1)",     "purpose": "Default exponential ease-out. Used on dropdown entrances, press feedback, progress bar fills." },
+      { "name": "ease-in-out-strong", "value": "cubic-bezier(0.77, 0, 0.175, 1)",    "purpose": "Symmetric ease for back-and-forth state shifts (modal open/close)." },
+      { "name": "duration-fast",      "value": "120ms", "purpose": "Press feedback (scale to 0.94)." },
+      { "name": "duration-default",   "value": "150ms", "purpose": "Dropdown entrance, hover background/border transitions." },
+      { "name": "duration-slow",      "value": "250ms", "purpose": "Progress bar fills, poll bar reveals." }
+    ],
+    "breakpoints": [
+      { "name": "mobile",       "value": "767px",  "purpose": "Below this width, sidebars hide and the mobile bottom nav + More sheet take over." },
+      { "name": "tablet-right", "value": "1100px", "purpose": "Below this width, the right rail hides. Left rail stays visible." },
+      { "name": "desktop",      "value": "1280px", "purpose": "Max-width cap on the feed grid; content centers." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "System-driven primary CTA. Indigo fill; used for Sign in, Post, Send invite.",
+      "html": "<button class=\"ds-btn-primary\">Post</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 9px 20px; background: #5B5BD6; color: #EEF2FF; border: none; border-radius: 999px; cursor: pointer; transition: opacity 150ms ease, transform 120ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:active { transform: scale(0.97); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #7C7CF0; } .ds-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }"
+    },
+    {
+      "name": "Orange Button",
+      "kind": "button",
+      "refersTo": "button-orange",
+      "description": "Self-anchored CTA. Used only when the action is yours and consequential (your first-post submit, your milestone confirmation).",
+      "html": "<button class=\"ds-btn-orange\">Confirm</button>",
+      "css": ".ds-btn-orange { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 9px 20px; background: #F05A28; color: #EEF2FF; border: none; border-radius: 999px; cursor: pointer; transition: opacity 150ms ease, transform 120ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn-orange:hover { opacity: 0.9; } .ds-btn-orange:active { transform: scale(0.97); } .ds-btn-orange:focus-visible { outline: none; box-shadow: 0 0 0 2px #F5845A; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action paired with a primary (Cancel, Discard, Skip). Transparent fill, 0.5px hairline border.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 500; line-height: 1; padding: 8px 18px; background: transparent; color: rgba(238, 242, 255, 0.58); border: 0.5px solid rgba(255, 255, 255, 0.13); border-radius: 999px; cursor: pointer; transition: color 150ms ease, border-color 150ms ease, transform 120ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn-ghost:hover { color: #EEF2FF; border-color: rgba(255, 255, 255, 0.22); } .ds-btn-ghost:active { transform: scale(0.97); }"
+    },
+    {
+      "name": "Role Badge (Alumni)",
+      "kind": "chip",
+      "refersTo": "badge-alumni",
+      "description": "Inline role tag next to a name. Five variants share the same shape; alumni-mint is the most distinctive.",
+      "html": "<span class=\"ds-badge-alumni\">Alumni · verified</span>",
+      "css": ".ds-badge-alumni { display: inline-flex; align-items: center; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; font-weight: 500; line-height: 1; padding: 2px 9px; background: rgba(16, 185, 129, 0.10); color: #10B981; border-radius: 999px; white-space: nowrap; }"
+    },
+    {
+      "name": "Pinned Badge (Announcement)",
+      "kind": "chip",
+      "refersTo": "badge-pinned",
+      "description": "Eyebrow on the announcement strip + the trending-pinned tag. The single most identifiable institutional marker.",
+      "html": "<span class=\"ds-badge-pinned\">Pinned</span>",
+      "css": ".ds-badge-pinned { display: inline-flex; align-items: center; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; font-weight: 500; line-height: 1; padding: 2px 9px; background: rgba(240, 90, 40, 0.10); color: #F5845A; border-radius: 999px; white-space: nowrap; }"
+    },
+    {
+      "name": "Post Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Feed post container. Surface card with 0.5px hairline; an optional Announcement strip flush against the top (orange wash + 0.5px bottom border). Hover border steps from --border-default to --border-hover.",
+      "html": "<article class=\"ds-post-card\"><div class=\"ds-post-pinbar\"><span class=\"ds-post-pinbar-label\">Announcement</span></div><div class=\"ds-post-body\"><div class=\"ds-post-head\"><div class=\"ds-post-avatar\">DA</div><div class=\"ds-post-meta\"><div class=\"ds-post-name\">Dev Admin <span class=\"ds-post-rolebadge\">Admin</span></div><div class=\"ds-post-time\">9 days ago</div></div></div><p class=\"ds-post-content\">Mid-semester examinations are scheduled from June 1–8, 2026.</p></div></article>",
+      "css": ".ds-post-card { background: #0A1628; border: 0.5px solid rgba(255, 255, 255, 0.07); border-radius: 16px; overflow: hidden; transition: border-color 200ms ease; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #EEF2FF; } .ds-post-card:hover { border-color: rgba(255, 255, 255, 0.13); } .ds-post-pinbar { background: rgba(240, 90, 40, 0.10); border-bottom: 0.5px solid rgba(240, 90, 40, 0.28); padding: 7px 16px; } .ds-post-pinbar-label { font-size: 11px; font-weight: 500; color: #F5845A; } .ds-post-body { padding: 14px 16px 12px; } .ds-post-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; } .ds-post-avatar { width: 40px; height: 40px; border-radius: 50%; background: #5B5BD6; color: #EEF2FF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; flex-shrink: 0; } .ds-post-name { font-size: 14px; font-weight: 500; color: #EEF2FF; display: flex; align-items: center; gap: 7px; } .ds-post-rolebadge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 9px; background: rgba(91, 91, 214, 0.10); color: #7C7CF0; border-radius: 999px; line-height: 1; } .ds-post-time { margin-top: 2px; font-size: 12px; color: rgba(238, 242, 255, 0.28); } .ds-post-content { margin: 0; font-size: 15px; line-height: 1.72; color: #EEF2FF; }"
+    },
+    {
+      "name": "CreatePost Pill Input",
+      "kind": "input",
+      "refersTo": "input-pill",
+      "description": "Collapsed CreatePost trigger. A pill-shaped placeholder set in --surface-raised; clicking expands into the full create flow.",
+      "html": "<div class=\"ds-create-shell\"><div class=\"ds-create-avatar\">JD</div><button class=\"ds-create-pill\">What's on your mind, Joydip?</button></div>",
+      "css": ".ds-create-shell { display: flex; align-items: center; gap: 12px; padding: 16px; background: #0A1628; border: 0.5px solid rgba(255, 255, 255, 0.07); border-radius: 16px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-create-avatar { width: 40px; height: 40px; border-radius: 50%; background: #F05A28; color: #EEF2FF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 500; flex-shrink: 0; } .ds-create-pill { flex: 1; height: 40px; background: #111D35; border: 0.5px solid rgba(255, 255, 255, 0.13); border-radius: 999px; color: rgba(238, 242, 255, 0.28); font-size: 14px; font-weight: 400; font-family: inherit; padding: 0 16px; text-align: left; cursor: text; } .ds-create-pill:hover { border-color: rgba(255, 255, 255, 0.22); } .ds-create-pill:focus-visible { outline: none; border-color: #5B5BD6; box-shadow: 0 0 0 3px rgba(91, 91, 214, 0.10); color: #EEF2FF; }"
+    },
+    {
+      "name": "Filter Tab (active)",
+      "kind": "nav",
+      "refersTo": "filter-tab-active",
+      "description": "Feed filter pill tab in the active state. Uses --uc-orange-bg / --uc-orange-l because the active tab represents the user's current view choice (self-anchored).",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\"><button class=\"ds-tab ds-tab-active\" role=\"tab\" aria-selected=\"true\">All</button><button class=\"ds-tab\" role=\"tab\">Posts</button><button class=\"ds-tab\" role=\"tab\">News</button><button class=\"ds-tab\" role=\"tab\">Events</button></div>",
+      "css": ".ds-tabs { display: flex; gap: 2px; padding: 4px 8px; background: #0A1628; border: 0.5px solid rgba(255, 255, 255, 0.07); border-radius: 16px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-tab { flex: 1; padding: 7px 14px; font-size: 13px; font-weight: 400; line-height: 1; background: transparent; color: rgba(238, 242, 255, 0.58); border: none; border-radius: 999px; cursor: pointer; transition: background 150ms ease, color 150ms ease; } .ds-tab-active { background: rgba(240, 90, 40, 0.10); color: #F5845A; font-weight: 500; } .ds-tab:hover:not(.ds-tab-active) { color: #EEF2FF; } .ds-tab:focus-visible { outline: none; box-shadow: 0 0 0 2px #7C7CF0; }"
+    },
+    {
+      "name": "Sidebar Nav Item (active)",
+      "kind": "nav",
+      "refersTo": "nav-item-active",
+      "description": "Left sidebar nav row in the active state. Uses --uc-indigo-bg / --uc-indigo-xl because route navigation is a system/wayfinding signal, not self-state.",
+      "html": "<button class=\"ds-nav-item ds-nav-active\" aria-current=\"page\"><svg class=\"ds-nav-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z\"/></svg><span>Home</span></button>",
+      "css": ".ds-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 8px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 500; color: rgba(238, 242, 255, 0.58); text-align: left; cursor: pointer; transition: background 150ms ease, color 150ms ease; } .ds-nav-icon { width: 17px; height: 17px; flex-shrink: 0; } .ds-nav-item:hover { background: #1A2D4A; } .ds-nav-active { background: rgba(91, 91, 214, 0.10); color: #A5A5F8; } .ds-nav-active:hover { background: rgba(91, 91, 214, 0.10); }"
+    },
+    {
+      "name": "Mobile Bottom Nav Item",
+      "kind": "nav",
+      "refersTo": "filter-tab-active",
+      "description": "Single slot in the fixed mobile bottom nav. Icon + label, active uses --uc-orange-l (you-are-here is self-state). Optional red badge dot.",
+      "html": "<button class=\"ds-mobile-nav-item ds-mobile-nav-active\" aria-current=\"page\"><div class=\"ds-mobile-nav-icon-wrap\"><svg class=\"ds-mobile-nav-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z\"/></svg><span class=\"ds-mobile-nav-dot\">3</span></div><span class=\"ds-mobile-nav-label\">Home</span></button>",
+      "css": ".ds-mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 6px 0; background: none; border: none; color: rgba(238, 242, 255, 0.28); font-family: Inter, ui-sans-serif, system-ui, sans-serif; cursor: pointer; min-height: 44px; transition: color 120ms ease; } .ds-mobile-nav-icon-wrap { position: relative; } .ds-mobile-nav-icon { width: 22px; height: 22px; } .ds-mobile-nav-label { font-size: 10px; font-weight: 400; line-height: 1; } .ds-mobile-nav-active { color: #F5845A; } .ds-mobile-nav-active .ds-mobile-nav-label { font-weight: 500; } .ds-mobile-nav-dot { position: absolute; top: -4px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; background: #E11D48; color: #EEF2FF; font-size: 9px; font-weight: 500; line-height: 1; border-radius: 999px; border: 1.5px solid #0A1628; display: inline-flex; align-items: center; justify-content: center; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The After-Hours Campus",
+    "overview": "UniConnecT is the campus after last bell. The quads are dim, the residence halls glow in their windows, and the people still moving — students between assignments, alumni catching up, faculty pinning tomorrow's notice — move with intention. The UI is the building that holds them. Dark navy surfaces are the walls. UIU orange is the institutional lamp that marks you: your post, your bookmark, your milestone. UC indigo is the network around you: the rooms you visit, the peers you find. The job of every screen is to recede so the people and the work surface; nothing in the chrome should clamor for attention.\n\nThis system explicitly rejects the consumer-social aesthetic (Facebook with a UIU logo), the SaaS-template look (Notion beige + indigo brand), and the engagement-bait gravity (algorithmic suggestion noise, infinite-scroll dark patterns, bright red 'you have unread' dots screaming for taps). It also rejects the first-order AI reflexes for the social-product category: glassmorphism, gradient hero copy, identical icon-and-heading card grids, glow effects under buttons. Warmth comes from context-awareness and good defaults, not decoration.\n\nDensity is product-density: information-dense at small sizes, mobile-first, designed to survive mid-tier Android on slow campus 4G. Hairline 0.5px borders carry structure; pill radii (999px) carry interaction; sentence case carries voice. The system has two interactive accents (orange and indigo) with strictly assigned roles, six surface tints, one body face (Inter), one display face (Fraunces). Variety happens through hierarchy and rhythm, never through new shapes.",
+    "keyCharacteristics": [
+      "Dark-surface only. Surface stacking, never shadows, for depth.",
+      "Two-accent palette. Orange = self; indigo = peer/system. The roles are not interchangeable.",
+      "0.5px hairlines everywhere. 1px borders are reserved for badge counters and avatar gaps.",
+      "Pill (999px) for every button. Card radius is 16px. No sharp corners.",
+      "Sentence case. Always. No ALL CAPS, no Title Case On Buttons.",
+      "Weight 400 / 500 only. 600+ does not exist in this system.",
+      "Mobile is not 'responsive desktop'. Layout collapses meaningfully (sidebars → bottom nav with a More sheet), not by hiding columns."
+    ],
+    "rules": [
+      { "name": "The Self / Network Rule",          "section": "colors",     "body": "Orange marks the user themselves (their identity, their content, their actions). Indigo marks the system and their peers. The two accents are not interchangeable. If you're about to put indigo on a 'you saved this' affordance, or orange on a 'peer suggestion', stop and pick again." },
+      { "name": "The 28%-Alpha Floor",              "section": "colors",     "body": "Any text the user is expected to read must use --text-primary or --text-secondary. The 28%-alpha --text-tertiary is for scannable metadata only (timestamps, eyebrows, 'Done' labels), never for explanatory copy." },
+      { "name": "The Hairline Rule",                "section": "colors",     "body": "Structural borders are 0.5px, color --border-default. The only exceptions are the 1.5px avatar-cover gap, the 1.5px UIU-orange avatar ring on the profile mini-card, and the 1.5px white border around mobile-nav badge dots." },
+      { "name": "The Sentence-Case Rule",           "section": "typography", "body": "All UI labels — buttons, nav items, badges, section headers — are sentence case. The only place capital-letter prominence comes from is the letter-spaced label tier, and even there the visible characters stay lowercase." },
+      { "name": "The Two-Weight Rule",              "section": "typography", "body": "This system has exactly two weights: regular (400) for body copy and meta, medium (500) for titles, labels, and emphasis. Weights 600 / 700 / 800 do not exist. If you reach for one, increase the size instead." },
+      { "name": "The Hierarchy-Through-Scale Rule", "section": "typography", "body": "The scale ratio between adjacent steps is ≥1.25. Flat scales (13px → 14px → 15px → 16px) read as decoration; the ratio is what makes hierarchy legible without color." },
+      { "name": "The Flat-By-Default Rule",         "section": "elevation",  "body": "This system has no box-shadow for depth. Surfaces stack through a four-tier tint progression. The only box-shadow permitted in the system is the 2px ring used on :focus-visible." },
+      { "name": "The No-Shadow Rule",               "section": "elevation",  "body": "box-shadow is reserved for :focus-visible rings. If you need depth, climb the surface stack. If you need hover feedback, change the border to --border-hover or the background to --surface-hover." },
+      { "name": "The Ghost-Border Fallback",        "section": "elevation",  "body": "Where a 0.5px border at --border-default is too quiet, step the border to --border-hover before reaching for anything stronger. Background lift is the next step; new colors are the step after that." }
+    ],
+    "dos": [
+      "Do use UIU Cinder Orange (#F05A28) for things that are yours — your active filter, your saved bookmark, your progress, your avatar ring.",
+      "Do use Campus Twilight Indigo (#5B5BD6) for the network around you — peer suggestions, primary CTAs, nav active states, event date boxes, trending tags.",
+      "Do keep every border 0.5px solid var(--border-default) unless there's a specific reason to step up. 1px is loud in this system.",
+      "Do climb the surface stack for depth: --surface-page → --surface-card → --surface-raised → --surface-hover. Tint, not shadow.",
+      "Do use pill (999px) radii on every button and every chip. Card radius is 16px (--r-lg).",
+      "Do write all UI labels in sentence case. 'Save' not 'SAVE', 'People you may know' not 'People You May Know'.",
+      "Do use weight 400 for body and 500 for emphasis. There are no other weights.",
+      "Do keep --text-tertiary (28% alpha) for scannable metadata only — timestamps, eyebrows, faint counters.",
+      "Do design mobile-first behavior, not 'responsive desktop'. Sidebars collapse to a real More sheet that exposes every route.",
+      "Do render skeletons that preserve final layout (sized boxes shaped like the data they'll be replaced by).",
+      "Do respect prefers-reduced-motion — global rule in index.css already disables animation/transition duration."
+    ],
+    "donts": [
+      "Don't look like consumer social (Facebook / Instagram). No engagement-bait patterns, no algorithmic suggestion noise, no blue-heavy identity.",
+      "Don't look like SaaS-template UI. No SaaS-cream light mode, no Notion-style beige, no 'productivity tool' indigo-with-glow look.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe. The announcement banner uses a full-width tinted strip with a bottom border, never a side stripe.",
+      "Don't use background-clip: text with a gradient. No gradient headlines, no gradient buttons, no gradient anything.",
+      "Don't use glassmorphism. No backdrop-filter: blur(...) on cards, modals, or chrome.",
+      "Don't use box-shadow for depth. Focus rings only.",
+      "Don't nest cards. A card containing a card is always wrong here. Use 0.5px row dividers inside a card if you need sectioning.",
+      "Don't use Title Case or ALL CAPS on labels.",
+      "Don't use weights 600, 700, or 800. If a step needs more weight, increase the size instead.",
+      "Don't put gray text on a coloured background. Text on --uc-orange-bg uses --uc-orange-l. Text on --uc-indigo-bg uses --uc-indigo-l or --uc-indigo-xl.",
+      "Don't hide the scrollbar entirely (scrollbar-width: none). Use the .rail-scroll utility.",
+      "Don't ship a feature without empty / loading / error states matched to the filter or query context.",
+      "Don't use transition: width or transition: height for state changes. Width-fill on plain progress bars is the one exception; for fills that overlap content (poll bars), use a transform: scaleX() underlay with transform-origin: left center.",
+      "Don't introduce em dashes (—) into UI copy. Use a colon, a comma, a period, or parentheses."
+    ]
+  }
+}

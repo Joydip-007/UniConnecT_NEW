@@ -542,19 +542,6 @@ export class FeedService {
   }
 
   async getTrending(universityId: string) {
-    const pinnedRows = await db('posts')
-      .join('users', 'users.id', 'posts.author_id')
-      .join('profiles', 'profiles.user_id', 'users.id')
-      .select(
-        'posts.id',
-        'posts.content',
-        'posts.created_at',
-        db.raw("profiles.full_name as author_name"),
-      )
-      .where({ 'posts.university_id': universityId, 'posts.is_pinned': true })
-      .orderBy('posts.created_at', 'desc')
-      .limit(3) as Array<{ id: string; content: string; created_at: Date; author_name: string }>
-
     const tagRows = await db('tags')
       .join('post_tags', 'post_tags.tag_id', 'tags.id')
       .join('posts', 'posts.id', 'post_tags.post_id')
@@ -568,12 +555,6 @@ export class FeedService {
       .limit(5) as Array<{ name: string; post_count: string }>
 
     return {
-      pinnedPosts: pinnedRows.map((p) => ({
-        id: p.id,
-        content: String(p.content).slice(0, 120),
-        authorName: p.author_name,
-        createdAt: p.created_at,
-      })),
       trendingTags: tagRows.map((t) => ({
         name: t.name,
         postCount: Number(t.post_count),

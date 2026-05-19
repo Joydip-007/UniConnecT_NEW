@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
+import { useThemeStore } from '@/stores/themeStore'
 import type { User } from '@uniconnect/shared/types'
 
 interface RefreshResponse {
@@ -43,6 +44,7 @@ export function AuthLoader({ children }: { children: ReactNode }) {
           headers: { Authorization: `Bearer ${token}` },
         })
         setAuth(meData.data, token)
+        useThemeStore.getState().hydrateFromProfile(meData.data.themePreference)
       } catch {
         clearAuth()
       }

@@ -2,6 +2,7 @@ import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, conflict, notFound } from '../../utils/errors'
+import { systemGroupsService } from '../groups/system-groups.service'
 import type { PaginationQuery, UpdateProfileInput, UserListQuery } from './schema'
 
 interface UserProfileRow {
@@ -13,6 +14,7 @@ interface UserProfileRow {
   is_active: boolean
   last_active_at: Date | null
   created_at: Date
+  theme_preference: 'light' | 'dark' | 'system'
   full_name: string
   avatar_url: string | null
   cover_url: string | null
@@ -24,6 +26,8 @@ interface UserProfileRow {
   phone: string | null
   skills: string[] | null
   is_open_to_work: boolean
+  is_open_to_mentorship: boolean
+  mentorship_points: number
 }
 
 interface CountRow {
@@ -44,8 +48,12 @@ export class UsersService {
   }
 
   async updateCurrentUser(userId: string, universityId: string, input: UpdateProfileInput) {
-    const exists = await db('users').where({ id: userId, university_id: universityId }).first()
-    if (!exists) throw notFound('User not found')
+    const existing = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId })
+      .select<{ role: UserRole; department: string | null }[]>('users.role', 'profiles.department')
+      .first()
+    if (!existing) throw notFound('User not found')
 
     const update: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.fullName !== undefined) update.full_name = input.fullName
@@ -59,8 +67,37 @@ export class UsersService {
     if (input.avatarUrl !== undefined) update.avatar_url = input.avatarUrl
     if (input.coverUrl !== undefined) update.cover_url = input.coverUrl
     if (input.isOpenToWork !== undefined) update.is_open_to_work = input.isOpenToWork
+    if (input.isOpenToMentorship !== undefined) update.is_open_to_mentorship = input.isOpenToMentorship
 
     await db('profiles').where({ user_id: userId }).update(update)
+
+    if (input.department !== undefined && input.department !== existing.department) {
+      await systemGroupsService.syncUserMembership(
+        userId,
+        universityId,
+        { role: existing.role, department: existing.department },
+        { role: existing.role, department: input.department },
+      )
+    }
+
+    return this.getCurrentUser(userId, universityId)
+  }
+
+  async updatePreferences(
+    userId: string,
+    universityId: string,
+    input: { themePreference?: 'light' | 'dark' | 'system' },
+  ) {
+    const update: Record<string, unknown> = {}
+    if (input.themePreference !== undefined) {
+      update.theme_preference = input.themePreference
+    }
+
+    const affected = await db('users')
+      .where({ id: userId, university_id: universityId })
+      .update(update)
+
+    if (affected === 0) throw notFound('User not found')
 
     return this.getCurrentUser(userId, universityId)
   }
@@ -294,6 +331,7 @@ function getUserProfileQuery() {
       'users.is_active',
       'users.last_active_at',
       'users.created_at',
+      'users.theme_preference',
       'profiles.full_name',
       'profiles.avatar_url',
       'profiles.cover_url',
@@ -305,6 +343,8 @@ function getUserProfileQuery() {
       'profiles.phone',
       'profiles.skills',
       'profiles.is_open_to_work',
+      'profiles.is_open_to_mentorship',
+      'profiles.mentorship_points',
     )
 }
 
@@ -340,6 +380,7 @@ function toUserProfile(row: UserProfileRow, options: { includePhone: boolean }) 
     isActive: row.is_active,
     lastActiveAt: row.last_active_at,
     createdAt: row.created_at,
+    themePreference: row.theme_preference,
     profile: {
       fullName: row.full_name,
       avatarUrl: row.avatar_url,
@@ -352,6 +393,8 @@ function toUserProfile(row: UserProfileRow, options: { includePhone: boolean }) 
       phone: options.includePhone ? row.phone : null,
       skills: row.skills ?? [],
       isOpenToWork: row.is_open_to_work,
+      isOpenToMentorship: row.is_open_to_mentorship,
+      mentorshipPoints: row.mentorship_points,
     },
   }
 }

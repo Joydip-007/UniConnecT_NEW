@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ThemePreference } from '../types/user'
 
 export const userRoleSchema = z.enum(['student', 'alumni', 'faculty', 'admin'])
 
@@ -14,7 +15,12 @@ export const userProfileFieldsSchema = z.object({
   phone: z.string().nullable(),
   skills: z.array(z.string()),
   isOpenToWork: z.boolean(),
+  isOpenToMentorship: z.boolean(),
+  mentorshipPoints: z.number().int().nonnegative(),
 })
+
+export const themePreferenceSchema = z.enum(['light', 'dark', 'system'])
+export type ThemePreferenceInput = ThemePreference
 
 export const publicUserProfileSchema = z.object({
   id: z.string().uuid(),
@@ -22,6 +28,7 @@ export const publicUserProfileSchema = z.object({
   role: userRoleSchema,
   universityId: z.string().uuid(),
   isVerified: z.boolean(),
+  themePreference: themePreferenceSchema,
   isActive: z.boolean().optional(),
   lastActiveAt: z.union([z.string(), z.date()]).nullable().optional(),
   createdAt: z.union([z.string(), z.date()]),
@@ -35,3 +42,10 @@ export const publicUserProfileSchema = z.object({
 })
 
 export type PublicUserProfile = z.infer<typeof publicUserProfileSchema>
+
+export const updateUserPreferencesSchema = z
+  .object({
+    themePreference: themePreferenceSchema.optional(),
+  })
+  .strict()
+export type UpdateUserPreferencesInput = z.infer<typeof updateUserPreferencesSchema>

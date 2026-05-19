@@ -7,9 +7,10 @@ const mocks = vi.hoisted(() => {
   const clearAuth = vi.fn()
   const post = vi.fn()
   const get = vi.fn()
+  const hydrateFromProfile = vi.fn()
   const useAuthStore = vi.fn((selector: (state: { isLoading: boolean }) => unknown) => selector({ isLoading: false }))
 
-  return { setAuth, clearAuth, post, get, useAuthStore }
+  return { setAuth, clearAuth, post, get, useAuthStore, hydrateFromProfile }
 })
 
 vi.mock('@/lib/axios', () => ({
@@ -28,8 +29,19 @@ vi.mock('@/stores/authStore', () => ({
   }),
 }))
 
+vi.mock('@/stores/themeStore', () => ({
+  useThemeStore: Object.assign(vi.fn(), {
+    getState: () => ({
+      hydrateFromProfile: mocks.hydrateFromProfile,
+    }),
+  }),
+}))
+
 describe('AuthLoader', () => {
   it('clears auth and skips user rehydration when refresh returns no token', async () => {
+    // Seed the session marker so AuthLoader's short-circuit (no-session check)
+    // doesn't skip the refresh path under test.
+    localStorage.setItem('uc:has_session', '1')
     mocks.post.mockResolvedValueOnce({ data: { accessToken: '' } })
 
     render(

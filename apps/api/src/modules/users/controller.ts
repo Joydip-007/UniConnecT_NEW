@@ -3,7 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import { usersService } from './service'
-import type { PaginationQuery, UpdateProfileInput, UserListQuery } from './schema'
+import type { PaginationQuery, UpdatePreferencesInput, UpdateProfileInput, UserListQuery } from './schema'
 
 export const getMe = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
@@ -15,6 +15,18 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(
     res,
     await usersService.updateCurrentUser(context.userId, context.universityId, req.body as UpdateProfileInput),
+  )
+})
+
+export const updateMyPreferences = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await usersService.updatePreferences(
+      context.userId,
+      context.universityId,
+      req.body as UpdatePreferencesInput,
+    ),
   )
 })
 

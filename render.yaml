@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: uniconnect-web
+    env: static
+    buildCommand: npx pnpm install --frozen-lockfile && npx pnpm --filter web build
+    staticPublishPath: apps/web/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_SOCKET_URL
+        sync: false
+      - key: VITE_UNIVERSITY_DOMAIN
+        value: uiu.ac.bd

@@ -85,7 +85,7 @@ export default function NewsPage() {
               }}
             >
               {item.coverUrl && (
-                <img src={item.coverUrl} alt="" style={{ width: 140, height: 96, objectFit: 'cover', borderRadius: 'var(--r-md)' }} />
+                <img src={item.coverUrl} alt={item.title} style={{ width: 140, height: 96, objectFit: 'cover', borderRadius: 'var(--r-md)' }} />
               )}
               <div>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--uc-orange-l)' }}>{item.category}</p>

@@ -10,6 +10,7 @@ import { tokenService } from '../../services/token.service'
 import { AppError } from '../../utils/errors'
 import { env } from '../../config/env'
 import { logger } from '../../utils/logger'
+import { systemGroupsService } from '../groups/system-groups.service'
 import type { LoginInput, OtpPurpose, RegisterInput } from './schema'
 
 interface UserRow {
@@ -34,6 +35,9 @@ interface UserWithProfileRow extends UserRow {
   phone: string | null
   skills: string[] | null
   is_open_to_work: boolean
+  is_open_to_mentorship: boolean
+  mentorship_points: number
+  theme_preference: 'light' | 'dark' | 'system'
 }
 
 interface InvitationRow {
@@ -155,6 +159,10 @@ export class AuthService {
 
     const profile = await findUserWithProfile(user.id)
     if (!profile) throw new AppError('User not found', 404, 'NOT_FOUND')
+
+    await systemGroupsService
+      .addUserToSystemGroups(user.id, user.university_id, user.role, profile.department)
+      .catch((error: unknown) => logger.warn('System-groups add failed on verify', { error, userId: user.id }))
 
     const accessToken = tokenService.generateAccessToken({
       userId: user.id,
@@ -326,13 +334,14 @@ async function findUserByEmail(email: string, universityId: string) {
     .where({
       email: email.toLowerCase(),
       university_id: universityId,
+      is_deleted: false,
     })
     .first()
 }
 
 async function findUserWithProfile(userId: string) {
   return db<UserRow>('users')
-    .join('profiles', 'profiles.user_id', 'users.id')
+    .leftJoin('profiles', 'profiles.user_id', 'users.id')
     .select(
       'users.id',
       'users.university_id',
@@ -352,14 +361,18 @@ async function findUserWithProfile(userId: string) {
       'profiles.phone',
       'profiles.skills',
       'profiles.is_open_to_work',
+      'profiles.is_open_to_mentorship',
+      'profiles.mentorship_points',
+      'users.theme_preference',
     )
     .where('users.id', userId)
+    .where('users.is_deleted', false)
     .first<UserWithProfileRow>()
 }
 
 async function findUserWithProfileByEmail(email: string, universityId: string) {
   return db<UserRow>('users')
-    .join('profiles', 'profiles.user_id', 'users.id')
+    .leftJoin('profiles', 'profiles.user_id', 'users.id')
     .select(
       'users.id',
       'users.university_id',
@@ -379,10 +392,14 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
       'profiles.phone',
       'profiles.skills',
       'profiles.is_open_to_work',
+      'profiles.is_open_to_mentorship',
+      'profiles.mentorship_points',
+      'users.theme_preference',
     )
     .where({
       'users.email': email.toLowerCase(),
       'users.university_id': universityId,
+      'users.is_deleted': false,
     })
     .first<UserWithProfileRow>()
 }
@@ -394,6 +411,7 @@ function toAuthUser(user: UserWithProfileRow) {
     role: user.role,
     universityId: user.university_id,
     isVerified: user.is_verified,
+    themePreference: user.theme_preference ?? 'system',
     profile: {
       fullName: user.full_name ?? '',
       bio: user.bio ?? null,
@@ -406,6 +424,8 @@ function toAuthUser(user: UserWithProfileRow) {
       phone: user.phone ?? null,
       skills: user.skills ?? [],
       isOpenToWork: user.is_open_to_work ?? false,
+      isOpenToMentorship: user.is_open_to_mentorship ?? false,
+      mentorshipPoints: user.mentorship_points ?? 0,
     },
   }
 }

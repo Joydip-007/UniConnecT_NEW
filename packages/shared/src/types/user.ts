@@ -1,5 +1,7 @@
 export type UserRole = 'student' | 'alumni' | 'faculty' | 'admin'
 
+export type ThemePreference = 'light' | 'dark' | 'system'
+
 export interface UserProfile {
   fullName: string
   bio: string | null
@@ -12,6 +14,8 @@ export interface UserProfile {
   phone: string | null
   skills: string[]
   isOpenToWork: boolean
+  isOpenToMentorship: boolean
+  mentorshipPoints: number
 }
 
 export interface User {
@@ -20,5 +24,6 @@ export interface User {
   role: UserRole
   universityId: string
   isVerified: boolean
+  themePreference: ThemePreference
   profile: UserProfile
 }
