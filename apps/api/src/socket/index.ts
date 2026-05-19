@@ -14,9 +14,11 @@ export function setupSocket(httpServer: HttpServer, redisClient: Redis) {
   const pubClient = redisClient.duplicate()
   const subClient = redisClient.duplicate()
 
+  const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim())
+
   io = new Server(httpServer, {
     cors: {
-      origin: env.CLIENT_URL,
+      origin: allowedOrigins,
       credentials: true,
     },
   })
