@@ -4,8 +4,8 @@ import { z } from 'zod'
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3001),
-  CLIENT_URL: z.string().url().optional(),
-  WEB_URL: z.string().url().optional(),
+  CLIENT_URL: z.string().optional(),
+  WEB_URL: z.string().optional(),
   DATABASE_URL: z.string().default('postgresql://postgres@localhost:5432/uniconnect_db'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   JWT_SECRET: z.string().min(32).default('development-jwt-secret-change-before-production'),
