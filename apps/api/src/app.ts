@@ -42,6 +42,10 @@ export function createApp() {
   app.use(express.json())
   app.use(cookieParser())
 
+  app.get('/', (_req, res) => {
+    res.json({ message: 'UniConnecT API is running!' })
+  })
+
   app.get(
     '/health',
     asyncHandler(async (_req, res) => {
