@@ -50,6 +50,7 @@
   50%       { opacity: 0.25; transform: scale(1.08); }
 }
 
+
 @keyframes pulseRing {
   0%   { opacity: 0.6; transform: scale(1); }
   100% { opacity: 0;   transform: scale(2.4); }

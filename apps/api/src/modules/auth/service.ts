@@ -334,6 +334,7 @@ async function findUserByEmail(email: string, universityId: string) {
     .where({
       email: email.toLowerCase(),
       university_id: universityId,
+      is_deleted: false,
     })
     .first()
 }
@@ -365,6 +366,7 @@ async function findUserWithProfile(userId: string) {
       'users.theme_preference',
     )
     .where('users.id', userId)
+    .where('users.is_deleted', false)
     .first<UserWithProfileRow>()
 }
 
@@ -397,6 +399,7 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
     .where({
       'users.email': email.toLowerCase(),
       'users.university_id': universityId,
+      'users.is_deleted': false,
     })
     .first<UserWithProfileRow>()
 }

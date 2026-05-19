@@ -7,6 +7,7 @@ import { PATHS } from '@/router/paths'
 
 const NAV_LINKS = [
   { label: 'Features',     href: '#features' },
+  { label: 'How it works', href: '#how-it-works' },
   { label: 'Universities', href: '#universities' },
   { label: 'About',        href: '#about' },
   { label: 'Pricing',      href: '#pricing' },

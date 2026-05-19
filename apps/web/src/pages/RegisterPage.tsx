@@ -6,6 +6,7 @@ import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
+import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import type { User, UserRole } from '@uniconnect/shared/types'
 
 interface RegisterResponse {
@@ -397,6 +398,7 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
 
         {children}
       </div>
+      <MinimalPageFooter />
     </main>
   )
 }

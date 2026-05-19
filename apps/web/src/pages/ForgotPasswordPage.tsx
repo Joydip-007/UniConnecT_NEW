@@ -5,6 +5,7 @@ import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
+import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 
 type Step = 'email' | 'otp' | 'password' | 'success'
 
@@ -489,6 +490,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px 16px',
+      position: 'relative',
     }}>
       <div style={{
         width: '100%',
@@ -502,6 +504,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
         {children}
       </div>
+      <MinimalPageFooter />
     </div>
   )
 }

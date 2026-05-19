@@ -106,6 +106,7 @@ export class AdminService {
     const baseQuery = db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where('users.university_id', universityId)
+      .where('users.is_deleted', false)
       .select<AdminUserRow[]>(
         'users.id',
         'users.university_id',
@@ -122,7 +123,7 @@ export class AdminService {
       )
 
     const [{ count }] = await db('users')
-      .where({ university_id: universityId })
+      .where({ university_id: universityId, is_deleted: false })
       .count<CountRow[]>({ count: '*' })
 
     const rows = await baseQuery
@@ -164,6 +165,31 @@ export class AdminService {
     )
 
     return { userId, role: input.role }
+  }
+
+  async deleteUser(universityId: string, adminUserId: string, userId: string) {
+    if (userId === adminUserId) throw badRequest('You cannot delete your own account', 'SELF_ACTION')
+
+    const user = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'users.id': userId, 'users.university_id': universityId, 'users.is_deleted': false })
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+        'users.role',
+        'profiles.department',
+      )
+      .first()
+
+    if (!user) throw notFound('User not found')
+
+    await db('users')
+      .where({ id: userId, university_id: universityId })
+      .update({ is_deleted: true, is_active: false })
+
+    await db('user_sessions').where({ user_id: userId }).delete()
+
+    await systemGroupsService.removeUserFromSystemGroups(userId, universityId, user.role, user.department)
+
+    return { userId, deleted: true }
   }
 
   async updateUserStatus(universityId: string, userId: string, input: UpdateUserStatusInput) {

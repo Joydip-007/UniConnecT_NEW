@@ -8,6 +8,7 @@ import {
   createInvitation,
   deleteContentItem,
   deleteInvitation,
+  deleteUser,
   getAllowedDomains,
   getStats,
   listAdminRedemptions,
@@ -58,6 +59,7 @@ adminRouter.get('/stats', requireRole('admin'), getStats)
 adminRouter.get('/users', validateRequest({ query: PaginationQuerySchema }), listUsers)
 adminRouter.patch('/users/:userId/role', requireRole('admin'), validate(UpdateUserRoleSchema), updateUserRole)
 adminRouter.patch('/users/:userId/status', requireRole('admin'), validate(UpdateUserStatusSchema), updateUserStatus)
+adminRouter.delete('/users/:userId', requireRole('admin'), deleteUser)
 
 adminRouter.get('/reports', validateRequest({ query: PaginationQuerySchema }), listReports)
 adminRouter.patch('/reports/:reportId', validate(ResolveReportSchema), resolveReport)

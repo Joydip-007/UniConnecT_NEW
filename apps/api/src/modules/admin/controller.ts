@@ -44,6 +44,12 @@ export const updateUserStatus = asyncHandler(async (req: Request, res: Response)
   sendSuccess(res, await adminService.updateUserStatus(universityId, userId, req.body as UpdateUserStatusInput))
 })
 
+export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId: adminUserId } = getAdminContext(req)
+  const userId = req.params.userId as string
+  sendSuccess(res, await adminService.deleteUser(universityId, adminUserId, userId))
+})
+
 export const listReports = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
   const result = await adminService.listReports(universityId, req.query as unknown as PaginationQuery)

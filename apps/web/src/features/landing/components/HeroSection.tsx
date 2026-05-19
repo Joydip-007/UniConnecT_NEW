@@ -1,21 +1,81 @@
-import { Rocket, Play, Briefcase, MessageSquare, Bell } from 'lucide-react'
+import { Rocket, Play, Rss, Briefcase, CalendarDays, MessageSquare, Users, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import { OrangeBtn, GhostBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
-import { Skel } from './Skel'
+import { RadialOrbitalTimeline } from '@/components/ui/RadialOrbitalTimeline'
+import type { OrbitalNode } from '@/components/ui/RadialOrbitalTimeline'
+
+const DEMO_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+
+const ORBITAL_NODES: OrbitalNode[] = [
+  {
+    id: 1,
+    title: 'Campus feed',
+    subtitle: 'Live now',
+    content: 'Posts, announcements, and real-time updates from students, faculty, and clubs — all verified, no noise.',
+    icon: Rss,
+    relatedIds: [3, 4],
+    accent: 'var(--uc-indigo-l)',
+    accentBg: 'var(--uc-indigo-bg)',
+    accentBdr: 'var(--uc-indigo-bdr)',
+    energy: 95,
+  },
+  {
+    id: 2,
+    title: 'Jobs & internships',
+    subtitle: 'Alumni-posted',
+    content: 'Opportunities posted directly by UIU alumni and employers — not scraped, not generic. Role-matched to your batch.',
+    icon: Briefcase,
+    relatedIds: [5],
+    accent: 'var(--uc-mint)',
+    accentBg: 'var(--uc-mint-bg)',
+    accentBdr: 'var(--uc-mint-bdr)',
+    energy: 80,
+  },
+  {
+    id: 3,
+    title: 'Events',
+    subtitle: 'RSVP & discover',
+    content: 'Faculty workshops, career fairs, club events. One tap to RSVP; reminders push to you automatically.',
+    icon: CalendarDays,
+    relatedIds: [1, 4],
+    accent: 'var(--uc-orange-l)',
+    accentBg: 'var(--uc-orange-bg)',
+    accentBdr: 'var(--uc-orange-bdr)',
+    energy: 70,
+  },
+  {
+    id: 4,
+    title: 'Real-time chat',
+    subtitle: '247 online',
+    content: 'Encrypted direct messages and group threads. Replaces the fragmented WhatsApp groups your campus runs on today.',
+    icon: MessageSquare,
+    relatedIds: [1, 3],
+    accent: 'var(--uc-cyan)',
+    accentBg: 'var(--uc-cyan-bg)',
+    accentBdr: 'var(--uc-cyan-bdr)',
+    energy: 88,
+  },
+  {
+    id: 5,
+    title: 'Mentorship',
+    subtitle: 'Alumni network',
+    content: 'Request mentorship from verified UIU alumni. Career advice, referrals, and guidance from people who walked the same campus.',
+    icon: Users,
+    relatedIds: [2],
+    accent: 'var(--uc-indigo-xl)',
+    accentBg: 'var(--uc-indigo-bg)',
+    accentBdr: 'var(--uc-indigo-bdr)',
+    energy: 62,
+  },
+]
 
 export function HeroSection() {
-  const navigate  = useNavigate()
-  // threshold: 0 → fires immediately since section is above the fold
-  const leftRef = useScrollReveal<HTMLDivElement>(0)
-
-  function scrollToFeatures() {
-    const target = document.querySelector('#features')
-    if (!target) return
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
-  }
+  const navigate    = useNavigate()
+  const leftRef     = useScrollReveal<HTMLDivElement>(0)
+  const [demoOpen, setDemoOpen] = useState(false)
 
   return (
     <section style={{ position: 'relative', overflow: 'hidden' }}>
@@ -55,7 +115,7 @@ export function HeroSection() {
             borderRadius: '50%',
             top: -80,
             right: -60,
-            background: 'radial-gradient(circle, rgba(240,90,40,.14) 0%, transparent 65%)',
+            background: 'radial-gradient(circle, rgba(240,90,40,.12) 0%, transparent 65%)',
             pointerEvents: 'none',
           }}
         />
@@ -147,14 +207,14 @@ export function HeroSection() {
           >
             <OrangeBtn
               style={{ padding: '11px 24px', fontSize: 15, gap: 9 }}
-              onClick={() => navigate(PATHS.LOGIN)}
+              onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
             >
               <Rocket size={16} />
               Get started free
             </OrangeBtn>
             <GhostBtn
               style={{ padding: '11px 22px', fontSize: 15, gap: 9 }}
-              onClick={scrollToFeatures}
+              onClick={() => setDemoOpen(true)}
             >
               <Play size={16} />
               Watch demo
@@ -211,161 +271,116 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN ── */}
-        <div className="hero-col-right uc-hero-right" style={{ position: 'relative', height: 530 }}>
-
-          {/* Phone centering wrapper — float animation on inner frame avoids transform conflict */}
+        {/* ── RIGHT COLUMN — Orbital timeline ── */}
+        <div
+          className="hero-col-right uc-hero-right"
+          style={{ position: 'relative', height: 560, zIndex: 1 }}
+        >
+          {/* Subtle label */}
           <div
             style={{
               position: 'absolute',
-              right: 16,
-              top: '50%',
-              transform: 'translateY(-50%)',
+              top: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 4,
+              pointerEvents: 'none',
+              zIndex: 5,
             }}
           >
-            <div
-              className="phone-float"
-              style={{
-                width: 218,
-                background: 'var(--surface-raised)',
-                border: '1.5px solid var(--border-hover)',
-                borderRadius: 34,
-                overflow: 'hidden',
-              }}
-            >
-              {/* Notch */}
-              <div
-                style={{
-                  width: 62,
-                  height: 20,
-                  background: 'var(--surface-page)',
-                  borderRadius: '0 0 16px 16px',
-                  margin: '0 auto 14px',
-                }}
-              />
-
-              {/* Inner content */}
-              <div
-                style={{
-                  padding: '0 14px 18px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 9,
-                }}
-              >
-                {/* Top bar */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--uc-orange)', flexShrink: 0 }} />
-                  <div style={{ flex: 1, height: 9, borderRadius: 4, background: 'var(--border-default)' }} />
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--surface-raised)', flexShrink: 0 }} />
-                </div>
-
-                <div style={{ height: '0.5px', background: 'var(--border-default)' }} />
-
-                {/* Mini post 1 */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--uc-indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: 'var(--text-primary)', flexShrink: 0 }}>JD</div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <Skel w="100%" />
-                    <Skel w="82%" />
-                    <Skel w="58%" />
-                    <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-                      <div style={{ background: 'var(--uc-indigo-bg)', border: '0.5px solid var(--uc-indigo-bdr)', borderRadius: 999, padding: '2px 8px', fontSize: 9, color: 'var(--uc-indigo-l)' }}>👍 4</div>
-                      <div style={{ background: 'var(--uc-cyan-bg)', border: '0.5px solid var(--uc-cyan-bdr)', borderRadius: 999, padding: '2px 8px', fontSize: 9, color: 'var(--uc-cyan)' }}>💬 2</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ height: '0.5px', background: 'var(--border-default)' }} />
-
-                {/* Mini post 2 */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--uc-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 500, color: 'var(--text-primary)', flexShrink: 0 }}>SF</div>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <div style={{ background: 'var(--uc-mint-bg)', border: '0.5px solid var(--uc-mint-bdr)', borderRadius: 6, padding: '5px 7px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <Skel w="90%" h={7} />
-                      <Skel w="65%" h={6} />
-                    </div>
-                    <div style={{ alignSelf: 'flex-start', background: 'var(--uc-orange-bg)', border: '0.5px solid var(--uc-orange-bdr)', borderRadius: 999, padding: '2px 9px', fontSize: 9, color: 'var(--uc-orange-l)' }}>Apply →</div>
-                  </div>
-                </div>
-
-                {/* Notification row */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--uc-indigo-bg)', border: '0.5px solid var(--uc-indigo-bdr)', borderRadius: 8, padding: '7px 10px' }}>
-                  <Bell size={12} style={{ color: 'var(--uc-indigo-l)', flexShrink: 0 }} />
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <Skel w="80%" h={7} />
-                    <Skel w="55%" h={6} />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <span style={{ fontSize: 11, letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>
+              The platform
+            </span>
+            <div style={{ width: 1, height: 20, background: 'var(--border-hover)' }} />
           </div>
 
-          {/* Floating card 1 — Job */}
+          {/* Orbital visual */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <RadialOrbitalTimeline nodes={ORBITAL_NODES} height={520} />
+          </div>
+
+          {/* Subtle bottom label */}
           <div
             style={{
-              position: 'absolute', left: 0, top: 48, width: 188,
-              background: 'var(--surface-hover)', border: '0.5px solid var(--border-hover)',
-              borderRadius: 14, padding: '13px 15px',
-              animation: 'floatAlt 4.8s ease-in-out infinite',
+              position: 'absolute',
+              bottom: 8,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              pointerEvents: 'none',
             }}
           >
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-mint-bg)', border: '0.5px solid var(--uc-mint-bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Briefcase size={14} style={{ color: 'var(--uc-mint)' }} />
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>SWE Intern</p>
-                <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3 }}>Pathao · Remote</p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-              <div style={{ background: 'var(--uc-mint-bg)', border: '0.5px solid var(--uc-mint-bdr)', borderRadius: 999, padding: '2px 8px', fontSize: 10, color: 'var(--uc-mint)' }}>New</div>
-              <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>by alumni</span>
-            </div>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+              Tap any node to explore
+            </span>
           </div>
-
-          {/* Floating card 2 — Mentorship */}
-          <div
-            style={{
-              position: 'absolute', left: 14, bottom: 64, width: 178,
-              background: 'var(--surface-hover)', border: '0.5px solid var(--border-hover)',
-              borderRadius: 14, padding: '13px 15px',
-              display: 'flex', gap: 10, alignItems: 'center',
-              animation: 'uc-float 4s 0.6s ease-in-out infinite',
-            }}
-          >
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', flexShrink: 0 }}>MH</div>
-            <div>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.35 }}>Mentorship accepted</p>
-              <p style={{ margin: 0, fontSize: 10, color: 'var(--text-secondary)', lineHeight: 1.35 }}>Monnabur · Alumni '21</p>
-            </div>
-          </div>
-
-          {/* Floating card 3 — Live chat */}
-          <div
-            style={{
-              position: 'absolute', right: 4, bottom: 32, width: 155,
-              background: 'var(--surface-hover)', border: '0.5px solid var(--border-hover)',
-              borderRadius: 14, padding: '13px 15px',
-              animation: 'floatAlt 5.2s 1.2s ease-in-out infinite',
-            }}
-          >
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--uc-cyan-bg)', border: '0.5px solid var(--uc-cyan-bdr)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <MessageSquare size={14} style={{ color: 'var(--uc-cyan)' }} />
-              </div>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>Live chat</p>
-            </div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
-              <span className="online-dot" />
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>247 online</span>
-            </div>
-          </div>
-
         </div>
       </div>
+
+      {/* Video modal */}
+      {demoOpen && (
+        <div
+          onClick={() => setDemoOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            background: 'var(--overlay-bg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: 900,
+              borderRadius: 'var(--r-xl)',
+              overflow: 'hidden',
+              background: 'var(--surface-card)',
+              border: '0.5px solid var(--border-hover)',
+              aspectRatio: '16 / 9',
+            }}
+          >
+            <iframe
+              src={DEMO_VIDEO_URL}
+              title="UniConnecT demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+            />
+          </div>
+          <button
+            aria-label="Close demo"
+            onClick={() => setDemoOpen(false)}
+            style={{
+              position: 'fixed',
+              top: 20,
+              right: 20,
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-hover)',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
     </section>
   )
 }
