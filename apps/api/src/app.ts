@@ -27,7 +27,17 @@ export function createApp() {
   const app = express()
 
   app.use(helmet())
-  app.use(cors({ origin: env.CLIENT_URL, credentials: true }))
+  const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim())
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        // allow server-to-server requests (no origin) and any listed origin
+        if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
+        cb(new Error(`CORS: origin ${origin} not allowed`))
+      },
+      credentials: true,
+    }),
+  )
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'))
   app.use(express.json())
   app.use(cookieParser())
