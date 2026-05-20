@@ -26,6 +26,8 @@ import { db } from './config/db'
 export function createApp() {
   const app = express()
 
+  app.set('trust proxy', 1)
+
   app.use(helmet())
   const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim())
   app.use(

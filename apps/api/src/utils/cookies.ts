@@ -6,7 +6,7 @@ const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
 export function setRefreshCookie(res: Response, refreshToken: string) {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
     secure: env.NODE_ENV === 'production',
     maxAge: sevenDaysMs,
     path: '/api/v1/auth',
@@ -16,7 +16,7 @@ export function setRefreshCookie(res: Response, refreshToken: string) {
 export function clearRefreshCookie(res: Response) {
   res.clearCookie('refreshToken', {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
     secure: env.NODE_ENV === 'production',
     path: '/api/v1/auth',
   })

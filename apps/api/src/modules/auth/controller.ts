@@ -118,7 +118,7 @@ function setRefreshCookie(res: Response, refreshToken: string) {
   res.cookie(refreshCookieName, refreshToken, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
     maxAge: refreshCookieMaxAge,
   })
 }
@@ -127,7 +127,7 @@ function clearRefreshCookie(res: Response) {
   res.clearCookie(refreshCookieName, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
   })
 }
 
