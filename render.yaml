@@ -3,7 +3,7 @@ services:
   - type: web
     name: uniconnect-web
     env: static
-    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter web build
+    buildCommand: npx pnpm install --frozen-lockfile && npx pnpm --filter web build
     staticPublishPath: apps/web/dist
     routes:
       - type: rewrite
@@ -22,8 +22,8 @@ services:
     name: uniconnect-api
     env: node
     region: singapore # Matches your AWS_REGION roughly, adjust as needed
-    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter api build
-    startCommand: pnpm --filter api db:migrate && pnpm --filter api start
+    buildCommand: npx pnpm install --frozen-lockfile && npx pnpm --filter api build
+    startCommand: npx pnpm --filter api db:migrate && npx pnpm --filter api start
     envVars:
       - key: NODE_ENV
         value: production
