@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { createKnexConfig } from '../config/db'
+import { createKnexConfig, db as appDb } from '../config/db'
 import knex from 'knex'
 
 const config = createKnexConfig()
@@ -15,10 +15,10 @@ const db = knex({
 async function run() {
   await db.seed.run()
   console.log('Seed complete.')
-  await db.destroy()
+  await Promise.allSettled([db.destroy(), appDb.destroy()])
 }
 
 run().catch((err) => {
   console.error(err)
-  process.exit(1)
+  void Promise.allSettled([db.destroy(), appDb.destroy()]).finally(() => process.exit(1))
 })

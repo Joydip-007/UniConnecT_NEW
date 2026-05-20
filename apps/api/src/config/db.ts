@@ -20,7 +20,7 @@ export function createKnexConfig(): Knex.Config {
 
   return {
     client: 'pg',
-    connection: env.DATABASE_URL,
+    connection: createPostgresConnection(env.DATABASE_URL),
     pool: {
       min: 2,
       max: 10,
@@ -47,6 +47,26 @@ export function createKnexConfig(): Knex.Config {
           },
         }
       : undefined,
+  }
+}
+
+function createPostgresConnection(databaseUrl: string): Knex.PgConnectionConfig | string {
+  if (!shouldUseSsl(databaseUrl)) return databaseUrl
+
+  return {
+    connectionString: databaseUrl,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  }
+}
+
+function shouldUseSsl(databaseUrl: string) {
+  try {
+    const parsedUrl = new URL(databaseUrl)
+    return parsedUrl.searchParams.get('sslmode') === 'require' || parsedUrl.hostname.endsWith('render.com')
+  } catch {
+    return false
   }
 }
 

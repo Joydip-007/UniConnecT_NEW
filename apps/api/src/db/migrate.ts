@@ -1,4 +1,4 @@
-import { createKnexConfig } from '../config/db'
+import { createKnexConfig, db as appDb } from '../config/db'
 import knex from 'knex'
 
 const command = process.argv[2]
@@ -29,11 +29,10 @@ async function run() {
     console.error(`Unknown command: ${command}. Use latest | rollback | rollback-all`)
     process.exit(1)
   }
-
-  await db.destroy()
+  await Promise.allSettled([db.destroy(), appDb.destroy()])
 }
 
 run().catch((err) => {
   console.error(err)
-  process.exit(1)
+  void Promise.allSettled([db.destroy(), appDb.destroy()]).finally(() => process.exit(1))
 })
