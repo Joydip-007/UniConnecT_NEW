@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSuggestions = exports.listFollowing = exports.listFollowers = exports.unfollowUser = exports.followUser = exports.listUsers = exports.getUser = exports.updateMe = exports.getMe = void 0;
+exports.getProgress = exports.getSuggestions = exports.listFollowing = exports.listFollowers = exports.unfollowUser = exports.followUser = exports.listUsers = exports.getUser = exports.updateMyPreferences = exports.updateMe = exports.getMe = void 0;
 const asyncHandler_1 = require("../../utils/asyncHandler");
 const response_1 = require("../../utils/response");
 const errors_1 = require("../../utils/errors");
@@ -12,6 +12,10 @@ exports.getMe = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
 exports.updateMe = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
     (0, response_1.sendSuccess)(res, await service_1.usersService.updateCurrentUser(context.userId, context.universityId, req.body));
+});
+exports.updateMyPreferences = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    (0, response_1.sendSuccess)(res, await service_1.usersService.updatePreferences(context.userId, context.universityId, req.body));
 });
 exports.getUser = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
@@ -43,6 +47,10 @@ exports.listFollowing = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
 exports.getSuggestions = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
     (0, response_1.sendSuccess)(res, await service_1.usersService.getSuggestions(context.userId, context.universityId));
+});
+exports.getProgress = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    (0, response_1.sendSuccess)(res, await service_1.usersService.getProgress(context.userId, context.universityId));
 });
 function getAuthContext(req) {
     if (!req.user)

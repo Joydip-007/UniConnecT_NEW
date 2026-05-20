@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.me = exports.resendOtp = exports.resetPassword = exports.forgotPassword = exports.logout = exports.refresh = exports.verifyLoginOtp = exports.login = exports.verifyOtp = exports.register = void 0;
+exports.checkInvitation = exports.me = exports.resendOtp = exports.resetPassword = exports.forgotPassword = exports.logout = exports.refresh = exports.verifyLoginOtp = exports.login = exports.verifyOtp = exports.register = void 0;
 const env_1 = require("../../config/env");
 const asyncHandler_1 = require("../../utils/asyncHandler");
 const errors_1 = require("../../utils/errors");
@@ -8,7 +8,7 @@ const service_1 = require("./service");
 const refreshCookieName = 'refreshToken';
 const refreshCookieMaxAge = 7 * 24 * 60 * 60 * 1000;
 exports.register = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-    const result = await service_1.authService.register(req.body, getUniversityId(req), getIpAddress(req), getDeviceInfo(req));
+    const result = await service_1.authService.register(req.body, getUniversityId(req), getIpAddress(req), getDeviceInfo(req), req.university?.allowedEmailDomains ?? []);
     setRefreshCookie(res, result.refreshToken);
     res.status(201).json({ data: { message: result.message, accessToken: result.accessToken, user: result.user } });
 });
@@ -67,6 +67,11 @@ exports.me = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     if (!req.user)
         throw new errors_1.AppError('Unauthorized', 401, 'AUTH_REQUIRED');
     res.json({ data: await service_1.authService.getMe(req.user.userId) });
+});
+exports.checkInvitation = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const { token } = req.params;
+    const data = await service_1.authService.peekInvitation(token, getUniversityId(req));
+    res.json({ data });
 });
 function setRefreshCookie(res, refreshToken) {
     res.cookie(refreshCookieName, refreshToken, {

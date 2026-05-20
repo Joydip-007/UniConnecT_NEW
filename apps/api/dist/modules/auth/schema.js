@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResendOtpSchema = exports.ResetPasswordSchema = exports.ForgotPasswordSchema = exports.VerifyOtpSchema = exports.LoginSchema = exports.RegisterSchema = exports.OtpPurposeSchema = exports.AuthRoleSchema = void 0;
 const zod_1 = require("zod");
-exports.AuthRoleSchema = zod_1.z.enum(['student', 'alumni', 'staff', 'admin']);
+exports.AuthRoleSchema = zod_1.z.enum(['student', 'alumni', 'faculty', 'admin']);
 exports.OtpPurposeSchema = zod_1.z.enum(['verify', 'login', 'reset']);
 exports.RegisterSchema = zod_1.z
     .object({
@@ -13,6 +13,7 @@ exports.RegisterSchema = zod_1.z
     role: exports.AuthRoleSchema.optional(),
     invitation_token: zod_1.z.string().trim().min(1).optional(),
     token: zod_1.z.string().trim().min(1).optional(),
+    department: zod_1.z.string().trim().min(1).max(100).optional().nullable(),
 })
     .transform((value) => ({
     email: value.email,
@@ -20,6 +21,7 @@ exports.RegisterSchema = zod_1.z
     full_name: value.full_name ?? value.fullName,
     role: value.role,
     invitation_token: value.invitation_token ?? value.token,
+    department: value.department ?? null,
 }))
     .refine((value) => Boolean(value.full_name), {
     message: 'Full name is required',

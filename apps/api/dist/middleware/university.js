@@ -12,7 +12,7 @@ exports.resolveUniversity = (0, asyncHandler_1.asyncHandler)(async (req, _res, n
         getUniversityIdFromBearerToken(req) ??
         getUniversityIdFromRefreshCookie(req);
     const query = (0, db_1.db)('universities')
-        .select('id', 'name', 'domain', 'plan', 'is_active')
+        .select('id', 'name', 'domain', 'plan', 'is_active', 'allowed_email_domains')
         .first();
     if (domain) {
         query.where({ domain });
@@ -32,6 +32,7 @@ exports.resolveUniversity = (0, asyncHandler_1.asyncHandler)(async (req, _res, n
         name: university.name,
         domain: university.domain,
         plan: university.plan,
+        allowedEmailDomains: university.allowed_email_domains ?? [],
     };
     next();
 });

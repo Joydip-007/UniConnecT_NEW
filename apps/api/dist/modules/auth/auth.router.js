@@ -18,7 +18,8 @@ exports.authRouter.post('/login', loginLimiter, (0, validate_1.validateBody)(sch
 exports.authRouter.post('/verify-login-otp', otpLimiter, (0, validate_1.validateBody)(schema_1.VerifyOtpSchema), controller_1.verifyLoginOtp);
 exports.authRouter.post('/resend-otp', otpLimiter, (0, validate_1.validateBody)(schema_1.ResendOtpSchema), controller_1.resendOtp);
 exports.authRouter.post('/refresh', controller_1.refresh);
-exports.authRouter.post('/logout', auth_1.requireAuth, controller_1.logout);
+exports.authRouter.post('/logout', controller_1.logout);
 exports.authRouter.post('/forgot-password', (0, validate_1.validateBody)(schema_1.ForgotPasswordSchema), controller_1.forgotPassword);
 exports.authRouter.post('/reset-password', otpLimiter, (0, validate_1.validateBody)(schema_1.ResetPasswordSchema), controller_1.resetPassword);
 exports.authRouter.get('/me', auth_1.requireAuth, controller_1.me);
+exports.authRouter.get('/invitation/:token', controller_1.checkInvitation);

@@ -10,9 +10,7 @@ async function up(knex) {
     });
 }
 async function down(knex) {
-    await knex.schema.alterTable('users', (table) => {
-        table.dropIndex(['email'], 'idx_users_email');
-        table.dropIndex(['role'], 'idx_users_role');
-        table.dropIndex(['university_id'], 'idx_users_university');
-    });
+    await knex.raw('DROP INDEX IF EXISTS idx_users_email');
+    await knex.raw('DROP INDEX IF EXISTS idx_users_role');
+    await knex.raw('DROP INDEX IF EXISTS idx_users_university');
 }

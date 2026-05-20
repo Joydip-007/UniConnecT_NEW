@@ -12,3 +12,5 @@ exports.notificationsRouter.use(auth_1.requireAuth, university_1.resolveUniversi
 exports.notificationsRouter.get('/', (0, validate_1.validateRequest)({ query: schema_1.NotificationListQuerySchema }), controller_1.listNotifications);
 exports.notificationsRouter.patch('/:notificationId/read', controller_1.markRead);
 exports.notificationsRouter.post('/read-all', controller_1.markAllRead);
+exports.notificationsRouter.delete('/:notificationId', controller_1.deleteNotification);
+exports.notificationsRouter.post('/:notificationId/accept', controller_1.acceptGroupInvite);

@@ -18,7 +18,7 @@ const createdUserEmails = [];
 });
 (0, vitest_1.describe)('POST /api/v1/auth/register', () => {
     (0, vitest_1.it)('returns 201 with accessToken on success', async () => {
-        const email = `reg.${Date.now()}@uiu.ac.bd`;
+        const email = `reg.${Date.now()}@bscse.uiu.ac.bd`;
         createdUserEmails.push(email);
         const res = await api.post('/api/v1/auth/register').set(UNI).send({
             email,
@@ -26,6 +26,8 @@ const createdUserEmails = [];
             full_name: 'Test Register',
             role: 'student',
         });
+        if (res.status !== 201)
+            console.log(res.body);
         (0, vitest_1.expect)(res.status).toBe(201);
         (0, vitest_1.expect)(res.body.data).toHaveProperty('accessToken');
         (0, vitest_1.expect)(res.body.data).toHaveProperty('message');
@@ -33,18 +35,37 @@ const createdUserEmails = [];
         (0, vitest_1.expect)(res.body.data.user).toHaveProperty('id');
     });
     (0, vitest_1.it)('returns 409 when email already exists', async () => {
-        const email = `dup.${Date.now()}@uiu.ac.bd`;
+        const email = `dup.${Date.now()}@bscse.uiu.ac.bd`;
         createdUserEmails.push(email);
         const payload = { email, password: 'TestPass@1234', full_name: 'Dup User', role: 'student' };
         await api.post('/api/v1/auth/register').set(UNI).send(payload);
         const res = await api.post('/api/v1/auth/register').set(UNI).send(payload);
         (0, vitest_1.expect)(res.status).toBe(409);
     });
+    (0, vitest_1.it)('stores department in profile when provided at registration', async () => {
+        const email = `dept.${Date.now()}@bscse.uiu.ac.bd`;
+        createdUserEmails.push(email);
+        const res = await api.post('/api/v1/auth/register').set(UNI).send({
+            email,
+            password: 'TestPass@1234',
+            full_name: 'Dept Tester',
+            role: 'student',
+            department: 'EEE',
+        });
+        (0, vitest_1.expect)(res.status).toBe(201);
+        // Verify department persisted
+        const profile = await (0, db_1.db)('profiles')
+            .join('users', 'users.id', 'profiles.user_id')
+            .where('users.email', email)
+            .select('profiles.department')
+            .first();
+        (0, vitest_1.expect)(profile?.department).toBe('EEE');
+    });
 });
 (0, vitest_1.describe)('POST /api/v1/auth/verify-otp', () => {
     (0, vitest_1.it)('returns 422 with OTP_INVALID when OTP is wrong', async () => {
         // Register a fresh user so an OTP is stored in Redis
-        const email = `otp.${Date.now()}@uiu.ac.bd`;
+        const email = `otp.${Date.now()}@bscse.uiu.ac.bd`;
         createdUserEmails.push(email);
         const reg = await api.post('/api/v1/auth/register').set(UNI).send({
             email,
@@ -126,5 +147,50 @@ const createdUserEmails = [];
     (0, vitest_1.it)('returns 401 when no token is sent', async () => {
         const res = await api.get('/api/v1/auth/me').set(UNI);
         (0, vitest_1.expect)(res.status).toBe(401);
+    });
+    (0, vitest_1.it)('returns real profile data including department', async () => {
+        const { accessToken: token } = await (0, setup_1.loginAs)(setup_1.CREDENTIALS.student.email, setup_1.CREDENTIALS.student.password);
+        // Set department directly in DB so we can verify the field comes back
+        const userRow = await (0, db_1.db)('users').where({ email: setup_1.CREDENTIALS.student.email }).select('id').first();
+        await (0, db_1.db)('profiles').where({ user_id: userRow.id }).update({ department: 'CSE', batch_year: '2025' });
+        const res = await api.get('/api/v1/auth/me')
+            .set('Authorization', `Bearer ${token}`)
+            .set(UNI);
+        (0, vitest_1.expect)(res.status).toBe(200);
+        (0, vitest_1.expect)(res.body.data.profile.department).toBe('CSE');
+        (0, vitest_1.expect)(res.body.data.profile.batchYear).toBe('2025');
+        // Clean up
+        await (0, db_1.db)('profiles').where({ user_id: userRow.id }).update({ department: null, batch_year: null });
+    });
+});
+(0, vitest_1.describe)('GET /api/v1/auth/invitation/:token', () => {
+    const testToken = `peek-test-${Date.now()}`;
+    const testEmail = `peek.${Date.now()}@bscse.uiu.ac.bd`;
+    (0, vitest_1.beforeAll)(async () => {
+        await (0, db_1.db)('invitations').insert({
+            university_id: setup_1.TEST_UNIVERSITY_ID,
+            email: testEmail,
+            role: 'student',
+            token: testToken,
+            is_used: false,
+            expires_at: new Date(Date.now() + 60 * 60 * 1000),
+        });
+    });
+    (0, vitest_1.afterAll)(async () => {
+        await (0, db_1.db)('invitations').where({ token: testToken }).delete();
+    });
+    (0, vitest_1.it)('returns 200 with role and email for a valid token', async () => {
+        const res = await api
+            .get(`/api/v1/auth/invitation/${testToken}`)
+            .set(UNI);
+        (0, vitest_1.expect)(res.status).toBe(200);
+        (0, vitest_1.expect)(res.body.data.role).toBe('student');
+        (0, vitest_1.expect)(res.body.data.email).toBe(testEmail);
+    });
+    (0, vitest_1.it)('returns 404 for an unknown token', async () => {
+        const res = await api
+            .get('/api/v1/auth/invitation/does-not-exist')
+            .set(UNI);
+        (0, vitest_1.expect)(res.status).toBe(404);
     });
 });

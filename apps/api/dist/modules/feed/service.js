@@ -5,11 +5,14 @@ const db_1 = require("../../config/db");
 const socket_1 = require("../../socket");
 const errors_1 = require("../../utils/errors");
 const logger_1 = require("../../utils/logger");
+const service_1 = require("../notifications/service");
 class FeedService {
     async listPosts(universityId, userId, query) {
         const countQuery = (0, db_1.db)('posts').where('posts.university_id', universityId);
         if (query.type)
             countQuery.andWhere('posts.type', query.type);
+        if (query.authorId)
+            countQuery.andWhere('posts.author_id', query.authorId);
         const [{ count }] = await countQuery.count({ count: '*' });
         const total = Number(count);
         const offset = (query.page - 1) * query.limit;
@@ -18,12 +21,14 @@ class FeedService {
             .modify((builder) => {
             if (query.type)
                 builder.andWhere('posts.type', query.type);
+            if (query.authorId)
+                builder.andWhere('posts.author_id', query.authorId);
         })
             .orderBy('posts.is_pinned', 'desc')
             .orderBy('posts.created_at', 'desc')
             .limit(query.limit)
             .offset(offset));
-        const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id));
+        const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId);
         return { items: posts, total, page: query.page, limit: query.limit };
     }
     async listGroupPosts(universityId, userId, groupId, query) {
@@ -37,7 +42,7 @@ class FeedService {
             .orderBy('posts.created_at', 'desc')
             .limit(query.limit)
             .offset((query.page - 1) * query.limit));
-        const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id));
+        const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId);
         return { items: posts, total, page: query.page, limit: query.limit };
     }
     async createPost(context, input) {
@@ -91,7 +96,7 @@ class FeedService {
                 .increment('view_count', 1)
                 .catch((error) => logger_1.logger.warn('Failed to increment post view count', { error, postId }));
         }
-        const [post] = await this.attachPolls([toPost(row)], [row.id]);
+        const [post] = await this.attachPolls([toPost(row)], [row.id], userId);
         return post;
     }
     async updatePost(context, postId, input) {
@@ -145,11 +150,25 @@ class FeedService {
         const payload = { postId, userId: context.userId, reactionType, reactionCounts };
         const io = (0, socket_1.getIo)();
         io.to(`uni:${context.universityId}`).emit('post:reaction', payload);
-        io.to(`uni:${context.universityId}`).emit('feed:reaction:new', {
-            postId,
-            reactionType,
-            count: reactionCounts[reactionType],
-        });
+        io.to(`uni:${context.universityId}`).emit('feed:reaction:updated', { postId, reactionCounts });
+        // Notify post author (fire-and-forget)
+        const post = await (0, db_1.db)('posts')
+            .select('author_id')
+            .where({ id: postId })
+            .first();
+        if (post && post.author_id !== context.userId) {
+            const actorName = await service_1.notificationsService.getActorName(context.userId);
+            service_1.notificationsService
+                .createNotification({
+                userId: post.author_id,
+                type: 'post_reaction',
+                actorId: context.userId,
+                referenceId: postId,
+                referenceType: 'post',
+                content: `${actorName} reacted to your post`,
+            })
+                .catch((err) => logger_1.logger.warn('Failed to create reaction notification', { err }));
+        }
         return payload;
     }
     async removeReaction(context, postId) {
@@ -165,11 +184,7 @@ class FeedService {
         const payload = { postId, userId: context.userId, reactionType: null, reactionCounts };
         const io = (0, socket_1.getIo)();
         io.to(`uni:${context.universityId}`).emit('post:reaction', payload);
-        io.to(`uni:${context.universityId}`).emit('feed:reaction:new', {
-            postId,
-            reactionType: 'like',
-            count: reactionCounts.like,
-        });
+        io.to(`uni:${context.universityId}`).emit('feed:reaction:updated', { postId, reactionCounts });
         return payload;
     }
     async listComments(universityId, userId, postId, query) {
@@ -230,7 +245,59 @@ class FeedService {
         const io = (0, socket_1.getIo)();
         io.to(`uni:${context.universityId}`).emit('post:comment', { postId, comment });
         io.to(`uni:${context.universityId}`).emit('feed:comment:new', { postId, comment });
+        // Notify post author (fire-and-forget)
+        const postForNotif = await (0, db_1.db)('posts')
+            .select('author_id')
+            .where({ id: postId })
+            .first();
+        if (postForNotif && postForNotif.author_id !== context.userId) {
+            const actorName = await service_1.notificationsService.getActorName(context.userId);
+            service_1.notificationsService
+                .createNotification({
+                userId: postForNotif.author_id,
+                type: 'post_comment',
+                actorId: context.userId,
+                referenceId: postId,
+                referenceType: 'post',
+                content: `${actorName} commented on your post`,
+            })
+                .catch((err) => logger_1.logger.warn('Failed to create comment notification', { err }));
+        }
         return comment;
+    }
+    async deleteComment(context, postId, commentId) {
+        const comment = await (0, db_1.db)('comments')
+            .select('id', 'author_id')
+            .where({ id: commentId, post_id: postId })
+            .first();
+        if (!comment)
+            throw (0, errors_1.notFound)('Comment not found', 'COMMENT_NOT_FOUND');
+        if (comment.author_id !== context.userId && context.role !== 'admin') {
+            throw (0, errors_1.forbidden)('Cannot delete this comment', 'COMMENT_FORBIDDEN');
+        }
+        await (0, db_1.db)('reactions').where({ target_id: commentId, target_type: 'comment' }).delete();
+        await (0, db_1.db)('comments').where({ id: commentId }).delete();
+        const io = (0, socket_1.getIo)();
+        io.to(`uni:${context.universityId}`).emit('feed:comment:deleted', { postId, commentId });
+        return { deleted: true };
+    }
+    async upsertCommentReaction(context, postId, commentId, reactionType) {
+        await assertPostInUniversity(postId, context.universityId);
+        const comment = await (0, db_1.db)('comments').where({ id: commentId, post_id: postId }).first();
+        if (!comment)
+            throw (0, errors_1.notFound)('Comment not found', 'COMMENT_NOT_FOUND');
+        await (0, db_1.db)('reactions')
+            .insert({ user_id: context.userId, target_id: commentId, target_type: 'comment', reaction_type: reactionType })
+            .onConflict(['user_id', 'target_id', 'target_type'])
+            .merge({ reaction_type: reactionType, created_at: db_1.db.fn.now() });
+        return { reacted: true };
+    }
+    async removeCommentReaction(context, postId, commentId) {
+        await assertPostInUniversity(postId, context.universityId);
+        await (0, db_1.db)('reactions')
+            .where({ user_id: context.userId, target_id: commentId, target_type: 'comment' })
+            .delete();
+        return { removed: true };
     }
     async votePoll(context, postId, input) {
         const post = await assertPostInUniversity(postId, context.universityId);
@@ -291,24 +358,59 @@ class FeedService {
         await (0, db_1.db)('saved_posts').where({ user_id: context.userId, post_id: postId }).delete();
         return { saved: false };
     }
-    async attachPolls(posts, postIds) {
+    async attachPolls(posts, postIds, userId) {
         if (postIds.length === 0)
             return posts.map((post) => ({ ...post, poll: null }));
         const polls = await (0, db_1.db)('polls').select('id', 'post_id', 'question', 'expires_at').whereIn('post_id', postIds);
         if (polls.length === 0)
             return posts.map((post) => ({ ...post, poll: null }));
-        const options = await getPollOptionsWithCounts(db_1.db, polls.map((poll) => poll.id));
+        const pollIds = polls.map((poll) => poll.id);
+        const options = await getPollOptionsWithCounts(db_1.db, pollIds);
         const optionsByPoll = groupBy(options, (option) => option.poll_id);
-        const pollByPost = new Map(polls.map((poll) => [
-            poll.post_id,
-            {
-                id: poll.id,
-                question: poll.question,
-                expiresAt: poll.expires_at,
-                options: (optionsByPoll.get(poll.id) ?? []).map(toPollOption),
-            },
-        ]));
+        const allOptionIds = options.map((o) => o.id);
+        const userVotes = allOptionIds.length > 0
+            ? await (0, db_1.db)('poll_votes')
+                .select('poll_option_id')
+                .where({ user_id: userId })
+                .whereIn('poll_option_id', allOptionIds)
+            : [];
+        const votedOptionIds = new Set(userVotes.map((v) => v.poll_option_id));
+        const pollByPost = new Map(polls.map((poll) => {
+            const pollOptions = (optionsByPoll.get(poll.id) ?? []).map(toPollOption);
+            const myVote = pollOptions.find((o) => votedOptionIds.has(o.id))?.id ?? null;
+            const totalVotes = pollOptions.reduce((sum, o) => sum + o.voteCount, 0);
+            return [
+                poll.post_id,
+                {
+                    id: poll.id,
+                    question: poll.question,
+                    expiresAt: poll.expires_at,
+                    options: pollOptions,
+                    myVote,
+                    totalVotes,
+                },
+            ];
+        }));
         return posts.map((post) => ({ ...post, poll: pollByPost.get(post.id) ?? null }));
+    }
+    async getTrending(universityId) {
+        const tagRows = await (0, db_1.db)('tags')
+            .join('post_tags', 'post_tags.tag_id', 'tags.id')
+            .join('posts', 'posts.id', 'post_tags.post_id')
+            .select('tags.name')
+            .count('post_tags.post_id as post_count')
+            .where('tags.university_id', universityId)
+            .where('posts.university_id', universityId)
+            .where('posts.created_at', '>', db_1.db.raw("NOW() - INTERVAL '7 days'"))
+            .groupBy('tags.id', 'tags.name')
+            .orderByRaw('COUNT(post_tags.post_id) DESC')
+            .limit(5);
+        return {
+            trendingTags: tagRows.map((t) => ({
+                name: t.name,
+                postCount: Number(t.post_count),
+            })),
+        };
     }
 }
 exports.FeedService = FeedService;
@@ -320,7 +422,7 @@ function postSelectQuery(knex, userId) {
         .leftJoin('saved_posts', function joinSaved() {
         this.on('saved_posts.post_id', '=', 'posts.id').andOn('saved_posts.user_id', '=', knex.raw('?', [userId]));
     })
-        .select('posts.id', 'posts.university_id', 'posts.author_id', 'posts.type', 'posts.content', 'posts.media_urls', 'posts.group_id', 'posts.is_pinned', 'posts.view_count', 'posts.created_at', 'posts.updated_at', 'profiles.full_name as author_full_name', 'profiles.avatar_url as author_avatar_url', 'profiles.headline as author_headline', 'users.role as author_role', knex.raw(`COALESCE(
+        .select('posts.id', 'posts.university_id', 'posts.author_id', 'posts.type', 'posts.content', 'posts.media_urls', 'posts.group_id', 'posts.is_pinned', 'posts.view_count', 'posts.created_at', 'posts.updated_at', 'profiles.full_name as author_full_name', 'profiles.avatar_url as author_avatar_url', 'profiles.headline as author_headline', 'profiles.department as author_department', 'profiles.batch_year as author_batch_year', 'users.role as author_role', knex.raw(`COALESCE(
           (
             SELECT jsonb_object_agg(reaction_type, total)
             FROM (
@@ -367,9 +469,9 @@ function assertCanMutatePost(context, authorId) {
 function assertCanUsePostType(role, type) {
     if (type !== 'announcement')
         return;
-    if (role === 'staff' || role === 'admin')
+    if (role === 'faculty' || role === 'admin')
         return;
-    throw (0, errors_1.forbidden)('Only staff and admins can create announcements', 'ANNOUNCEMENT_FORBIDDEN');
+    throw (0, errors_1.forbidden)('Only faculty and admins can create announcements', 'ANNOUNCEMENT_FORBIDDEN');
 }
 async function getReactionCounts(targetId, targetType) {
     const rows = (await (0, db_1.db)('reactions')
@@ -417,13 +519,17 @@ function toPost(row) {
         author: {
             id: row.author_id,
             fullName: row.author_full_name,
-            avatarUrl: row.author_avatar_url,
-            headline: row.author_headline,
             role: row.author_role,
+            profile: {
+                avatarUrl: row.author_avatar_url,
+                headline: row.author_headline,
+                department: row.author_department,
+                batchYear: row.author_batch_year,
+            },
         },
         reactionCounts: normalizeReactionCounts(row.reaction_counts),
         commentCount: Number(row.comment_count),
-        ownReaction: row.own_reaction,
+        myReaction: row.own_reaction,
         isSaved: Boolean(row.is_saved),
     };
 }

@@ -5,6 +5,7 @@ exports.setupSocket = setupSocket;
 exports.getIo = getIo;
 const redis_adapter_1 = require("@socket.io/redis-adapter");
 const socket_io_1 = require("socket.io");
+const db_1 = require("../config/db");
 const env_1 = require("../config/env");
 const token_service_1 = require("../services/token.service");
 const errors_1 = require("../utils/errors");
@@ -13,9 +14,10 @@ let io = null;
 function setupSocket(httpServer, redisClient) {
     const pubClient = redisClient.duplicate();
     const subClient = redisClient.duplicate();
+    const allowedOrigins = env_1.env.CLIENT_URL.split(',').map((o) => o.trim());
     io = new socket_io_1.Server(httpServer, {
         cors: {
-            origin: env_1.env.CLIENT_URL,
+            origin: allowedOrigins,
             credentials: true,
         },
     });
@@ -27,9 +29,9 @@ function setupSocket(httpServer, redisClient) {
             next(new Error('Unauthorized'));
             return;
         }
-        const payload = token_service_1.tokenService.verifyAccessToken(token);
+        const { payload, expired } = token_service_1.tokenService.verifyAccessTokenWithExpiry(token);
         if (!payload) {
-            next(new Error('Unauthorized'));
+            next(new Error(expired ? 'TOKEN_EXPIRED' : 'Unauthorized'));
             return;
         }
         socket.data.user = {
@@ -78,7 +80,16 @@ function setupSocket(httpServer, redisClient) {
             const convId = getConversationId(payload);
             if (!convId)
                 return;
-            socket.join(`conv:${convId}`);
+            void (0, db_1.db)('conversation_participants')
+                .where({ conversation_id: convId, user_id: user.userId })
+                .first()
+                .then((row) => {
+                if (!row) {
+                    socket.emit('conv:error', { message: 'Not a member' });
+                    return;
+                }
+                socket.join(`conv:${convId}`);
+            });
         });
         socket.on('leave:conversation', (convId) => {
             if (typeof convId !== 'string' || !convId)
@@ -90,6 +101,22 @@ function setupSocket(httpServer, redisClient) {
             if (!convId)
                 return;
             socket.leave(`conv:${convId}`);
+        });
+        socket.on('join:university', (payload) => {
+            const universityId = getUniversityId(payload);
+            if (!universityId)
+                return;
+            if (universityId !== user.universityId)
+                return;
+            socket.join(`uni:${universityId}`);
+        });
+        socket.on('leave:university', (payload) => {
+            const universityId = getUniversityId(payload);
+            if (!universityId)
+                return;
+            if (universityId !== user.universityId)
+                return;
+            socket.leave(`uni:${universityId}`);
         });
         logger_1.logger.info('Socket connected', { socketId: socket.id, userId: user.userId });
     });
@@ -115,6 +142,12 @@ async function connectIfWaiting(client) {
     if (client.status === 'wait') {
         await client.connect();
     }
+}
+function getUniversityId(payload) {
+    if (typeof payload !== 'object' || payload === null)
+        return null;
+    const uid = payload.universityId;
+    return typeof uid === 'string' && uid ? uid : null;
 }
 function getConversationId(payload) {
     if (typeof payload === 'string' && payload)

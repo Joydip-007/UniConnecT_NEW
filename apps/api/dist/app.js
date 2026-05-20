@@ -21,6 +21,8 @@ const messages_1 = require("./modules/messages");
 const news_1 = require("./modules/news");
 const notifications_1 = require("./modules/notifications");
 const campus_1 = require("./modules/campus");
+const mentorship_1 = require("./modules/mentorship");
+const search_1 = require("./modules/search");
 const upload_1 = require("./modules/upload");
 const users_1 = require("./modules/users");
 const error_handler_1 = require("./middleware/error-handler");
@@ -29,10 +31,22 @@ const db_1 = require("./config/db");
 function createApp() {
     const app = (0, express_1.default)();
     app.use((0, helmet_1.default)());
-    app.use((0, cors_1.default)({ origin: env_1.env.CLIENT_URL, credentials: true }));
+    const allowedOrigins = env_1.env.CLIENT_URL.split(',').map((o) => o.trim());
+    app.use((0, cors_1.default)({
+        origin: (origin, cb) => {
+            // allow server-to-server requests (no origin) and any listed origin
+            if (!origin || allowedOrigins.includes(origin))
+                return cb(null, true);
+            cb(new Error(`CORS: origin ${origin} not allowed`));
+        },
+        credentials: true,
+    }));
     app.use((0, morgan_1.default)(env_1.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
     app.use(express_1.default.json());
     app.use((0, cookie_parser_1.default)());
+    app.get('/', (_req, res) => {
+        res.json({ message: 'UniConnecT API is running!' });
+    });
     app.get('/health', (0, asyncHandler_1.asyncHandler)(async (_req, res) => {
         await db_1.db.raw('SELECT 1');
         await (0, redis_1.pingRedis)();
@@ -56,6 +70,8 @@ function createApp() {
     app.use('/api/v1/conversations', messages_1.messagesRouter);
     app.use('/api/v1/notifications', notifications_1.notificationsRouter);
     app.use('/api/v1/news', news_1.newsRouter);
+    app.use('/api/v1/mentorship', mentorship_1.mentorshipRouter);
+    app.use('/api/v1/search', search_1.searchRouter);
     app.use('/api/v1', campus_1.campusRouter);
     // Global error handler. Keep this mounted last.
     app.use(error_handler_1.errorHandler);

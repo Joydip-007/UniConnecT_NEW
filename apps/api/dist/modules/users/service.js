@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.usersService = exports.UsersService = void 0;
 const db_1 = require("../../config/db");
 const errors_1 = require("../../utils/errors");
+const system_groups_service_1 = require("../groups/system-groups.service");
 class UsersService {
     async getCurrentUser(userId, universityId) {
         const user = await getUserProfileQuery()
@@ -16,15 +17,54 @@ class UsersService {
         return toUserProfile(user, { includePhone: true });
     }
     async updateCurrentUser(userId, universityId, input) {
-        const exists = await (0, db_1.db)('users').where({ id: userId, university_id: universityId }).first();
-        if (!exists)
+        const existing = await (0, db_1.db)('users')
+            .join('profiles', 'profiles.user_id', 'users.id')
+            .where({ 'users.id': userId, 'users.university_id': universityId })
+            .select('users.role', 'profiles.department')
+            .first();
+        if (!existing)
             throw (0, errors_1.notFound)('User not found');
-        await (0, db_1.db)('profiles')
-            .where({ user_id: userId })
-            .update({
-            ...input,
-            updated_at: db_1.db.fn.now(),
-        });
+        const update = { updated_at: db_1.db.fn.now() };
+        if (input.fullName !== undefined)
+            update.full_name = input.fullName;
+        if (input.bio !== undefined)
+            update.bio = input.bio;
+        if (input.headline !== undefined)
+            update.headline = input.headline;
+        if (input.department !== undefined)
+            update.department = input.department;
+        if (input.batchYear !== undefined)
+            update.batch_year = input.batchYear;
+        if (input.linkedinUrl !== undefined)
+            update.linkedin_url = input.linkedinUrl;
+        if (input.phone !== undefined)
+            update.phone = input.phone;
+        if (input.skills !== undefined)
+            update.skills = input.skills;
+        if (input.avatarUrl !== undefined)
+            update.avatar_url = input.avatarUrl;
+        if (input.coverUrl !== undefined)
+            update.cover_url = input.coverUrl;
+        if (input.isOpenToWork !== undefined)
+            update.is_open_to_work = input.isOpenToWork;
+        if (input.isOpenToMentorship !== undefined)
+            update.is_open_to_mentorship = input.isOpenToMentorship;
+        await (0, db_1.db)('profiles').where({ user_id: userId }).update(update);
+        if (input.department !== undefined && input.department !== existing.department) {
+            await system_groups_service_1.systemGroupsService.syncUserMembership(userId, universityId, { role: existing.role, department: existing.department }, { role: existing.role, department: input.department });
+        }
+        return this.getCurrentUser(userId, universityId);
+    }
+    async updatePreferences(userId, universityId, input) {
+        const update = {};
+        if (input.themePreference !== undefined) {
+            update.theme_preference = input.themePreference;
+        }
+        const affected = await (0, db_1.db)('users')
+            .where({ id: userId, university_id: universityId })
+            .update(update);
+        if (affected === 0)
+            throw (0, errors_1.notFound)('User not found');
         return this.getCurrentUser(userId, universityId);
     }
     async getPublicProfile(currentUserId, targetUserId, universityId) {
@@ -36,7 +76,19 @@ class UsersService {
             .first();
         if (!user)
             throw (0, errors_1.notFound)('User not found');
-        return toUserProfile(user, { includePhone: currentUserId === targetUserId });
+        const [followers, following, posts, isFollowingRow] = await Promise.all([
+            countFollows('following_id', targetUserId, universityId),
+            countFollows('follower_id', targetUserId, universityId),
+            (0, db_1.db)('posts').where({ author_id: targetUserId }).count({ count: '*' }).then(([r]) => Number(r.count)),
+            currentUserId !== targetUserId
+                ? (0, db_1.db)('follows').where({ follower_id: currentUserId, following_id: targetUserId }).first()
+                : Promise.resolve(null),
+        ]);
+        return {
+            ...toUserProfile(user, { includePhone: currentUserId === targetUserId }),
+            stats: { followers, following, posts },
+            isFollowing: !!isFollowingRow,
+        };
     }
     async listUsers(universityId, query) {
         const baseQuery = getUserProfileQuery().where('users.university_id', universityId);
@@ -149,13 +201,47 @@ class UsersService {
             .limit(10);
         return rows.map((row) => toUserProfile(row, { includePhone: false }));
     }
+    async getProgress(userId, universityId) {
+        const row = await (0, db_1.db)('users')
+            .join('profiles', 'profiles.user_id', 'users.id')
+            .select('users.is_verified', 'profiles.bio', 'profiles.headline', 'profiles.department', 'profiles.batch_year', 'profiles.avatar_url', 'profiles.skills', 'profiles.linkedin_url')
+            .where({ 'users.id': userId, 'users.university_id': universityId })
+            .first();
+        if (!row)
+            throw (0, errors_1.notFound)('User not found');
+        const fields = [
+            Boolean(row.bio),
+            Boolean(row.headline),
+            Boolean(row.department),
+            Boolean(row.batch_year),
+            Boolean(row.avatar_url),
+            Array.isArray(row.skills) && row.skills.length >= 1,
+            Boolean(row.linkedin_url),
+        ];
+        const profileScore = Math.round((fields.filter(Boolean).length / fields.length) * 100);
+        const [postResult] = await (0, db_1.db)('posts')
+            .where({ author_id: userId, university_id: universityId })
+            .count({ count: '*' });
+        const hasMadePost = Number(postResult.count) > 0;
+        const [followerResult] = await (0, db_1.db)('follows')
+            .join('users', 'users.id', 'follows.follower_id')
+            .where({ 'follows.following_id': userId, 'users.university_id': universityId })
+            .count({ count: '*' });
+        const followerCount = Number(followerResult.count);
+        return {
+            profileScore,
+            hasMadePost,
+            followerCount,
+            isVerified: row.is_verified,
+        };
+    }
 }
 exports.UsersService = UsersService;
 exports.usersService = new UsersService();
 function getUserProfileQuery() {
     return (0, db_1.db)('users')
         .join('profiles', 'profiles.user_id', 'users.id')
-        .select('users.id', 'users.university_id', 'users.email', 'users.role', 'users.is_verified', 'users.is_active', 'users.last_active_at', 'users.created_at', 'profiles.full_name', 'profiles.avatar_url', 'profiles.cover_url', 'profiles.bio', 'profiles.department', 'profiles.batch_year', 'profiles.headline', 'profiles.linkedin_url', 'profiles.phone', 'profiles.skills', 'profiles.is_open_to_work');
+        .select('users.id', 'users.university_id', 'users.email', 'users.role', 'users.is_verified', 'users.is_active', 'users.last_active_at', 'users.created_at', 'users.theme_preference', 'profiles.full_name', 'profiles.avatar_url', 'profiles.cover_url', 'profiles.bio', 'profiles.department', 'profiles.batch_year', 'profiles.headline', 'profiles.linkedin_url', 'profiles.phone', 'profiles.skills', 'profiles.is_open_to_work', 'profiles.is_open_to_mentorship', 'profiles.mentorship_points');
 }
 function applyUserFilters(query, filters) {
     if (filters.role)
@@ -190,6 +276,7 @@ function toUserProfile(row, options) {
         isActive: row.is_active,
         lastActiveAt: row.last_active_at,
         createdAt: row.created_at,
+        themePreference: row.theme_preference,
         profile: {
             fullName: row.full_name,
             avatarUrl: row.avatar_url,
@@ -202,6 +289,8 @@ function toUserProfile(row, options) {
             phone: options.includePhone ? row.phone : null,
             skills: row.skills ?? [],
             isOpenToWork: row.is_open_to_work,
+            isOpenToMentorship: row.is_open_to_mentorship,
+            mentorshipPoints: row.mentorship_points,
         },
     };
 }

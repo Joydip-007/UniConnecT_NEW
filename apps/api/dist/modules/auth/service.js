@@ -14,6 +14,7 @@ const token_service_1 = require("../../services/token.service");
 const errors_1 = require("../../utils/errors");
 const env_1 = require("../../config/env");
 const logger_1 = require("../../utils/logger");
+const system_groups_service_1 = require("../groups/system-groups.service");
 const authMessages = {
     verifySent: 'Check your email for a 6-digit verification code.',
     loginSent: 'A 6-digit login code was sent to your email.',
@@ -21,12 +22,18 @@ const authMessages = {
     passwordReset: 'Password reset. Please log in.',
 };
 class AuthService {
-    async register(data, universityId, _ipAddress, _deviceInfo) {
+    async register(data, universityId, _ipAddress, _deviceInfo, allowedEmailDomains = []) {
         const invitation = data.invitation_token ? await getInvitation(data.invitation_token) : null;
         const email = data.email ?? invitation?.email;
         const role = data.role ?? invitation?.role;
         if (!email || !role || !data.full_name) {
             throw new errors_1.AppError('Invitation token is required', 422, 'VALIDATION_ERROR');
+        }
+        if (allowedEmailDomains.length > 0) {
+            const emailDomain = email.split('@')[1]?.toLowerCase() ?? '';
+            if (!allowedEmailDomains.includes(emailDomain)) {
+                throw new errors_1.AppError(`Registration is only allowed for these email domains: ${allowedEmailDomains.join(', ')}`, 422, 'EMAIL_DOMAIN_NOT_ALLOWED');
+            }
         }
         if (invitation) {
             validateInvitationForRegistration(invitation, email, role, universityId);
@@ -49,6 +56,7 @@ class AuthService {
             await trx('profiles').insert({
                 user_id: createdUser.id,
                 full_name: data.full_name,
+                department: data.department ?? null,
             });
             if (invitation) {
                 await trx('invitations').where({ token: invitation.token }).update({ is_used: true });
@@ -87,6 +95,11 @@ class AuthService {
         await verifyOtpOrThrow(user.id, 'verify', otp);
         await (0, db_1.db)('users').where({ id: user.id }).update({ is_verified: true });
         const profile = await findUserWithProfile(user.id);
+        if (!profile)
+            throw new errors_1.AppError('User not found', 404, 'NOT_FOUND');
+        await system_groups_service_1.systemGroupsService
+            .addUserToSystemGroups(user.id, user.university_id, user.role, profile.department)
+            .catch((error) => logger_1.logger.warn('System-groups add failed on verify', { error, userId: user.id }));
         const accessToken = token_service_1.tokenService.generateAccessToken({
             userId: user.id,
             universityId: user.university_id,
@@ -97,16 +110,11 @@ class AuthService {
             universityId: user.university_id,
         });
         await token_service_1.tokenService.saveRefreshToken(user.id, refreshToken, deviceInfo ?? null, ipAddress ?? null);
-        await queueWelcomeEmail(user, profile?.full_name ?? user.email);
+        await queueWelcomeEmail(user, profile.full_name ?? user.email);
         return {
             accessToken,
             refreshToken,
-            user: {
-                id: user.id,
-                email: user.email,
-                role: user.role,
-                universityId: user.university_id,
-            },
+            user: toAuthUser(profile),
         };
     }
     async login(email, password, universityId, ipAddress, deviceInfo) {
@@ -176,12 +184,14 @@ class AuthService {
             await token_service_1.tokenService.revokeRefreshToken(refreshToken);
     }
     async forgotPassword(email, universityId) {
-        const user = await findUserWithProfileByEmail(email, universityId);
+        const user = await findUserByEmail(email, universityId);
         if (!user || !user.is_active) {
             return { message: authMessages.resetSent };
         }
+        const profile = await findUserWithProfile(user.id);
+        const displayName = profile?.full_name ?? email.split('@')[0];
         const otp = await otp_service_1.otpService.storeOtp(user.id, 'reset');
-        await sendOtpOrThrow(user.email, otp, 'reset', user.full_name);
+        await sendOtpOrThrow(user.email, otp, 'reset', displayName);
         return { message: authMessages.resetSent };
     }
     async resetPassword(email, otp, newPassword, universityId) {
@@ -190,19 +200,31 @@ class AuthService {
             throw new errors_1.AppError('User not found', 404, 'NOT_FOUND');
         await verifyOtpOrThrow(user.id, 'reset', otp);
         const passwordHash = await bcryptjs_1.default.hash(newPassword, 12);
-        await (0, db_1.db)('users').where({ id: user.id }).update({ password_hash: passwordHash });
+        await (0, db_1.db)('users').where({ id: user.id }).update({ password_hash: passwordHash, is_verified: true });
         await token_service_1.tokenService.revokeAllUserSessions(user.id);
         return { message: authMessages.passwordReset };
     }
     async resendOtp(email, purpose, universityId) {
-        const user = await findUserWithProfileByEmail(email, universityId);
+        const user = await findUserByEmail(email, universityId);
         if (!user || !user.is_active)
             throw new errors_1.AppError('User not found', 404, 'NOT_FOUND');
+        const profile = await findUserWithProfile(user.id);
+        const displayName = profile?.full_name ?? email.split('@')[0];
         await enforceOtpResendLimit(user.id);
         await otp_service_1.otpService.revokeOtp(user.id, purpose);
         const otp = await otp_service_1.otpService.storeOtp(user.id, purpose);
-        await sendOtpOrThrow(user.email, otp, purpose, user.full_name);
+        await sendOtpOrThrow(user.email, otp, purpose, displayName);
         return { message: 'A new 6-digit code was sent to your email.' };
+    }
+    async peekInvitation(token, universityId) {
+        const inv = await (0, db_1.db)('invitations')
+            .where({ token, university_id: universityId, is_used: false })
+            .where('expires_at', '>', db_1.db.fn.now())
+            .select('role', 'email')
+            .first();
+        if (!inv)
+            throw new errors_1.AppError('Invitation not found', 404, 'NOT_FOUND');
+        return { role: inv.role, email: inv.email };
     }
     async getMe(userId) {
         const user = await findUserWithProfile(userId);
@@ -218,23 +240,26 @@ async function findUserByEmail(email, universityId) {
         .where({
         email: email.toLowerCase(),
         university_id: universityId,
+        is_deleted: false,
     })
         .first();
 }
 async function findUserWithProfile(userId) {
     return (0, db_1.db)('users')
-        .join('profiles', 'profiles.user_id', 'users.id')
-        .select('users.id', 'users.university_id', 'users.email', 'users.password_hash', 'users.role', 'users.is_verified', 'users.is_active', 'profiles.full_name', 'profiles.avatar_url')
+        .leftJoin('profiles', 'profiles.user_id', 'users.id')
+        .select('users.id', 'users.university_id', 'users.email', 'users.password_hash', 'users.role', 'users.is_verified', 'users.is_active', 'profiles.full_name', 'profiles.avatar_url', 'profiles.cover_url', 'profiles.bio', 'profiles.headline', 'profiles.department', 'profiles.batch_year', 'profiles.linkedin_url', 'profiles.phone', 'profiles.skills', 'profiles.is_open_to_work', 'profiles.is_open_to_mentorship', 'profiles.mentorship_points', 'users.theme_preference')
         .where('users.id', userId)
+        .where('users.is_deleted', false)
         .first();
 }
 async function findUserWithProfileByEmail(email, universityId) {
     return (0, db_1.db)('users')
-        .join('profiles', 'profiles.user_id', 'users.id')
-        .select('users.id', 'users.university_id', 'users.email', 'users.password_hash', 'users.role', 'users.is_verified', 'users.is_active', 'profiles.full_name', 'profiles.avatar_url')
+        .leftJoin('profiles', 'profiles.user_id', 'users.id')
+        .select('users.id', 'users.university_id', 'users.email', 'users.password_hash', 'users.role', 'users.is_verified', 'users.is_active', 'profiles.full_name', 'profiles.avatar_url', 'profiles.cover_url', 'profiles.bio', 'profiles.headline', 'profiles.department', 'profiles.batch_year', 'profiles.linkedin_url', 'profiles.phone', 'profiles.skills', 'profiles.is_open_to_work', 'profiles.is_open_to_mentorship', 'profiles.mentorship_points', 'users.theme_preference')
         .where({
         'users.email': email.toLowerCase(),
         'users.university_id': universityId,
+        'users.is_deleted': false,
     })
         .first();
 }
@@ -245,18 +270,21 @@ function toAuthUser(user) {
         role: user.role,
         universityId: user.university_id,
         isVerified: user.is_verified,
+        themePreference: user.theme_preference ?? 'system',
         profile: {
-            fullName: user.full_name,
-            bio: null,
-            avatarUrl: user.avatar_url,
-            coverUrl: null,
-            headline: null,
-            department: null,
-            batchYear: null,
-            linkedinUrl: null,
-            phone: null,
-            skills: [],
-            isOpenToWork: false,
+            fullName: user.full_name ?? '',
+            bio: user.bio ?? null,
+            avatarUrl: user.avatar_url ?? null,
+            coverUrl: user.cover_url ?? null,
+            headline: user.headline ?? null,
+            department: user.department ?? null,
+            batchYear: user.batch_year ?? null,
+            linkedinUrl: user.linkedin_url ?? null,
+            phone: user.phone ?? null,
+            skills: user.skills ?? [],
+            isOpenToWork: user.is_open_to_work ?? false,
+            isOpenToMentorship: user.is_open_to_mentorship ?? false,
+            mentorshipPoints: user.mentorship_points ?? 0,
         },
     };
 }
@@ -285,18 +313,26 @@ async function verifyOtpOrThrow(userId, purpose, otp) {
     throw new errors_1.AppError('Invalid OTP code', 422, 'OTP_INVALID');
 }
 async function sendOtpOrThrow(to, otp, purpose, userName) {
-    const result = await email_service_1.emailService.sendOtpEmail(to, otp, purpose, userName);
-    if (result.success)
-        return;
-    logger_1.logger.warn('OTP email send failed', {
-        to,
-        purpose,
-        error: result.error,
-        devOtp: env_1.env.NODE_ENV === 'production' ? undefined : otp,
-    });
-    if (env_1.env.NODE_ENV === 'production') {
-        throw new errors_1.AppError('Could not send verification email', 502, 'EMAIL_SEND_FAILED');
+    // Directly log for development convenience before enqueueing
+    if (env_1.env.NODE_ENV !== 'production') {
+        logger_1.logger.info('OTP generated (dev)', { to, purpose, devOtp: otp });
     }
+    void email_queue_1.emailQueue
+        .add({
+        to,
+        subject: 'otp',
+        text: JSON.stringify({
+            template: 'otp',
+            otp,
+            purpose,
+            userName,
+        }),
+    })
+        .catch((error) => {
+        logger_1.logger.warn('OTP email queue enqueue failed', { error });
+        // Fallback for extreme cases (if redis is down briefly)
+        void email_service_1.emailService.sendOtpEmail(to, otp, purpose, userName);
+    });
 }
 async function queueWelcomeEmail(user, userName) {
     const university = await (0, db_1.db)('universities').select('name').where({ id: user.university_id }).first();

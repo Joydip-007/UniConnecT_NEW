@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unsavePost = exports.savePost = exports.votePoll = exports.createComment = exports.getComments = exports.removeReaction = exports.addReaction = exports.deletePost = exports.updatePost = exports.getPost = exports.createPost = exports.listPosts = void 0;
+exports.getTrending = exports.unsavePost = exports.savePost = exports.votePoll = exports.removeCommentReaction = exports.addCommentReaction = exports.deleteComment = exports.createComment = exports.getComments = exports.removeReaction = exports.addReaction = exports.deletePost = exports.updatePost = exports.getPost = exports.createPost = exports.listPosts = void 0;
 const asyncHandler_1 = require("../../utils/asyncHandler");
 const response_1 = require("../../utils/response");
 const errors_1 = require("../../utils/errors");
@@ -44,6 +44,19 @@ exports.createComment = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
     (0, response_1.sendSuccess)(res, await service_1.feedService.createComment(context, getPostIdParam(req), req.body), 201);
 });
+exports.deleteComment = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    (0, response_1.sendSuccess)(res, await service_1.feedService.deleteComment(context, getPostIdParam(req), getCommentIdParam(req)));
+});
+exports.addCommentReaction = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    const { reaction_type } = req.body;
+    (0, response_1.sendSuccess)(res, await service_1.feedService.upsertCommentReaction(context, getPostIdParam(req), getCommentIdParam(req), reaction_type));
+});
+exports.removeCommentReaction = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    (0, response_1.sendSuccess)(res, await service_1.feedService.removeCommentReaction(context, getPostIdParam(req), getCommentIdParam(req)));
+});
 exports.votePoll = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
     const pollId = getPollIdParam(req);
@@ -59,6 +72,10 @@ exports.savePost = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
 exports.unsavePost = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
     (0, response_1.sendSuccess)(res, await service_1.feedService.unsavePost(context, getPostIdParam(req)));
+});
+exports.getTrending = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    (0, response_1.sendSuccess)(res, await service_1.feedService.getTrending(context.universityId));
 });
 function getAuthContext(req) {
     if (!req.user)
@@ -77,5 +94,9 @@ function getPostIdParam(req) {
 }
 function getPollIdParam(req) {
     const value = req.params.pollId;
+    return Array.isArray(value) ? value[0] : value;
+}
+function getCommentIdParam(req) {
+    const value = req.params.commentId;
     return Array.isArray(value) ? value[0] : value;
 }

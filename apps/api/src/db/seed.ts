@@ -3,11 +3,12 @@ import { createKnexConfig } from '../config/db'
 import knex from 'knex'
 
 const config = createKnexConfig()
+const sourceExtension = __filename.endsWith('.js') ? 'js' : 'ts'
 const db = knex({
   ...config,
   seeds: {
     directory: path.join(__dirname, '../database/seeds'),
-    extension: 'ts',
+    extension: sourceExtension,
   },
 })
 

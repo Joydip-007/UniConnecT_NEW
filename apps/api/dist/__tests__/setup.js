@@ -17,7 +17,7 @@ exports.DOMAIN = 'uiu.ac.bd';
 exports.TEST_UNIVERSITY_ID = '00000000-0000-4000-8000-000000000001';
 exports.CREDENTIALS = {
     admin: { email: 'admin@uiu.ac.bd', password: 'Admin@1234', role: 'admin' },
-    staff: { email: 'staff@uiu.ac.bd', password: 'Staff@1234', role: 'staff' },
+    faculty: { email: 'faculty@uiu.ac.bd', password: 'Faculty@1234', role: 'faculty' },
     alumni: { email: 'alumni@uiu.ac.bd', password: 'Alumni@1234', role: 'alumni' },
     student: { email: 'student@uiu.ac.bd', password: 'Student@1234', role: 'student' },
 };

@@ -11,6 +11,7 @@ exports.PaginationQuerySchema = zod_1.z.object({
 });
 exports.PostListQuerySchema = exports.PaginationQuerySchema.extend({
     type: exports.PostTypeSchema.optional(),
+    authorId: zod_1.z.string().uuid().optional(),
 });
 exports.CreatePostSchema = zod_1.z.object({
     content: zod_1.z.string().trim().min(1),

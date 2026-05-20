@@ -10,7 +10,7 @@ const db_1 = require("../config/db");
 const api = (0, supertest_1.default)(setup_1.app);
 let alumniToken;
 let studentToken;
-let staffToken;
+let facultyToken;
 let createdJobId;
 const createdJobIds = [];
 const deadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -27,11 +27,11 @@ const jobPayload = {
     const [al, st, sf] = await Promise.all([
         (0, setup_1.loginAs)(setup_1.CREDENTIALS.alumni.email, setup_1.CREDENTIALS.alumni.password),
         (0, setup_1.loginAs)(setup_1.CREDENTIALS.student.email, setup_1.CREDENTIALS.student.password),
-        (0, setup_1.loginAs)(setup_1.CREDENTIALS.staff.email, setup_1.CREDENTIALS.staff.password),
+        (0, setup_1.loginAs)(setup_1.CREDENTIALS.faculty.email, setup_1.CREDENTIALS.faculty.password),
     ]);
     alumniToken = al.accessToken;
     studentToken = st.accessToken;
-    staffToken = sf.accessToken;
+    facultyToken = sf.accessToken;
 });
 (0, vitest_1.afterAll)(async () => {
     if (createdJobIds.length > 0) {
@@ -94,10 +94,10 @@ function auth(token) {
         (0, vitest_1.expect)(res.body.data).toHaveProperty('items');
     });
     (0, vitest_1.it)('returns 403 for a different user who is not the poster', async () => {
-        // staffToken belongs to a different user who did not post this job
+        // facultyToken belongs to a different user who did not post this job
         const res = await api
             .get(`/api/v1/jobs/${createdJobId}/applications`)
-            .set(auth(staffToken));
+            .set(auth(facultyToken));
         (0, vitest_1.expect)(res.status).toBe(403);
     });
 });

@@ -40,6 +40,15 @@ class TokenService {
             return null;
         }
     }
+    verifyAccessTokenWithExpiry(token) {
+        try {
+            const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
+            return { payload: isAccessTokenPayload(decoded) ? decoded : null, expired: false };
+        }
+        catch (err) {
+            return { payload: null, expired: err instanceof jsonwebtoken_1.default.TokenExpiredError };
+        }
+    }
     verifyRefreshToken(token) {
         try {
             const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_REFRESH_SECRET);
@@ -133,5 +142,5 @@ function isRefreshTokenPayload(value) {
         typeof record.universityId === 'string');
 }
 function isUserRole(value) {
-    return value === 'student' || value === 'alumni' || value === 'staff' || value === 'admin';
+    return value === 'student' || value === 'alumni' || value === 'faculty' || value === 'admin';
 }

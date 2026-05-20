@@ -11,6 +11,8 @@ exports.usersRouter = (0, express_1.Router)();
 exports.usersRouter.use(auth_1.requireAuth, university_1.resolveUniversity);
 exports.usersRouter.get('/me', controller_1.getMe);
 exports.usersRouter.patch('/me', (0, validate_1.validate)(schema_1.UpdateProfileSchema), controller_1.updateMe);
+exports.usersRouter.patch('/me/preferences', (0, validate_1.validate)(schema_1.UpdatePreferencesSchema), controller_1.updateMyPreferences);
+exports.usersRouter.get('/me/progress', controller_1.getProgress);
 exports.usersRouter.get('/suggestions', controller_1.getSuggestions);
 exports.usersRouter.get('/', (0, validate_1.validateRequest)({ query: schema_1.UserListQuerySchema }), controller_1.listUsers);
 exports.usersRouter.get('/:userId', controller_1.getUser);

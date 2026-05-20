@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notificationsService = exports.NotificationsService = void 0;
 const db_1 = require("../../config/db");
@@ -62,6 +95,27 @@ class NotificationsService {
         await (0, db_1.db)('notifications').where({ user_id: userId, is_read: false }).update({ is_read: true });
         (0, socket_1.getIo)().to(`user:${userId}`).emit('notification:read-all', {});
         return { read: true };
+    }
+    async deleteNotification(userId, notificationId) {
+        const deleted = await (0, db_1.db)('notifications').where({ id: notificationId, user_id: userId }).delete();
+        if (deleted === 0)
+            throw (0, errors_1.notFound)('Notification not found', 'NOTIFICATION_NOT_FOUND');
+        (0, socket_1.getIo)().to(`user:${userId}`).emit('notification:deleted', { notificationId });
+        return { deleted: true };
+    }
+    async acceptGroupInvite(userId, universityId, userRole, notificationId) {
+        const notification = await (0, db_1.db)('notifications')
+            .where({ id: notificationId, user_id: userId, type: 'group_invite' })
+            .select('id', 'reference_id')
+            .first();
+        if (!notification || !notification.reference_id) {
+            throw (0, errors_1.notFound)('Group invitation not found', 'GROUP_INVITE_NOT_FOUND');
+        }
+        const { groupsService } = await Promise.resolve().then(() => __importStar(require('../groups/service')));
+        const group = await groupsService.joinGroupViaInvite({ userId, universityId, role: userRole }, notification.reference_id);
+        await (0, db_1.db)('notifications').where({ id: notificationId, user_id: userId }).update({ is_read: true });
+        (0, socket_1.getIo)().to(`user:${userId}`).emit('notification:read', { notificationId });
+        return { group, notificationId };
     }
     async getActorName(actorId) {
         const row = await (0, db_1.db)('profiles')

@@ -2,7 +2,7 @@ services:
   # The Frontend (if you still want Render to host it instead of Vercel)
   - type: web
     name: uniconnect-web
-    env: static
+    runtime: static
     buildCommand: npx pnpm install --frozen-lockfile && npx pnpm --filter web build
     staticPublishPath: apps/web/dist
     routes:
@@ -20,13 +20,12 @@ services:
   # The Backend API (New)
   - type: web
     name: uniconnect-api
-    env: node
+    runtime: node
     region: singapore # Matches your AWS_REGION roughly, adjust as needed
     buildCommand: npx pnpm install --frozen-lockfile && npx pnpm --filter api build
-    startCommand: npx pnpm --filter api db:migrate && npx pnpm --filter api start
+    startCommand: npx pnpm --filter api db:migrate:prod && npx pnpm --filter api start
+    healthCheckPath: /health
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: CLIENT_URL
         value: https://uniconnectt.me,https://www.uniconnectt.me
       - key: DATABASE_URL
@@ -35,7 +34,7 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: redis
+          type: keyvalue
           name: uniconnect-redis
           property: connectionString
       - key: JWT_SECRET
@@ -44,13 +43,13 @@ services:
         generateValue: true
       - key: RESEND_API_KEY
         sync: false
+  - type: keyvalue
+    name: uniconnect-redis
+    region: singapore
+    ipAllowList: [] # only allow internal Render connections
 
 databases:
   - name: uniconnect-db
     databaseName: uniconnect
     user: uniconnect
     plan: free
-
-  - type: redis
-    name: uniconnect-redis
-    ipAllowList: [] # only allow internal Render connections

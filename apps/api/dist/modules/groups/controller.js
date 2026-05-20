@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listGroupPosts = exports.removeMember = exports.updateMember = exports.listGroupMembers = exports.leaveGroup = exports.joinGroup = exports.deleteGroup = exports.updateGroup = exports.getGroup = exports.listMyGroups = exports.createGroup = exports.listGroups = void 0;
+exports.inviteToGroup = exports.listGroupCollaborations = exports.listGroupEvents = exports.listGroupPosts = exports.removeMember = exports.updateMember = exports.listGroupMembers = exports.leaveGroup = exports.joinGroup = exports.deleteGroup = exports.updateGroup = exports.getGroup = exports.listMyGroups = exports.createGroup = exports.listGroups = void 0;
 const asyncHandler_1 = require("../../utils/asyncHandler");
 const response_1 = require("../../utils/response");
 const errors_1 = require("../../utils/errors");
@@ -56,6 +56,21 @@ exports.listGroupPosts = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
     const result = await service_1.groupsService.listGroupPosts(context, getGroupIdParam(req), req.query);
     (0, response_1.sendPaginated)(res, result.items, result.total, result.page, result.limit);
+});
+exports.listGroupEvents = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    const result = await service_1.groupsService.listGroupEvents(context, getGroupIdParam(req), req.query);
+    (0, response_1.sendPaginated)(res, result.items, result.total, result.page, result.limit);
+});
+exports.listGroupCollaborations = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    const result = await service_1.groupsService.listGroupCollaborations(context, getGroupIdParam(req), req.query);
+    (0, response_1.sendPaginated)(res, result.items, result.total, result.page, result.limit);
+});
+exports.inviteToGroup = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    const result = await service_1.groupsService.inviteToGroup(context, getGroupIdParam(req), req.body.userId);
+    (0, response_1.sendSuccess)(res, result, 201);
 });
 function getAuthContext(req) {
     if (!req.user)

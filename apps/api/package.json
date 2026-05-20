@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "ts-node-dev --transpile-only --exit-child src/db/migrate.ts latest",
+    "db:migrate:prod": "node dist/db/migrate.js latest",
     "db:rollback": "ts-node-dev --transpile-only --exit-child src/db/migrate.ts rollback",
     "db:seed": "ts-node-dev --transpile-only --exit-child src/db/seed.ts",
     "db:reset": "ts-node-dev --transpile-only --exit-child src/db/migrate.ts rollback-all && ts-node-dev --transpile-only --exit-child src/db/migrate.ts latest && ts-node-dev --transpile-only --exit-child src/db/seed.ts"

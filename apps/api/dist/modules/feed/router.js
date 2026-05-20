@@ -12,6 +12,7 @@ exports.pollsRouter = (0, express_1.Router)();
 exports.feedRouter.use(auth_1.requireAuth, university_1.resolveUniversity);
 exports.feedRouter.get('/', (0, validate_1.validateRequest)({ query: schema_1.PostListQuerySchema }), controller_1.listPosts);
 exports.feedRouter.post('/', (0, validate_1.validate)(schema_1.CreatePostSchema), controller_1.createPost);
+exports.feedRouter.get('/trending', controller_1.getTrending);
 exports.feedRouter.get('/:postId', controller_1.getPost);
 exports.feedRouter.patch('/:postId', (0, validate_1.validate)(schema_1.UpdatePostSchema), controller_1.updatePost);
 exports.feedRouter.delete('/:postId', controller_1.deletePost);
@@ -19,6 +20,9 @@ exports.feedRouter.post('/:postId/reactions', (0, validate_1.validate)(schema_1.
 exports.feedRouter.delete('/:postId/reactions', controller_1.removeReaction);
 exports.feedRouter.get('/:postId/comments', (0, validate_1.validateRequest)({ query: schema_1.PaginationQuerySchema }), controller_1.getComments);
 exports.feedRouter.post('/:postId/comments', (0, validate_1.validate)(schema_1.CreateCommentSchema), controller_1.createComment);
+exports.feedRouter.delete('/:postId/comments/:commentId', controller_1.deleteComment);
+exports.feedRouter.post('/:postId/comments/:commentId/reactions', (0, validate_1.validate)(schema_1.ReactionSchema), controller_1.addCommentReaction);
+exports.feedRouter.delete('/:postId/comments/:commentId/reactions', controller_1.removeCommentReaction);
 exports.feedRouter.post('/:postId/poll/vote', (0, validate_1.validate)(schema_1.PollVoteSchema), controller_1.votePoll);
 exports.feedRouter.post('/:postId/save', controller_1.savePost);
 exports.feedRouter.delete('/:postId/save', controller_1.unsavePost);

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markAllRead = exports.markRead = exports.listNotifications = void 0;
+exports.acceptGroupInvite = exports.deleteNotification = exports.markAllRead = exports.markRead = exports.listNotifications = void 0;
 const asyncHandler_1 = require("../../utils/asyncHandler");
 const response_1 = require("../../utils/response");
 const errors_1 = require("../../utils/errors");
@@ -23,6 +23,16 @@ exports.markRead = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
 exports.markAllRead = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const context = getAuthContext(req);
     (0, response_1.sendSuccess)(res, await service_1.notificationsService.markAllRead(context.userId));
+});
+exports.deleteNotification = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    (0, response_1.sendSuccess)(res, await service_1.notificationsService.deleteNotification(context.userId, getNotificationIdParam(req)));
+});
+exports.acceptGroupInvite = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const context = getAuthContext(req);
+    const universityId = req.university?.id ?? context.universityId;
+    const result = await service_1.notificationsService.acceptGroupInvite(context.userId, universityId, context.role, getNotificationIdParam(req));
+    (0, response_1.sendSuccess)(res, result);
 });
 function getAuthContext(req) {
     if (!req.user)

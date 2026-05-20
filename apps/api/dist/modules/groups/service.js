@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.groupsService = exports.GroupsService = void 0;
 const db_1 = require("../../config/db");
 const service_1 = require("../feed/service");
+const service_2 = require("../notifications/service");
 const errors_1 = require("../../utils/errors");
 class GroupsService {
     async listGroups(context, query) {
@@ -22,6 +23,7 @@ class GroupsService {
         return { items: rows.map(toGroup), total, page: query.page, limit: query.limit };
     }
     async createGroup(context, input) {
+        const allowedRole = resolveAllowedRoleOnCreate(context.role, input.allowed_role);
         const groupId = await db_1.db.transaction(async (trx) => {
             const [group] = await trx('groups')
                 .insert({
@@ -33,6 +35,9 @@ class GroupsService {
                 avatar_url: input.avatar_url ?? null,
                 cover_url: input.cover_url ?? null,
                 is_private: input.is_private,
+                allowed_role: allowedRole,
+                is_system: false,
+                department: null,
                 member_count: 1,
             })
                 .returning('id');
@@ -59,6 +64,17 @@ class GroupsService {
     async updateGroup(context, groupId, input) {
         const group = await assertGroupAccess(context, groupId);
         assertCanAdminGroup(group.user_role);
+        if (group.is_system) {
+            const restricted = ['name', 'type', 'allowed_role'];
+            for (const key of restricted) {
+                if (input[key] !== undefined) {
+                    throw (0, errors_1.forbidden)('System groups cannot rename or change their type or role restriction', 'GROUP_SYSTEM_EDIT_FORBIDDEN');
+                }
+            }
+            if (context.role !== 'admin') {
+                throw (0, errors_1.forbidden)('Only platform admins can edit system groups', 'GROUP_SYSTEM_EDIT_FORBIDDEN');
+            }
+        }
         await (0, db_1.db)('groups')
             .where({ id: groupId, university_id: context.universityId })
             .update({
@@ -69,12 +85,16 @@ class GroupsService {
                 avatar_url: input.avatar_url,
                 cover_url: input.cover_url,
                 is_private: input.is_private,
+                allowed_role: input.allowed_role,
             }),
         });
         return this.getGroup(context, groupId);
     }
     async deleteGroup(context, groupId) {
         const group = await assertGroupAccess(context, groupId);
+        if (group.is_system) {
+            throw (0, errors_1.forbidden)('System groups cannot be deleted', 'GROUP_SYSTEM_DELETE_FORBIDDEN');
+        }
         if (group.user_role !== 'owner') {
             throw (0, errors_1.forbidden)('Only the group owner can delete this group', 'GROUP_OWNER_REQUIRED');
         }
@@ -82,7 +102,8 @@ class GroupsService {
         return { deleted: true };
     }
     async joinGroup(context, groupId) {
-        await assertGroupExists(groupId, context.universityId);
+        const access = await assertGroupAccess(context, groupId);
+        assertCanJoinGroup(access, context.role);
         try {
             await db_1.db.transaction(async (trx) => {
                 await trx('group_members').insert({
@@ -101,8 +122,41 @@ class GroupsService {
         }
         return this.getGroup(context, groupId);
     }
+    async joinGroupViaInvite(context, groupId) {
+        const access = await assertGroupAccess(context, groupId);
+        if (access.is_system) {
+            throw (0, errors_1.forbidden)('System groups cannot be joined via invite', 'GROUP_SYSTEM_JOIN_FORBIDDEN');
+        }
+        if (access.allowed_role && context.role !== access.allowed_role) {
+            throw (0, errors_1.badRequest)(`This group only allows ${access.allowed_role}s`, 'GROUP_ROLE_NOT_ALLOWED');
+        }
+        if (access.user_role) {
+            return this.getGroup(context, groupId);
+        }
+        try {
+            await db_1.db.transaction(async (trx) => {
+                await trx('group_members').insert({
+                    group_id: groupId,
+                    user_id: context.userId,
+                    role: 'member',
+                });
+                await trx('groups').where({ id: groupId, university_id: context.universityId }).increment('member_count', 1);
+            });
+        }
+        catch (error) {
+            if (isUniqueViolation(error)) {
+                // Race; treat as already joined.
+                return this.getGroup(context, groupId);
+            }
+            throw error;
+        }
+        return this.getGroup(context, groupId);
+    }
     async leaveGroup(context, groupId) {
         const group = await assertGroupAccess(context, groupId);
+        if (group.is_system) {
+            throw (0, errors_1.forbidden)('You cannot leave an auto-managed group; this membership is controlled by your role', 'GROUP_SYSTEM_LEAVE_FORBIDDEN');
+        }
         if (!group.user_role)
             throw (0, errors_1.notFound)('Group membership not found', 'GROUP_MEMBERSHIP_NOT_FOUND');
         if (group.user_role === 'owner') {
@@ -124,10 +178,21 @@ class GroupsService {
     }
     async listMembers(context, groupId, query) {
         await assertMemberAccess(context, groupId);
-        const [{ count }] = await (0, db_1.db)('group_members').where({ group_id: groupId }).count({ count: '*' });
+        const countQuery = (0, db_1.db)('group_members')
+            .join('users', 'users.id', 'group_members.user_id')
+            .join('profiles', 'profiles.user_id', 'users.id')
+            .where({ 'group_members.group_id': groupId });
+        if (query.search) {
+            countQuery.andWhereILike('profiles.full_name', `%${query.search}%`);
+        }
+        const [{ count }] = await countQuery.count({ count: '*' });
         const total = Number(count);
         const rows = (await memberSelectQuery(db_1.db)
             .where('group_members.group_id', groupId)
+            .modify((builder) => {
+            if (query.search)
+                builder.andWhereILike('profiles.full_name', `%${query.search}%`);
+        })
             .orderByRaw("CASE group_members.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'moderator' THEN 3 ELSE 4 END")
             .orderBy('profiles.full_name', 'asc')
             .limit(query.limit)
@@ -136,6 +201,9 @@ class GroupsService {
     }
     async updateMember(context, groupId, targetUserId, role) {
         const group = await assertGroupAccess(context, groupId);
+        if (group.is_system) {
+            throw (0, errors_1.forbidden)('System group membership cannot be modified', 'GROUP_SYSTEM_EDIT_FORBIDDEN');
+        }
         assertCanAdminGroup(group.user_role);
         const target = await getMembership(groupId, targetUserId);
         if (!target)
@@ -153,6 +221,9 @@ class GroupsService {
     }
     async removeMember(context, groupId, targetUserId) {
         const group = await assertGroupAccess(context, groupId);
+        if (group.is_system) {
+            throw (0, errors_1.forbidden)('System group membership cannot be modified', 'GROUP_SYSTEM_EDIT_FORBIDDEN');
+        }
         assertCanAdminGroup(group.user_role);
         const target = await getMembership(groupId, targetUserId);
         if (!target)
@@ -178,6 +249,94 @@ class GroupsService {
         }
         return service_1.feedService.listGroupPosts(context.universityId, context.userId, groupId, query);
     }
+    async listGroupEvents(context, groupId, query) {
+        const group = await assertGroupAccess(context, groupId);
+        if (group.is_private && !group.user_role) {
+            throw (0, errors_1.notFound)('Group not found', 'GROUP_NOT_FOUND');
+        }
+        const events = (await (0, db_1.db)('events')
+            .join('users', 'users.id', 'events.organizer_id')
+            .join('profiles', 'profiles.user_id', 'users.id')
+            .select('events.id', 'events.title', 'events.description', 'events.location', 'events.is_online', 'events.online_link', 'events.cover_url', 'events.starts_at', 'events.ends_at', 'events.capacity', 'events.type', 'events.is_published', 'events.organizer_id', 'events.created_at', 'profiles.full_name as organizer_full_name', 'profiles.avatar_url as organizer_avatar_url', db_1.db.raw("(SELECT COUNT(*)::int FROM event_rsvps WHERE event_rsvps.event_id = events.id AND status = 'going') AS going_count"), db_1.db.raw('(SELECT status FROM event_rsvps WHERE event_id = events.id AND user_id = ? LIMIT 1) AS own_rsvp', [
+            context.userId,
+        ]))
+            .where({ 'events.group_id': groupId, 'events.university_id': context.universityId })
+            .andWhere((builder) => {
+            builder.where('events.is_published', true).orWhere('events.organizer_id', context.userId);
+        }));
+        const posts = (await (0, db_1.db)('posts')
+            .join('users', 'users.id', 'posts.author_id')
+            .join('profiles', 'profiles.user_id', 'users.id')
+            .select('posts.id', 'posts.content', 'posts.media_urls', 'posts.created_at', 'posts.author_id', 'profiles.full_name as author_full_name', 'profiles.avatar_url as author_avatar_url')
+            .where({
+            'posts.group_id': groupId,
+            'posts.university_id': context.universityId,
+            'posts.type': 'event_promo',
+        }));
+        const items = [
+            ...events.map((row) => ({
+                kind: 'event',
+                createdAt: row.created_at,
+                startsAt: row.starts_at,
+                data: toMiniEvent(row),
+            })),
+            ...posts.map((row) => ({
+                kind: 'post',
+                createdAt: row.created_at,
+                startsAt: null,
+                data: toMiniPost(row),
+            })),
+        ];
+        items.sort((a, b) => sortEventsDesc(a, b));
+        const offset = (query.page - 1) * query.limit;
+        const paged = items.slice(offset, offset + query.limit);
+        return {
+            items: paged.map((entry) => ({ kind: entry.kind, ...entry.data })),
+            total: items.length,
+            page: query.page,
+            limit: query.limit,
+        };
+    }
+    async listGroupCollaborations(context, groupId, query) {
+        const group = await assertGroupAccess(context, groupId);
+        if (group.is_private && !group.user_role) {
+            throw (0, errors_1.notFound)('Group not found', 'GROUP_NOT_FOUND');
+        }
+        const memberIds = (await (0, db_1.db)('group_members')
+            .where({ group_id: groupId })
+            .pluck('user_id'));
+        const baseQuery = (0, db_1.db)('jobs')
+            .join('users', 'users.id', 'jobs.posted_by')
+            .join('profiles', 'profiles.user_id', 'users.id')
+            .select('jobs.id', 'jobs.title', 'jobs.company', 'jobs.location', 'jobs.type', 'jobs.description', 'jobs.deadline', 'jobs.application_url', 'jobs.created_at', 'jobs.posted_by', 'profiles.full_name as poster_full_name', 'profiles.avatar_url as poster_avatar_url', 'profiles.department as poster_department')
+            .where({ 'jobs.university_id': context.universityId, 'jobs.is_active': true })
+            .andWhere('jobs.deadline', '>=', db_1.db.fn.now());
+        if (group.allowed_role === 'faculty' && group.department) {
+            baseQuery.andWhere('profiles.department', group.department);
+        }
+        else if (memberIds.length > 0) {
+            baseQuery.whereIn('jobs.posted_by', memberIds);
+        }
+        else {
+            baseQuery.whereRaw('1 = 0');
+        }
+        const total = (await baseQuery
+            .clone()
+            .clearSelect()
+            .clearOrder()
+            .count({ count: 'jobs.id' })).reduce((sum, row) => sum + Number(row.count), 0);
+        const rows = (await baseQuery
+            .orderBy('jobs.deadline', 'asc')
+            .orderBy('jobs.created_at', 'desc')
+            .limit(query.limit)
+            .offset((query.page - 1) * query.limit));
+        return {
+            items: rows.map((row) => ({ kind: 'job', ...toMiniJob(row) })),
+            total,
+            page: query.page,
+            limit: query.limit,
+        };
+    }
     async listMyGroups(context, query) {
         const [{ count }] = await (0, db_1.db)('group_members')
             .join('groups', 'groups.id', 'group_members.group_id')
@@ -194,6 +353,58 @@ class GroupsService {
             .limit(query.limit)
             .offset((query.page - 1) * query.limit));
         return { items: rows.map(toGroup), total, page: query.page, limit: query.limit };
+    }
+    async inviteToGroup(context, groupId, targetUserId) {
+        const group = await assertGroupAccess(context, groupId);
+        assertCanAdminGroup(group.user_role);
+        if (group.is_system) {
+            throw (0, errors_1.forbidden)('System groups cannot be invited to', 'GROUP_SYSTEM_INVITE_FORBIDDEN');
+        }
+        if (targetUserId === context.userId) {
+            throw (0, errors_1.badRequest)('You cannot invite yourself', 'GROUP_INVITE_SELF_FORBIDDEN');
+        }
+        const target = await (0, db_1.db)('users')
+            .where({ id: targetUserId, university_id: context.universityId })
+            .select('id', 'role')
+            .first();
+        if (!target)
+            throw (0, errors_1.notFound)('User not found', 'USER_NOT_FOUND');
+        if (group.allowed_role && target.role !== group.allowed_role) {
+            throw (0, errors_1.badRequest)(`This group only allows ${group.allowed_role}s`, 'GROUP_ROLE_NOT_ALLOWED');
+        }
+        const existingMembership = await (0, db_1.db)('group_members')
+            .where({ group_id: groupId, user_id: targetUserId })
+            .first();
+        if (existingMembership) {
+            throw (0, errors_1.conflict)('User is already a group member', 'ALREADY_GROUP_MEMBER');
+        }
+        const pendingInvite = await (0, db_1.db)('notifications')
+            .where({
+            user_id: targetUserId,
+            type: 'group_invite',
+            reference_id: groupId,
+            reference_type: 'group',
+            is_read: false,
+        })
+            .first();
+        if (pendingInvite) {
+            throw (0, errors_1.conflict)('A pending invite already exists', 'GROUP_INVITE_DUPLICATE');
+        }
+        const inviterName = await service_2.notificationsService.getActorName(context.userId);
+        const groupRow = await (0, db_1.db)('groups')
+            .where({ id: groupId })
+            .select('name')
+            .first();
+        const groupName = groupRow?.name ?? 'a group';
+        const notification = await service_2.notificationsService.createNotification({
+            userId: targetUserId,
+            type: 'group_invite',
+            actorId: context.userId,
+            referenceId: groupId,
+            referenceType: 'group',
+            content: `${inviterName} invited you to join "${groupName}"`,
+        });
+        return { invited: true, notificationId: notification.id };
     }
     async transferOwnership(context, groupId, targetUserId, actorRole, targetRole) {
         if (actorRole !== 'owner') {
@@ -221,6 +432,7 @@ class GroupsService {
 }
 exports.GroupsService = GroupsService;
 exports.groupsService = new GroupsService();
+// ── Query builders ───────────────────────────────────────────────────────────
 function visibleGroupsBaseQuery(knex, context) {
     return knex('groups')
         .leftJoin('group_members as current_member', function joinCurrentMember() {
@@ -245,7 +457,7 @@ function groupSelectQuery(knex, userId) {
         .leftJoin('group_members as current_member', function joinCurrentMember() {
         this.on('current_member.group_id', '=', 'groups.id').andOn('current_member.user_id', '=', knex.raw('?', [userId]));
     })
-        .select('groups.id', 'groups.university_id', 'groups.created_by', 'groups.name', 'groups.description', 'groups.type', 'groups.avatar_url', 'groups.cover_url', 'groups.is_private', 'groups.member_count', 'groups.created_at', 'current_member.role as user_role');
+        .select('groups.id', 'groups.university_id', 'groups.created_by', 'groups.name', 'groups.description', 'groups.type', 'groups.avatar_url', 'groups.cover_url', 'groups.is_private', 'groups.member_count', 'groups.created_at', 'groups.allowed_role', 'groups.is_system', 'groups.department', 'current_member.role as user_role');
 }
 function memberSelectQuery(knex) {
     return knex('group_members')
@@ -253,17 +465,12 @@ function memberSelectQuery(knex) {
         .join('profiles', 'profiles.user_id', 'users.id')
         .select('group_members.user_id', 'group_members.role', 'group_members.joined_at', 'users.email', 'users.role as user_role', 'profiles.full_name', 'profiles.avatar_url', 'profiles.headline', 'profiles.department', 'profiles.batch_year');
 }
-async function assertGroupExists(groupId, universityId) {
-    const group = await (0, db_1.db)('groups').where({ id: groupId, university_id: universityId }).first();
-    if (!group)
-        throw (0, errors_1.notFound)('Group not found', 'GROUP_NOT_FOUND');
-}
 async function assertGroupAccess(context, groupId) {
     const group = await (0, db_1.db)('groups')
         .leftJoin('group_members as current_member', function joinCurrentMember() {
         this.on('current_member.group_id', '=', 'groups.id').andOn('current_member.user_id', '=', db_1.db.raw('?', [context.userId]));
     })
-        .select('groups.id', 'groups.university_id', 'groups.created_by', 'groups.is_private', 'current_member.role as user_role')
+        .select('groups.id', 'groups.university_id', 'groups.created_by', 'groups.is_private', 'groups.is_system', 'groups.allowed_role', 'groups.department', 'current_member.role as user_role')
         .where({ 'groups.id': groupId, 'groups.university_id': context.universityId })
         .first();
     if (!group)
@@ -309,6 +516,23 @@ function assertCanRemoveRole(actorRole, targetRole) {
         return;
     throw (0, errors_1.forbidden)('You do not have permission to remove this member', 'GROUP_ROLE_FORBIDDEN');
 }
+function assertCanJoinGroup(group, userRole) {
+    if (group.is_system) {
+        throw (0, errors_1.forbidden)('You cannot join an auto-managed group; membership is controlled by your role', 'GROUP_SYSTEM_JOIN_FORBIDDEN');
+    }
+    if (group.is_private && !group.user_role) {
+        // Stay consistent with previous behaviour: private groups are joinable only via invite.
+        throw (0, errors_1.notFound)('Group not found', 'GROUP_NOT_FOUND');
+    }
+    if (group.allowed_role && userRole !== group.allowed_role) {
+        throw (0, errors_1.badRequest)(`This group only allows ${group.allowed_role}s`, 'GROUP_ROLE_NOT_ALLOWED');
+    }
+}
+function resolveAllowedRoleOnCreate(creatorRole, requested) {
+    if (creatorRole === 'student')
+        return 'student';
+    return requested ?? null;
+}
 function isBelowAdmin(role) {
     return role === 'moderator' || role === 'member';
 }
@@ -327,6 +551,9 @@ function toGroup(row) {
         createdAt: row.created_at,
         userRole: row.user_role,
         isMember: Boolean(row.user_role),
+        allowedRole: row.allowed_role,
+        isSystem: row.is_system,
+        department: row.department,
     };
 }
 function toMember(row) {
@@ -351,6 +578,70 @@ function toMember(row) {
             batchYear: row.batch_year,
         },
     };
+}
+function toMiniEvent(row) {
+    return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        location: row.location,
+        isOnline: row.is_online,
+        onlineLink: row.online_link,
+        coverUrl: row.cover_url,
+        startsAt: row.starts_at,
+        endsAt: row.ends_at,
+        startDate: row.starts_at,
+        endDate: row.ends_at,
+        capacity: row.capacity,
+        type: row.type,
+        organizer: {
+            id: row.organizer_id,
+            fullName: row.organizer_full_name,
+            avatarUrl: row.organizer_avatar_url,
+        },
+        rsvpCounts: { going: Number(row.going_count), maybe: 0 },
+        myRsvp: row.own_rsvp,
+        previewAttendees: [],
+        totalAttendees: Number(row.going_count),
+        createdAt: row.created_at,
+    };
+}
+function toMiniPost(row) {
+    return {
+        id: row.id,
+        content: row.content,
+        mediaUrls: row.media_urls ?? [],
+        createdAt: row.created_at,
+        author: {
+            id: row.author_id,
+            fullName: row.author_full_name,
+            avatarUrl: row.author_avatar_url,
+        },
+    };
+}
+function toMiniJob(row) {
+    return {
+        id: row.id,
+        title: row.title,
+        company: row.company,
+        location: row.location,
+        type: row.type,
+        description: row.description,
+        deadline: row.deadline,
+        applicationUrl: row.application_url,
+        createdAt: row.created_at,
+        postedBy: {
+            id: row.posted_by,
+            fullName: row.poster_full_name,
+            avatarUrl: row.poster_avatar_url,
+            department: row.poster_department,
+        },
+    };
+}
+function sortEventsDesc(a, b) {
+    const aTime = a.kind === 'event' && a.startsAt ? a.startsAt.getTime() : a.createdAt.getTime();
+    const bTime = b.kind === 'event' && b.startsAt ? b.startsAt.getTime() : b.createdAt.getTime();
+    return bTime - aTime;
 }
 function pickDefined(value) {
     return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined));

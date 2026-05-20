@@ -20,29 +20,39 @@ async function handleTemplateEmail(input) {
     if (!input.text)
         return false;
     const parsed = parseTemplatePayload(input.text);
-    if (!parsed || parsed.template !== 'welcome')
+    if (!parsed)
         return false;
-    const result = await email_service_1.emailService.sendWelcomeEmail(input.to, parsed.userName, parsed.role, parsed.universityName);
-    if (!result.success) {
-        throw new Error(result.error ?? 'Welcome email failed');
+    if (parsed.template === 'welcome') {
+        const result = await email_service_1.emailService.sendWelcomeEmail(input.to, parsed.userName, parsed.role, parsed.universityName);
+        if (!result.success) {
+            throw new Error(result.error ?? 'Welcome email failed');
+        }
+        return true;
     }
-    return true;
+    if (parsed.template === 'otp') {
+        const result = await email_service_1.emailService.sendOtpEmail(input.to, parsed.otp, parsed.purpose, parsed.userName);
+        if (!result.success) {
+            throw new Error(result.error ?? 'OTP email failed');
+        }
+        return true;
+    }
+    if (parsed.template === 'invitation') {
+        const result = await email_service_1.emailService.sendInvitationEmail(input.to, parsed.registerUrl, parsed.role, parsed.universityName, parsed.token);
+        if (!result.success) {
+            throw new Error(result.error ?? 'Invitation email failed');
+        }
+        return true;
+    }
+    return false;
 }
 function parseTemplatePayload(value) {
     try {
         const parsed = JSON.parse(value);
         if (typeof parsed.template !== 'string' ||
-            typeof parsed.userName !== 'string' ||
-            typeof parsed.role !== 'string' ||
-            typeof parsed.universityName !== 'string') {
+            typeof parsed.userName !== 'string') {
             return null;
         }
-        return {
-            template: parsed.template,
-            userName: parsed.userName,
-            role: parsed.role,
-            universityName: parsed.universityName,
-        };
+        return parsed;
     }
     catch {
         return null;

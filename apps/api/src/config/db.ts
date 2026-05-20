@@ -7,6 +7,7 @@ export const db = knex(createKnexConfig())
 
 export function createKnexConfig(): Knex.Config {
   const isDevelopment = env.NODE_ENV === 'development'
+  const sourceExtension = __filename.endsWith('.js') ? 'js' : 'ts'
 
   return {
     client: 'pg',
@@ -17,7 +18,7 @@ export function createKnexConfig(): Knex.Config {
     },
     migrations: {
       directory: path.join(__dirname, '../database/migrations'),
-      extension: 'ts',
+      extension: sourceExtension,
       tableName: 'knex_migrations',
     },
     log: isDevelopment
