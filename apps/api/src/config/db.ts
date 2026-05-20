@@ -26,8 +26,6 @@ export function createKnexConfig(): Knex.Config {
       max: 10,
     },
     migrations: {
-      directory: migrationsDirectory,
-      extension: sourceExtension,
       migrationSource: createStableMigrationSource(migrationsDirectory, sourceExtension),
       tableName: 'knex_migrations',
     },
