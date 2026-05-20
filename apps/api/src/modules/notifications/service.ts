@@ -172,6 +172,19 @@ function notificationSelectQuery() {
 }
 
 function toNotification(row: NotificationRow) {
+  let refUrl: string | null = null
+  if (row.type === 'group_invite') {
+    refUrl = '/notifications'
+  } else if (row.reference_type === 'group' && row.reference_id) {
+    refUrl = `/groups/${row.reference_id}`
+  } else if (row.reference_type === 'event' && row.reference_id) {
+    refUrl = `/events/${row.reference_id}`
+  } else if (row.reference_type === 'job' && row.reference_id) {
+    refUrl = `/jobs/${row.reference_id}`
+  } else if (row.reference_type === 'post' && row.reference_id) {
+    refUrl = `/feed`
+  }
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -182,6 +195,7 @@ function toNotification(row: NotificationRow) {
     content: row.content,
     isRead: row.is_read,
     createdAt: row.created_at,
+    refUrl,
     actor: row.actor_id
       ? {
           id: row.actor_id,
