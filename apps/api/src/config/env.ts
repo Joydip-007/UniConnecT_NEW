@@ -31,7 +31,7 @@ const resendFromEmail = parsedEnv.RESEND_FROM_EMAIL ?? parsedEnv.EMAIL_FROM ?? '
 export const env = {
   ...parsedEnv,
   CLIENT_URL: clientUrl,
-  WEB_URL: clientUrl,
+  WEB_URL: clientUrl.split(",")[0].trim(),
   RESEND_FROM_EMAIL: resendFromEmail,
   EMAIL_FROM: resendFromEmail,
 }
