@@ -74,6 +74,18 @@ export class AuthService {
       throw new AppError('Invitation token is required', 422, 'VALIDATION_ERROR')
     }
 
+    if (role === 'faculty' || role === 'alumni' || role === 'student') {
+      if (!data.department?.trim()) {
+        throw new AppError('Department is required for this role', 422, 'VALIDATION_ERROR')
+      }
+    }
+
+    if (role === 'alumni' || role === 'student') {
+      if (!data.batch_year?.trim()) {
+        throw new AppError('Batch year is required for this role', 422, 'VALIDATION_ERROR')
+      }
+    }
+
     if (allowedEmailDomains.length > 0) {
       const emailDomain = email.split('@')[1]?.toLowerCase() ?? ''
       if (!allowedEmailDomains.includes(emailDomain)) {
@@ -111,6 +123,7 @@ export class AuthService {
         user_id: createdUser.id,
         full_name: data.full_name,
         department: data.department ?? null,
+        batch_year: data.batch_year ?? null,
       })
 
       if (invitation) {
@@ -161,7 +174,7 @@ export class AuthService {
     if (!profile) throw new AppError('User not found', 404, 'NOT_FOUND')
 
     await systemGroupsService
-      .addUserToSystemGroups(user.id, user.university_id, user.role, profile.department)
+      .addUserToSystemGroups(user.id, user.university_id, user.role, profile.department, profile.batch_year)
       .catch((error: unknown) => logger.warn('System-groups add failed on verify', { error, userId: user.id }))
 
     const accessToken = tokenService.generateAccessToken({
@@ -316,7 +329,13 @@ export class AuthService {
       .first<{ role: string; email: string } | undefined>()
 
     if (!inv) throw new AppError('Invitation not found', 404, 'NOT_FOUND')
-    return { role: inv.role as UserRole, email: inv.email }
+
+    const uni = await db('universities')
+      .where({ id: universityId })
+      .select('name')
+      .first<{ name: string } | undefined>()
+
+    return { role: inv.role as UserRole, email: inv.email, universityName: uni?.name ?? '' }
   }
 
   async getMe(userId: string) {
