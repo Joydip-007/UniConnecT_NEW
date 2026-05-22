@@ -90,7 +90,7 @@ export function StudySessionsTab({ groupId, currentUserId }: Props) {
   )
 }
 
-function SessionCard({ session, currentUserId: _currentUserId, onRsvp, isRsvpPending }: {
+function SessionCard({ session, onRsvp, isRsvpPending }: {
   session: StudySession
   currentUserId?: string
   onRsvp: (status: 'going' | 'not_going') => void

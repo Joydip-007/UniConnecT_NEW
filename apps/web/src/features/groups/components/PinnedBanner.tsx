@@ -8,7 +8,7 @@ interface Props {
   onEdit?: () => void
 }
 
-export function PinnedBanner({ text, pinnedBy: _pinnedBy, canEdit, onEdit }: Props) {
+export function PinnedBanner({ text, canEdit, onEdit }: Props) {
   const [dismissed, setDismissed] = useState(false)
 
   if (dismissed) return null

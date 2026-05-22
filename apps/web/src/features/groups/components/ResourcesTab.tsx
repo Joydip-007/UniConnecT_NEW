@@ -129,7 +129,7 @@ export function ResourcesTab({ groupId, userRole }: Props) {
 }
 
 function ResourceRow({
-  resource, groupId: _groupId, userRole, isLast, deleteConfirm, onDeleteConfirm, onDelete, onTrack,
+  resource, userRole, isLast, deleteConfirm, onDeleteConfirm, onDelete, onTrack,
 }: {
   resource: GroupResource
   groupId: string
