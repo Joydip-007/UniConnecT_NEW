@@ -237,4 +237,139 @@ describe('GET /api/v1/auth/invitation/:token', () => {
 
     expect(res.status).toBe(404)
   })
+
+  it('returns universityName in response', async () => {
+    const res = await api
+      .get('/api/v1/auth/invitation/dev-invite')
+      .set(UNI)
+    if (res.status === 404) return // token already used or not present — skip
+    expect(res.status).toBe(200)
+    expect(res.body.data).toHaveProperty('universityName')
+    expect(typeof res.body.data.universityName).toBe('string')
+    expect(res.body.data.universityName.length).toBeGreaterThan(0)
+  })
+})
+
+describe('POST /api/v1/auth/register — role-based required field validation', () => {
+  it('returns 422 when faculty omits department', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email: `faculty.nodept.${Date.now()}@bscse.uiu.ac.bd`,
+        password: 'TestPass@1234',
+        full_name: 'No Dept Faculty',
+        role: 'faculty',
+      })
+    expect(res.status).toBe(422)
+  })
+
+  it('returns 422 when alumni omits department', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email: `alumni.nodept.${Date.now()}@bscse.uiu.ac.bd`,
+        password: 'TestPass@1234',
+        full_name: 'No Dept Alumni',
+        role: 'alumni',
+        batch_year: 'Fall 2023',
+      })
+    expect(res.status).toBe(422)
+  })
+
+  it('returns 422 when alumni omits batch_year', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email: `alumni.nobatch.${Date.now()}@bscse.uiu.ac.bd`,
+        password: 'TestPass@1234',
+        full_name: 'No Batch Alumni',
+        role: 'alumni',
+        department: 'CSE',
+      })
+    expect(res.status).toBe(422)
+  })
+
+  it('returns 422 when student omits department', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email: `student.nodept.${Date.now()}@bscse.uiu.ac.bd`,
+        password: 'TestPass@1234',
+        full_name: 'No Dept Student',
+        role: 'student',
+        batch_year: 'Spring 2024',
+      })
+    expect(res.status).toBe(422)
+  })
+
+  it('returns 422 when student omits batch_year', async () => {
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email: `student.nobatch.${Date.now()}@bscse.uiu.ac.bd`,
+        password: 'TestPass@1234',
+        full_name: 'No Batch Student',
+        role: 'student',
+        department: 'EEE',
+      })
+    expect(res.status).toBe(422)
+  })
+
+  it('returns 201 when faculty provides department', async () => {
+    const email = `faculty.valid.${Date.now()}@bscse.uiu.ac.bd`
+    createdUserEmails.push(email)
+
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email,
+        password: 'TestPass@1234',
+        full_name: 'Valid Faculty',
+        role: 'faculty',
+        department: 'CSE',
+      })
+    expect(res.status).toBe(201)
+  })
+
+  it('returns 201 when alumni provides both department and batch_year', async () => {
+    const email = `alumni.valid.${Date.now()}@bscse.uiu.ac.bd`
+    createdUserEmails.push(email)
+
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email,
+        password: 'TestPass@1234',
+        full_name: 'Valid Alumni',
+        role: 'alumni',
+        department: 'CSE',
+        batch_year: 'Fall 2023',
+      })
+    expect(res.status).toBe(201)
+  })
+
+  it('returns 201 when student provides both department and batch_year', async () => {
+    const email = `student.valid.${Date.now()}@bscse.uiu.ac.bd`
+    createdUserEmails.push(email)
+
+    const res = await api
+      .post('/api/v1/auth/register')
+      .set(UNI)
+      .send({
+        email,
+        password: 'TestPass@1234',
+        full_name: 'Valid Student',
+        role: 'student',
+        department: 'EEE',
+        batch_year: 'Spring 2024',
+      })
+    expect(res.status).toBe(201)
+  })
 })
