@@ -7,6 +7,7 @@ import type {
   CreateGroupInput,
   GroupListQuery,
   InviteToGroupInput,
+  JoinRequestActionInput,
   MembersQuery,
   PaginationQuery,
   UpdateGroupInput,
@@ -48,6 +49,44 @@ export const deleteGroup = asyncHandler(async (req: Request, res: Response) => {
 export const joinGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.joinGroup(context, getGroupIdParam(req)), 201)
+})
+
+export const joinOrRequestGroup = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.joinOrRequest(context, getGroupIdParam(req), req.body?.message)
+  if (result.kind === 'requested') {
+    sendSuccess(res, { requested: true, requestId: result.requestId }, 202)
+  } else {
+    sendSuccess(res, result.group, 201)
+  }
+})
+
+export const listJoinRequests = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listJoinRequests(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const reviewJoinRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.reviewJoinRequest(
+      context,
+      getGroupIdParam(req),
+      Array.isArray(req.params.requestId) ? req.params.requestId[0] : req.params.requestId,
+      (req.body as JoinRequestActionInput).action,
+    ),
+  )
+})
+
+export const cancelJoinRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.cancelJoinRequest(context, getGroupIdParam(req)))
 })
 
 export const leaveGroup = asyncHandler(async (req: Request, res: Response) => {

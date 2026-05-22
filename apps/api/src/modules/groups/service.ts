@@ -3,6 +3,7 @@ import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { feedService } from '../feed/service'
 import { notificationsService } from '../notifications/service'
+import { notificationQueue } from '../../queues/notification.queue'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import type {
   AllowedRole,
@@ -66,6 +67,22 @@ interface MemberRow {
   headline: string | null
   department: string | null
   batch_year: string | null
+}
+
+interface JoinRequestRow {
+  id: string
+  group_id: string
+  user_id: string
+  university_id: string
+  message: string | null
+  status: 'pending' | 'approved' | 'declined'
+  reviewed_by: string | null
+  reviewed_at: Date | null
+  created_at: Date
+  requester_full_name: string | null
+  requester_avatar_url: string | null
+  requester_department: string | null
+  requester_user_role: string | null
 }
 
 export class GroupsService {
@@ -183,10 +200,66 @@ export class GroupsService {
     return { deleted: true }
   }
 
-  async joinGroup(context: AuthContext, groupId: string) {
+  async joinOrRequest(context: AuthContext, groupId: string, message?: string | null) {
     const access = await assertGroupAccess(context, groupId)
-    assertCanJoinGroup(access, context.role)
 
+    // System groups: forbidden
+    if (access.is_system) {
+      throw forbidden('You cannot join a system group', 'GROUP_SYSTEM_JOIN_FORBIDDEN')
+    }
+
+    // Role restriction check
+    if (access.allowed_role && context.role !== access.allowed_role) {
+      throw badRequest(`This group only allows ${access.allowed_role}s`, 'GROUP_ROLE_NOT_ALLOWED')
+    }
+
+    // Already a member
+    if (access.user_role) {
+      throw conflict('Already a group member', 'ALREADY_GROUP_MEMBER')
+    }
+
+    // Private group → create join request
+    if (access.is_private) {
+      try {
+        const [request] = await db('group_join_requests')
+          .insert({
+            group_id: groupId,
+            user_id: context.userId,
+            university_id: context.universityId,
+            message: message ?? null,
+            status: 'pending',
+          })
+          .returning<{ id: string }[]>('id')
+
+        // Notify all owners + admins
+        const admins = await db('group_members')
+          .where({ group_id: groupId })
+          .whereIn('role', ['owner', 'admin'])
+          .select<{ user_id: string }[]>('user_id')
+
+        for (const admin of admins) {
+          await notificationQueue.add({
+            universityId: context.universityId,
+            userId: admin.user_id,
+            type: 'group_join_request',
+            actorId: context.userId,
+            referenceId: groupId,
+            referenceType: 'group',
+            content: 'Someone requested to join your group',
+            payload: {},
+          })
+        }
+
+        return { kind: 'requested' as const, requestId: request.id }
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          throw conflict('Join request already pending', 'JOIN_REQUEST_ALREADY_PENDING')
+        }
+        throw error
+      }
+    }
+
+    // Public group → direct join
     try {
       await db.transaction(async (trx) => {
         await trx('group_members').insert({
@@ -203,7 +276,127 @@ export class GroupsService {
       throw error
     }
 
-    return this.getGroup(context, groupId)
+    const group = await this.getGroup(context, groupId)
+    return { kind: 'joined' as const, group }
+  }
+
+  async joinGroup(context: AuthContext, groupId: string) {
+    const result = await this.joinOrRequest(context, groupId, null)
+    return result
+  }
+
+  async listJoinRequests(context: AuthContext, groupId: string, query: PaginationQuery) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const [{ count }] = await db('group_join_requests')
+      .where({ group_id: groupId, status: 'pending' })
+      .count<{ count: string }[]>({ count: '*' })
+
+    const rows = await db('group_join_requests')
+      .where({ group_id: groupId, status: 'pending' })
+      .leftJoin('profiles as rp', 'rp.user_id', 'group_join_requests.user_id')
+      .leftJoin('users as ru', 'ru.id', 'group_join_requests.user_id')
+      .select<JoinRequestRow[]>(
+        'group_join_requests.id',
+        'group_join_requests.group_id',
+        'group_join_requests.user_id',
+        'group_join_requests.university_id',
+        'group_join_requests.message',
+        'group_join_requests.status',
+        'group_join_requests.reviewed_by',
+        'group_join_requests.reviewed_at',
+        'group_join_requests.created_at',
+        'rp.full_name as requester_full_name',
+        'rp.avatar_url as requester_avatar_url',
+        'rp.department as requester_department',
+        'ru.role as requester_user_role',
+      )
+      .orderBy('group_join_requests.created_at', 'asc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map(toJoinRequest),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async reviewJoinRequest(
+    context: AuthContext,
+    groupId: string,
+    requestId: string,
+    action: 'approve' | 'decline',
+  ) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const request = await db('group_join_requests')
+      .where({ id: requestId, group_id: groupId, status: 'pending' })
+      .first<{ id: string; user_id: string; university_id: string } | undefined>()
+
+    if (!request) throw notFound('Join request not found', 'JOIN_REQUEST_NOT_FOUND')
+
+    if (action === 'approve') {
+      await db.transaction(async (trx) => {
+        await trx('group_members').insert({
+          group_id: groupId,
+          user_id: request.user_id,
+          role: 'member',
+        })
+        await trx('groups').where({ id: groupId }).increment('member_count', 1)
+        await trx('group_join_requests').where({ id: requestId }).update({
+          status: 'approved',
+          reviewed_by: context.userId,
+          reviewed_at: new Date(),
+          updated_at: new Date(),
+        })
+      })
+
+      await notificationQueue.add({
+        universityId: context.universityId,
+        userId: request.user_id,
+        type: 'group_join_approved',
+        actorId: context.userId,
+        referenceId: groupId,
+        referenceType: 'group',
+        content: 'Your request to join the group was approved',
+        payload: {},
+      })
+
+      return { action: 'approved' }
+    }
+
+    // decline
+    await db('group_join_requests').where({ id: requestId }).update({
+      status: 'declined',
+      reviewed_by: context.userId,
+      reviewed_at: new Date(),
+      updated_at: new Date(),
+    })
+
+    await notificationQueue.add({
+      universityId: context.universityId,
+      userId: request.user_id,
+      type: 'group_join_declined',
+      actorId: context.userId,
+      referenceId: groupId,
+      referenceType: 'group',
+      content: 'Your request to join the group was declined',
+      payload: {},
+    })
+
+    return { action: 'declined' }
+  }
+
+  async cancelJoinRequest(context: AuthContext, groupId: string) {
+    const deleted = await db('group_join_requests')
+      .where({ group_id: groupId, user_id: context.userId, status: 'pending' })
+      .delete()
+
+    if (deleted === 0) throw notFound('No pending request found', 'JOIN_REQUEST_NOT_FOUND')
+
+    return { cancelled: true }
   }
 
   async joinGroupViaInvite(context: AuthContext, groupId: string) {
@@ -768,6 +961,12 @@ async function assertMemberAccess(context: AuthContext, groupId: string) {
   return group
 }
 
+async function assertGroupAdminAccess(context: AuthContext, groupId: string) {
+  const group = await assertGroupAccess(context, groupId)
+  assertCanAdminGroup(group.user_role)
+  return group
+}
+
 async function getMembership(groupId: string, userId: string) {
   return db('group_members').select<{ role: GroupRole }[]>('role').where({ group_id: groupId, user_id: userId }).first()
 }
@@ -847,6 +1046,26 @@ function toGroup(row: GroupRow) {
     allowedRole: row.allowed_role,
     isSystem: row.is_system,
     department: row.department,
+  }
+}
+
+function toJoinRequest(row: JoinRequestRow) {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    userId: row.user_id,
+    message: row.message,
+    status: row.status,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    createdAt: row.created_at,
+    requester: {
+      id: row.user_id,
+      fullName: row.requester_full_name,
+      avatarUrl: row.requester_avatar_url,
+      department: row.requester_department,
+      role: row.requester_user_role,
+    },
   }
 }
 
