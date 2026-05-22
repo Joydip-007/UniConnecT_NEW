@@ -1,3 +1,4 @@
+// apps/web/src/pages/RegisterPage.tsx
 import { FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
@@ -20,17 +21,41 @@ interface RegisterResponse {
 interface InvitePreview {
   role: UserRole
   email: string
+  universityName?: string
 }
 
 interface InvitePreviewResponse {
   data: InvitePreview
 }
 
-function validate(fullName: string, password: string, confirmPassword: string) {
+const SEMESTERS = ['Fall', 'Spring', 'Summer'] as const
+const BATCH_YEARS = Array.from({ length: 11 }, (_, i) => String(2020 + i)) // 2020–2030
+
+function isBatchRequired(role: UserRole | null) {
+  return role === 'alumni' || role === 'student'
+}
+
+function isDeptRequired(role: UserRole | null) {
+  return role === 'faculty' || role === 'alumni' || role === 'student'
+}
+
+function validate(
+  fullName: string,
+  password: string,
+  confirmPassword: string,
+  role: UserRole | null,
+  department: string,
+  batchSemester: string,
+  batchYear: string,
+) {
   const errs: Record<string, string> = {}
   if (!fullName.trim()) errs.fullName = 'Full name is required'
-  if (!/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/.test(password)) errs.password = 'Must be 8+ chars with a number, uppercase, and symbol.'
+  if (!/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/.test(password))
+    errs.password = 'Must be 8+ chars with a number, uppercase, and symbol.'
   if (password !== confirmPassword) errs.confirmPassword = 'Passwords do not match'
+  if (isDeptRequired(role) && !department.trim()) errs.department = 'Department is required'
+  if (isBatchRequired(role) && !batchSemester) errs.batchSemester = 'Select a semester'
+  if (isBatchRequired(role) && !batchYear) errs.batchYear = 'Select a year'
   return errs
 }
 
@@ -49,7 +74,10 @@ export default function RegisterPage() {
   const [inviteData, setInviteData]         = useState<InvitePreview | null>(null)
   const [inviteLoading, setInviteLoading]   = useState(false)
   const [inviteError, setInviteError]       = useState<string | null>(null)
+
   const [department, setDepartment]         = useState('')
+  const [batchSemester, setBatchSemester]   = useState('')
+  const [batchYear, setBatchYear]           = useState('')
 
   useEffect(() => {
     if (!token || token === 'invite') return
@@ -73,21 +101,10 @@ export default function RegisterPage() {
           gap: 24,
         }}>
           <div>
-            <h1 style={{
-              margin: 0,
-              fontSize: 22,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              lineHeight: 1.3,
-            }}>
+            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
               Create your account
             </h1>
-            <p style={{
-              margin: '6px 0 0',
-              fontSize: 13,
-              color: 'var(--text-secondary)',
-              lineHeight: 1.5,
-            }}>
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               Enter your invitation code to continue registration.
             </p>
           </div>
@@ -122,17 +139,9 @@ export default function RegisterPage() {
           </form>
         </div>
 
-        <p style={{
-          margin: 0,
-          textAlign: 'center',
-          fontSize: 13,
-          color: 'var(--text-secondary)',
-        }}>
+        <p style={{ margin: 0, textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
           Already have an account?{' '}
-          <a
-            href={PATHS.LOGIN}
-            style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
-          >
+          <a href={PATHS.LOGIN} style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none' }}>
             Sign in
           </a>
         </p>
@@ -160,24 +169,27 @@ export default function RegisterPage() {
           padding: '32px 28px',
           textAlign: 'center',
         }}>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--uc-orange-l)' }}>
-            {inviteError}
-          </p>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--uc-orange-l)' }}>{inviteError}</p>
         </div>
       </RegisterShell>
     )
   }
+
+  const role = inviteData?.role ?? null
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFieldErrors({})
     setServerError(null)
 
-    const errs = validate(fullName, password, confirmPassword)
+    const errs = validate(fullName, password, confirmPassword, role, department, batchSemester, batchYear)
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs)
       return
     }
+
+    const batchYearString =
+      isBatchRequired(role) ? `${batchSemester} ${batchYear}` : undefined
 
     setLoading(true)
     try {
@@ -185,9 +197,8 @@ export default function RegisterPage() {
         token,
         password,
         fullName: fullName.trim(),
-        ...(inviteData && inviteData.role !== 'admin' && department.trim()
-          ? { department: department.trim() }
-          : {}),
+        ...(isDeptRequired(role) && department.trim() ? { department: department.trim() } : {}),
+        ...(batchYearString ? { batch_year: batchYearString } : {}),
       })
       navigate(`${PATHS.VERIFY_OTP}?purpose=verify`, {
         state: { email: data.data.user.email },
@@ -226,25 +237,12 @@ export default function RegisterPage() {
         gap: 24,
       }}>
         <div>
-          <h1 style={{
-            margin: 0,
-            fontSize: 22,
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-            lineHeight: 1.3,
-          }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
             Create your account
           </h1>
-          <p style={{
-            margin: '6px 0 0',
-            fontSize: 13,
-            color: 'var(--text-secondary)',
-            lineHeight: 1.5,
-          }}>
+          <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             You're registering with invitation code{' '}
-            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-              {token}
-            </span>
+            <span style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{token}</span>
           </p>
         </div>
 
@@ -285,11 +283,29 @@ export default function RegisterPage() {
             />
           </Field>
 
-          {inviteData && inviteData.role !== 'admin' && (
-            <Field label="Department (optional)">
+          {/* University display — admin only */}
+          {role === 'admin' && inviteData?.universityName && (
+            <div style={{
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-sm)',
+              padding: '10px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>University</span>
+              <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{inviteData.universityName}</span>
+            </div>
+          )}
+
+          {/* Department — required for faculty, alumni, student */}
+          {isDeptRequired(role) && (
+            <Field label="Department" error={fieldErrors.department}>
               <input
                 type="text"
                 autoComplete="off"
+                required
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 placeholder="e.g. CSE"
@@ -297,6 +313,55 @@ export default function RegisterPage() {
                 style={inputStyle}
               />
             </Field>
+          )}
+
+          {/* Batch dropdowns — alumni (graduation) and student (admission) */}
+          {isBatchRequired(role) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                {role === 'alumni' ? 'Graduation trimester' : 'Admission trimester'}
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <select
+                    value={batchSemester}
+                    onChange={(e) => setBatchSemester(e.target.value)}
+                    required
+                    style={selectStyle}
+                  >
+                    <option value="">Semester</option>
+                    {SEMESTERS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  {fieldErrors.batchSemester && (
+                    <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{fieldErrors.batchSemester}</span>
+                  )}
+                </div>
+
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <select
+                    value={batchYear}
+                    onChange={(e) => setBatchYear(e.target.value)}
+                    required
+                    style={selectStyle}
+                  >
+                    <option value="">Year</option>
+                    {BATCH_YEARS.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                  {fieldErrors.batchYear && (
+                    <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{fieldErrors.batchYear}</span>
+                  )}
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                {role === 'alumni'
+                  ? "Enter the trimester you graduated. This determines which batch group you'll be added to."
+                  : "Enter the trimester you were admitted. This determines which batch group you'll be added to."}
+              </p>
+            </div>
           )}
 
           {serverError && (
@@ -323,17 +388,9 @@ export default function RegisterPage() {
         </form>
       </div>
 
-      <p style={{
-        margin: 0,
-        textAlign: 'center',
-        fontSize: 13,
-        color: 'var(--text-secondary)',
-      }}>
+      <p style={{ margin: 0, textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
         Already have an account?{' '}
-        <a
-          href={PATHS.LOGIN}
-          style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
-        >
+        <a href={PATHS.LOGIN} style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none' }}>
           Sign in
         </a>
       </p>
@@ -353,7 +410,6 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
       padding: '24px 16px',
       position: 'relative',
     }}>
-      {/* Back Button */}
       <div style={{ position: 'absolute', top: 24, left: 24 }}>
         <Link
           to="/"
@@ -385,17 +441,10 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
         </Link>
       </div>
 
-      <div style={{
-        width: '100%',
-        maxWidth: 400,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 32,
-      }}>
+      <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 32 }}>
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <BrandLogo height={40} />
         </div>
-
         {children}
       </div>
       <MinimalPageFooter />
@@ -414,13 +463,9 @@ function Field({
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
-        {label}
-      </span>
+      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
       {children}
-      {error && (
-        <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{error}</span>
-      )}
+      {error && <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{error}</span>}
     </label>
   )
 }
@@ -437,4 +482,14 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
   fontFamily: 'inherit',
   transition: 'border-color 0.15s',
+}
+
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  cursor: 'pointer',
+  appearance: 'none',
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 12px center',
+  paddingRight: 32,
 }
