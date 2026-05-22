@@ -143,9 +143,10 @@ export class AdminService {
     const previous = await db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where({ 'users.id': userId, 'users.university_id': universityId })
-      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null; batch_year: string | null }[]>(
         'users.role',
         'profiles.department',
+        'profiles.batch_year',
       )
       .first()
 
@@ -160,8 +161,8 @@ export class AdminService {
     await systemGroupsService.syncUserMembership(
       userId,
       universityId,
-      { role: previous.role, department: previous.department },
-      { role: input.role, department: previous.department },
+      { role: previous.role, department: previous.department, batchYear: previous.batch_year },
+      { role: input.role, department: previous.department, batchYear: previous.batch_year },
     )
 
     return { userId, role: input.role }

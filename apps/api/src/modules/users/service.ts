@@ -51,7 +51,11 @@ export class UsersService {
     const existing = await db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where({ 'users.id': userId, 'users.university_id': universityId })
-      .select<{ role: UserRole; department: string | null }[]>('users.role', 'profiles.department')
+      .select<{ role: UserRole; department: string | null; batch_year: string | null }[]>(
+        'users.role',
+        'profiles.department',
+        'profiles.batch_year',
+      )
       .first()
     if (!existing) throw notFound('User not found')
 
@@ -75,8 +79,8 @@ export class UsersService {
       await systemGroupsService.syncUserMembership(
         userId,
         universityId,
-        { role: existing.role, department: existing.department },
-        { role: existing.role, department: input.department },
+        { role: existing.role, department: existing.department, batchYear: existing.batch_year },
+        { role: existing.role, department: input.department, batchYear: existing.batch_year },
       )
     }
 

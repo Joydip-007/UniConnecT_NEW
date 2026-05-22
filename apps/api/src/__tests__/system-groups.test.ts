@@ -52,7 +52,6 @@ describe('SystemGroupsService — group naming', () => {
 
   it('creates alumni group named "{batch} Graduates"', async () => {
     const alumniId = await getUserId('alumni')
-    // @ts-expect-error — batchYear param does not exist yet; added in Task 2
     await systemGroupsService.addUserToSystemGroups(alumniId, TEST_UNIVERSITY_ID, 'alumni', 'CSE', 'Fall 2023')
 
     const group = await findSystemGroup('alumni', 'Fall 2023')
@@ -62,7 +61,6 @@ describe('SystemGroupsService — group naming', () => {
 
   it('creates student group named just the batch string', async () => {
     const studentId = await getUserId('student')
-    // @ts-expect-error — batchYear param does not exist yet; added in Task 2
     await systemGroupsService.addUserToSystemGroups(studentId, TEST_UNIVERSITY_ID, 'student', 'CSE', 'Spring 2024')
 
     const group = await findSystemGroup('student', 'Spring 2024')
@@ -74,7 +72,6 @@ describe('SystemGroupsService — group naming', () => {
 describe('SystemGroupsService — membership', () => {
   it('adds alumni to the batch group as a member', async () => {
     const alumniId = await getUserId('alumni')
-    // @ts-expect-error — batchYear param does not exist yet; added in Task 2
     await systemGroupsService.addUserToSystemGroups(alumniId, TEST_UNIVERSITY_ID, 'alumni', 'CSE', 'Fall 2023')
 
     const group = await findSystemGroup('alumni', 'Fall 2023')
@@ -86,7 +83,6 @@ describe('SystemGroupsService — membership', () => {
 
   it('adds student to the batch group as a member', async () => {
     const studentId = await getUserId('student')
-    // @ts-expect-error — batchYear param does not exist yet; added in Task 2
     await systemGroupsService.addUserToSystemGroups(studentId, TEST_UNIVERSITY_ID, 'student', 'CSE', 'Spring 2024')
 
     const group = await findSystemGroup('student', 'Spring 2024')
@@ -102,7 +98,6 @@ describe('SystemGroupsService — syncUserMembership', () => {
     const alumniId = await getUserId('alumni')
 
     // Put them in Fall 2023
-    // @ts-expect-error — batchYear param does not exist yet; added in Task 2
     await systemGroupsService.addUserToSystemGroups(alumniId, TEST_UNIVERSITY_ID, 'alumni', 'CSE', 'Fall 2023')
     const oldGroup = await findSystemGroup('alumni', 'Fall 2023')
     expect(oldGroup).toBeDefined()
@@ -111,7 +106,6 @@ describe('SystemGroupsService — syncUserMembership', () => {
     await systemGroupsService.syncUserMembership(
       alumniId,
       TEST_UNIVERSITY_ID,
-      // @ts-expect-error — batchYear field does not exist yet; added in Task 2
       { role: 'alumni', department: 'CSE', batchYear: 'Fall 2023' },
       { role: 'alumni', department: 'CSE', batchYear: 'Summer 2024' },
     )
@@ -133,7 +127,6 @@ describe('SystemGroupsService — syncUserMembership', () => {
 
   it('does nothing when role, department, and batchYear are unchanged', async () => {
     const studentId = await getUserId('student')
-    // @ts-expect-error — batchYear param does not exist yet; added in Task 2
     await systemGroupsService.addUserToSystemGroups(studentId, TEST_UNIVERSITY_ID, 'student', 'EEE', 'Fall 2024')
 
     const groupBefore = await findSystemGroup('student', 'Fall 2024')
@@ -143,7 +136,6 @@ describe('SystemGroupsService — syncUserMembership', () => {
     await systemGroupsService.syncUserMembership(
       studentId,
       TEST_UNIVERSITY_ID,
-      // @ts-expect-error — batchYear field does not exist yet; added in Task 2
       { role: 'student', department: 'EEE', batchYear: 'Fall 2024' },
       { role: 'student', department: 'EEE', batchYear: 'Fall 2024' },
     )
