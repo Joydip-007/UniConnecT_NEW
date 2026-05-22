@@ -12,7 +12,8 @@ export async function up(knex: Knex) {
                       CHECK (status IN ('pending','approved','declined')),
       reviewed_by   uuid REFERENCES users(id) ON DELETE SET NULL,
       reviewed_at   timestamptz,
-      created_at    timestamptz NOT NULL DEFAULT now()
+      created_at    timestamptz NOT NULL DEFAULT now(),
+      updated_at    timestamptz NOT NULL DEFAULT now()
     )
   `)
 

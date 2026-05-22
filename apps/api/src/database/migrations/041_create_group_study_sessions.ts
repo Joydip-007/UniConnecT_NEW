@@ -15,6 +15,7 @@ export async function up(knex: Knex) {
       starts_at     timestamptz NOT NULL,
       ends_at       timestamptz,
       capacity      integer CHECK (capacity > 0),
+      -- rsvp_count tracks 'going' RSVPs only; incremented/decremented by the service layer in a transaction
       rsvp_count    integer NOT NULL DEFAULT 0 CHECK (rsvp_count >= 0),
       created_at    timestamptz NOT NULL DEFAULT now()
     )
@@ -25,10 +26,11 @@ export async function up(knex: Knex) {
 
   await knex.raw(`
     CREATE TABLE group_study_session_rsvps (
-      session_id  uuid NOT NULL REFERENCES group_study_sessions(id) ON DELETE CASCADE,
-      user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      status      varchar(12) NOT NULL CHECK (status IN ('going','not_going')),
-      updated_at  timestamptz NOT NULL DEFAULT now(),
+      session_id    uuid NOT NULL REFERENCES group_study_sessions(id) ON DELETE CASCADE,
+      user_id       uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      university_id uuid NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+      status        varchar(12) NOT NULL CHECK (status IN ('going','not_going')),
+      updated_at    timestamptz NOT NULL DEFAULT now(),
       PRIMARY KEY (session_id, user_id)
     )
   `)
