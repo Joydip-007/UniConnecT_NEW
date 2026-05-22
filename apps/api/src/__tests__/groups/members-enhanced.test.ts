@@ -28,7 +28,7 @@ describe('Member directory enhancements', () => {
         created_by: adminUserId,
         name: `Members Enhanced Test ${Date.now()}`,
         description: 'Test',
-        type: 'academic',
+        type: 'other',
         is_private: false,
         member_count: 4,
       })

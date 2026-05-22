@@ -12,7 +12,7 @@ async function createGroupWithRoles(universityId: string, ownerId: string, moder
       created_by: ownerId,
       name: `Stats Test Group ${Date.now()}`,
       description: 'Test',
-      type: 'academic',
+      type: 'other',
       is_private: false,
       member_count: 3,
     })

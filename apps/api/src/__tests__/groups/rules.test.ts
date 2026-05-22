@@ -12,7 +12,7 @@ async function createGroupWithAdminAndModerator(universityId: string, ownerId: s
       created_by: ownerId,
       name: `Rules Test Group ${Date.now()}`,
       description: 'Test',
-      type: 'academic',
+      type: 'other',
       is_private: false,
       member_count: 2,
     })

@@ -12,7 +12,7 @@ async function createGroupWithMember(universityId: string, ownerId: string, memb
       created_by: ownerId,
       name: `Resource Test Group ${Date.now()}`,
       description: 'Test',
-      type: 'academic',
+      type: 'other',
       is_private: false,
       member_count: 2,
     })

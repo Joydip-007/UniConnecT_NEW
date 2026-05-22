@@ -13,7 +13,7 @@ async function createPrivateGroup(universityId: string, createdBy: string) {
       created_by: createdBy,
       name: `Test Private Group ${Date.now()}`,
       description: 'Test',
-      type: 'academic',
+      type: 'other',
       is_private: true,
       member_count: 1,
     })
@@ -34,7 +34,7 @@ async function createPublicGroup(universityId: string, createdBy: string) {
       created_by: createdBy,
       name: `Test Public Group ${Date.now()}`,
       description: 'Test',
-      type: 'academic',
+      type: 'other',
       is_private: false,
       member_count: 1,
     })
