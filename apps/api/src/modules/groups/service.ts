@@ -8,9 +8,11 @@ import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import type {
   AllowedRole,
   CreateGroupInput,
+  CreateResourceInput,
   GroupListQuery,
   MembersQuery,
   PaginationQuery,
+  ResourceListQuery,
   UpdateGroupInput,
 } from './schema'
 
@@ -83,6 +85,21 @@ interface JoinRequestRow {
   requester_avatar_url: string | null
   requester_department: string | null
   requester_user_role: string | null
+}
+
+interface ResourceRow {
+  id: string
+  group_id: string
+  university_id: string
+  uploaded_by: string | null
+  title: string
+  url: string
+  category: string
+  description: string | null
+  click_count: number
+  created_at: Date
+  uploader_full_name: string | null
+  uploader_avatar_url: string | null
 }
 
 export class GroupsService {
@@ -711,6 +728,114 @@ export class GroupsService {
     return { items: rows.map(toGroup), total, page: query.page, limit: query.limit }
   }
 
+  async listResources(context: AuthContext, groupId: string, query: ResourceListQuery) {
+    await assertMemberAccess(context, groupId)
+
+    const base = db('group_resources')
+      .where({ 'group_resources.group_id': groupId, 'group_resources.university_id': context.universityId })
+      .leftJoin('profiles as up', 'up.user_id', 'group_resources.uploaded_by')
+      .modify((b) => {
+        if (query.category) b.andWhere('group_resources.category', query.category)
+      })
+
+    const [{ count }] = await db('group_resources')
+      .where({ group_id: groupId, university_id: context.universityId })
+      .modify((b) => { if (query.category) b.andWhere('category', query.category) })
+      .count<{ count: string }[]>({ count: '*' })
+
+    const rows = await base
+      .select<ResourceRow[]>(
+        'group_resources.id',
+        'group_resources.group_id',
+        'group_resources.university_id',
+        'group_resources.uploaded_by',
+        'group_resources.title',
+        'group_resources.url',
+        'group_resources.category',
+        'group_resources.description',
+        'group_resources.click_count',
+        'group_resources.created_at',
+        'up.full_name as uploader_full_name',
+        'up.avatar_url as uploader_avatar_url',
+      )
+      .orderBy('group_resources.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map(toResource),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async createResource(context: AuthContext, groupId: string, input: CreateResourceInput) {
+    await assertMemberAccess(context, groupId)
+
+    const [row] = await db('group_resources')
+      .insert({
+        group_id: groupId,
+        university_id: context.universityId,
+        uploaded_by: context.userId,
+        title: input.title,
+        url: input.url,
+        category: input.category,
+        description: input.description ?? null,
+      })
+      .returning('*')
+
+    return toResource({
+      ...row,
+      uploader_full_name: null,
+      uploader_avatar_url: null,
+    } as ResourceRow)
+  }
+
+  async deleteResource(context: AuthContext, groupId: string, resourceId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const resource = await db('group_resources')
+      .where({ id: resourceId, group_id: groupId })
+      .select<{ id: string; uploaded_by: string | null }>('id', 'uploaded_by')
+      .first()
+
+    if (!resource) throw notFound('Resource not found', 'RESOURCE_NOT_FOUND')
+
+    // Check permission: uploader OR owner/admin/moderator
+    const membership = await db('group_members')
+      .where({ group_id: groupId, user_id: context.userId })
+      .select<{ role: string }>('role')
+      .first()
+
+    const isPrivileged = membership && ['owner', 'admin', 'moderator'].includes(membership.role)
+    const isUploader = resource.uploaded_by === context.userId
+
+    if (!isUploader && !isPrivileged) {
+      throw forbidden('You can only delete your own resources', 'RESOURCE_DELETE_FORBIDDEN')
+    }
+
+    await db('group_resources').where({ id: resourceId }).delete()
+    return { deleted: true }
+  }
+
+  async trackResource(context: AuthContext, groupId: string, resourceId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const updated = await db('group_resources')
+      .where({ id: resourceId, group_id: groupId })
+      .increment('click_count', 1)
+
+    if (updated === 0) throw notFound('Resource not found', 'RESOURCE_NOT_FOUND')
+
+    const row = await db('group_resources')
+      .where({ id: resourceId })
+      .select<{ click_count: number }>('click_count')
+      .first()
+
+    return { clickCount: row?.click_count ?? 0 }
+  }
+
   async inviteToGroup(context: AuthContext, groupId: string, targetUserId: string) {
     const group = await assertGroupAccess(context, groupId)
     assertCanAdminGroup(group.user_role)
@@ -1046,6 +1171,23 @@ function toGroup(row: GroupRow) {
     allowedRole: row.allowed_role,
     isSystem: row.is_system,
     department: row.department,
+  }
+}
+
+function toResource(row: ResourceRow) {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    uploadedBy: row.uploaded_by,
+    title: row.title,
+    url: row.url,
+    category: row.category,
+    description: row.description,
+    clickCount: row.click_count,
+    createdAt: row.created_at,
+    uploader: row.uploaded_by
+      ? { id: row.uploaded_by, fullName: row.uploader_full_name, avatarUrl: row.uploader_avatar_url }
+      : null,
   }
 }
 

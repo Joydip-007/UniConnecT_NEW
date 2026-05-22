@@ -5,7 +5,9 @@ import { validate, validateRequest } from '../../middleware/validate'
 import {
   cancelJoinRequest,
   createGroup,
+  createResource,
   deleteGroup,
+  deleteResource,
   getGroup,
   inviteToGroup,
   joinOrRequestGroup,
@@ -17,19 +19,23 @@ import {
   listGroups,
   listJoinRequests,
   listMyGroups,
+  listResources,
   removeMember,
   reviewJoinRequest,
+  trackResource,
   updateGroup,
   updateMember,
 } from './controller'
 import {
   CreateGroupSchema,
+  CreateResourceSchema,
   GroupListQuerySchema,
   InviteToGroupSchema,
   JoinGroupSchema,
   JoinRequestActionSchema,
   MembersQuerySchema,
   PaginationQuerySchema,
+  ResourceListQuerySchema,
   UpdateGroupSchema,
   UpdateMemberSchema,
 } from './schema'
@@ -62,3 +68,9 @@ groupsRouter.get(
   listGroupCollaborations,
 )
 groupsRouter.post('/:groupId/invitations', validate(InviteToGroupSchema), inviteToGroup)
+
+// Resources
+groupsRouter.get('/:groupId/resources', validateRequest({ query: ResourceListQuerySchema }), listResources)
+groupsRouter.post('/:groupId/resources', validate(CreateResourceSchema), createResource)
+groupsRouter.delete('/:groupId/resources/:resourceId', deleteResource)
+groupsRouter.patch('/:groupId/resources/:resourceId/track', trackResource)

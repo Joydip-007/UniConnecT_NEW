@@ -162,6 +162,31 @@ export const inviteToGroup = asyncHandler(async (req: Request, res: Response) =>
   sendSuccess(res, result, 201)
 })
 
+export const listResources = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listResources(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as import('./schema').ResourceListQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const createResource = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.createResource(context, getGroupIdParam(req), req.body as import('./schema').CreateResourceInput), 201)
+})
+
+export const deleteResource = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.deleteResource(context, getGroupIdParam(req), getResourceIdParam(req)))
+})
+
+export const trackResource = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.trackResource(context, getGroupIdParam(req), getResourceIdParam(req)))
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 
@@ -179,5 +204,10 @@ function getGroupIdParam(req: Request) {
 
 function getUserIdParam(req: Request) {
   const value = req.params.userId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getResourceIdParam(req: Request) {
+  const value = req.params.resourceId
   return Array.isArray(value) ? value[0] : value
 }
