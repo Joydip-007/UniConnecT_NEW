@@ -26,7 +26,7 @@ export async function up(knex: Knex) {
   // Pass 3 — backfill alumni batch groups
   const alumniBatches = await knex('profiles')
     .join('users', 'users.id', 'profiles.user_id')
-    .where({ 'users.role': 'alumni' })
+    .where({ 'users.role': 'alumni', 'users.is_deleted': false })
     .whereNotNull('profiles.batch_year')
     .select<BatchRow[]>('users.university_id', 'profiles.batch_year as batch_year')
     .groupBy('users.university_id', 'profiles.batch_year')
@@ -40,7 +40,7 @@ export async function up(knex: Knex) {
     if (!group) {
       const firstAlumnus = await knex('users')
         .join('profiles', 'profiles.user_id', 'users.id')
-        .where({ 'users.university_id': university_id, 'users.role': 'alumni', 'profiles.batch_year': batch_year })
+        .where({ 'users.university_id': university_id, 'users.role': 'alumni', 'users.is_deleted': false, 'profiles.batch_year': batch_year })
         .select<{ id: string }[]>('users.id')
         .orderBy('users.created_at', 'asc')
         .first()
@@ -65,7 +65,7 @@ export async function up(knex: Knex) {
 
     const members = await knex('users')
       .join('profiles', 'profiles.user_id', 'users.id')
-      .where({ 'users.university_id': university_id, 'users.role': 'alumni', 'profiles.batch_year': batch_year })
+      .where({ 'users.university_id': university_id, 'users.role': 'alumni', 'users.is_deleted': false, 'profiles.batch_year': batch_year })
       .select<{ id: string }[]>('users.id')
 
     for (const member of members) {
@@ -79,7 +79,7 @@ export async function up(knex: Knex) {
   // Pass 4 — backfill student batch groups
   const studentBatches = await knex('profiles')
     .join('users', 'users.id', 'profiles.user_id')
-    .where({ 'users.role': 'student' })
+    .where({ 'users.role': 'student', 'users.is_deleted': false })
     .whereNotNull('profiles.batch_year')
     .select<BatchRow[]>('users.university_id', 'profiles.batch_year as batch_year')
     .groupBy('users.university_id', 'profiles.batch_year')
@@ -93,7 +93,7 @@ export async function up(knex: Knex) {
     if (!group) {
       const firstStudent = await knex('users')
         .join('profiles', 'profiles.user_id', 'users.id')
-        .where({ 'users.university_id': university_id, 'users.role': 'student', 'profiles.batch_year': batch_year })
+        .where({ 'users.university_id': university_id, 'users.role': 'student', 'users.is_deleted': false, 'profiles.batch_year': batch_year })
         .select<{ id: string }[]>('users.id')
         .orderBy('users.created_at', 'asc')
         .first()
@@ -118,7 +118,7 @@ export async function up(knex: Knex) {
 
     const members = await knex('users')
       .join('profiles', 'profiles.user_id', 'users.id')
-      .where({ 'users.university_id': university_id, 'users.role': 'student', 'profiles.batch_year': batch_year })
+      .where({ 'users.university_id': university_id, 'users.role': 'student', 'users.is_deleted': false, 'profiles.batch_year': batch_year })
       .select<{ id: string }[]>('users.id')
 
     for (const member of members) {
