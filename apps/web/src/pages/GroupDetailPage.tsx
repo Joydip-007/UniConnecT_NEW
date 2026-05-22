@@ -1,24 +1,25 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/axios'
+import { useAuthStore } from '@/stores/authStore'
 import { GhostBtn } from '@/components/Button'
-import { CollabTab, EventsTab, FeedTab, GroupHeader, MembersTab } from '@/features/groups'
+import {
+  EventsTab, FeedTab, GroupHeader, MembersTab,
+  AnimatedTabBar, PinnedBanner,
+  ResourcesTab, StudySessionsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
+  useJoinRequests,
+  type TabDef,
+} from '@/features/groups'
 import type { Group } from '@/features/groups'
 
-type ActiveTab = 'feed' | 'events' | 'collaborations' | 'members'
-
-const TABS: { value: ActiveTab; label: string }[] = [
-  { value: 'feed', label: 'Feed' },
-  { value: 'events', label: 'Events' },
-  { value: 'collaborations', label: 'Collaborations' },
-  { value: 'members', label: 'Members' },
-]
+type ActiveTab = 'feed' | 'resources' | 'study-sessions' | 'members' | 'events' | 'about' | 'stats' | 'join-requests'
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
   const [activeTab, setActiveTab] = useState<ActiveTab>('feed')
 
   const { data: group, isLoading: groupLoading, isError } = useQuery<Group>({
@@ -27,23 +28,48 @@ export default function GroupDetailPage() {
     enabled: !!id,
   })
 
+  // Pending join requests badge — only fetched when user is owner/admin
+  const isAdmin = group?.userRole === 'owner' || group?.userRole === 'admin'
+  const { data: joinRequestsData } = useJoinRequests(id ?? '')
+  const pendingCount = isAdmin ? (joinRequestsData?.total ?? 0) : 0
+
+  const userRole = group?.userRole ?? null
+  const isModeratorOrAbove = !!(userRole && ['owner', 'admin', 'moderator'].includes(userRole))
+  const canEditRules = userRole === 'owner' || userRole === 'admin'
+
+  // Build tab list based on role
+  const tabs: TabDef[] = [
+    { value: 'feed', label: 'Feed' },
+    { value: 'resources', label: 'Resources' },
+    { value: 'study-sessions', label: 'Study sessions' },
+    { value: 'members', label: 'Members' },
+    { value: 'events', label: 'Events' },
+    { value: 'about', label: 'About' },
+    ...(isModeratorOrAbove ? [{ value: 'stats', label: 'Stats' } as TabDef] : []),
+    ...(isAdmin
+      ? [
+          {
+            value: 'join-requests',
+            label: (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                Join requests
+                {pendingCount > 0 && (
+                  <span style={{ padding: '1px 6px', fontSize: 10, fontWeight: 500, borderRadius: 'var(--r-pill)', background: 'var(--uc-orange-bg)', color: 'var(--uc-orange-l)' }}>
+                    {pendingCount}
+                  </span>
+                )}
+              </span>
+            ) as ReactNode,
+          } as TabDef,
+        ]
+      : []),
+  ]
+
   if (isError) {
     return (
-      <div
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '48px 24px',
-          textAlign: 'center',
-        }}
-      >
-        <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-          Group not found
-        </p>
-        <p style={{ margin: '0 0 16px', fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-          This group may have been removed or you don't have access.
-        </p>
+      <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '48px 24px', textAlign: 'center' }}>
+        <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>Group not found</p>
+        <p style={{ margin: '0 0 16px', fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>This group may have been removed or you don't have access.</p>
         <GhostBtn onClick={() => navigate('/groups')}>Back to groups</GhostBtn>
       </div>
     )
@@ -77,49 +103,34 @@ export default function GroupDetailPage() {
 
       {groupLoading ? <SkeletonHeader /> : group && <GroupHeader group={group} />}
 
-      <nav
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '4px 6px',
-          display: 'flex',
-          gap: 2,
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {TABS.map((tab) => {
-          const active = activeTab === tab.value
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setActiveTab(tab.value)}
-              style={{
-                flex: 1,
-                padding: '7px 0',
-                fontSize: 13,
-                fontWeight: active ? 500 : 400,
-                borderRadius: 'var(--r-pill)',
-                border: 'none',
-                cursor: 'pointer',
-                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                transition: 'background 150ms, color 150ms',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {tab.label}
-            </button>
-          )
-        })}
-      </nav>
+      {/* Pinned banner between header and tabs */}
+      {group?.pinnedText && (
+        <PinnedBanner
+          text={group.pinnedText}
+          pinnedBy={group.pinnedBy}
+          canEdit={isModeratorOrAbove}
+          onEdit={() => setActiveTab('about')}
+        />
+      )}
 
-      {id && activeTab === 'feed' && <FeedTab groupId={id} />}
-      {id && activeTab === 'events' && <EventsTab groupId={id} />}
-      {id && group && activeTab === 'collaborations' && <CollabTab group={group} />}
-      {id && group && activeTab === 'members' && <MembersTab group={group} />}
+      {/* Animated tab bar */}
+      <AnimatedTabBar
+        tabs={tabs}
+        active={activeTab}
+        onChange={(v) => setActiveTab(v as ActiveTab)}
+      />
+
+      {/* Tab content */}
+      <div>
+        {id && activeTab === 'feed' && <FeedTab groupId={id} />}
+        {id && activeTab === 'resources' && <ResourcesTab groupId={id} userRole={userRole} />}
+        {id && activeTab === 'study-sessions' && <StudySessionsTab groupId={id} currentUserId={user?.id} />}
+        {id && group && activeTab === 'members' && <MembersTab group={group} />}
+        {id && activeTab === 'events' && <EventsTab groupId={id} />}
+        {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}
+        {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}
+        {id && isAdmin && activeTab === 'join-requests' && <JoinRequestsTab groupId={id} />}
+      </div>
     </div>
   )
 }
