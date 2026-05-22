@@ -75,12 +75,20 @@ export class UsersService {
 
     await db('profiles').where({ user_id: userId }).update(update)
 
-    if (input.department !== undefined && input.department !== existing.department) {
+    const needsGroupSync =
+      (input.department !== undefined && input.department !== existing.department) ||
+      (input.batchYear !== undefined && input.batchYear !== existing.batch_year)
+
+    if (needsGroupSync) {
       await systemGroupsService.syncUserMembership(
         userId,
         universityId,
         { role: existing.role, department: existing.department, batchYear: existing.batch_year },
-        { role: existing.role, department: input.department, batchYear: existing.batch_year },
+        {
+          role: existing.role,
+          department: input.department ?? existing.department,
+          batchYear: input.batchYear ?? existing.batch_year,
+        },
       )
     }
 

@@ -174,9 +174,10 @@ export class AdminService {
     const user = await db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where({ 'users.id': userId, 'users.university_id': universityId, 'users.is_deleted': false })
-      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null; batch_year: string | null }[]>(
         'users.role',
         'profiles.department',
+        'profiles.batch_year',
       )
       .first()
 
@@ -188,7 +189,7 @@ export class AdminService {
 
     await db('user_sessions').where({ user_id: userId }).delete()
 
-    await systemGroupsService.removeUserFromSystemGroups(userId, universityId, user.role, user.department)
+    await systemGroupsService.removeUserFromSystemGroups(userId, universityId, user.role, user.department, user.batch_year)
 
     return { userId, deleted: true }
   }
@@ -197,9 +198,10 @@ export class AdminService {
     const previous = await db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where({ 'users.id': userId, 'users.university_id': universityId })
-      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null }[]>(
+      .select<{ role: import('@uniconnect/shared').UserRole; department: string | null; batch_year: string | null }[]>(
         'users.role',
         'profiles.department',
+        'profiles.batch_year',
       )
       .first()
 
@@ -217,6 +219,7 @@ export class AdminService {
         universityId,
         previous.role,
         previous.department,
+        previous.batch_year,
       )
     } else {
       await systemGroupsService.addUserToSystemGroups(
@@ -224,6 +227,7 @@ export class AdminService {
         universityId,
         previous.role,
         previous.department,
+        previous.batch_year,
       )
     }
 
