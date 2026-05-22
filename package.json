@@ -10,10 +10,14 @@
     "typecheck": "pnpm -r run typecheck"
   },
   "devDependencies": {
+    "shadcn": "^4.7.0",
     "typescript": "^5.5.3"
   },
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
+  },
+  "dependencies": {
+    "framer-motion": "^12.38.0"
   }
 }
