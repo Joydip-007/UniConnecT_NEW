@@ -208,6 +208,43 @@ export const getGroupStats = asyncHandler(async (req, res) => {
   sendSuccess(res, await groupsService.getGroupStats(context, getGroupIdParam(req)))
 })
 
+export const listStudySessions = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listStudySessions(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as import('./schema').PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const createStudySession = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createStudySession(context, getGroupIdParam(req), req.body as import('./schema').CreateStudySessionInput),
+    201,
+  )
+})
+
+export const deleteStudySession = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.deleteStudySession(context, getGroupIdParam(req), getSessionIdParam(req)))
+})
+
+export const rsvpStudySession = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.rsvpStudySession(
+      context,
+      getGroupIdParam(req),
+      getSessionIdParam(req),
+      (req.body as import('./schema').RsvpStudySessionInput).status,
+    ),
+  )
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 
@@ -230,5 +267,10 @@ function getUserIdParam(req: Request) {
 
 function getResourceIdParam(req: Request) {
   const value = req.params.resourceId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getSessionIdParam(req: Request) {
+  const value = req.params.sessionId
   return Array.isArray(value) ? value[0] : value
 }

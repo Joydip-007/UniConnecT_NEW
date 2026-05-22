@@ -6,8 +6,10 @@ import {
   cancelJoinRequest,
   createGroup,
   createResource,
+  createStudySession,
   deleteGroup,
   deleteResource,
+  deleteStudySession,
   getGroup,
   getGroupStats,
   inviteToGroup,
@@ -21,8 +23,10 @@ import {
   listJoinRequests,
   listMyGroups,
   listResources,
+  listStudySessions,
   removeMember,
   reviewJoinRequest,
+  rsvpStudySession,
   setPinned,
   setRules,
   trackResource,
@@ -32,6 +36,7 @@ import {
 import {
   CreateGroupSchema,
   CreateResourceSchema,
+  CreateStudySessionSchema,
   GroupListQuerySchema,
   InviteToGroupSchema,
   JoinGroupSchema,
@@ -39,6 +44,7 @@ import {
   MembersQuerySchema,
   PaginationQuerySchema,
   ResourceListQuerySchema,
+  RsvpStudySessionSchema,
   SetPinnedSchema,
   SetRulesSchema,
   UpdateGroupSchema,
@@ -86,3 +92,9 @@ groupsRouter.patch('/:groupId/rules', validate(SetRulesSchema), setRules)
 
 // Analytics stats
 groupsRouter.get('/:groupId/stats', getGroupStats)
+
+// Study sessions
+groupsRouter.get('/:groupId/study-sessions', validateRequest({ query: PaginationQuerySchema }), listStudySessions)
+groupsRouter.post('/:groupId/study-sessions', validate(CreateStudySessionSchema), createStudySession)
+groupsRouter.delete('/:groupId/study-sessions/:sessionId', deleteStudySession)
+groupsRouter.post('/:groupId/study-sessions/:sessionId/rsvp', validate(RsvpStudySessionSchema), rsvpStudySession)

@@ -9,10 +9,12 @@ import type {
   AllowedRole,
   CreateGroupInput,
   CreateResourceInput,
+  CreateStudySessionInput,
   GroupListQuery,
   MembersQuery,
   PaginationQuery,
   ResourceListQuery,
+  RsvpStudySessionInput,
   UpdateGroupInput,
 } from './schema'
 
@@ -104,6 +106,26 @@ interface ResourceRow {
   created_at: Date
   uploader_full_name: string | null
   uploader_avatar_url: string | null
+}
+
+interface StudySessionRow {
+  id: string
+  group_id: string
+  university_id: string
+  created_by: string | null
+  title: string
+  description: string | null
+  location: string | null
+  is_online: boolean
+  online_link: string | null
+  starts_at: Date
+  ends_at: Date | null
+  capacity: number | null
+  rsvp_count: number
+  created_at: Date
+  creator_full_name: string | null
+  creator_avatar_url: string | null
+  own_rsvp: 'going' | 'not_going' | null
 }
 
 export class GroupsService {
@@ -1037,6 +1059,201 @@ export class GroupsService {
     return { pinnedText: text }
   }
 
+  async listStudySessions(context: AuthContext, groupId: string, query: PaginationQuery) {
+    await assertMemberAccess(context, groupId)
+
+    const [{ count }] = await db('group_study_sessions')
+      .where({ group_id: groupId, university_id: context.universityId })
+      .count<{ count: string }[]>({ count: '*' })
+
+    const rows = await db('group_study_sessions')
+      .where({ 'group_study_sessions.group_id': groupId, 'group_study_sessions.university_id': context.universityId })
+      .leftJoin('profiles as cp', 'cp.user_id', 'group_study_sessions.created_by')
+      .leftJoin('group_study_session_rsvps as my_rsvp', function (this: Knex.JoinClause) {
+        this.on('my_rsvp.session_id', '=', 'group_study_sessions.id')
+            .andOn('my_rsvp.user_id', '=', db.raw('?', [context.userId]))
+      })
+      .select<StudySessionRow[]>(
+        'group_study_sessions.id',
+        'group_study_sessions.group_id',
+        'group_study_sessions.university_id',
+        'group_study_sessions.created_by',
+        'group_study_sessions.title',
+        'group_study_sessions.description',
+        'group_study_sessions.location',
+        'group_study_sessions.is_online',
+        'group_study_sessions.online_link',
+        'group_study_sessions.starts_at',
+        'group_study_sessions.ends_at',
+        'group_study_sessions.capacity',
+        'group_study_sessions.rsvp_count',
+        'group_study_sessions.created_at',
+        'cp.full_name as creator_full_name',
+        'cp.avatar_url as creator_avatar_url',
+        'my_rsvp.status as own_rsvp',
+      )
+      .orderBy('group_study_sessions.starts_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map(toStudySession),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async createStudySession(context: AuthContext, groupId: string, input: CreateStudySessionInput) {
+    await assertMemberAccess(context, groupId)
+
+    let sessionId: string
+
+    await db.transaction(async (trx) => {
+      const [session] = await trx('group_study_sessions')
+        .insert({
+          group_id: groupId,
+          university_id: context.universityId,
+          created_by: context.userId,
+          title: input.title,
+          description: input.description ?? null,
+          location: input.location ?? null,
+          is_online: input.is_online,
+          online_link: input.online_link ?? null,
+          starts_at: input.starts_at,
+          ends_at: input.ends_at ?? null,
+          capacity: input.capacity ?? null,
+          rsvp_count: 1, // creator auto-RSVPs
+        })
+        .returning<{ id: string }[]>('id')
+
+      sessionId = session.id
+
+      // Creator auto-RSVPs as going
+      await trx('group_study_session_rsvps').insert({
+        session_id: session.id,
+        user_id: context.userId,
+        university_id: context.universityId,
+        status: 'going',
+      })
+    })
+
+    // Notify all group members except creator
+    const members = await db('group_members')
+      .where({ group_id: groupId })
+      .whereNot({ user_id: context.userId })
+      .select<{ user_id: string }[]>('user_id')
+
+    for (const member of members) {
+      await notificationQueue.add({
+        universityId: context.universityId,
+        userId: member.user_id,
+        type: 'group_study_session_created',
+        actorId: context.userId,
+        referenceId: groupId,
+        referenceType: 'group',
+        content: 'A new study session was created in your group',
+        payload: { sessionId: sessionId! },
+      })
+    }
+
+    const session = await db('group_study_sessions')
+      .where({ id: sessionId! })
+      .leftJoin('profiles as cp', 'cp.user_id', 'group_study_sessions.created_by')
+      .leftJoin('group_study_session_rsvps as my_rsvp', function (this: Knex.JoinClause) {
+        this.on('my_rsvp.session_id', '=', 'group_study_sessions.id')
+            .andOn('my_rsvp.user_id', '=', db.raw('?', [context.userId]))
+      })
+      .select<StudySessionRow>(
+        'group_study_sessions.*',
+        'cp.full_name as creator_full_name',
+        'cp.avatar_url as creator_avatar_url',
+        'my_rsvp.status as own_rsvp',
+      )
+      .first<StudySessionRow>()
+
+    return toStudySession(session!)
+  }
+
+  async deleteStudySession(context: AuthContext, groupId: string, sessionId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const session = await db('group_study_sessions')
+      .where({ id: sessionId, group_id: groupId })
+      .select<{ id: string; created_by: string | null }>('id', 'created_by')
+      .first()
+
+    if (!session) throw notFound('Study session not found', 'STUDY_SESSION_NOT_FOUND')
+
+    const membership = await db('group_members')
+      .where({ group_id: groupId, user_id: context.userId })
+      .select<{ role: string }>('role')
+      .first()
+
+    const isCreator = session.created_by === context.userId
+    const isPrivileged = membership && ['owner', 'admin'].includes(membership.role)
+
+    if (!isCreator && !isPrivileged) {
+      throw forbidden('Only the creator or group owner/admin can delete a study session', 'SESSION_DELETE_FORBIDDEN')
+    }
+
+    await db('group_study_sessions').where({ id: sessionId }).delete()
+    return { deleted: true }
+  }
+
+  async rsvpStudySession(context: AuthContext, groupId: string, sessionId: string, status: 'going' | 'not_going') {
+    await assertMemberAccess(context, groupId)
+
+    // Fetch session with a row lock
+    const session = await db('group_study_sessions')
+      .where({ id: sessionId, group_id: groupId })
+      .select<{ id: string; capacity: number | null; rsvp_count: number }>('id', 'capacity', 'rsvp_count')
+      .first()
+
+    if (!session) throw notFound('Study session not found', 'STUDY_SESSION_NOT_FOUND')
+
+    // Get previous RSVP status
+    const existing = await db('group_study_session_rsvps')
+      .where({ session_id: sessionId, user_id: context.userId })
+      .select<{ status: string }>('status')
+      .first()
+
+    // Capacity check (only when going and was not already going)
+    if (status === 'going' && existing?.status !== 'going') {
+      if (session.capacity !== null && session.rsvp_count >= session.capacity) {
+        throw conflict('Session is at capacity', 'SESSION_AT_CAPACITY')
+      }
+    }
+
+    await db.transaction(async (trx) => {
+      // Upsert RSVP
+      await trx('group_study_session_rsvps')
+        .insert({
+          session_id: sessionId,
+          user_id: context.userId,
+          university_id: context.universityId,
+          status,
+          updated_at: new Date(),
+        })
+        .onConflict(['session_id', 'user_id'])
+        .merge(['status', 'updated_at'])
+
+      // Update rsvp_count
+      if (status === 'going' && (!existing || existing.status === 'not_going')) {
+        await trx('group_study_sessions').where({ id: sessionId }).increment('rsvp_count', 1)
+      } else if (status === 'not_going' && existing?.status === 'going') {
+        await trx('group_study_sessions').where({ id: sessionId }).decrement('rsvp_count', 1)
+      }
+    })
+
+    const updated = await db('group_study_sessions')
+      .where({ id: sessionId })
+      .select<{ rsvp_count: number }>('rsvp_count')
+      .first()
+
+    return { status, rsvpCount: updated?.rsvp_count ?? 0 }
+  }
+
   async setRules(context: AuthContext, groupId: string, content: string) {
     const access = await assertGroupAccess(context, groupId)
     assertCanAdminGroup(access.user_role)
@@ -1272,6 +1489,28 @@ function resolveAllowedRoleOnCreate(creatorRole: UserRole, requested: AllowedRol
 
 function isBelowAdmin(role: GroupRole) {
   return role === 'moderator' || role === 'member'
+}
+
+function toStudySession(row: StudySessionRow) {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    createdBy: row.created_by,
+    title: row.title,
+    description: row.description,
+    location: row.location,
+    isOnline: row.is_online,
+    onlineLink: row.online_link,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    capacity: row.capacity,
+    rsvpCount: row.rsvp_count,
+    createdAt: row.created_at,
+    ownRsvp: row.own_rsvp,
+    creator: row.created_by
+      ? { id: row.created_by, fullName: row.creator_full_name, avatarUrl: row.creator_avatar_url }
+      : null,
+  }
 }
 
 function toGroup(row: GroupRow) {
