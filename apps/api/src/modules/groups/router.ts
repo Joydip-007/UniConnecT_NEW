@@ -9,6 +9,7 @@ import {
   deleteGroup,
   deleteResource,
   getGroup,
+  getGroupStats,
   inviteToGroup,
   joinOrRequestGroup,
   leaveGroup,
@@ -82,3 +83,6 @@ groupsRouter.patch('/:groupId/resources/:resourceId/track', trackResource)
 // Pinned announcement + rules
 groupsRouter.patch('/:groupId/pinned', validate(SetPinnedSchema), setPinned)
 groupsRouter.patch('/:groupId/rules', validate(SetRulesSchema), setRules)
+
+// Analytics stats
+groupsRouter.get('/:groupId/stats', getGroupStats)

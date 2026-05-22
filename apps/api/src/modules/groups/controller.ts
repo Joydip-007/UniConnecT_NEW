@@ -203,6 +203,11 @@ export const setRules = asyncHandler(async (req, res) => {
   )
 })
 
+export const getGroupStats = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.getGroupStats(context, getGroupIdParam(req)))
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 

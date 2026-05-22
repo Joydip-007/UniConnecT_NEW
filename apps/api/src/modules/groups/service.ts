@@ -494,7 +494,14 @@ export class GroupsService {
       .join('profiles', 'profiles.user_id', 'users.id')
       .where({ 'group_members.group_id': groupId })
     if (query.search) {
-      countQuery.andWhereILike('profiles.full_name', `%${query.search}%`)
+      countQuery.where((builder) => {
+        builder
+          .whereILike('profiles.full_name', `%${query.search}%`)
+          .orWhereILike('profiles.department', `%${query.search}%`)
+      })
+    }
+    if (query.role) {
+      countQuery.andWhere('group_members.role', query.role)
     }
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
@@ -502,7 +509,15 @@ export class GroupsService {
     const rows = (await memberSelectQuery(db)
       .where('group_members.group_id', groupId)
       .modify((builder) => {
-        if (query.search) builder.andWhereILike('profiles.full_name', `%${query.search}%`)
+        if (query.search) {
+          builder.where((q) => {
+            q.whereILike('profiles.full_name', `%${query.search}%`)
+             .orWhereILike('profiles.department', `%${query.search}%`)
+          })
+        }
+        if (query.role) {
+          builder.andWhere('group_members.role', query.role)
+        }
       })
       .orderByRaw("CASE group_members.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'moderator' THEN 3 ELSE 4 END")
       .orderBy('profiles.full_name', 'asc')
@@ -510,6 +525,55 @@ export class GroupsService {
       .offset((query.page - 1) * query.limit)) as MemberRow[]
 
     return { items: rows.map(toMember), total, page: query.page, limit: query.limit }
+  }
+
+  async getGroupStats(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!access.user_role || !['owner', 'admin', 'moderator'].includes(access.user_role)) {
+      throw forbidden('Only group admin or moderator can view stats', 'GROUP_ROLE_FORBIDDEN')
+    }
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+    const [
+      [newMembersRow],
+      [postsRow],
+      [activeContributorsRow],
+      [pendingRow],
+      [upcomingRow],
+    ] = await Promise.all([
+      db('group_members')
+        .where({ group_id: groupId })
+        .andWhere('joined_at', '>=', sevenDaysAgo)
+        .count<{ count: string }[]>({ count: '*' }),
+
+      db('posts')
+        .where({ group_id: groupId })
+        .andWhere('created_at', '>=', sevenDaysAgo)
+        .count<{ count: string }[]>({ count: '*' }),
+
+      db('posts')
+        .where({ group_id: groupId })
+        .andWhere('created_at', '>=', sevenDaysAgo)
+        .countDistinct<{ count: string }[]>({ count: 'author_id' }),
+
+      db('group_join_requests')
+        .where({ group_id: groupId, status: 'pending' })
+        .count<{ count: string }[]>({ count: '*' }),
+
+      db('group_study_sessions')
+        .where({ group_id: groupId })
+        .andWhere('starts_at', '>', new Date())
+        .count<{ count: string }[]>({ count: '*' }),
+    ])
+
+    return {
+      newMembersThisWeek: Number(newMembersRow.count),
+      postsThisWeek: Number(postsRow.count),
+      activeContributors: Number(activeContributorsRow.count),
+      pendingJoinRequests: Number(pendingRow.count),
+      upcomingStudySessions: Number(upcomingRow.count),
+    }
   }
 
   async updateMember(context: AuthContext, groupId: string, targetUserId: string, role: GroupRole) {
