@@ -15,10 +15,19 @@ interface MembersPage {
   page: number
 }
 
+const ROLE_OPTIONS = [
+  { value: '', label: 'All roles' },
+  { value: 'owner', label: 'Owner' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'moderator', label: 'Moderator' },
+  { value: 'member', label: 'Member' },
+]
+
 export function MembersTab({ group }: { group: Group }) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
   const [inviteOpen, setInviteOpen] = useState(false)
 
   useEffect(() => {
@@ -29,11 +38,15 @@ export function MembersTab({ group }: { group: Group }) {
   const canInvite = !group.isSystem && (group.userRole === 'owner' || group.userRole === 'admin')
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<MembersPage>({
-    queryKey: ['groups', 'members', group.id, debounced],
+    queryKey: ['groups', 'members', group.id, debounced, roleFilter],
     queryFn: ({ pageParam }) =>
       api
         .get<{ data: MembersPage }>(`/groups/${group.id}/members`, {
-          params: { page: pageParam, ...(debounced ? { search: debounced } : {}) },
+          params: {
+            page: pageParam,
+            ...(debounced ? { search: debounced } : {}),
+            ...(roleFilter ? { role: roleFilter } : {}),
+          },
         })
         .then((r) => r.data.data),
     initialPageParam: 1,
@@ -88,6 +101,25 @@ export function MembersTab({ group }: { group: Group }) {
             }}
           />
         </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          style={{
+            padding: '7px 10px',
+            fontSize: 12,
+            fontWeight: 400,
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-pill)',
+            color: roleFilter ? 'var(--text-primary)' : 'var(--text-secondary)',
+            outline: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          {ROLE_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
         {canInvite && (
           <GhostBtn onClick={() => setInviteOpen(true)} style={{ padding: '6px 14px', fontSize: 13 }}>
             <UserPlus size={13} strokeWidth={1.5} />

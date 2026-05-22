@@ -17,6 +17,10 @@ export interface Group {
   isSystem: boolean
   department: string | null
   createdBy: string
+  pinnedText?: string | null
+  pinnedAt?: string | null
+  pinnedBy?: string | null
+  rulesMd?: string | null
 }
 
 export interface GroupMember {

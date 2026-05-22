@@ -7,6 +7,7 @@ import type {
   CreateGroupInput,
   GroupListQuery,
   InviteToGroupInput,
+  JoinRequestActionInput,
   MembersQuery,
   PaginationQuery,
   UpdateGroupInput,
@@ -48,6 +49,44 @@ export const deleteGroup = asyncHandler(async (req: Request, res: Response) => {
 export const joinGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.joinGroup(context, getGroupIdParam(req)), 201)
+})
+
+export const joinOrRequestGroup = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.joinOrRequest(context, getGroupIdParam(req), req.body?.message)
+  if (result.kind === 'requested') {
+    sendSuccess(res, { requested: true, requestId: result.requestId }, 202)
+  } else {
+    sendSuccess(res, result.group, 201)
+  }
+})
+
+export const listJoinRequests = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listJoinRequests(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const reviewJoinRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.reviewJoinRequest(
+      context,
+      getGroupIdParam(req),
+      Array.isArray(req.params.requestId) ? req.params.requestId[0] : req.params.requestId,
+      (req.body as JoinRequestActionInput).action,
+    ),
+  )
+})
+
+export const cancelJoinRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.cancelJoinRequest(context, getGroupIdParam(req)))
 })
 
 export const leaveGroup = asyncHandler(async (req: Request, res: Response) => {
@@ -123,6 +162,89 @@ export const inviteToGroup = asyncHandler(async (req: Request, res: Response) =>
   sendSuccess(res, result, 201)
 })
 
+export const listResources = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listResources(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as import('./schema').ResourceListQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const createResource = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.createResource(context, getGroupIdParam(req), req.body as import('./schema').CreateResourceInput), 201)
+})
+
+export const deleteResource = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.deleteResource(context, getGroupIdParam(req), getResourceIdParam(req)))
+})
+
+export const trackResource = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.trackResource(context, getGroupIdParam(req), getResourceIdParam(req)))
+})
+
+export const setPinned = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.setPinned(context, getGroupIdParam(req), (req.body as import('./schema').SetPinnedInput).text),
+  )
+})
+
+export const setRules = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.setRules(context, getGroupIdParam(req), (req.body as import('./schema').SetRulesInput).content),
+  )
+})
+
+export const getGroupStats = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.getGroupStats(context, getGroupIdParam(req)))
+})
+
+export const listStudySessions = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listStudySessions(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as import('./schema').PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const createStudySession = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createStudySession(context, getGroupIdParam(req), req.body as import('./schema').CreateStudySessionInput),
+    201,
+  )
+})
+
+export const deleteStudySession = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.deleteStudySession(context, getGroupIdParam(req), getSessionIdParam(req)))
+})
+
+export const rsvpStudySession = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.rsvpStudySession(
+      context,
+      getGroupIdParam(req),
+      getSessionIdParam(req),
+      (req.body as import('./schema').RsvpStudySessionInput).status,
+    ),
+  )
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 
@@ -140,5 +262,15 @@ function getGroupIdParam(req: Request) {
 
 function getUserIdParam(req: Request) {
   const value = req.params.userId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getResourceIdParam(req: Request) {
+  const value = req.params.resourceId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getSessionIdParam(req: Request) {
+  const value = req.params.sessionId
   return Array.isArray(value) ? value[0] : value
 }

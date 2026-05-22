@@ -15,7 +15,8 @@ export const GroupListQuerySchema = PaginationQuerySchema.extend({
 })
 
 export const MembersQuerySchema = PaginationQuerySchema.extend({
-  search: z.string().trim().min(1).optional(),
+  search: z.string().trim().optional(),
+  role: GroupRoleSchema.optional(),
 })
 
 export const CreateGroupSchema = z.object({
@@ -58,3 +59,67 @@ export type UpdateGroupInput = z.infer<typeof UpdateGroupSchema>
 export type UpdateMemberInput = z.infer<typeof UpdateMemberSchema>
 export type InviteToGroupInput = z.infer<typeof InviteToGroupSchema>
 export type AllowedRole = z.infer<typeof AllowedRoleSchema>
+
+// ── Join requests ─────────────────────────────────────────────
+export const JoinGroupSchema = z.object({
+  message: z.string().trim().max(500).optional(),
+})
+
+export const JoinRequestActionSchema = z.object({
+  action: z.enum(['approve', 'decline']),
+})
+
+// ── Group resources ──────────────────────────────────────────
+export const ResourceCategorySchema = z.enum(['notes', 'syllabus', 'past_papers', 'assignments', 'other'])
+
+export const CreateResourceSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  url: z.string().url(),
+  category: ResourceCategorySchema,
+  description: z.string().trim().max(1000).optional(),
+})
+
+export const ResourceListQuerySchema = PaginationQuerySchema.extend({
+  category: ResourceCategorySchema.optional(),
+})
+
+// ── Pinned announcement ───────────────────────────────────────
+export const SetPinnedSchema = z.object({
+  text: z.string().trim().max(1000).nullable(),
+})
+
+// ── Group rules / about ────────────────────────────────────────
+export const SetRulesSchema = z.object({
+  content: z.string().max(5000),
+})
+
+// ── Study sessions ────────────────────────────────────────────
+export const CreateStudySessionSchema = z
+  .object({
+    title: z.string().trim().min(1).max(255),
+    description: z.string().trim().optional(),
+    location: z.string().trim().max(255).optional(),
+    is_online: z.boolean().default(false),
+    online_link: z.string().url().optional(),
+    starts_at: z.string().datetime({ offset: true }),
+    ends_at: z.string().datetime({ offset: true }).optional(),
+    capacity: z.number().int().positive().optional(),
+  })
+  .refine((v) => !v.ends_at || new Date(v.ends_at) > new Date(v.starts_at), {
+    message: 'ends_at must be after starts_at',
+    path: ['ends_at'],
+  })
+
+export const RsvpStudySessionSchema = z.object({
+  status: z.enum(['going', 'not_going']),
+})
+
+export type JoinGroupInput = z.infer<typeof JoinGroupSchema>
+export type JoinRequestActionInput = z.infer<typeof JoinRequestActionSchema>
+export type ResourceCategory = z.infer<typeof ResourceCategorySchema>
+export type CreateResourceInput = z.infer<typeof CreateResourceSchema>
+export type ResourceListQuery = z.infer<typeof ResourceListQuerySchema>
+export type SetPinnedInput = z.infer<typeof SetPinnedSchema>
+export type SetRulesInput = z.infer<typeof SetRulesSchema>
+export type CreateStudySessionInput = z.infer<typeof CreateStudySessionSchema>
+export type RsvpStudySessionInput = z.infer<typeof RsvpStudySessionSchema>
