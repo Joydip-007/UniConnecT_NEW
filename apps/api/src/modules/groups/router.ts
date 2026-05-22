@@ -22,6 +22,8 @@ import {
   listResources,
   removeMember,
   reviewJoinRequest,
+  setPinned,
+  setRules,
   trackResource,
   updateGroup,
   updateMember,
@@ -36,6 +38,8 @@ import {
   MembersQuerySchema,
   PaginationQuerySchema,
   ResourceListQuerySchema,
+  SetPinnedSchema,
+  SetRulesSchema,
   UpdateGroupSchema,
   UpdateMemberSchema,
 } from './schema'
@@ -74,3 +78,7 @@ groupsRouter.get('/:groupId/resources', validateRequest({ query: ResourceListQue
 groupsRouter.post('/:groupId/resources', validate(CreateResourceSchema), createResource)
 groupsRouter.delete('/:groupId/resources/:resourceId', deleteResource)
 groupsRouter.patch('/:groupId/resources/:resourceId/track', trackResource)
+
+// Pinned announcement + rules
+groupsRouter.patch('/:groupId/pinned', validate(SetPinnedSchema), setPinned)
+groupsRouter.patch('/:groupId/rules', validate(SetRulesSchema), setRules)

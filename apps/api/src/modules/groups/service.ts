@@ -45,6 +45,10 @@ interface GroupRow {
   is_system: boolean
   department: string | null
   user_role: GroupRole | null
+  pinned_text: string | null
+  pinned_at: Date | null
+  pinned_by: string | null
+  rules_md: string | null
 }
 
 interface GroupAccessRow {
@@ -160,12 +164,13 @@ export class GroupsService {
 
   async getGroup(context: AuthContext, groupId: string) {
     const row = await groupSelectQuery(db, context.userId)
+      .select('groups.rules_md')
       .where({ 'groups.id': groupId, 'groups.university_id': context.universityId })
       .first<GroupRow>()
 
     if (!row) throw notFound('Group not found', 'GROUP_NOT_FOUND')
     assertCanViewGroup(row)
-    return toGroup(row)
+    return { ...toGroup(row), rulesMd: row.rules_md }
   }
 
   async updateGroup(context: AuthContext, groupId: string, input: UpdateGroupInput) {
@@ -929,6 +934,55 @@ export class GroupsService {
     if (!row) throw notFound('Group member not found', 'GROUP_MEMBER_NOT_FOUND')
     return toMember(row)
   }
+
+  async setPinned(context: AuthContext, groupId: string, text: string | null) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!access.user_role || !['owner', 'admin', 'moderator'].includes(access.user_role)) {
+      throw forbidden('Only owner, admin, or moderator can set pinned text', 'GROUP_ROLE_FORBIDDEN')
+    }
+
+    if (text === null) {
+      await db('groups')
+        .where({ id: groupId, university_id: context.universityId })
+        .update({ pinned_text: null, pinned_at: null, pinned_by: null })
+      return { pinnedText: null }
+    }
+
+    await db('groups')
+      .where({ id: groupId, university_id: context.universityId })
+      .update({ pinned_text: text, pinned_at: new Date(), pinned_by: context.userId })
+
+    const members = await db('group_members')
+      .where({ group_id: groupId })
+      .whereNot({ user_id: context.userId })
+      .select<{ user_id: string }[]>('user_id')
+
+    for (const member of members) {
+      await notificationQueue.add({
+        universityId: context.universityId,
+        userId: member.user_id,
+        type: 'group_pinned_update',
+        actorId: context.userId,
+        referenceId: groupId,
+        referenceType: 'group',
+        content: 'A new announcement was pinned in your group',
+        payload: {},
+      })
+    }
+
+    return { pinnedText: text }
+  }
+
+  async setRules(context: AuthContext, groupId: string, content: string) {
+    const access = await assertGroupAccess(context, groupId)
+    assertCanAdminGroup(access.user_role)
+
+    await db('groups')
+      .where({ id: groupId, university_id: context.universityId })
+      .update({ rules_md: content })
+
+    return { rulesMd: content }
+  }
 }
 
 export const groupsService = new GroupsService()
@@ -1033,6 +1087,9 @@ function groupSelectQuery(knex: Knex, userId: string) {
       'groups.is_system',
       'groups.department',
       'current_member.role as user_role',
+      'groups.pinned_text',
+      'groups.pinned_at',
+      'groups.pinned_by',
     )
 }
 
@@ -1171,6 +1228,9 @@ function toGroup(row: GroupRow) {
     allowedRole: row.allowed_role,
     isSystem: row.is_system,
     department: row.department,
+    pinnedText: row.pinned_text,
+    pinnedAt: row.pinned_at,
+    pinnedBy: row.pinned_by,
   }
 }
 

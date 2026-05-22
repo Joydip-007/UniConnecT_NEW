@@ -187,6 +187,22 @@ export const trackResource = asyncHandler(async (req, res) => {
   sendSuccess(res, await groupsService.trackResource(context, getGroupIdParam(req), getResourceIdParam(req)))
 })
 
+export const setPinned = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.setPinned(context, getGroupIdParam(req), (req.body as import('./schema').SetPinnedInput).text),
+  )
+})
+
+export const setRules = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.setRules(context, getGroupIdParam(req), (req.body as import('./schema').SetRulesInput).content),
+  )
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 
