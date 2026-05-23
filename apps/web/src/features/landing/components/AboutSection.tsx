@@ -2,9 +2,9 @@ import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 
 const TEAM = [
   { initials: 'JD', color: 'var(--uc-indigo)',  name: 'Joydip Datta',   role: 'Full-stack' },
-  { initials: 'SF', color: 'var(--uc-orange)',   name: 'Sabbir Faisal',  role: 'Backend' },
-  { initials: 'MH', color: 'var(--uc-cyan)',     name: 'Mahir Hossain',  role: 'Frontend' },
-  { initials: 'MA', color: 'var(--uc-mint)',     name: 'Mariam Akter',   role: 'Design' },
+  { initials: 'SF', color: 'var(--uc-orange)',   name: 'Saem Ferdous',  role: 'Backend' },
+  { initials: 'MH', color: 'var(--uc-cyan)',     name: 'Monabbur Hosen Bhuiyan',  role: 'Frontend' },
+  { initials: 'MA', color: 'var(--uc-mint)',     name: 'Mahfujur Rahman Himel Akon',   role: 'Design' },
 ]
 
 export function AboutSection() {

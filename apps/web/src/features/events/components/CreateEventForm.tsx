@@ -24,6 +24,7 @@ interface EventForm {
   startsAt: string  // datetime-local: "2026-05-16T10:00"
   endsAt: string
   capacity: string  // numeric string; '' = unlimited
+  isPublished: boolean
 }
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ const EMPTY: EventForm = {
   startsAt: '',
   endsAt: '',
   capacity: '',
+  isPublished: true,
 }
 
 export function CreateEventForm({ onClose }: Props) {
@@ -161,6 +163,7 @@ export function CreateEventForm({ onClose }: Props) {
         endsAt: new Date(form.endsAt).toISOString(),
         ...(form.capacity && { capacity: parseInt(form.capacity, 10) }),
         ...(coverUrl && { coverUrl }),
+        isPublished: form.isPublished,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] })
@@ -578,6 +581,33 @@ export function CreateEventForm({ onClose }: Props) {
             </span>
           </div>
 
+          {/* Publish toggle */}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              cursor: 'pointer',
+              padding: '10px 12px',
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-md)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.isPublished}
+              onChange={(e) => set('isPublished', e.target.checked)}
+              style={{ width: 14, height: 14, accentColor: 'var(--uc-indigo)', cursor: 'pointer' }}
+            />
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}>
+              Publish immediately
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+              {form.isPublished ? 'Visible to all members' : 'Save as draft'}
+            </span>
+          </label>
+
           {/* Server error */}
           {createMutation.isError && (
             <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--uc-red)' }}>
@@ -602,7 +632,7 @@ export function CreateEventForm({ onClose }: Props) {
               type="submit"
               disabled={!isValid || coverUploading || createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating…' : 'Create event'}
+              {createMutation.isPending ? 'Creating…' : (form.isPublished ? 'Create & publish' : 'Save draft')}
             </OrangeBtn>
           </div>
         </form>

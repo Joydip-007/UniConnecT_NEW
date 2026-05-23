@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Newspaper } from 'lucide-react'
+import { Newspaper, Plus } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { api } from '@/lib/axios'
 import { EmptyState } from '@/components/EmptyState'
+import { OrangeBtn } from '@/components/Button'
+import { useAuthStore } from '@/stores/authStore'
+import { CreateNewsForm } from '@/features/news/components/CreateNewsForm'
 
 interface NewsItem {
   id: string
@@ -26,6 +30,9 @@ const CATEGORIES = ['all', 'academic', 'events', 'campus'] as const
 export default function NewsPage() {
   const [params, setParams] = useSearchParams()
   const category = params.get('category') ?? 'all'
+  const role = useAuthStore((s) => s.user?.role)
+  const canCreate = role === 'faculty' || role === 'admin'
+  const [showCreate, setShowCreate] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['news', 'list', { category }],
@@ -40,7 +47,7 @@ export default function NewsPage() {
   const news = data ?? []
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: canCreate ? 80 : 0 }}>
       <nav style={{ display: 'flex', gap: 6, background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 6 }}>
         {CATEGORIES.map((item) => (
           <button
@@ -101,6 +108,23 @@ export default function NewsPage() {
           ))}
         </div>
       )}
+      {/* Floating create button — faculty / admin only */}
+      {canCreate && (
+        <OrangeBtn
+          onClick={() => setShowCreate(true)}
+          style={{
+            position: 'fixed',
+            bottom: 28,
+            right: 28,
+            zIndex: 50,
+          }}
+        >
+          <Plus size={15} strokeWidth={2} />
+          Write article
+        </OrangeBtn>
+      )}
+
+      {showCreate && <CreateNewsForm onClose={() => setShowCreate(false)} />}
     </div>
   )
 }

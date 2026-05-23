@@ -37,6 +37,8 @@ export const CreateEventSchema = z
     endsAt: z.string().datetime({ offset: true }).nullable().optional(),
     capacity: z.number().int().positive().nullable().optional(),
     type: EventTypeSchema.default('general'),
+    is_published: z.boolean().optional(),
+    isPublished: z.boolean().optional(),
   })
   .transform((value) => ({
     group_id: value.group_id ?? value.groupId,
@@ -50,6 +52,7 @@ export const CreateEventSchema = z
     ends_at: value.ends_at ?? value.endsAt,
     capacity: value.capacity,
     type: value.type,
+    is_published: value.is_published ?? value.isPublished ?? false,
   }))
   .refine((value) => Boolean(value.starts_at), {
     message: 'starts_at is required',

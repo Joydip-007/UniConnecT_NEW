@@ -105,7 +105,7 @@ export class EventsService {
           ends_at: input.ends_at ? new Date(input.ends_at) : null,
           capacity: input.capacity ?? null,
           type: input.type,
-          is_published: false,
+          is_published: input.is_published ?? false,
         })
         .returning<{ id: string }[]>('id')
 

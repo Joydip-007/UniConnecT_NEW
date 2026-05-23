@@ -149,7 +149,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
   const [localRsvp, setLocalRsvp]     = useState<RsvpStatus>(event.myRsvp)
   const [localCounts, setLocalCounts] = useState(event.rsvpCounts)
 
-  const meta   = TYPE_META[event.type]
+  const meta   = TYPE_META[event.type] ?? TYPE_META.general
   const ended  = isPast(parseISO(event.endDate ?? event.startDate))
   const full   = event.capacity !== null && localCounts.going >= event.capacity && localRsvp !== 'going'
 
