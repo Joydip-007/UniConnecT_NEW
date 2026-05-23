@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeSanitize from 'rehype-sanitize'
+import { Link } from 'react-router-dom'
+import { preprocessHashtags } from '@/utils/preprocessHashtags'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -256,6 +258,26 @@ function MenuBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; labe
   )
 }
 
+// ── Markdown components with hashtag link support ────────────────────────────
+
+const markdownComponents = {
+  // Route internal /explore/tag/... links through React Router Link (no full-page reload)
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+    if (href?.startsWith('/')) {
+      return (
+        <Link to={href} style={{ color: 'var(--uc-indigo-xl)', textDecoration: 'none' }}>
+          {children}
+        </Link>
+      )
+    }
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--uc-indigo-xl)' }}>
+        {children}
+      </a>
+    )
+  },
+}
+
 // ── PostCard ──────────────────────────────────────────────────────────────────
 
 export interface PostCardProps {
@@ -372,7 +394,9 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               marginBottom: 12,
             }}
           >
-            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{post.content}</ReactMarkdown>
+            <ReactMarkdown rehypePlugins={[rehypeSanitize]} components={markdownComponents}>
+              {preprocessHashtags(post.content)}
+            </ReactMarkdown>
           </div>
         )}
 
