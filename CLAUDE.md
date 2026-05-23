@@ -79,23 +79,27 @@ All requests must include the `x-university-domain` header (e.g. `uiu.ac.bd`). T
 
 Socket.io on the same HTTP server, scaled via Redis pub/sub adapter (two IORedis connections: `pubClient` + `subClient`). Client authenticates via `socket.handshake.auth.token`. On `TOKEN_EXPIRED`, the client silently refreshes then reconnects. Rooms: `uni:{universityId}` (feed/events/jobs), `user:{userId}` (personal notifications), `conv:{conversationId}` (chat). Services emit to rooms **after** DB write — never from route handlers. Use `getIo()` from `src/socket/index.ts` inside services.
 
+`conversations` has a `type` discriminator: `'direct'` (regular DM), `'group'` (group chat), `'mentorship'` (auto-created when a mentorship request is accepted). Mentorship threads also carry a `mentorship_request_id` back-reference via `mentorship_requests.conversation_id`.
+
 ### File uploads
 
 Presigned S3 PUT URL flow — client calls `POST /api/upload/presign`, uploads directly to S3, then sends the resulting URL to the relevant endpoint. File bytes never pass through the API server.
 
 ### Background jobs
 
-Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Three queues: `email`, `notification`, `badge`. Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue.
+Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Five queues: `email`, `notification`, `badge`, `group-digest` (weekly group digest cron), `mentorship` (48 h alumni reminder + 7 d request auto-expiry). Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue.
 
 ### Backend module structure
 
 All feature modules live under `apps/api/src/modules/`. Each module follows the same shape: `router.ts` (route declarations only), `controller.ts` (request/response handling), `service.ts` (all business logic + DB access), `schema.ts` (Zod schemas), `index.ts` (barrel).
 
-Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`.
+Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`, `explore`.
 
 The `admin` module (`/api/v1/admin`) requires `admin` or `staff` role and exposes: stats, user list + role/status management, invitations (create/list/delete), content reports (list/resolve).
 
-The `mentorship` module has a points economy: `POINTS_PER_SESSION = 10`, `POINTS_PER_USD = 100`, and supports gift card redemption.
+The `campus` module covers lost-and-found items and shuttle schedules (no dedicated `lost-found` or `shuttle` module — both live under `/api/v1/campus`).
+
+The `mentorship` module has a points economy (`POINTS_PER_SESSION = 10`, `POINTS_PER_USD = 100`) and supports gift card redemption. It also manages: a `mentorship_sessions` child table (per-session date/duration/topic/notes, editable by either party), alumni capacity enforcement (`max_mentees` on profiles, default 3, checked at accept time), Bull lifecycle jobs per request (48 h alumnus reminder → `request_reminder`; 7 d auto-expiry → `request_expire`, status transitions to `expired`), and automatic conversation creation on accept (`conversations.type = 'mentorship'`, FK `mentorship_requests.conversation_id`).
 
 ---
 
@@ -105,7 +109,7 @@ The `mentorship` module has a points economy: `POINTS_PER_SESSION = 10`, `POINTS
 
 Every router applies `resolveUniversity` first (resolves by `x-university-domain` header or JWT), then `requireAuth` for protected routes. Validation uses:
 
-- `validateBody(schema)` — validates `req.body` against a Zod schema
+- `validate(schema)` — validates `req.body` against a Zod schema (`validateBody` is an alias; prefer `validate`)
 - `validateRequest({ body?, params?, query? })` — validates multiple parts; use when you need params or query validation too
 
 ### Response helpers (`src/utils/response.ts`)
