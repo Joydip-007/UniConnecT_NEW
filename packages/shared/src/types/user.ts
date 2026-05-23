@@ -16,6 +16,7 @@ export interface UserProfile {
   isOpenToWork: boolean
   isOpenToMentorship: boolean
   mentorshipPoints: number
+  maxMentees: number
 }
 
 export interface User {

@@ -1,4 +1,4 @@
-export type RequestStatus = 'pending' | 'accepted' | 'declined' | 'completed'
+export type RequestStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'expired'
 
 export interface AlumniMentor {
   id: string
@@ -9,6 +9,8 @@ export interface AlumniMentor {
   batchYear: string | null
   skills: string[]
   avatarUrl: string | null
+  maxMentees: number
+  currentMentees: number
 }
 
 export interface PageResult<T> {
@@ -23,6 +25,7 @@ export interface MyRequest {
   message: string
   status: RequestStatus
   sessionNotes: string | null
+  conversationId: string | null
   createdAt: string
   alumni: {
     id: string
@@ -39,6 +42,7 @@ export interface IncomingRequest {
   message: string
   status: RequestStatus
   sessionNotes: string | null
+  conversationId: string | null
   createdAt: string
   student: {
     id: string
@@ -48,6 +52,18 @@ export interface IncomingRequest {
     department: string | null
     batchYear: string | null
   }
+}
+
+export interface MentorshipSession {
+  id: string
+  requestId: string
+  createdBy: string
+  sessionDate: string     // 'YYYY-MM-DD'
+  durationMinutes: number
+  topic: string
+  notes: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ToastItem {

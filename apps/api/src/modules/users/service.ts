@@ -28,6 +28,7 @@ interface UserProfileRow {
   is_open_to_work: boolean
   is_open_to_mentorship: boolean
   mentorship_points: number
+  max_mentees: number
 }
 
 interface CountRow {
@@ -363,6 +364,7 @@ function getUserProfileQuery() {
       'profiles.is_open_to_work',
       'profiles.is_open_to_mentorship',
       'profiles.mentorship_points',
+      'profiles.max_mentees',
     )
 }
 
@@ -413,6 +415,7 @@ function toUserProfile(row: UserProfileRow, options: { includePhone: boolean }) 
       isOpenToWork: row.is_open_to_work,
       isOpenToMentorship: row.is_open_to_mentorship,
       mentorshipPoints: row.mentorship_points,
+      maxMentees: row.max_mentees,
     },
   }
 }

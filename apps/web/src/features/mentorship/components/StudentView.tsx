@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Users } from 'lucide-react'
 import { api } from '@/lib/axios'
+import { socket } from '@/lib/socket'
 import { useAuthStore } from '@/stores/authStore'
 import { EmptyState } from '@/components/EmptyState'
 import type { AddToast, AlumniMentor, MyRequest, PageResult } from '../types'
@@ -9,6 +10,7 @@ import { AlumniCard } from './AlumniCard'
 import { AlumniCardSkeleton, RequestRowSkeleton } from './Skeletons'
 import { MyRequestRow } from './MyRequestRow'
 import { RequestModal } from './RequestModal'
+import { SessionLogPanel } from './SessionLogPanel'
 
 interface StudentViewProps {
   addToast: AddToast
@@ -24,7 +26,7 @@ export function StudentView({ addToast }: StudentViewProps) {
   const browseRef = useRef<HTMLDivElement>(null)
 
   const alumniQueryKey = ['mentorship', 'alumni', { universityId }] as const
-  const myRequestsQueryKey = ['mentorship', 'requests', 'mine'] as const
+  const myRequestsQueryKey = useMemo(() => ['mentorship', 'requests', 'mine'] as const, [])
 
   const {
     data: alumniData,
@@ -73,6 +75,24 @@ export function StudentView({ addToast }: StudentViewProps) {
   }, [hasMoreAlumni, isFetchingMoreAlumni, fetchMoreAlumni])
 
   const alumni = alumniData?.pages.flatMap((p) => p.items) ?? []
+
+  // Socket handlers for request lifecycle events
+  useEffect(() => {
+    function onAccepted() {
+      void queryClient.invalidateQueries({ queryKey: myRequestsQueryKey })
+      addToast('Your request was accepted! A chat thread has been opened.', 'success')
+    }
+    function onExpired() {
+      void queryClient.invalidateQueries({ queryKey: myRequestsQueryKey })
+      addToast('A mentorship request expired after 7 days without a response.', 'info')
+    }
+    socket.on('mentorship:request:accepted', onAccepted)
+    socket.on('mentorship:request:expired', onExpired)
+    return () => {
+      socket.off('mentorship:request:accepted', onAccepted)
+      socket.off('mentorship:request:expired', onExpired)
+    }
+  }, [queryClient, addToast, myRequestsQueryKey])
 
   function handleRequestSuccess(alumniName: string) {
     setModalAlumni(null)
@@ -166,7 +186,12 @@ export function StudentView({ addToast }: StudentViewProps) {
           )}
 
           {myRequests.map((req) => (
-            <MyRequestRow key={req.id} request={req} />
+            <div key={req.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <MyRequestRow request={req} />
+              {req.status === 'accepted' && user && (
+                <SessionLogPanel requestId={req.id} currentUserId={user.id} />
+              )}
+            </div>
           ))}
 
           {!isLoadingMine && myRequests.length === 0 && (

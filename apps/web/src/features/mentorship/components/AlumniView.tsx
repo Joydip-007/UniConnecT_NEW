@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
 import { BookOpen, History, Inbox, Sparkles } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { api } from '@/lib/axios'
@@ -12,6 +13,7 @@ import { AlumniMentorToggle } from './AlumniMentorToggle'
 import { IncomingRequestCard } from './IncomingRequestCard'
 import { RequestRowSkeleton } from './Skeletons'
 import { RewardsPanel } from './RewardsPanel'
+import { SessionLogPanel } from './SessionLogPanel'
 
 type AlumniTab = 'active' | 'previous' | 'rewards'
 
@@ -27,10 +29,23 @@ interface AlumniViewProps {
 
 export function AlumniView({ addToast }: AlumniViewProps) {
   const user = useAuthStore((s) => s.user)
+  const updateProfile = useAuthStore((s) => s.updateProfile)
   const isOpenToMentorship = user?.profile.isOpenToMentorship ?? false
+  const maxMentees = user?.profile.maxMentees ?? 3
 
   const [activeTab, setActiveTab] = useState<AlumniTab>('active')
   const optInMutation = useMentorshipOptIn()
+
+  const maxMenteesMutation = useMutation({
+    mutationFn: (value: number) =>
+      api.patch('/users/me', { maxMentees: value }).then((r) => r.data.data),
+    onMutate: (value) => {
+      updateProfile({ maxMentees: value })
+    },
+    onError: () => {
+      addToast('Failed to update mentee limit.', 'error')
+    },
+  })
 
   function handleToggle(next: boolean) {
     optInMutation.mutate(next, {
@@ -47,6 +62,8 @@ export function AlumniView({ addToast }: AlumniViewProps) {
         <AlumniMentorToggle
           isOn={false}
           isUpdating={optInMutation.isPending}
+          maxMentees={maxMentees}
+          onMaxMenteesChange={(v) => maxMenteesMutation.mutate(v)}
           onChange={handleToggle}
         />
         <EmptyState
@@ -62,7 +79,9 @@ export function AlumniView({ addToast }: AlumniViewProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <AlumniMentorToggle
         isOn={true}
-        isUpdating={optInMutation.isPending}
+        isUpdating={optInMutation.isPending || maxMenteesMutation.isPending}
+        maxMentees={maxMentees}
+        onMaxMenteesChange={(v) => maxMenteesMutation.mutate(v)}
         onChange={handleToggle}
       />
 
@@ -122,6 +141,7 @@ export function AlumniView({ addToast }: AlumniViewProps) {
 // ── ActiveRequests (pending + accepted) ───────────────────────────────────────
 
 function ActiveRequests({ addToast }: { addToast: AddToast }) {
+  const user = useAuthStore((s) => s.user)
   const queryClient = useQueryClient()
   const sentinelRef = useRef<HTMLDivElement>(null)
   const queryKey = ['mentorship', 'requests', 'incoming', { scope: 'active' }] as const
@@ -221,16 +241,20 @@ function ActiveRequests({ addToast }: { addToast: AddToast }) {
       )}
 
       {active.map((req) => (
-        <IncomingRequestCard
-          key={req.id}
-          request={req}
-          onStatusChange={(status) => updateStatusMutation.mutate({ requestId: req.id, status })}
-          isUpdating={
-            updateStatusMutation.isPending &&
-            updateStatusMutation.variables?.requestId === req.id
-          }
-          addToast={addToast}
-        />
+        <div key={req.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <IncomingRequestCard
+            request={req}
+            onStatusChange={(status) => updateStatusMutation.mutate({ requestId: req.id, status })}
+            isUpdating={
+              updateStatusMutation.isPending &&
+              updateStatusMutation.variables?.requestId === req.id
+            }
+            addToast={addToast}
+          />
+          {req.status === 'accepted' && user && (
+            <SessionLogPanel requestId={req.id} currentUserId={user.id} />
+          )}
+        </div>
       ))}
 
       {!isLoading && active.length === 0 && (

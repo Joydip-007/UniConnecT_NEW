@@ -5,6 +5,26 @@ export function StatusBadge({ status }: { status: RequestStatus }) {
   if (status === 'pending') return <Badge variant="pinned">Pending</Badge>
   if (status === 'accepted') return <Badge variant="alumni">Accepted</Badge>
   if (status === 'completed') return <Badge variant="neutral">Completed</Badge>
+  if (status === 'expired') {
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          fontSize: 11,
+          fontWeight: 500,
+          lineHeight: 1,
+          padding: '2px 9px',
+          borderRadius: 'var(--r-pill)',
+          background: 'rgba(100, 116, 139, 0.12)',
+          color: 'var(--text-tertiary)',
+        }}
+      >
+        Expired
+      </span>
+    )
+  }
+  // declined
   return (
     <span
       style={{

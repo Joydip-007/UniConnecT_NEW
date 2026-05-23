@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, XCircle } from 'lucide-react'
+import { CheckCircle, MessageCircle, XCircle } from 'lucide-react'
+import { isAxiosError } from 'axios'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, MintBtn } from '@/components/Button'
 import { api } from '@/lib/axios'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { PATHS } from '@/router/paths'
 import { formatDate } from '../constants'
 import type { AddToast, IncomingRequest, RequestStatus } from '../types'
 import { StatusBadge } from './StatusBadge'
@@ -26,6 +29,7 @@ export function IncomingRequestCard({
   const queryClient = useQueryClient()
   const [notes, setNotes] = useState(request.sessionNotes ?? '')
   const [isSavingNotes, setIsSavingNotes] = useState(false)
+  const [capacityError, setCapacityError] = useState<string | null>(null)
 
   useEffect(() => {
     setNotes(request.sessionNotes ?? '')
@@ -41,6 +45,25 @@ export function IncomingRequestCard({
       addToast('Failed to save notes. Please try again.', 'error')
     } finally {
       setIsSavingNotes(false)
+    }
+  }
+
+  async function handleAccept() {
+    setCapacityError(null)
+    try {
+      await api.patch(`/mentorship/requests/${request.id}`, { status: 'accepted' })
+      void queryClient.invalidateQueries({ queryKey: ['mentorship', 'requests', 'incoming'] })
+    } catch (err) {
+      if (
+        isAxiosError(err) &&
+        (err.response?.data as { code?: string })?.code === 'MENTOR_AT_CAPACITY'
+      ) {
+        setCapacityError(
+          "You've reached your mentee limit. Update your capacity in settings to accept more.",
+        )
+      } else {
+        addToast('Failed to accept request. Please try again.', 'error')
+      }
     }
   }
 
@@ -107,6 +130,24 @@ export function IncomingRequestCard({
         {request.message}
       </p>
 
+      {/* Capacity error inline banner */}
+      {capacityError && (
+        <div
+          style={{
+            padding: '10px 12px',
+            background: 'var(--uc-orange-bg)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-sm)',
+            fontSize: 12,
+            fontWeight: 400,
+            color: 'var(--uc-orange-l)',
+            lineHeight: 1.5,
+          }}
+        >
+          {capacityError}
+        </div>
+      )}
+
       {request.status === 'accepted' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>
@@ -141,9 +182,32 @@ export function IncomingRequestCard({
         </div>
       )}
 
+      {/* Open chat link for accepted requests */}
+      {request.status === 'accepted' && request.conversationId && (
+        <Link
+          to={`${PATHS.MESSAGES}/${request.conversationId}`}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--uc-indigo-xl)',
+            textDecoration: 'none',
+            width: 'fit-content',
+            transition: 'opacity 150ms',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.75' }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
+        >
+          <MessageCircle size={13} strokeWidth={2} />
+          Open chat
+        </Link>
+      )}
+
       {request.status === 'pending' && (
         <div style={{ display: 'flex', gap: 8 }}>
-          <MintBtn onClick={() => onStatusChange('accepted')} disabled={isUpdating}>
+          <MintBtn onClick={handleAccept} disabled={isUpdating}>
             <CheckCircle size={14} strokeWidth={2} />
             Accept
           </MintBtn>
