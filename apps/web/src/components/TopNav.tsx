@@ -222,7 +222,7 @@ export function TopNav() {
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && searchQuery.trim().length >= 2) {
-                navigate(`${PATHS.SEARCH}?q=${encodeURIComponent(searchQuery.trim())}`, { replace: true })
+                navigate(`${PATHS.EXPLORE}?q=${encodeURIComponent(searchQuery.trim())}`, { replace: true })
                 setPanelOpen(false)
                 e.currentTarget.blur()
               } else if (e.key === 'Escape') {

@@ -66,7 +66,7 @@ export function MobileBottomNav() {
 
   const items = [
     { icon: Home,          label: 'Home',     path: PATHS.FEED,          badge: 0                },
-    { icon: Compass,       label: 'Explore',  path: PATHS.SEARCH,        badge: 0                },
+    { icon: Compass,       label: 'Explore',  path: PATHS.EXPLORE,       badge: 0                },
     { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES,      badge: messageCount     },
     { icon: Bell,          label: 'Alerts',   path: PATHS.NOTIFICATIONS, badge: notificationCount },
   ]

@@ -64,7 +64,8 @@ export const router = createBrowserRouter([
 
           { path: PATHS.SHUTTLE, element: page(() => import('@/pages/ShuttlePage')) },
 
-          { path: PATHS.SEARCH, element: page(() => import('@/pages/SearchPage')) },
+          { path: PATHS.EXPLORE, element: page(() => import('@/pages/ExplorePage')) },
+          { path: PATHS.TAG, element: page(() => import('@/pages/TagPage')) },
         ],
       },
 
