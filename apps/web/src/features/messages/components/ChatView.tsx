@@ -40,6 +40,18 @@ export interface MessagesPage {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/**
+ * Safe wrapper around date-fns parseISO.
+ * Returns epoch (Jan 1 1970) instead of throwing when the input is null,
+ * undefined, or an unrecognised format — keeps the render phase crash-free
+ * even if a DB row has a malformed/missing timestamp.
+ */
+function safeParse(iso: string | null | undefined): Date {
+  if (!iso) return new Date(0)
+  const d = parseISO(String(iso))
+  return isNaN(d.getTime()) ? new Date(0) : d
+}
+
 function pendingToMessage(p: PendingMsg): Message {
   return {
     id: p.tempId,
@@ -55,8 +67,8 @@ function pendingToMessage(p: PendingMsg): Message {
 
 // ── DateDivider ───────────────────────────────────────────────────────────────
 
-function dateLabel(iso: string): string {
-  const d = parseISO(iso)
+function dateLabel(iso: string | null | undefined): string {
+  const d = safeParse(iso)
   if (isToday(d)) return 'Today'
   if (isYesterday(d)) return 'Yesterday'
   return format(d, 'EEE, d MMM')
@@ -108,7 +120,7 @@ function MessageBubble({
   /** Suppress sender name for consecutive same-sender messages */
   showName?: boolean
 }) {
-  const timeLabel = format(parseISO(message.sentAt), 'HH:mm')
+  const timeLabel = format(safeParse(message.sentAt), 'HH:mm')
 
   if (message.isDeleted) {
     return (
@@ -516,8 +528,8 @@ export function ChatView({ convId }: { convId: string }) {
 
         const newDay =
           !prevMsg ||
-          format(parseISO(msg.sentAt), 'yyyy-MM-dd') !==
-            format(parseISO(prevMsg.sentAt), 'yyyy-MM-dd')
+          format(safeParse(msg.sentAt), 'yyyy-MM-dd') !==
+            format(safeParse(prevMsg.sentAt), 'yyyy-MM-dd')
 
         // Collapse consecutive same-sender messages within a 2-minute window
         const RUN_WINDOW_MS = 2 * 60 * 1000
@@ -525,7 +537,7 @@ export function ChatView({ convId }: { convId: string }) {
           !newDay &&
           !!prevMsg &&
           msg.senderId === prevMsg.senderId &&
-          parseISO(msg.sentAt).getTime() - parseISO(prevMsg.sentAt).getTime() < RUN_WINDOW_MS
+          safeParse(msg.sentAt).getTime() - safeParse(prevMsg.sentAt).getTime() < RUN_WINDOW_MS
 
         return (
           <React.Fragment key={msg.id}>

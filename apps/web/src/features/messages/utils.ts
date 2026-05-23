@@ -15,7 +15,8 @@ export function seedColor(seed: string): string {
   return AVATAR_COLORS[sum % AVATAR_COLORS.length]
 }
 
-export function initials(name: string): string {
+export function initials(name: string | null | undefined): string {
+  if (!name) return '?'
   return name
     .split(' ')
     .slice(0, 2)
