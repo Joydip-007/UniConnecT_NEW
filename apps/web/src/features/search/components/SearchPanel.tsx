@@ -70,8 +70,8 @@ export function SearchPanel({ query, onClose }: Props) {
 
   function goToSearch(tabKey?: string) {
     const url = tabKey
-      ? `${PATHS.SEARCH}?q=${encodeURIComponent(query)}&tab=${tabKey}`
-      : `${PATHS.SEARCH}?q=${encodeURIComponent(query)}`
+      ? `${PATHS.EXPLORE}?q=${encodeURIComponent(query)}&tab=${tabKey}`
+      : `${PATHS.EXPLORE}?q=${encodeURIComponent(query)}`
     navigate(url)
     onClose()
   }

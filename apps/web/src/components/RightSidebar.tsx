@@ -412,7 +412,7 @@ function TrendingTagStrip({ tags }: { tags: TrendingTag[] }) {
           <button
             key={tag.name}
             type="button"
-            onClick={() => navigate(`${PATHS.SEARCH}?q=%23${encodeURIComponent(tag.name)}`)}
+            onClick={() => navigate(`${PATHS.EXPLORE}?q=%23${encodeURIComponent(tag.name)}`)}
             className="press-feedback"
             style={{
               fontSize: 11,
@@ -556,7 +556,7 @@ export function RightSidebar() {
       <Section>
         <SectionHeader
           title="People you may know"
-          onSeeAll={() => navigate(PATHS.SEARCH + '?type=people')}
+          onSeeAll={() => navigate(PATHS.EXPLORE + '?type=people')}
         />
 
         {loadingSuggestions ? (
