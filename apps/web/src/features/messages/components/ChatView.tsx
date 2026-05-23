@@ -1,11 +1,12 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useRef } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { format, parseISO } from 'date-fns'
+import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { Loader2, RotateCcw } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { usePendingMsgsStore, type PendingMsg } from '@/stores/pendingMsgsStore'
+import { seedColor, initials } from '../utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,27 +40,6 @@ export interface MessagesPage {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const AVATAR_COLORS = [
-  'var(--uc-indigo)',
-  'var(--uc-orange)',
-  'var(--uc-cyan)',
-  'var(--uc-mint)',
-  'var(--uc-navy)',
-]
-
-function seedColor(seed: string): string {
-  const sum = [...seed].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
 function pendingToMessage(p: PendingMsg): Message {
   return {
     id: p.tempId,
@@ -73,6 +53,42 @@ function pendingToMessage(p: PendingMsg): Message {
   }
 }
 
+// ── DateDivider ───────────────────────────────────────────────────────────────
+
+function dateLabel(iso: string): string {
+  const d = parseISO(iso)
+  if (isToday(d)) return 'Today'
+  if (isYesterday(d)) return 'Yesterday'
+  return format(d, 'EEE, d MMM')
+}
+
+function DateDivider({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        margin: '6px 0',
+        flexShrink: 0,
+      }}
+    >
+      <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 500,
+          color: 'var(--text-tertiary)',
+          flexShrink: 0,
+        }}
+      >
+        {label}
+      </span>
+      <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
+    </div>
+  )
+}
+
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
 function MessageBubble({
@@ -80,11 +96,17 @@ function MessageBubble({
   isOwn,
   status,
   onRetry,
+  showAvatar = true,
+  showName = true,
 }: {
   message: Message
   isOwn: boolean
   status?: 'sending' | 'error'
   onRetry?: () => void
+  /** Suppress avatar for consecutive same-sender messages (use spacer instead) */
+  showAvatar?: boolean
+  /** Suppress sender name for consecutive same-sender messages */
+  showName?: boolean
 }) {
   const timeLabel = format(parseISO(message.sentAt), 'HH:mm')
 
@@ -126,13 +148,17 @@ function MessageBubble({
         transition: 'opacity 150ms',
       }}
     >
-      {/* Avatar — only for others */}
+      {/* Avatar — only for others; spacer when suppressed to keep bubble alignment */}
       {!isOwn && (
-        <Avatar
-          initials={initials(message.sender.fullName)}
-          color={seedColor(message.sender.id)}
-          size={28}
-        />
+        showAvatar
+          ? (
+            <Avatar
+              initials={initials(message.sender.fullName)}
+              color={seedColor(message.sender.id)}
+              size={28}
+            />
+          )
+          : <div style={{ width: 28, flexShrink: 0 }} />
       )}
 
       {/* Bubble column */}
@@ -145,8 +171,8 @@ function MessageBubble({
           gap: 3,
         }}
       >
-        {/* Sender name (others only) */}
-        {!isOwn && (
+        {/* Sender name — first message of a run only */}
+        {!isOwn && showName && (
           <span
             style={{
               fontSize: 11,
@@ -221,7 +247,7 @@ function MessageBubble({
           {message.body}
         </div>
 
-        {/* Timestamp + status */}
+        {/* Timestamp + sending spinner */}
         <div
           style={{
             display: 'flex',
@@ -242,28 +268,32 @@ function MessageBubble({
               style={{ color: 'var(--text-tertiary)' }}
             />
           )}
-
-          {status === 'error' && (
-            <button
-              onClick={onRetry}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 3,
-                fontSize: 11,
-                fontWeight: 400,
-                color: 'var(--uc-red)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              <RotateCcw size={10} strokeWidth={1.5} />
-              Retry
-            </button>
-          )}
         </div>
+
+        {/* Retry pill — shown below the bubble on send failure */}
+        {status === 'error' && (
+          <button
+            type="button"
+            onClick={onRetry}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 12px',
+              marginTop: 2,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--uc-red-bg)',
+              border: '0.5px solid var(--uc-red-bdr)',
+              color: 'var(--uc-red)',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            <RotateCcw size={11} strokeWidth={1.5} />
+            Retry
+          </button>
+        )}
       </div>
     </div>
   )
@@ -295,7 +325,7 @@ export function ChatView({ convId }: { convId: string }) {
     prevPendingCountRef.current = 0
   }, [convId])
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } =
     useInfiniteQuery({
       queryKey: ['messages', convId],
       queryFn: ({ pageParam }) =>
@@ -405,6 +435,28 @@ export function ChatView({ convId }: { convId: string }) {
     )
   }
 
+  if (isError) {
+    return (
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+          Couldn't load messages.
+        </p>
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+          Check your connection and try again.
+        </p>
+      </div>
+    )
+  }
+
   if (allMessages.length === 0) {
     return (
       <div
@@ -458,10 +510,35 @@ export function ChatView({ convId }: { convId: string }) {
         </div>
       )}
 
-      {/* Confirmed messages */}
-      {confirmedMessages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} isOwn={msg.senderId === myUserId} />
-      ))}
+      {/* Confirmed messages — with date dividers on day boundaries and run-collapsing */}
+      {confirmedMessages.map((msg, i) => {
+        const prevMsg = confirmedMessages[i - 1]
+
+        const newDay =
+          !prevMsg ||
+          format(parseISO(msg.sentAt), 'yyyy-MM-dd') !==
+            format(parseISO(prevMsg.sentAt), 'yyyy-MM-dd')
+
+        // Collapse consecutive same-sender messages within a 2-minute window
+        const RUN_WINDOW_MS = 2 * 60 * 1000
+        const isContinuation =
+          !newDay &&
+          !!prevMsg &&
+          msg.senderId === prevMsg.senderId &&
+          parseISO(msg.sentAt).getTime() - parseISO(prevMsg.sentAt).getTime() < RUN_WINDOW_MS
+
+        return (
+          <React.Fragment key={msg.id}>
+            {newDay && <DateDivider label={dateLabel(msg.sentAt)} />}
+            <MessageBubble
+              message={msg}
+              isOwn={msg.senderId === myUserId}
+              showAvatar={!isContinuation}
+              showName={!isContinuation}
+            />
+          </React.Fragment>
+        )
+      })}
 
       {/* Pending (optimistic) messages */}
       {pendingMsgs.map((p) => (

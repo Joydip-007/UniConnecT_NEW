@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatDistanceToNow, parseISO } from 'date-fns'
 import { MessageCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
@@ -9,40 +8,7 @@ import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
 import { EmptyState } from '@/components/EmptyState'
 import { NewConversationModal } from './NewConversationModal'
 import type { Conversation } from './ConversationList'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'var(--uc-indigo)',
-  'var(--uc-orange)',
-  'var(--uc-cyan)',
-  'var(--uc-mint)',
-  'var(--uc-navy)',
-]
-
-function seedColor(seed: string): string {
-  const sum = [...seed].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-function relativeTime(iso: string): string {
-  return formatDistanceToNow(parseISO(iso), { addSuffix: false })
-    .replace('about ', '')
-    .replace(' minutes', 'm')
-    .replace(' minute', 'm')
-    .replace(' hours', 'h')
-    .replace(' hour', 'h')
-    .replace(' days', 'd')
-    .replace(' day', 'd')
-}
+import { seedColor, initials, relativeTime } from '../utils'
 
 // ── SidebarRow ────────────────────────────────────────────────────────────────
 
@@ -55,8 +21,9 @@ function SidebarRow({
   isActive: boolean
   onClick: () => void
 }) {
+  const isMentorship = conversation.type === 'mentorship'
   const displayName =
-    conversation.type === 'dm'
+    conversation.type === 'direct' || isMentorship
       ? (conversation.otherParticipant?.fullName ?? 'Unknown')
       : (conversation.name ?? 'Group')
 
@@ -70,6 +37,7 @@ function SidebarRow({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={isActive ? undefined : 'row-hover-bg'}
       style={{
@@ -105,7 +73,7 @@ function SidebarRow({
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span
             style={{
               flex: 1,
@@ -120,6 +88,23 @@ function SidebarRow({
           >
             {displayName}
           </span>
+          {isMentorship && (
+            <span
+              style={{
+                flexShrink: 0,
+                padding: '1px 5px',
+                borderRadius: 'var(--r-pill)',
+                fontSize: 9,
+                fontWeight: 500,
+                background: 'var(--uc-orange-bg)',
+                border: '0.5px solid var(--uc-orange-bdr)',
+                color: 'var(--uc-orange-l)',
+                lineHeight: 1.6,
+              }}
+            >
+              mentorship
+            </span>
+          )}
           {time && (
             <span
               style={{
@@ -157,13 +142,17 @@ function SidebarRow({
 
 interface ConversationsSidebarProps {
   activeConvId?: string
+  /** When provided, the Plus button calls this instead of opening an internal modal. */
+  onNewClick?: () => void
 }
 
-export function ConversationsSidebar({ activeConvId }: ConversationsSidebarProps) {
+export function ConversationsSidebar({ activeConvId, onNewClick }: ConversationsSidebarProps) {
   const navigate = useNavigate()
-  const [newOpen, setNewOpen] = useState(false)
+  const [internalNewOpen, setInternalNewOpen] = useState(false)
 
-  const { data, isLoading } = useQuery({
+  const handleNew = onNewClick ?? (() => setInternalNewOpen(true))
+
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['conversations'],
     queryFn: () =>
       api.get<{ data: Conversation[] }>('/conversations').then((r) => r.data.data),
@@ -200,7 +189,7 @@ export function ConversationsSidebar({ activeConvId }: ConversationsSidebarProps
 
           <button
             type="button"
-            onClick={() => setNewOpen(true)}
+            onClick={handleNew}
             aria-label="New conversation"
             className="row-hover-bg"
             style={{
@@ -242,7 +231,40 @@ export function ConversationsSidebar({ activeConvId }: ConversationsSidebarProps
             </>
           )}
 
-          {!isLoading && sorted.length === 0 && (
+          {!isLoading && isError && (
+            <div
+              style={{
+                padding: '24px 12px',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                Couldn't load conversations.
+              </p>
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                style={{
+                  padding: '5px 14px',
+                  borderRadius: 'var(--r-pill)',
+                  background: 'var(--surface-raised)',
+                  border: '0.5px solid var(--border-default)',
+                  color: 'var(--text-secondary)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {!isLoading && !isError && sorted.length === 0 && (
             <EmptyState
               icon={MessageCircle}
               title="No conversations yet"
@@ -250,7 +272,7 @@ export function ConversationsSidebar({ activeConvId }: ConversationsSidebarProps
             />
           )}
 
-          {!isLoading &&
+          {!isLoading && !isError &&
             sorted.map((conv) => (
               <SidebarRow
                 key={conv.id}
@@ -262,7 +284,9 @@ export function ConversationsSidebar({ activeConvId }: ConversationsSidebarProps
         </div>
       </div>
 
-      {newOpen && <NewConversationModal onClose={() => setNewOpen(false)} />}
+      {!onNewClick && internalNewOpen && (
+        <NewConversationModal onClose={() => setInternalNewOpen(false)} />
+      )}
     </>
   )
 }

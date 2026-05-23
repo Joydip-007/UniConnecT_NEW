@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatDistanceToNow, parseISO } from 'date-fns'
 import { motion } from 'framer-motion'
 import { MessageCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -10,40 +9,7 @@ import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
 import { PATHS } from '@/router/paths'
 import { NewConversationModal } from './NewConversationModal'
 import type { Conversation } from './ConversationList'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'var(--uc-indigo)',
-  'var(--uc-orange)',
-  'var(--uc-cyan)',
-  'var(--uc-mint)',
-  'var(--uc-navy)',
-]
-
-function seedColor(seed: string): string {
-  const sum = [...seed].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-function relativeTime(iso: string): string {
-  return formatDistanceToNow(parseISO(iso), { addSuffix: false })
-    .replace('about ', '')
-    .replace(' minutes', 'm')
-    .replace(' minute', 'm')
-    .replace(' hours', 'h')
-    .replace(' hour', 'h')
-    .replace(' days', 'd')
-    .replace(' day', 'd')
-}
+import { seedColor, initials, relativeTime } from '../utils'
 
 // ── MessagesPopup ─────────────────────────────────────────────────────────────
 
@@ -55,7 +21,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
   const navigate = useNavigate()
   const [newOpen, setNewOpen] = useState(false)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['conversations'],
     queryFn: () =>
       api.get<{ data: Conversation[] }>('/conversations').then((r) => r.data.data),
@@ -154,7 +120,18 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
             </>
           )}
 
-          {!isLoading && sorted.length === 0 && (
+          {!isLoading && isError && (
+            <div style={{ padding: '20px 16px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                Couldn't load conversations.
+              </p>
+              <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                Check your connection and try again.
+              </p>
+            </div>
+          )}
+
+          {!isLoading && !isError && sorted.length === 0 && (
             <div
               style={{
                 padding: '24px 16px',
@@ -175,10 +152,11 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
             </div>
           )}
 
-          {!isLoading &&
+          {!isLoading && !isError &&
             sorted.map((conv) => {
+              const isMentorship = conv.type === 'mentorship'
               const displayName =
-                conv.type === 'dm'
+                conv.type === 'direct' || isMentorship
                   ? (conv.otherParticipant?.fullName ?? 'Unknown')
                   : (conv.name ?? 'Group')
               const avatarInitials = initials(displayName)
@@ -191,6 +169,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
 
               return (
                 <button
+                  type="button"
                   key={conv.id}
                   onClick={() => handleConv(conv.id)}
                   className="row-hover-bg"
@@ -227,7 +206,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span
                         style={{
                           flex: 1,
@@ -242,6 +221,23 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                       >
                         {displayName}
                       </span>
+                      {isMentorship && (
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            padding: '1px 5px',
+                            borderRadius: 'var(--r-pill)',
+                            fontSize: 9,
+                            fontWeight: 500,
+                            background: 'var(--uc-orange-bg)',
+                            border: '0.5px solid var(--uc-orange-bdr)',
+                            color: 'var(--uc-orange-l)',
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          mentorship
+                        </span>
+                      )}
                       {time && (
                         <span
                           style={{ flexShrink: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}

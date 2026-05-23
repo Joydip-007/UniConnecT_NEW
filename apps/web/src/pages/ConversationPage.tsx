@@ -7,30 +7,8 @@ import { MessageInput } from '@/features/messages/components/MessageInput'
 import { ConversationsSidebar } from '@/features/messages/components/ConversationsSidebar'
 import { useConversationSocket } from '@/features/messages/hooks/useConversationSocket'
 import { useConversation } from '@/features/messages/hooks/useConversation'
+import { seedColor, initials } from '@/features/messages/utils'
 import { PATHS } from '@/router/paths'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'var(--uc-indigo)',
-  'var(--uc-orange)',
-  'var(--uc-cyan)',
-  'var(--uc-mint)',
-  'var(--uc-navy)',
-]
-
-function seedColor(seed: string): string {
-  const sum = [...seed].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -44,13 +22,26 @@ export default function ConversationPage() {
 
   if (!convId) return null
 
+  const isMentorship = conv?.type === 'mentorship'
   const displayName =
-    conv?.type === 'dm'
+    conv?.type === 'direct' || isMentorship
       ? (conv.otherParticipant?.fullName ?? 'Unknown')
       : (conv?.name ?? 'Group conversation')
 
   const isGroup = conv?.type === 'group'
   const avatarColor = conv ? seedColor(conv.id) : 'var(--uc-indigo)'
+
+  // Resolve who is typing — use participant name for DM/mentorship, count for groups
+  const typingLabel: string | null = (() => {
+    if (typingUserIds.length === 0) return null
+    if (!isGroup && conv?.otherParticipant) {
+      const firstName = conv.otherParticipant.fullName.split(' ')[0]
+      return `${firstName} is typing`
+    }
+    return typingUserIds.length === 1
+      ? 'Someone is typing'
+      : `${typingUserIds.length} people are typing`
+  })()
 
   return (
     <div
@@ -143,31 +134,58 @@ export default function ConversationPage() {
               />
             )}
 
-            {/* Name + typing indicator */}
+            {/* Name + mentorship subtitle / typing indicator */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: 'var(--text-primary)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {conv ? displayName : '…'}
-              </p>
-              {typingUserIds.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: 'var(--text-primary)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {conv ? displayName : '…'}
+                </p>
+                {isMentorship && (
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      padding: '2px 8px',
+                      borderRadius: 'var(--r-pill)',
+                      fontSize: 10,
+                      fontWeight: 500,
+                      background: 'var(--uc-orange-bg)',
+                      border: '0.5px solid var(--uc-orange-bdr)',
+                      color: 'var(--uc-orange-l)',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    mentorship session
+                  </span>
+                )}
+              </div>
+              {typingLabel && (
                 <p
                   style={{
                     margin: 0,
                     fontSize: 11,
                     fontWeight: 400,
-                    color: 'var(--text-tertiary)',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
                   }}
                 >
-                  Typing…
+                  <span>{typingLabel}</span>
+                  <span style={{ display: 'inline-flex', gap: 2, color: 'var(--text-secondary)' }}>
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                  </span>
                 </p>
               )}
             </div>

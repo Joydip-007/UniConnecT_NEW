@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { formatDistanceToNow, parseISO } from 'date-fns'
 import { MessageCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { api } from '@/lib/axios'
 import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
 import { EmptyState } from '@/components/EmptyState'
+import { seedColor, initials, relativeTime } from '../utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,45 +27,11 @@ interface LastMessage {
 
 export interface Conversation {
   id: string
-  type: 'dm' | 'group'
+  type: 'direct' | 'group' | 'mentorship'
   name: string | null
   otherParticipant: Participant | null
   lastMessage: LastMessage | null
   unreadCount: number
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'var(--uc-indigo)',
-  'var(--uc-orange)',
-  'var(--uc-cyan)',
-  'var(--uc-mint)',
-  'var(--uc-navy)',
-]
-
-function seedColor(seed: string): string {
-  const sum = [...seed].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
-function relativeTime(iso: string): string {
-  return formatDistanceToNow(parseISO(iso), { addSuffix: false })
-    .replace('about ', '')
-    .replace(' minutes', 'm')
-    .replace(' minute', 'm')
-    .replace(' hours', 'h')
-    .replace(' hour', 'h')
-    .replace(' days', 'd')
-    .replace(' day', 'd')
 }
 
 // ── ConversationRow ───────────────────────────────────────────────────────────
@@ -77,8 +43,9 @@ function ConversationRow({
   conversation: Conversation
   onClick: () => void
 }) {
+  const isMentorship = conversation.type === 'mentorship'
   const displayName =
-    conversation.type === 'dm'
+    conversation.type === 'direct' || isMentorship
       ? (conversation.otherParticipant?.fullName ?? 'Unknown')
       : (conversation.name ?? 'Group')
 
@@ -111,7 +78,7 @@ function ConversationRow({
       <Avatar initials={avatarInitials} color={avatarColor} size={42} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span
             style={{
               flex: 1,
@@ -126,6 +93,23 @@ function ConversationRow({
           >
             {displayName}
           </span>
+          {isMentorship && (
+            <span
+              style={{
+                flexShrink: 0,
+                padding: '1px 6px',
+                borderRadius: 'var(--r-pill)',
+                fontSize: 10,
+                fontWeight: 500,
+                background: 'var(--uc-orange-bg)',
+                border: '0.5px solid var(--uc-orange-bdr)',
+                color: 'var(--uc-orange-l)',
+                lineHeight: 1.6,
+              }}
+            >
+              mentorship
+            </span>
+          )}
           {time && (
             <span
               style={{

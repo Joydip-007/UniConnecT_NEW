@@ -104,6 +104,7 @@ export function MessageInput({ convId }: MessageInputProps) {
         onBlur={handleBlur}
         onFocus={handleFocus}
         placeholder="Type a message…"
+        title="Press Enter to send, Shift+Enter for a new line"
         rows={1}
         style={{
           flex: 1,
@@ -125,6 +126,7 @@ export function MessageInput({ convId }: MessageInputProps) {
       />
 
       <button
+        type="button"
         onClick={handleSend}
         disabled={!canSend}
         aria-label="Send message"
@@ -139,7 +141,7 @@ export function MessageInput({ convId }: MessageInputProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--text-primary)',
+          color: 'var(--uc-indigo-xl)',
           opacity: canSend ? 1 : 0.38,
           transition: 'opacity 150ms',
           padding: 0,

@@ -6,6 +6,7 @@ import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { api } from '@/lib/axios'
+import { seedColor, initials } from '../utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,27 +38,6 @@ interface UsersPage {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'var(--uc-indigo)',
-  'var(--uc-orange)',
-  'var(--uc-cyan)',
-  'var(--uc-mint)',
-  'var(--uc-navy)',
-]
-
-function seedColor(seed: string): string {
-  const sum = [...seed].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[sum % AVATAR_COLORS.length]
-}
-
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
 
 type BadgeVariant = 'dept' | 'alumni' | 'neutral'
 
@@ -511,12 +491,20 @@ export function NewConversationModal({ onClose }: Props) {
         {/* ── Group name input (only when 2+ selected) ──────────────────────── */}
         {isGroup && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label
-              htmlFor="newConvGroupName"
-              style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}
-            >
-              Group name
-            </label>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <label
+                htmlFor="newConvGroupName"
+                style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}
+              >
+                Group name
+              </label>
+              <span
+                aria-live="polite"
+                style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}
+              >
+                {groupName.length}/60
+              </span>
+            </div>
             <input
               id="newConvGroupName"
               type="text"
