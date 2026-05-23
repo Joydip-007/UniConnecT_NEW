@@ -10,6 +10,12 @@ import { notificationsService } from '../notifications/service'
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
 type ReactionType = 'like' | 'love' | 'insightful' | 'celebrate'
 
+// ── Hashtag helpers ───────────────────────────────────────────────────────────
+
+function extractHashtags(content: string): string[] {
+  return [...new Set((content.match(/#[\w]+/gi) ?? []).map((t) => t.slice(1).toLowerCase()))].slice(0, 10)
+}
+
 interface AuthContext {
   userId: string
   universityId: string
@@ -162,6 +168,25 @@ export class FeedService {
         )
       }
 
+      // ── Hashtag extraction ────────────────────────────────────────────────
+      const hashtags = extractHashtags(input.content)
+      if (hashtags.length > 0) {
+        await trx('tags')
+          .insert(hashtags.map((name) => ({ id: trx.raw('uuid_generate_v4()'), university_id: context.universityId, name })))
+          .onConflict(['university_id', 'name'])
+          .ignore()
+        const tagRows = await trx('tags')
+          .where('university_id', context.universityId)
+          .whereIn('name', hashtags)
+          .select<{ id: string }[]>('id')
+        if (tagRows.length > 0) {
+          await trx('post_tags')
+            .insert(tagRows.map((t) => ({ post_id: post.id, tag_id: t.id })))
+            .onConflict(['post_id', 'tag_id'])
+            .ignore()
+        }
+      }
+
       return post.id
     })
 
@@ -212,6 +237,28 @@ export class FeedService {
         }),
         updated_at: db.fn.now(),
       })
+
+    // Re-sync hashtags when content is being updated
+    if (input.content !== undefined) {
+      await db('post_tags').where('post_id', postId).delete()
+      const hashtags = extractHashtags(input.content)
+      if (hashtags.length > 0) {
+        await db('tags')
+          .insert(hashtags.map((name) => ({ id: db.raw('uuid_generate_v4()'), university_id: context.universityId, name })))
+          .onConflict(['university_id', 'name'])
+          .ignore()
+        const tagRows = await db('tags')
+          .where('university_id', context.universityId)
+          .whereIn('name', hashtags)
+          .select<{ id: string }[]>('id')
+        if (tagRows.length > 0) {
+          await db('post_tags')
+            .insert(tagRows.map((t) => ({ post_id: postId, tag_id: t.id })))
+            .onConflict(['post_id', 'tag_id'])
+            .ignore()
+        }
+      }
+    }
 
     return this.getPost(context.universityId, context.userId, postId, { incrementView: false })
   }
