@@ -208,3 +208,63 @@ describe('POST /api/v1/posts/:postId/comments/:commentId/reactions', () => {
     expect(res.status).toBe(200)
   })
 })
+
+describe('POST /api/v1/posts — hashtag extraction', () => {
+  let hashtagPostId: string
+
+  afterAll(async () => {
+    if (hashtagPostId) await db('posts').where('id', hashtagPostId).delete()
+  })
+
+  it('extracts hashtags from post content and creates tags + post_tags', async () => {
+    const res = await api
+      .post('/api/v1/posts')
+      .set(authHeader(studentToken))
+      .send({ content: 'Super excited for #csefest and #uiu2025!', type: 'post' })
+
+    expect(res.status).toBe(201)
+    hashtagPostId = (res.body.data as { id: string }).id
+
+    const tags = await db('post_tags as pt')
+      .join('tags as t', 't.id', 'pt.tag_id')
+      .where('pt.post_id', hashtagPostId)
+      .select<{ name: string }[]>('t.name')
+
+    const names = tags.map((t) => t.name).sort()
+    expect(names).toEqual(['csefest', 'uiu2025'])
+  })
+
+  it('normalises hashtags to lowercase', async () => {
+    const res = await api
+      .post('/api/v1/posts')
+      .set(authHeader(studentToken))
+      .send({ content: '#UPPERCASE and #MixedCase', type: 'post' })
+
+    expect(res.status).toBe(201)
+    const id = (res.body.data as { id: string }).id
+    createdPostIds.push(id)
+
+    const tags = await db('post_tags as pt')
+      .join('tags as t', 't.id', 'pt.tag_id')
+      .where('pt.post_id', id)
+      .select<{ name: string }[]>('t.name')
+
+    const names = tags.map((t) => t.name).sort()
+    expect(names).toEqual(['mixedcase', 'uppercase'])
+  })
+
+  it('caps extraction at 10 tags per post', async () => {
+    const manyTags = Array.from({ length: 15 }, (_, i) => `#tag${i}`).join(' ')
+    const res = await api
+      .post('/api/v1/posts')
+      .set(authHeader(studentToken))
+      .send({ content: manyTags, type: 'post' })
+
+    expect(res.status).toBe(201)
+    const id = (res.body.data as { id: string }).id
+    createdPostIds.push(id)
+
+    const tags = await db('post_tags').where('post_id', id).select('tag_id')
+    expect(tags.length).toBe(10)
+  })
+})

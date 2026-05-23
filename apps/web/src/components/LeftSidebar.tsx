@@ -189,7 +189,7 @@ export function LeftSidebar() {
       groupLabel: 'main',
       items: [
         { icon: Home, label: 'Home', path: PATHS.FEED },
-        { icon: Compass, label: 'Explore', path: PATHS.SEARCH },
+        { icon: Compass, label: 'Explore', path: PATHS.EXPLORE },
         { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES, badge: messageCount },
       ],
     },

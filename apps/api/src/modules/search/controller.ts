@@ -4,7 +4,7 @@ import { sendSuccess } from '../../utils/response'
 import { AppError } from '../../utils/errors'
 import { unauthorized } from '../../utils/errors'
 import { searchAll, searchPeople, searchPosts, searchJobs, searchEvents, searchGroups } from './service'
-import type { SearchAllQuery, SearchPagedQuery } from './schema'
+import type { SearchAllQuery, SearchPagedQuery, SearchPeopleQuery, SearchPostsQuery } from './schema'
 
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
@@ -21,15 +21,15 @@ export const searchAllController = asyncHandler(async (req: Request, res: Respon
 
 export const searchPeopleController = asyncHandler(async (req: Request, res: Response) => {
   const { userId, universityId } = getAuthContext(req)
-  const { q, page, limit } = req.query as unknown as SearchPagedQuery
-  const result = await searchPeople(universityId, q, page, limit, userId)
+  const { q, role, department, batch, page, limit } = req.query as unknown as SearchPeopleQuery
+  const result = await searchPeople(universityId, { q, role, department, batch }, page, limit, userId)
   sendSuccess(res, result)
 })
 
 export const searchPostsController = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAuthContext(req)
-  const { q, page, limit } = req.query as unknown as SearchPagedQuery
-  const result = await searchPosts(universityId, q, page, limit)
+  const { q, tag, page, limit } = req.query as unknown as SearchPostsQuery
+  const result = await searchPosts(universityId, { q, tag }, page, limit)
   sendSuccess(res, result)
 })
 

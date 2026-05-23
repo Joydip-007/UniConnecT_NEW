@@ -33,7 +33,8 @@ export const PATHS = {
 
   SHUTTLE: '/shuttle',
 
-  SEARCH: '/search',
+  EXPLORE: '/explore',
+  TAG: '/explore/tag/:tag',
 
   ADMIN: '/admin',
 } as const

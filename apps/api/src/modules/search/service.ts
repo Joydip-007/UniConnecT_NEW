@@ -64,30 +64,37 @@ function paginate<T>(items: T[], total: number, page: number, limit: number): Se
 
 // ── People ───────────────────────────────────────────────────────────────────
 
+export interface PeopleFilters {
+  q?: string
+  role?: string
+  department?: string
+  batch?: string
+}
+
 export async function searchPeople(
   universityId: string,
-  q: string,
+  filters: PeopleFilters,
   page: number,
   limit: number,
   requesterId: string,
 ): Promise<SearchPagedResult<UserSearchResult>> {
-  const pattern = `%${q}%`
-
-  const [{ count }] = await db('profiles as p')
+  const baseQuery = db('profiles as p')
     .join('users as u', 'u.id', 'p.user_id')
     .where('u.university_id', universityId)
     .where('u.is_active', true)
-    .whereRaw('p.full_name ILIKE ?', [pattern])
-    .count<[{ count: string }]>('u.id as count')
 
-  const rows = await db('profiles as p')
-    .join('users as u', 'u.id', 'p.user_id')
+  if (filters.q) baseQuery.whereRaw('p.full_name ILIKE ?', [`%${filters.q}%`])
+  if (filters.role) baseQuery.where('u.role', filters.role)
+  if (filters.department) baseQuery.whereRaw('p.department ILIKE ?', [`%${filters.department}%`])
+  if (filters.batch) baseQuery.where('p.batch_year', filters.batch)
+
+  const [{ count }] = await baseQuery.clone().count<[{ count: string }]>('u.id as count')
+
+  const rows = await baseQuery
+    .clone()
     .leftJoin('follows as f', function () {
       this.on('f.following_id', 'u.id').andOn('f.follower_id', db.raw('?', [requesterId]))
     })
-    .where('u.university_id', universityId)
-    .where('u.is_active', true)
-    .whereRaw('p.full_name ILIKE ?', [pattern])
     .select(
       'u.id',
       'u.role',
@@ -100,7 +107,10 @@ export async function searchPeople(
     )
     .limit(limit)
     .offset((page - 1) * limit)
-    .orderByRaw('p.full_name ILIKE ? DESC, p.full_name ASC', [`${q}%`])
+    .orderByRaw(
+      filters.q ? 'p.full_name ILIKE ? DESC, p.full_name ASC' : 'p.full_name ASC',
+      filters.q ? [`${filters.q}%`] : [],
+    )
 
   const items: UserSearchResult[] = rows.map((r) => ({
     id: r.id,
@@ -118,24 +128,44 @@ export async function searchPeople(
 
 // ── Posts ────────────────────────────────────────────────────────────────────
 
+export interface PostsFilters {
+  q?: string
+  tag?: string
+}
+
 export async function searchPosts(
   universityId: string,
-  q: string,
+  filters: PostsFilters,
   page: number,
   limit: number,
 ): Promise<SearchPagedResult<PostSearchResult>> {
-  const pattern = `%${q}%`
-
-  const [{ count }] = await db('posts as po')
-    .where('po.university_id', universityId)
-    .whereRaw('po.content ILIKE ?', [pattern])
-    .count<[{ count: string }]>('po.id as count')
-
-  const rows = await db('posts as po')
+  const countQuery = db('posts as po').where('po.university_id', universityId)
+  const rowQuery = db('posts as po')
     .join('users as u', 'u.id', 'po.author_id')
     .join('profiles as p', 'p.user_id', 'u.id')
     .where('po.university_id', universityId)
-    .whereRaw('po.content ILIKE ?', [pattern])
+
+  if (filters.q) {
+    const pattern = `%${filters.q}%`
+    countQuery.whereRaw('po.content ILIKE ?', [pattern])
+    rowQuery.whereRaw('po.content ILIKE ?', [pattern])
+  }
+
+  if (filters.tag) {
+    const normalizedTag = filters.tag.toLowerCase()
+    countQuery
+      .join('post_tags as pt', 'pt.post_id', 'po.id')
+      .join('tags as t', 't.id', 'pt.tag_id')
+      .whereRaw('LOWER(t.name) = ?', [normalizedTag])
+    rowQuery
+      .join('post_tags as pt', 'pt.post_id', 'po.id')
+      .join('tags as t', 't.id', 'pt.tag_id')
+      .whereRaw('LOWER(t.name) = ?', [normalizedTag])
+  }
+
+  const [{ count }] = await countQuery.count<[{ count: string }]>('po.id as count')
+
+  const rows = await rowQuery
     .select(
       'po.id',
       'po.content',
@@ -326,8 +356,8 @@ export async function searchAll(
   requesterId: string,
 ) {
   const [people, posts, jobs, events, groups] = await Promise.all([
-    searchPeople(universityId, q, 1, limit, requesterId),
-    searchPosts(universityId, q, 1, limit),
+    searchPeople(universityId, { q }, 1, limit, requesterId),
+    searchPosts(universityId, { q }, 1, limit),
     searchJobs(universityId, q, 1, limit),
     searchEvents(universityId, q, 1, limit, requesterId),
     searchGroups(universityId, q, 1, limit, requesterId),
