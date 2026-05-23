@@ -247,6 +247,52 @@ select:focus-visible {
   background-color: var(--border-hover);
 }
 
+/* ── Messages two-panel layout ────────────────────────────── */
+
+/* Sidebar on /messages (list view): 320px desktop, full-width mobile */
+.msg-sidebar-full-mobile {
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 0.5px solid var(--border-default);
+  background: var(--surface-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Sidebar on /messages/:id (conv view): 320px desktop, hidden mobile */
+.msg-sidebar-desktop-only {
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 0.5px solid var(--border-default);
+  background: var(--surface-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Back button in ConversationPage: visible mobile, hidden desktop */
+/* !important needed to override the inline display:flex on the button element */
+.msg-back-mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .msg-sidebar-full-mobile {
+    width: 100%;
+    border-right: none;
+  }
+  .msg-right-desktop-only {
+    display: none !important;
+  }
+  .msg-sidebar-desktop-only {
+    display: none !important;
+  }
+  .msg-back-mobile-only {
+    display: flex !important;
+  }
+}
+
 /* ── Feed 3-column layout ─────────────────────────────────── */
 .feed-layout-grid {
   max-width: 1280px;

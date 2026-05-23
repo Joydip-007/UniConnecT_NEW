@@ -1,78 +1,69 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, MessageCircle, Plus } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 import { TopNav } from '@/components/TopNav'
-import { ConversationList } from '@/features/messages/components/ConversationList'
-import { NewConversationModal } from '@/features/messages/components/NewConversationModal'
-import { OrangeBtn } from '@/components/Button'
-import { PATHS } from '@/router/paths'
+import { ConversationsSidebar } from '@/features/messages/components/ConversationsSidebar'
 
 export default function MessagesPage() {
-  const [open, setOpen] = useState(false)
-  const navigate = useNavigate()
-
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--surface-page)', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        height: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: 'var(--surface-page)',
+      }}
+    >
       <TopNav />
 
-      <div style={{ flex: 1, padding: 16 }}>
-        <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* Left: conversation list — full-width on mobile, 320px on desktop */}
+        <div className="msg-sidebar-full-mobile">
+          <ConversationsSidebar />
+        </div>
 
-          {/* Page header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => navigate(PATHS.FEED)}
-                aria-label="Back to feed"
-                className="row-hover-bg card-hover-border"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 44,
-                  height: 44,
-                  borderRadius: 'var(--r-pill)',
-                  background: 'var(--surface-raised)',
-                  border: '0.5px solid var(--border-default)',
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  transition: 'border-color 150ms, background 150ms',
-                }}
-              >
-                <ArrowLeft size={16} strokeWidth={1.5} />
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MessageCircle size={18} strokeWidth={1.5} color="var(--uc-indigo-l)" />
-                <h1 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  Messages
-                </h1>
-              </div>
-            </div>
-
-            <OrangeBtn onClick={() => setOpen(true)}>
-              <Plus size={15} strokeWidth={2} />
-              New
-            </OrangeBtn>
-          </div>
-
-          {/* Conversation list */}
-          <div
+        {/* Right: empty state — desktop only */}
+        <div
+          className="msg-right-desktop-only"
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+            gap: 12,
+            background: 'var(--surface-page)',
+          }}
+        >
+          <MessageCircle
+            size={40}
+            strokeWidth={1}
+            style={{ color: 'var(--text-tertiary)' }}
+          />
+          <p
             style={{
-              background: 'var(--surface-card)',
-              border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--r-lg)',
-              minHeight: 420,
+              margin: 0,
+              fontSize: 15,
+              fontWeight: 500,
+              color: 'var(--text-secondary)',
             }}
           >
-            <ConversationList />
-          </div>
+            Select a conversation
+          </p>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 13,
+              fontWeight: 400,
+              color: 'var(--text-tertiary)',
+              textAlign: 'center',
+              maxWidth: 260,
+              lineHeight: 1.6,
+            }}
+          >
+            Choose a conversation from the sidebar or start a new one.
+          </p>
         </div>
       </div>
-
-      {open && <NewConversationModal onClose={() => setOpen(false)} />}
     </div>
   )
 }

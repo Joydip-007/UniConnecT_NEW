@@ -1,6 +1,9 @@
 export { ConversationList } from './components/ConversationList'
 export type { Conversation } from './components/ConversationList'
 
+export { ConversationsSidebar } from './components/ConversationsSidebar'
+export { MessagesPopup } from './components/MessagesPopup'
+
 export { ChatView } from './components/ChatView'
 export type { Message, MessageSender, MessagesPage, ReplyContext } from './components/ChatView'
 

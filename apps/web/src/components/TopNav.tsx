@@ -8,6 +8,7 @@ import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useThemeStore } from '@/stores/themeStore'
 import type { ThemeMode } from '@/stores/themeStore'
 import { NotificationDropdown } from '@/features/notifications'
+import { MessagesPopup } from '@/features/messages/components/MessagesPopup'
 import { SearchPanel } from '@/features/search'
 import { PATHS } from '@/router/paths'
 import { BrandLogo } from '@/components/BrandLogo'
@@ -77,6 +78,7 @@ export function TopNav() {
   const [searchParams] = useSearchParams()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [msgOpen, setMsgOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') ?? '')
   const [panelOpen, setPanelOpen] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery)
@@ -85,6 +87,7 @@ export function TopNav() {
   const searchWrapperRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
+  const msgRef = useRef<HTMLDivElement>(null)
   const profileButtonRef = useRef<HTMLButtonElement>(null)
   const firstMenuItemRef = useRef<HTMLButtonElement>(null)
 
@@ -105,7 +108,7 @@ export function TopNav() {
   const closePanel = useCallback(() => setPanelOpen(false), [])
 
   useEffect(() => {
-    if (!menuOpen && !notifOpen) return
+    if (!menuOpen && !notifOpen && !msgOpen) return
     function onClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
@@ -113,12 +116,16 @@ export function TopNav() {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setNotifOpen(false)
       }
+      if (msgRef.current && !msgRef.current.contains(e.target as Node)) {
+        setMsgOpen(false)
+      }
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         if (menuOpen) profileButtonRef.current?.focus()
         setMenuOpen(false)
         setNotifOpen(false)
+        setMsgOpen(false)
       }
       if (menuOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         e.preventDefault()
@@ -141,7 +148,7 @@ export function TopNav() {
       document.removeEventListener('mousedown', onClickOutside)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [menuOpen, notifOpen])
+  }, [menuOpen, notifOpen, msgOpen])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -262,15 +269,25 @@ export function TopNav() {
           {notificationCount > 0 ? ` · ${notificationCount} unread notification${notificationCount !== 1 ? 's' : ''}` : ''}
         </span>
 
-        <button
-          onClick={() => navigate(PATHS.MESSAGES)}
-          className="topnav-mobile-hidden press-feedback row-hover-bg"
-          style={iconBtnStyle}
-          aria-label={messageCount > 0 ? `Messages (${messageCount} unread)` : 'Messages'}
-        >
-          <MessageSquare size={16} />
-          <BadgeCount count={messageCount} />
-        </button>
+        <div className="topnav-mobile-hidden" style={{ position: 'relative' }} ref={msgRef}>
+          <button
+            onClick={() => setMsgOpen((o) => !o)}
+            className="press-feedback row-hover-bg"
+            style={{
+              ...iconBtnStyle,
+              background: msgOpen ? 'var(--surface-raised)' : undefined,
+            }}
+            aria-label={messageCount > 0 ? `Messages (${messageCount} unread)` : 'Messages'}
+            aria-expanded={msgOpen}
+            aria-haspopup="dialog"
+          >
+            <MessageSquare size={16} />
+            <BadgeCount count={messageCount} />
+          </button>
+          <AnimatePresence>
+            {msgOpen && <MessagesPopup onClose={() => setMsgOpen(false)} />}
+          </AnimatePresence>
+        </div>
 
         <div className="topnav-mobile-hidden" style={{ position: 'relative' }} ref={notifRef}>
           <button
