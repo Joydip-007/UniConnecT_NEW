@@ -4,21 +4,27 @@ import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
   createRequest,
+  createSession,
+  deleteSession,
   getIncomingRequests,
   getMyRequests,
   getMyRewards,
   listAlumni,
   listGiftCards,
+  listSessions,
   redeemGiftCard,
   updateRequest,
+  updateSession,
 } from './controller'
 import {
   AlumniListQuerySchema,
   CreateRequestSchema,
+  CreateSessionSchema,
   IncomingRequestsQuerySchema,
   PaginationQuerySchema,
   RedeemGiftCardSchema,
   UpdateRequestSchema,
+  UpdateSessionSchema,
 } from './schema'
 
 export const mentorshipRouter = Router()
@@ -54,6 +60,23 @@ mentorshipRouter.patch(
   validate(UpdateRequestSchema),
   updateRequest,
 )
+
+// Session CRUD — accessible to both student and alumni on the request
+mentorshipRouter.get('/requests/:id/sessions', listSessions)
+
+mentorshipRouter.post(
+  '/requests/:id/sessions',
+  validate(CreateSessionSchema),
+  createSession,
+)
+
+mentorshipRouter.patch(
+  '/requests/:id/sessions/:sid',
+  validate(UpdateSessionSchema),
+  updateSession,
+)
+
+mentorshipRouter.delete('/requests/:id/sessions/:sid', deleteSession)
 
 mentorshipRouter.get('/rewards/me', requireRole('alumni'), getMyRewards)
 mentorshipRouter.get('/gift-cards', listGiftCards)

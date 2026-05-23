@@ -6,10 +6,12 @@ import { mentorshipService } from './service'
 import type {
   AlumniListQuery,
   CreateRequestInput,
+  CreateSessionInput,
   IncomingRequestsQuery,
   PaginationQuery,
   RedeemGiftCardInput,
   UpdateRequestInput,
+  UpdateSessionInput,
 } from './schema'
 
 function getAuthContext(req: Request) {
@@ -67,4 +69,33 @@ export const listGiftCards = asyncHandler(async (_req: Request, res: Response) =
 export const redeemGiftCard = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await mentorshipService.redeem(context, req.body as RedeemGiftCardInput), 201)
+})
+
+// ── SESSION CRUD ──────────────────────────────────────────────────────────────
+
+export const listSessions = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  sendSuccess(res, await mentorshipService.listSessions(context, requestId))
+})
+
+export const createSession = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  sendSuccess(res, await mentorshipService.createSession(context, requestId, req.body as CreateSessionInput), 201)
+})
+
+export const updateSession = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  const sessionId = req.params.sid as string
+  sendSuccess(res, await mentorshipService.updateSession(context, requestId, sessionId, req.body as UpdateSessionInput))
+})
+
+export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  const sessionId = req.params.sid as string
+  await mentorshipService.deleteSession(context, requestId, sessionId)
+  res.status(204).end()
 })

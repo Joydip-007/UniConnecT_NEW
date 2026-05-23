@@ -16,6 +16,7 @@ export const UpdateProfileSchema = z
     coverUrl: optionalString,
     isOpenToWork: z.boolean().optional(),
     isOpenToMentorship: z.boolean().optional(),
+    maxMentees: z.number().int().min(1).max(20).optional(),
   })
   .strict()
 

@@ -1,7 +1,7 @@
 import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
-import { badRequest, conflict, notFound } from '../../utils/errors'
+import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { systemGroupsService } from '../groups/system-groups.service'
 import type { PaginationQuery, UpdateProfileInput, UserListQuery } from './schema'
 
@@ -72,6 +72,12 @@ export class UsersService {
     if (input.coverUrl !== undefined) update.cover_url = input.coverUrl
     if (input.isOpenToWork !== undefined) update.is_open_to_work = input.isOpenToWork
     if (input.isOpenToMentorship !== undefined) update.is_open_to_mentorship = input.isOpenToMentorship
+    if (input.maxMentees !== undefined) {
+      if (existing.role !== 'alumni') {
+        throw forbidden('Only alumni can set max mentees', 'MAX_MENTEES_ALUMNI_ONLY')
+      }
+      update.max_mentees = input.maxMentees
+    }
 
     await db('profiles').where({ user_id: userId }).update(update)
 
