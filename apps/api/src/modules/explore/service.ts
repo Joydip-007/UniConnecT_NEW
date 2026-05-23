@@ -375,6 +375,6 @@ export async function getTagPosts(
     total,
     page,
     hasMore: page * limit < total,
-    relatedTags: relatedTagRows.map((r) => r.name),
+    relatedTags: relatedTagRows.map((r) => String(r.name)),
   }
 }
