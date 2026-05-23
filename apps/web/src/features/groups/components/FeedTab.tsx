@@ -16,10 +16,10 @@ export function FeedTab({ groupId }: { groupId: string }) {
   const [openPost, setOpenPost] = useState<FeedPost | null>(null)
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<FeedPageData>({
-    queryKey: ['posts', 'feed', { groupId }],
+    queryKey: ['groups', groupId, 'posts'],
     queryFn: ({ pageParam }) =>
       api
-        .get<{ data: FeedPageData }>('/posts', { params: { page: pageParam, groupId } })
+        .get<{ data: FeedPageData }>(`/groups/${groupId}/posts`, { params: { page: pageParam } })
         .then((r) => r.data.data),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
