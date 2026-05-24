@@ -268,16 +268,15 @@ The workflow at [.github/workflows/deploy-web.yml](.github/workflows/deploy-web.
 
 To activate it, add these secrets to **GitHub → Settings → Secrets and variables → Actions**:
 
-| Secret name | How to get it |
+| Secret name | Value |
 |---|---|
-| `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) → **Create token** |
-| `VERCEL_ORG_ID` | `cat .vercel/project.json` → `"orgId"` field (after running `vercel link`) |
-| `VERCEL_PROJECT_ID` | `cat .vercel/project.json` → `"projectId"` field |
-| `VITE_API_URL` | `https://api.uniconnectt.me` |
-| `VITE_SOCKET_URL` | `https://api.uniconnectt.me` |
-| `VITE_UNIVERSITY_DOMAIN` | `uiu.ac.bd` |
+| `VERCEL_TOKEN` | Create at [vercel.com/account/tokens](https://vercel.com/account/tokens) → **Create token** |
+| `VERCEL_ORG_ID` | `team_GOgsVRjGimt9lt7mc3HGovvs` |
+| `VERCEL_PROJECT_ID` | `prj_BQJxSws7kniYzFxbAPsHbwy0dx0Z` |
 
-> Until these secrets are set, the workflow will fail. Use the CLI deploy above as the manual fallback.
+> `VITE_*` env vars are configured directly in the Vercel dashboard (project → Settings → Environment Variables) — they do not need to be GitHub secrets.
+
+> Until `VERCEL_TOKEN` is added to GitHub secrets, the workflow will fail silently. Use the CLI deploy above as the manual fallback in the meantime.
 
 ---
 
