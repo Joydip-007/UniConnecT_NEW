@@ -1,3 +1,4 @@
+import net from 'node:net'
 import type { Request, Response } from 'express'
 import { env } from '../../config/env'
 import { asyncHandler } from '../../utils/asyncHandler'
@@ -137,7 +138,10 @@ function getUniversityId(req: Request) {
 }
 
 function getIpAddress(req: Request): string | null {
-  return req.ip ?? req.socket.remoteAddress ?? null
+  const raw = req.ip ?? req.socket.remoteAddress ?? null
+  if (!raw) return null
+  // net.isIP returns 4 (IPv4), 6 (IPv6/mapped), or 0 (invalid — e.g. "unknown")
+  return net.isIP(raw) !== 0 ? raw : null
 }
 
 function getDeviceInfo(req: Request) {
