@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { Loader2, RotateCcw } from 'lucide-react'
@@ -319,7 +319,16 @@ export function ChatView({ convId }: { convId: string }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const pendingMsgs = usePendingMsgsStore((s) => s.msgs.filter((m) => m.convId === convId))
+  // Select the raw msgs array (stable reference between store updates), then
+  // filter in useMemo. Using .filter() directly inside the Zustand selector
+  // returns a new array reference on every call — React 18's useSyncExternalStore
+  // tearing-detection re-invokes the selector after every commit, sees a new
+  // reference, and schedules another render, looping until error #185.
+  const allPendingMsgs = usePendingMsgsStore((s) => s.msgs)
+  const pendingMsgs = useMemo(
+    () => allPendingMsgs.filter((m) => m.convId === convId),
+    [allPendingMsgs, convId],
+  )
   const retryPending = usePendingMsgsStore((s) => s.retry)
 
   // Stable refs to avoid recreating IntersectionObserver on state changes
