@@ -15,5 +15,6 @@ export default defineConfig({
     poolOptions: { forks: { singleFork: true } },
     env: { NODE_ENV: 'test' },
     testTimeout: 10_000,
+    include: ['src/services/**/*.test.ts'],
   },
 })

@@ -2,6 +2,7 @@
   "name": "@uniconnect/shared",
   "version": "0.0.0",
   "private": true,
+  "files": ["dist", "src"],
   "main": "./dist/index.js",
   "types": "./src/index.ts",
   "exports": {
