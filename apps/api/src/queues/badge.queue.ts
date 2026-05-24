@@ -1,5 +1,5 @@
 import Queue from 'bull'
-import { env } from '../config/env'
+import { bullQueueOptions } from '../config/bull'
 
 export interface BadgeQueueJob {
   userId: string
@@ -8,4 +8,4 @@ export interface BadgeQueueJob {
   payload?: Record<string, unknown>
 }
 
-export const badgeQueue = new Queue<BadgeQueueJob>('badge', env.REDIS_URL)
+export const badgeQueue = new Queue<BadgeQueueJob>('badge', bullQueueOptions)

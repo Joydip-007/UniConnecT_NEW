@@ -1,5 +1,5 @@
 import Queue from 'bull'
-import { env } from '../config/env'
+import { bullQueueOptions } from '../config/bull'
 
 export interface EmailQueueJob {
   to: string
@@ -8,4 +8,4 @@ export interface EmailQueueJob {
   text?: string
 }
 
-export const emailQueue = new Queue<EmailQueueJob>('email', env.REDIS_URL)
+export const emailQueue = new Queue<EmailQueueJob>('email', bullQueueOptions)

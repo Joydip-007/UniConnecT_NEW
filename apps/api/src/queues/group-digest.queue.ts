@@ -1,5 +1,5 @@
 import Queue from 'bull'
-import { env } from '../config/env'
+import { bullQueueOptions } from '../config/bull'
 
 // No job data needed — the worker fetches everything from the DB
-export const groupDigestQueue = new Queue('group-digest', env.REDIS_URL)
+export const groupDigestQueue = new Queue('group-digest', bullQueueOptions)

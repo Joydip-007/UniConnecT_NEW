@@ -1,5 +1,5 @@
 import Queue from 'bull'
-import { env } from '../config/env'
+import { bullQueueOptions } from '../config/bull'
 
 export interface NotificationQueueJob {
   universityId: string
@@ -12,4 +12,4 @@ export interface NotificationQueueJob {
   payload: Record<string, unknown>
 }
 
-export const notificationQueue = new Queue<NotificationQueueJob>('notification', env.REDIS_URL)
+export const notificationQueue = new Queue<NotificationQueueJob>('notification', bullQueueOptions)

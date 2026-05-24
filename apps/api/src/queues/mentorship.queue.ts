@@ -1,5 +1,5 @@
 import Queue from 'bull'
-import { env } from '../config/env'
+import { bullQueueOptions } from '../config/bull'
 
 export type MentorshipJobType = 'request_reminder' | 'request_expire'
 
@@ -11,4 +11,4 @@ export interface MentorshipQueueJob {
   studentId: string
 }
 
-export const mentorshipQueue = new Queue<MentorshipQueueJob>('mentorship', env.REDIS_URL)
+export const mentorshipQueue = new Queue<MentorshipQueueJob>('mentorship', bullQueueOptions)
