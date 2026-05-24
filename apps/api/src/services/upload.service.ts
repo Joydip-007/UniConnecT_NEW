@@ -12,6 +12,10 @@ export const s3Client = new S3Client({
           secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
         }
       : undefined,
+  ...(env.AWS_ENDPOINT && {
+    endpoint: env.AWS_ENDPOINT,   // https://<accountid>.r2.cloudflarestorage.com
+    forcePathStyle: false,        // R2 uses virtual-hosted-style (default for R2)
+  }),
 })
 
 export interface CreateUploadCommandInput {
@@ -53,8 +57,16 @@ export async function getPresignedUploadUrl(key: string, contentType: string): P
 
   return {
     uploadUrl: await getSignedUrl(s3Client, command, { expiresIn: 300 }),
-    publicUrl: `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${encodeS3Key(key)}`,
+    publicUrl: buildPublicUrl(key),
   }
+}
+
+/** Returns the public CDN URL for a stored object key. */
+export function buildPublicUrl(key: string): string {
+  if (env.AWS_PUBLIC_URL) {
+    return `${env.AWS_PUBLIC_URL}/${encodeS3Key(key)}`
+  }
+  return `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${encodeS3Key(key)}`
 }
 
 export const uploadService = {
