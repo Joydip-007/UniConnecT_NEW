@@ -17,6 +17,8 @@ const envSchema = z.object({
   AWS_S3_BUCKET: z.string().default('uniconnect-local'),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_ENDPOINT: z.string().url().optional(),    // Cloudflare R2 endpoint
+  AWS_PUBLIC_URL: z.string().url().optional(),  // R2 public bucket base URL
   OTP_EXPIRES_MINUTES: z.coerce.number().int().positive().default(10),
   OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(60),
   DEV_INVITE_TOKEN: z.string().default('dev-invite'),
