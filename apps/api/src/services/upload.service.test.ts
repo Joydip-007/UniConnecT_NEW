@@ -33,4 +33,12 @@ describe('buildPublicUrl', () => {
       'https://pub-abc123.r2.dev/uploads/my%20file%20(1).jpg',
     )
   })
+
+  it('strips trailing slash from AWS_PUBLIC_URL', async () => {
+    vi.stubEnv('AWS_PUBLIC_URL', 'https://pub-abc123.r2.dev/')
+    const { buildPublicUrl } = await import('./upload.service')
+    expect(buildPublicUrl('uploads/photo.jpg')).toBe(
+      'https://pub-abc123.r2.dev/uploads/photo.jpg',
+    )
+  })
 })

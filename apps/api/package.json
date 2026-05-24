@@ -11,6 +11,7 @@
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
     "db:migrate": "ts-node-dev --transpile-only --exit-child src/db/migrate.ts latest",
     "db:migrate:prod": "node dist/db/migrate.js latest",
     "db:rollback": "ts-node-dev --transpile-only --exit-child src/db/migrate.ts rollback",

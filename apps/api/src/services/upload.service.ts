@@ -64,7 +64,7 @@ export async function getPresignedUploadUrl(key: string, contentType: string): P
 /** Returns the public CDN URL for a stored object key. */
 export function buildPublicUrl(key: string): string {
   if (env.AWS_PUBLIC_URL) {
-    return `${env.AWS_PUBLIC_URL}/${encodeS3Key(key)}`
+    return `${env.AWS_PUBLIC_URL.replace(/\/$/, '')}/${encodeS3Key(key)}`
   }
   return `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${encodeS3Key(key)}`
 }
