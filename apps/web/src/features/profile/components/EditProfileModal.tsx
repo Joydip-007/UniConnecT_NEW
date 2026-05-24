@@ -281,6 +281,9 @@ export function EditProfileModal({ onClose }: Props) {
       await api.patch('/users/me', { avatarUrl: publicUrl })
       updateProfile({ avatarUrl: publicUrl })
       setAvatarPreview(publicUrl)
+      // Invalidate caches so feed post author chips and sidebar reflect the new avatar
+      queryClient.invalidateQueries({ queryKey: ['posts'] })
+      if (user?.id) queryClient.invalidateQueries({ queryKey: ['user', user.id] })
     } catch { /* error state set by hook */ }
   }
 
@@ -293,6 +296,7 @@ export function EditProfileModal({ onClose }: Props) {
       await api.patch('/users/me', { coverUrl: publicUrl })
       updateProfile({ coverUrl: publicUrl })
       setCoverPreview(publicUrl)
+      if (user?.id) queryClient.invalidateQueries({ queryKey: ['user', user.id] })
     } catch { /* error state set by hook */ }
   }
 
