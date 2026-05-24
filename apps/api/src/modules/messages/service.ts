@@ -307,6 +307,7 @@ export class MessagesService {
           university_id: context.universityId,
           name: input.name,
           is_group: true,
+          type: 'group',
           created_by: context.userId,
         })
         .returning<{ id: string }[]>('id')

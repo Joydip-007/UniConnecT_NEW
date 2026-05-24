@@ -26,8 +26,18 @@ export function initials(name: string | null | undefined): string {
 
 // ── Time formatting ────────────────────────────────────────────────────────────
 
-export function relativeTime(iso: string): string {
-  const raw = formatDistanceToNow(parseISO(iso), { addSuffix: false })
+/**
+ * Safe wrapper around parseISO — returns epoch instead of throwing on null,
+ * undefined, or an unrecognised format (mirrors safeParse in ChatView.tsx).
+ */
+function safeParse(iso: string | null | undefined): Date {
+  if (!iso) return new Date(0)
+  const d = parseISO(String(iso))
+  return isNaN(d.getTime()) ? new Date(0) : d
+}
+
+export function relativeTime(iso: string | null | undefined): string {
+  const raw = formatDistanceToNow(safeParse(iso), { addSuffix: false })
     .replace('about ', '')
     .replace('less than a ', '<1 ')
     .replace('almost ', '')
