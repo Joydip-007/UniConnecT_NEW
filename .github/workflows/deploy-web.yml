@@ -35,8 +35,11 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Link Vercel project
+        run: |
+          mkdir -p .vercel
+          printf '{"projectId":"prj_BQJxSws7kniYzFxbAPsHbwy0dx0Z","orgId":"team_GOgsVRjGimt9lt7mc3HGovvs"}' \
+            > .vercel/project.json
+
       - name: Deploy to Vercel
         run: npx vercel --prod --yes --token "${{ secrets.VERCEL_TOKEN }}"
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
