@@ -228,6 +228,57 @@ Vercel will show DNS records to add. In your registrar:
 
 > If your domain is on Cloudflare, set the proxy to **DNS only (grey cloud)** for the records Vercel requires, otherwise TLS verification fails.
 
+### Re-deploying via CLI (manual trigger)
+
+Use this whenever you need to push the frontend outside of CI/CD (e.g. urgent hotfix from a local machine).
+
+**Prerequisites:** Node.js on PATH, `npx` available.
+
+```bash
+# Step 1 — Authenticate (first time on a new machine; opens browser OAuth)
+npx vercel login
+
+# Confirm you are logged in
+npx vercel whoami   # should print: joydip-007
+
+# Step 2 — Link this repo to the existing Vercel project (one-time per machine)
+npx vercel link --project uniconnect --yes
+# Output: Linked joydip-dattas-projects/uniconnect
+
+# Step 3 — Deploy to production
+npx vercel --prod --yes
+```
+
+The CLI will:
+1. Upload the local source tree (~8.8 MB)
+2. Build on Vercel's servers (`npx pnpm install` → `tsc -b && vite build`)
+3. Alias the result to `uniconnectt.me` and `www.uniconnectt.me`
+
+Deployment typically takes **~30 seconds** (build cache hit) or **~2 minutes** (cold build).
+
+After deploy, verify with:
+```bash
+npx vercel inspect <deployment-url>
+# Check: status ● Ready, target production
+```
+
+### GitHub Actions auto-deploy (CI/CD)
+
+The workflow at [.github/workflows/deploy-web.yml](.github/workflows/deploy-web.yml) fires automatically on every push to `main` that touches `apps/web/**`, `packages/shared/**`, or `vercel.json`.
+
+To activate it, add these secrets to **GitHub → Settings → Secrets and variables → Actions**:
+
+| Secret name | How to get it |
+|---|---|
+| `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) → **Create token** |
+| `VERCEL_ORG_ID` | `cat .vercel/project.json` → `"orgId"` field (after running `vercel link`) |
+| `VERCEL_PROJECT_ID` | `cat .vercel/project.json` → `"projectId"` field |
+| `VITE_API_URL` | `https://api.uniconnectt.me` |
+| `VITE_SOCKET_URL` | `https://api.uniconnectt.me` |
+| `VITE_UNIVERSITY_DOMAIN` | `uiu.ac.bd` |
+
+> Until these secrets are set, the workflow will fail. Use the CLI deploy above as the manual fallback.
+
 ---
 
 ## 6 — Post-Deploy Checklist
@@ -312,9 +363,19 @@ If no email: check `RESEND_API_KEY` in App Settings and confirm the sender domai
 
 ### Deploy an update
 
-Just push to `main`. The GitHub Actions workflow ([.github/workflows/deploy-api.yml](.github/workflows/deploy-api.yml)) triggers automatically when `apps/api/**` or `packages/shared/**` changes.
+| What changed | What fires | Workflow file |
+|---|---|---|
+| `apps/api/**` or `packages/shared/**` | Azure App Service deploy | [deploy-api.yml](.github/workflows/deploy-api.yml) |
+| `apps/web/**` or `packages/shared/**` | Vercel frontend deploy | [deploy-web.yml](.github/workflows/deploy-web.yml) |
 
-For frontend-only changes, Vercel auto-deploys on every push to `main`.
+Both workflows trigger automatically on push to `main`.
+
+If CI/CD is not yet configured (GitHub secrets missing), use the manual CLI fallback:
+```bash
+# Backend — re-run the workflow from Actions tab in GitHub
+# Frontend — see §5 "Re-deploying via CLI"
+npx vercel --prod --yes
+```
 
 ### Monitor credit balance
 
