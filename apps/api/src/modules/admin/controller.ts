@@ -108,9 +108,9 @@ export const getAllowedDomains = asyncHandler(async (req: Request, res: Response
 })
 
 export const updateAllowedDomains = asyncHandler(async (req: Request, res: Response) => {
-  const { universityId } = getAdminContext(req)
+  const { universityId, userId } = getAdminContext(req)
   const { allowed_email_domains } = req.body as UpdateAllowedDomainsInput
-  sendSuccess(res, await adminService.updateAllowedEmailDomains(universityId, allowed_email_domains))
+  sendSuccess(res, await adminService.updateAllowedEmailDomains(universityId, userId, allowed_email_domains))
 })
 
 function getAdminContext(req: Request) {

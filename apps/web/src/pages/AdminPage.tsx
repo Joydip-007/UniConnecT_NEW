@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import {
   Users, FileText, Mail, Flag, Trash2, X,
   ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle,
@@ -169,6 +170,15 @@ const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Reports', value: 'reports', icon: <Flag size={14} /> },
 ]
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getDomainError(err: unknown): string | null {
+  if (!isAxiosError(err)) return null
+  const code: string = err.response?.data?.code ?? ''
+  if (code === 'EMAIL_DOMAIN_NOT_ALLOWED') return err.response?.data?.error ?? 'Email domain not allowed.'
+  return null
+}
+
 // ── Allowed email domains panel ───────────────────────────────────────────────
 
 function AllowedDomainsPanel() {
@@ -177,6 +187,7 @@ function AllowedDomainsPanel() {
   const [draft, setDraft] = useState<string[]>([])
   const [input, setInput] = useState('')
   const [inputError, setInputError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery<{ allowedEmailDomains: string[] }>({
     queryKey: ['admin', 'university', 'domains'],
@@ -191,6 +202,8 @@ function AllowedDomainsPanel() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'university', 'domains'] })
       setEditing(false)
+      setSuccessMsg('Allowed domains saved.')
+      setTimeout(() => setSuccessMsg(null), 4000)
     },
   })
 
@@ -252,25 +265,47 @@ function AllowedDomainsPanel() {
       {isLoading ? (
         <Spinner />
       ) : !editing ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {domains.length === 0 ? (
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Any domain allowed</span>
-          ) : (
-            domains.map((d) => (
-              <span key={d} style={{
-                background: 'var(--uc-indigo-bg)',
-                border: '0.5px solid var(--uc-indigo-bdr)',
-                borderRadius: 'var(--r-pill)',
-                padding: '3px 10px',
-                fontSize: 13,
-                color: 'var(--uc-indigo-l)',
-                fontFamily: 'monospace',
-              }}>
-                @{d}
-              </span>
-            ))
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {domains.length === 0 ? (
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Any domain allowed</span>
+            ) : (
+              domains.map((d) => (
+                <span key={d} style={{
+                  background: 'var(--uc-indigo-bg)',
+                  border: '0.5px solid var(--uc-indigo-bdr)',
+                  borderRadius: 'var(--r-pill)',
+                  padding: '3px 10px',
+                  fontSize: 13,
+                  color: 'var(--uc-indigo-l)',
+                  fontFamily: 'monospace',
+                }}>
+                  @{d}
+                </span>
+              ))
+            )}
+          </div>
+          {successMsg && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'var(--uc-mint-bg)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-md)',
+              padding: '10px 14px',
+            }}>
+              <span style={{ fontSize: 13, color: 'var(--uc-mint)' }}>{successMsg}</span>
+              <button
+                type="button"
+                onClick={() => setSuccessMsg(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--uc-mint)' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
           )}
-        </div>
+        </>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, minHeight: 32 }}>
@@ -960,7 +995,7 @@ function InvitationsTab() {
               </PrimaryBtn>
               {singleMutation.isError && (
                 <span style={{ fontSize: 13, color: 'var(--uc-orange-l)' }}>
-                  Failed to send. Try again.
+                  {getDomainError(singleMutation.error) ?? 'Failed to send. Try again.'}
                 </span>
               )}
             </div>
@@ -1019,7 +1054,7 @@ function InvitationsTab() {
               </PrimaryBtn>
               {bulkMutation.isError && (
                 <span style={{ fontSize: 13, color: 'var(--uc-orange-l)' }}>
-                  Failed to send. Try again.
+                  {getDomainError(bulkMutation.error) ?? 'Failed to send. Try again.'}
                 </span>
               )}
             </div>

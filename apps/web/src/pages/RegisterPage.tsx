@@ -212,6 +212,8 @@ export default function RegisterPage() {
           setServerError('An account already exists for this invitation.')
         } else if (status === 404 || code === 'NOT_FOUND') {
           setServerError('Invitation token is invalid or expired.')
+        } else if (status === 422 && code === 'EMAIL_DOMAIN_NOT_ALLOWED') {
+          setServerError('Your email domain is not permitted to register at this university.')
         } else if (status === 422) {
           setServerError('Please check your details and try again.')
         } else {

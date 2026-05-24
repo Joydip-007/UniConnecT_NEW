@@ -294,6 +294,17 @@ export class AdminService {
     input: CreateInvitationInput,
     universityName: string,
   ) {
+    const { allowedEmailDomains } = await this.getAllowedEmailDomains(universityId)
+    if (allowedEmailDomains.length > 0) {
+      const domain = input.email.split('@')[1]?.toLowerCase() ?? ''
+      if (!allowedEmailDomains.includes(domain)) {
+        throw badRequest(
+          `Invitations are only allowed for: ${allowedEmailDomains.join(', ')}`,
+          'EMAIL_DOMAIN_NOT_ALLOWED',
+        )
+      }
+    }
+
     const token = crypto.randomBytes(32).toString('hex')
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + input.expires_in_days)
@@ -333,6 +344,21 @@ export class AdminService {
     universityName: string,
   ) {
     const unique = [...new Set(input.emails.map((e) => e.toLowerCase().trim()))]
+
+    const { allowedEmailDomains } = await this.getAllowedEmailDomains(universityId)
+    if (allowedEmailDomains.length > 0) {
+      const blocked = unique.filter((e) => {
+        const d = e.split('@')[1]?.toLowerCase() ?? ''
+        return !allowedEmailDomains.includes(d)
+      })
+      if (blocked.length > 0) {
+        throw badRequest(
+          `These emails have disallowed domains: ${blocked.join(', ')}. Allowed: ${allowedEmailDomains.join(', ')}`,
+          'EMAIL_DOMAIN_NOT_ALLOWED',
+        )
+      }
+    }
+
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + input.expires_in_days)
 
@@ -406,11 +432,23 @@ export class AdminService {
     return { allowedEmailDomains: row?.allowed_email_domains ?? [] }
   }
 
-  async updateAllowedEmailDomains(universityId: string, domains: string[]) {
+  async updateAllowedEmailDomains(universityId: string, actorId: string, domains: string[]) {
     const unique = [...new Set(domains.map((d) => d.trim().toLowerCase()).filter(Boolean))]
+
+    const { allowedEmailDomains: before } = await this.getAllowedEmailDomains(universityId)
+
     await db('universities')
       .where({ id: universityId })
-      .update({ allowed_email_domains: db.raw('?::text[]', [unique.length ? `{${unique.join(',')}}` : '{}']) })
+      .update({ allowed_email_domains: unique })
+
+    await db('university_audit_logs').insert({
+      university_id: universityId,
+      actor_id: actorId,
+      action: 'domains.updated',
+      payload: JSON.stringify({ before, after: unique }),
+    })
+
+    getIo().to(`uni:${universityId}`).emit('university:domains_updated', { allowedEmailDomains: unique })
 
     return { allowedEmailDomains: unique }
   }
