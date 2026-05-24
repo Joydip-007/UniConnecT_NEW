@@ -1,0 +1,53 @@
+name: Deploy API → Azure App Service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/deploy-api.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Install all dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @uniconnect/shared build
+
+      - name: Build API
+        run: pnpm --filter api build
+
+      - name: Create standalone production package
+        run: |
+          pnpm --filter api deploy --prod /tmp/api-deploy
+          # pnpm deploy copies runtime node_modules but not the compiled dist/
+          # Copy it explicitly
+          cp -r apps/api/dist /tmp/api-deploy/dist
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: /tmp/api-deploy
