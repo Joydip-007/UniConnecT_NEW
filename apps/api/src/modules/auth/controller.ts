@@ -136,8 +136,8 @@ function getUniversityId(req: Request) {
   return req.university.id
 }
 
-function getIpAddress(req: Request) {
-  return req.ip ?? req.socket.remoteAddress ?? 'unknown'
+function getIpAddress(req: Request): string | null {
+  return req.ip ?? req.socket.remoteAddress ?? null
 }
 
 function getDeviceInfo(req: Request) {

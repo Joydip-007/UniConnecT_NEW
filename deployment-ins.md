@@ -257,11 +257,11 @@ curl -X POST https://api.uniconnectt.me/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -H "x-university-domain: uiu.ac.bd" \
   -d '{
-    "email": "admin@uiu.ac.bd",
-    "password": "your-password",
+    "email": "joydip.datta15@gmail.com",
+    "password": "Joydip_2004",
     "fullName": "Admin User",
     "inviteToken": "dev-invite",
-    "role": "student"
+    "role": "admin"
   }'
 
 # 2. Verify OTP (check email)

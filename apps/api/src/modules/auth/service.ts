@@ -65,7 +65,7 @@ const authMessages = {
 }
 
 export class AuthService {
-  async register(data: RegisterInput, universityId: string, _ipAddress: string, _deviceInfo: AuthDeviceInfo, allowedEmailDomains: string[] = []) {
+  async register(data: RegisterInput, universityId: string, _ipAddress: string | null, _deviceInfo: AuthDeviceInfo, allowedEmailDomains: string[] = []) {
     const invitation = data.invitation_token ? await getInvitation(data.invitation_token) : null
     const email = data.email ?? invitation?.email
     const role = data.role ?? invitation?.role
@@ -159,7 +159,7 @@ export class AuthService {
     }
   }
 
-  async verifyAccount(email: string, otp: string, universityId: string, ipAddress?: string, deviceInfo?: AuthDeviceInfo) {
+  async verifyAccount(email: string, otp: string, universityId: string, ipAddress?: string | null, deviceInfo?: AuthDeviceInfo) {
     const user = await findUserByEmail(email, universityId)
     if (!user) throw new AppError('User not found', 404, 'NOT_FOUND')
 
@@ -197,7 +197,7 @@ export class AuthService {
     }
   }
 
-  async login(email: string, password: LoginInput['password'], universityId: string, ipAddress: string, deviceInfo: AuthDeviceInfo) {
+  async login(email: string, password: LoginInput['password'], universityId: string, ipAddress: string | null, deviceInfo: AuthDeviceInfo) {
     const user = await findUserWithProfileByEmail(email, universityId)
     if (!user || !user.is_active) {
       throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
@@ -232,7 +232,7 @@ export class AuthService {
     }
   }
 
-  async verifyLoginOtp(email: string, otp: string, universityId: string, ipAddress?: string, deviceInfo?: AuthDeviceInfo) {
+  async verifyLoginOtp(email: string, otp: string, universityId: string, ipAddress?: string | null, deviceInfo?: AuthDeviceInfo) {
     const user = await findUserWithProfileByEmail(email, universityId)
     if (!user || !user.is_active) throw new AppError('User not found', 404, 'NOT_FOUND')
 
@@ -257,7 +257,7 @@ export class AuthService {
     }
   }
 
-  async refreshTokens(refreshToken: string | undefined, ipAddress?: string, deviceInfo?: AuthDeviceInfo) {
+  async refreshTokens(refreshToken: string | undefined, ipAddress?: string | null, deviceInfo?: AuthDeviceInfo) {
     if (!refreshToken) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
 
     const payload = tokenService.verifyRefreshToken(refreshToken)
