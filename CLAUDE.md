@@ -95,7 +95,9 @@ All feature modules live under `apps/api/src/modules/`. Each module follows the 
 
 Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`, `explore`.
 
-The `admin` module (`/api/v1/admin`) requires `admin` or `staff` role and exposes: stats, user list + role/status management, invitations (create/list/delete), content reports (list/resolve).
+The `admin` module (`/api/v1/admin`) requires `faculty` or `admin` role (stats endpoint requires `admin` only) and exposes: stats, user list + role/status management, invitations (create/list/delete/bulk), content reports (list/resolve), and allowed email domains management. Admin actions are recorded in `university_audit_log`.
+
+The `groups` module now includes: join-request flow (private groups → request → admin review), member roles (admin/moderator/member), resources (file links with view tracking), study sessions (with RSVP), pinned posts, and group rules.
 
 The `campus` module covers lost-and-found items and shuttle schedules (no dedicated `lost-found` or `shuttle` module — both live under `/api/v1/campus`).
 
@@ -111,6 +113,8 @@ Every router applies `resolveUniversity` first (resolves by `x-university-domain
 
 - `validate(schema)` — validates `req.body` against a Zod schema (`validateBody` is an alias; prefer `validate`)
 - `validateRequest({ body?, params?, query? })` — validates multiple parts; use when you need params or query validation too
+
+All async controller functions must be wrapped with `asyncHandler` from `src/utils/asyncHandler.ts` — this forwards unhandled promise rejections to the `errorHandler` middleware so nothing is swallowed silently.
 
 ### Response helpers (`src/utils/response.ts`)
 
@@ -188,7 +192,7 @@ Strict mode on everywhere. No `any` — use `unknown` + narrowing or a specific 
 
 ## Design system (non-negotiable)
 
-CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/styles/index.css`. Theme: **Warm Futuristic Dark** — navy surfaces, UIU orange identity, indigo interactive. Full token reference is in `DESIGN.md`.
+CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/styles/index.css`. Default theme: **Warm Futuristic Dark** — navy surfaces, UIU orange identity, indigo interactive. A **Warm Neutral Light** theme is also defined under `[data-theme='light']` in the same file (toggled via `theme_preference` on the `users` table and stored in `uiStore`). Full token reference is in `DESIGN.md`.
 
 | Rule | Detail |
 |------|--------|
@@ -220,7 +224,7 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 ## API / Express conventions
 
 - Route files contain only `router.METHOD(...)` declarations — all logic in `services/`.
-- Validate with `validateBody(schema)` or `validateRequest({...})` at the route level.
+- Validate with `validate(schema)` or `validateRequest({...})` at the route level.
 - Errors: throw named error helpers from services (e.g. `notFound()`, `badRequest()`); `errorHandler` middleware catches them.
 - DB: Knex query builder. Raw SQL only when Knex genuinely cannot express the query.
 
@@ -232,7 +236,8 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 - Column defaults: `id` UUID (`uuid_generate_v4()`), `university_id` UUID FK indexed, `created_at`/`updated_at` timestamptz default `now()`.
 - Always index FK columns used in WHERE, and `(university_id, created_at DESC)` on high-volume tables.
 - Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
-- Redis keys: `{prefix}:{university_id}:{id}`. TTLs in `src/config/cache.ts` — never hardcode TTL values elsewhere.
+- Redis keys: `{prefix}:{university_id}:{id}`. Never hardcode TTL values — centralise them (see `src/config/redis.ts` for the client; OTP TTL lives in env `OTP_EXPIRES_MINUTES`).
+- DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Audit (`university_audit_log`).
 
 ---
 
@@ -290,7 +295,7 @@ Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`. CI (lint + 
 
 ## Environment variables
 
-`apps/api/.env` (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `CLIENT_URL`, `AWS_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
+`apps/api/.env` (see `.env.example`): `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `CLIENT_URL` (comma-separated list of allowed CORS origins), `AWS_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. Cloudflare R2 support: additionally set `AWS_ENDPOINT` (R2 endpoint URL) and `AWS_PUBLIC_URL` (public bucket base URL).
 
 `apps/web/.env`: `VITE_API_URL=http://localhost:3001`, `VITE_SOCKET_URL=http://localhost:3001`, `VITE_UNIVERSITY_DOMAIN=uiu.ac.bd`.
 
