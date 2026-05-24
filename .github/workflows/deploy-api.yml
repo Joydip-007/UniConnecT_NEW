@@ -15,19 +15,24 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-
-      - name: Install pnpm
-        run: npm install -g pnpm@9
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install all dependencies
         run: pnpm install --frozen-lockfile
@@ -41,8 +46,7 @@ jobs:
       - name: Create standalone production package
         run: |
           pnpm --filter api deploy --prod /tmp/api-deploy
-          # pnpm deploy copies runtime node_modules but not the compiled dist/
-          # Copy it explicitly
+          # pnpm deploy copies runtime node_modules and package.json but not compiled dist/
           cp -r apps/api/dist /tmp/api-deploy/dist
 
       - name: Deploy to Azure App Service
