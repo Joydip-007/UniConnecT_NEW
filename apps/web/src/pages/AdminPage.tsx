@@ -362,7 +362,17 @@ function AllowedDomainsPanel() {
           <div style={{ display: 'flex', gap: 8 }}>
             <PrimaryBtn
               disabled={saveMutation.isPending}
-              onClick={() => saveMutation.mutate(draft)}
+              onClick={() => {
+                // Flush any text still in the input field into draft before saving
+                const val = input.trim().toLowerCase()
+                let finalDraft = draft
+                if (val && /^[a-z0-9.-]+\.[a-z]{2,}$/.test(val) && !draft.includes(val)) {
+                  finalDraft = [...draft, val]
+                  setDraft(finalDraft)
+                  setInput('')
+                }
+                saveMutation.mutate(finalDraft)
+              }}
             >
               {saveMutation.isPending ? 'Saving…' : 'Save'}
             </PrimaryBtn>
