@@ -46,12 +46,28 @@ jobs:
       - name: Create standalone production package
         run: |
           pnpm --filter api deploy --prod /tmp/api-deploy
-          # pnpm deploy copies runtime node_modules and package.json but not compiled dist/
           cp -r apps/api/dist /tmp/api-deploy/dist
-          # Azure zip deploy doesn't preserve pnpm symlinks — dereference them into real files
-          cp -rL /tmp/api-deploy /tmp/api-deploy-flat
-          rm -rf /tmp/api-deploy
-          mv /tmp/api-deploy-flat /tmp/api-deploy
+
+          # pnpm's virtual-store node_modules uses symlinks + nested sub-deps that
+          # Azure's zip deployment cannot preserve. Re-install with npm to get a flat,
+          # non-symlinked node_modules that works on any host.
+
+          # 1. Save the workspace package (not on npm registry)
+          cp -r /tmp/api-deploy/node_modules/@uniconnect /tmp/uniconnect-backup
+
+          # 2. Strip the workspace reference so npm install doesn't try to fetch it
+          jq 'del(.dependencies["@uniconnect/shared"])' \
+            /tmp/api-deploy/package.json > /tmp/pkg-tmp.json
+          mv /tmp/pkg-tmp.json /tmp/api-deploy/package.json
+
+          # 3. Wipe pnpm node_modules and reinstall with npm (flat, no symlinks)
+          rm -rf /tmp/api-deploy/node_modules
+          cd /tmp/api-deploy && npm install --omit=dev --ignore-scripts
+
+          # 4. Restore the workspace package
+          mkdir -p /tmp/api-deploy/node_modules/@uniconnect
+          cp -r /tmp/uniconnect-backup/shared \
+            /tmp/api-deploy/node_modules/@uniconnect/shared
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
