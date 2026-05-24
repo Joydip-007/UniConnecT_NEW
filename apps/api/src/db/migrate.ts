@@ -1,8 +1,9 @@
-import { createKnexConfig, db as appDb } from '../config/db'
+import { createKnexConfig } from '../config/db'
 import knex from 'knex'
 
 const command = process.argv[2]
-const db = knex(createKnexConfig())
+// Use a minimal pool for the migration script — no need for the shared app pool
+const db = knex({ ...createKnexConfig(), pool: { min: 1, max: 1 } })
 
 async function run() {
   if (command === 'latest') {
@@ -29,10 +30,10 @@ async function run() {
     console.error(`Unknown command: ${command}. Use latest | rollback | rollback-all`)
     process.exit(1)
   }
-  await Promise.allSettled([db.destroy(), appDb.destroy()])
+  await db.destroy()
 }
 
 run().catch((err) => {
   console.error(err)
-  void Promise.allSettled([db.destroy(), appDb.destroy()]).finally(() => process.exit(1))
+  void db.destroy().finally(() => process.exit(1))
 })
