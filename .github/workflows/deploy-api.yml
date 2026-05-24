@@ -48,6 +48,10 @@ jobs:
           pnpm --filter api deploy --prod /tmp/api-deploy
           # pnpm deploy copies runtime node_modules and package.json but not compiled dist/
           cp -r apps/api/dist /tmp/api-deploy/dist
+          # Azure zip deploy doesn't preserve pnpm symlinks — dereference them into real files
+          cp -rL /tmp/api-deploy /tmp/api-deploy-flat
+          rm -rf /tmp/api-deploy
+          mv /tmp/api-deploy-flat /tmp/api-deploy
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v3
