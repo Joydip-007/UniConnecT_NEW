@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { ImageUploadField } from '@/components/ImageUploadField'
 import { queryClient } from '@/lib/queryClient'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -15,7 +16,7 @@ interface NewsForm {
   title: string
   body: string
   category: string
-  coverUrl: string
+  coverUrl: string | null
   isPublished: boolean
 }
 
@@ -65,7 +66,7 @@ const EMPTY: NewsForm = {
   title: '',
   body: '',
   category: '',
-  coverUrl: '',
+  coverUrl: null,
   isPublished: true,
 }
 
@@ -85,7 +86,7 @@ export function CreateNewsForm({ onClose }: Props) {
         title: form.title.trim(),
         body: form.body.trim(),
         category: form.category,
-        ...(form.coverUrl.trim() && { cover_url: form.coverUrl.trim() }),
+        ...(form.coverUrl && { cover_url: form.coverUrl }),
         is_published: form.isPublished,
       }),
     onSuccess: () => {
@@ -214,20 +215,14 @@ export function CreateNewsForm({ onClose }: Props) {
             />
           </div>
 
-          {/* Cover URL */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Label htmlFor="cnf-cover">Cover image URL</Label>
-            <input
-              id="cnf-cover"
-              type="url"
-              placeholder="https://…"
-              value={form.coverUrl}
-              onChange={(e) => set('coverUrl', e.target.value)}
-              style={fieldStyle}
-              onFocus={focusBorder}
-              onBlur={blurBorder}
-            />
-          </div>
+          {/* Cover image */}
+          <ImageUploadField
+            value={form.coverUrl}
+            onChange={(url) => set('coverUrl', url)}
+            folder="news"
+            label="Cover image"
+            aspectRatio="16 / 5"
+          />
 
           {/* Publish toggle */}
           <label

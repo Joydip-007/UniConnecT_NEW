@@ -50,15 +50,7 @@ export function GroupCard({ group }: { group: Group }) {
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-default)')}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {group.avatarUrl ? (
-          <img
-            src={group.avatarUrl}
-            alt={group.name}
-            style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-          />
-        ) : (
-          <Avatar initials={getInitials(group.name)} color={seedColor(group.id)} size={48} />
-        )}
+        <Avatar src={group.avatarUrl} initials={getInitials(group.name)} color={seedColor(group.id)} size={48} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{

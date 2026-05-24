@@ -1,4 +1,6 @@
 import { useJoinRequests, useReviewJoinRequest, type JoinRequest } from '@/features/groups'
+import { Avatar } from '@/components/Avatar'
+import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 interface Props {
   groupId: string
@@ -48,12 +50,12 @@ function RequestRow({ request, isLast, onApprove, onDecline, isPending }: {
   return (
     <div style={{ padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', borderBottom: isLast ? 'none' : '0.5px solid var(--border-default)' }}>
       {/* Avatar */}
-      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-raised)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-        {request.requester.avatarUrl
-          ? <img src={request.requester.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-tertiary)' }}>{(request.requester.fullName ?? '?')[0]}</span>
-        }
-      </div>
+      <Avatar
+        src={request.requester.avatarUrl}
+        initials={getInitials(request.requester.fullName ?? '?')}
+        color={seedColor(request.userId)}
+        size={36}
+      />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: '0 0 1px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>

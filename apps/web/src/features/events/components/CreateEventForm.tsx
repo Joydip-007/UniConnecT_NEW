@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Image, Loader2, MapPin, Monitor, X } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
+import { usePresignedUpload } from '@/hooks/usePresignedUpload'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { queryClient } from '@/lib/queryClient'
 
@@ -78,22 +79,6 @@ function Label({
   )
 }
 
-// ── Presign upload helper ─────────────────────────────────────────────────────
-
-async function uploadFile(file: File): Promise<string> {
-  const res = await api.get<{ data: { uploadUrl: string; publicUrl: string } }>(
-    '/upload/presign',
-    { params: { filename: file.name, contentType: file.type } },
-  )
-  const { uploadUrl, publicUrl } = res.data.data
-  await fetch(uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type },
-  })
-  return publicUrl
-}
-
 // ── CreateEventForm ───────────────────────────────────────────────────────────
 
 const EMPTY: EventForm = {
@@ -117,9 +102,8 @@ export function CreateEventForm({ onClose }: Props) {
   const [form, setForm]                 = useState<EventForm>(EMPTY)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [coverUrl, setCoverUrl]         = useState<string | null>(null)
-  const [coverUploading, setCoverUploading] = useState(false)
-  const [uploadErr, setUploadErr]       = useState<string | null>(null)
   const [dateErr, setDateErr]           = useState<string | null>(null)
+  const { upload: uploadCover, uploading: coverUploading, error: uploadErr, reset: resetUploadErr } = usePresignedUpload('events')
 
   function set<K extends keyof EventForm>(field: K, value: EventForm[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -130,15 +114,12 @@ export function CreateEventForm({ onClose }: Props) {
     const file = e.target.files?.[0]
     if (!file) return
     setCoverPreview(URL.createObjectURL(file))
-    setCoverUploading(true)
-    setUploadErr(null)
+    resetUploadErr()
     try {
-      setCoverUrl(await uploadFile(file))
+      setCoverUrl(await uploadCover(file))
     } catch {
-      setUploadErr('Upload failed. Try again.')
       setCoverPreview(null)
     } finally {
-      setCoverUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -146,7 +127,7 @@ export function CreateEventForm({ onClose }: Props) {
   function removeCover() {
     setCoverPreview(null)
     setCoverUrl(null)
-    setUploadErr(null)
+    resetUploadErr()
   }
 
   const createMutation = useMutation({

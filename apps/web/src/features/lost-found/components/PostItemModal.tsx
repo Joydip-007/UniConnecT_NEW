@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Image as ImageIcon, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
+import { usePresignedUpload } from '@/hooks/usePresignedUpload'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import {
   MAX_IMAGES,
@@ -28,7 +29,7 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
   const [locationDetail, setLocationDetail] = useState('')
   const [contactInfo, setContactInfo] = useState('')
   const [images, setImages] = useState<UploadedImage[]>([])
-  const [uploadingImg, setUploadingImg] = useState(false)
+  const { upload: uploadImage, uploading: uploadingImg } = usePresignedUpload('lost-found')
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
@@ -41,8 +42,6 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
     const toUpload = files.slice(0, MAX_IMAGES - images.length)
     if (!toUpload.length) return
 
-    setUploadingImg(true)
-
     for (const file of toUpload) {
       if (file.size > MAX_IMG_BYTES) {
         toast.error(`${file.name} exceeds 5 MB`)
@@ -50,20 +49,7 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
       }
       const preview = URL.createObjectURL(file)
       try {
-        const presignRes = await api.post<{
-          data: { uploadUrl: string; publicUrl: string }
-        }>('/upload/presign', {
-          fileName: file.name,
-          fileType: file.type,
-          folder: 'lost-found',
-        })
-        const { uploadUrl, publicUrl } = presignRes.data.data
-        const s3Res = await fetch(uploadUrl, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
-        })
-        if (!s3Res.ok) throw new Error('S3 upload failed')
+        const publicUrl = await uploadImage(file)
         setImages((prev) => [...prev, { url: publicUrl, preview }])
       } catch {
         URL.revokeObjectURL(preview)
@@ -71,7 +57,6 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
       }
     }
 
-    setUploadingImg(false)
     if (imgInputRef.current) imgInputRef.current.value = ''
   }
 

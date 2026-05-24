@@ -186,19 +186,12 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
                       textAlign: 'left',
                     }}
                   >
-                    {user.profile.avatarUrl ? (
-                      <img
-                        src={user.profile.avatarUrl}
-                        alt={user.profile.fullName}
-                        style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                      />
-                    ) : (
-                      <Avatar
-                        initials={getInitials(user.profile.fullName)}
-                        color={seedColor(user.id)}
-                        size={32}
-                      />
-                    )}
+                    <Avatar
+                      src={user.profile.avatarUrl}
+                      initials={getInitials(user.profile.fullName)}
+                      color={seedColor(user.id)}
+                      size={32}
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
                         {user.profile.fullName}

@@ -33,19 +33,12 @@ export function LostFoundCard({ item, currentUserId }: LostFoundCardProps) {
       {/* Header: avatar + author + type badge */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          {item.author.avatarUrl ? (
-            <img
-              src={item.author.avatarUrl}
-              alt={item.author.fullName}
-              style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-            />
-          ) : (
-            <Avatar
-              initials={getInitials(item.author.fullName)}
-              color={seedColor(item.authorId)}
-              size={36}
-            />
-          )}
+          <Avatar
+            src={item.author.avatarUrl}
+            initials={getInitials(item.author.fullName)}
+            color={seedColor(item.authorId)}
+            size={36}
+          />
           <div style={{ minWidth: 0 }}>
             <p
               style={{

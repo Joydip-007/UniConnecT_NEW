@@ -163,15 +163,7 @@ export function MembersTab({ group }: { group: Group }) {
                 gap: 12,
               }}
             >
-              {member.avatarUrl ? (
-                <img
-                  src={member.avatarUrl}
-                  alt={member.fullName}
-                  style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                />
-              ) : (
-                <Avatar initials={getInitials(member.fullName)} color={seedColor(member.id)} size={40} />
-              )}
+              <Avatar src={member.avatarUrl} initials={getInitials(member.fullName)} color={seedColor(member.id)} size={40} />
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p

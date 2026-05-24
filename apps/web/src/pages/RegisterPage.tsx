@@ -254,7 +254,7 @@ export default function RegisterPage() {
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Joydip Datta"
+              placeholder="Full name"
               style={inputStyle}
             />
           </Field>

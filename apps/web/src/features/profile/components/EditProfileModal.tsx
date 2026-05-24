@@ -4,6 +4,7 @@ import { Camera, X } from 'lucide-react'
 import type { User, UserProfile } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
+import { usePresignedUpload } from '@/hooks/usePresignedUpload'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
@@ -12,11 +13,6 @@ import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 interface Props {
   onClose: () => void
-}
-
-interface PresignResponse {
-  uploadUrl: string
-  publicUrl: string
 }
 
 type UploadSlot = 'avatar' | 'cover'
@@ -257,8 +253,12 @@ export function EditProfileModal({ onClose }: Props) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(p?.avatarUrl ?? null)
   const [coverPreview, setCoverPreview] = useState<string | null>(p?.coverUrl ?? null)
 
-  const [uploading, setUploading] = useState<UploadSlot | null>(null)
-  const [uploadError, setUploadError] = useState<UploadSlot | null>(null)
+  const avatarUpload = usePresignedUpload('profiles')
+  const coverUpload = usePresignedUpload('profiles')
+
+  // Derived state to match original template references
+  const uploading: UploadSlot | null = avatarUpload.uploading ? 'avatar' : coverUpload.uploading ? 'cover' : null
+  const uploadError: UploadSlot | null = avatarUpload.error ? 'avatar' : coverUpload.error ? 'cover' : null
 
   // ── Keyboard close ─────────────────────────────────────────────────────────
 
@@ -272,50 +272,28 @@ export function EditProfileModal({ onClose }: Props) {
 
   // ── Image upload ───────────────────────────────────────────────────────────
 
-  async function handleImageUpload(
-    slot: UploadSlot,
-    file: File,
-  ) {
-    setUploading(slot)
-    setUploadError(null)
-
-    const fieldKey = slot === 'avatar' ? 'avatarUrl' : 'coverUrl'
-
+  async function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
     try {
-      const { data: presign } = await api.get<{ data: PresignResponse }>('/upload/presign', {
-        params: { filename: file.name, contentType: file.type },
-      })
-      const { uploadUrl, publicUrl } = presign.data
-
-      const s3Res = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
-      })
-      if (!s3Res.ok) throw new Error('Upload failed')
-
-      await api.patch('/users/me', { [fieldKey]: publicUrl })
-      updateProfile({ [fieldKey]: publicUrl })
-
-      if (slot === 'avatar') setAvatarPreview(publicUrl)
-      else setCoverPreview(publicUrl)
-    } catch {
-      setUploadError(slot)
-    } finally {
-      setUploading(null)
-    }
+      const publicUrl = await avatarUpload.upload(file)
+      await api.patch('/users/me', { avatarUrl: publicUrl })
+      updateProfile({ avatarUrl: publicUrl })
+      setAvatarPreview(publicUrl)
+    } catch { /* error state set by hook */ }
   }
 
-  function onAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onCoverFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) handleImageUpload('avatar', file)
     e.target.value = ''
-  }
-
-  function onCoverFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) handleImageUpload('cover', file)
-    e.target.value = ''
+    if (!file) return
+    try {
+      const publicUrl = await coverUpload.upload(file)
+      await api.patch('/users/me', { coverUrl: publicUrl })
+      updateProfile({ coverUrl: publicUrl })
+      setCoverPreview(publicUrl)
+    } catch { /* error state set by hook */ }
   }
 
   // ── Form submit ────────────────────────────────────────────────────────────

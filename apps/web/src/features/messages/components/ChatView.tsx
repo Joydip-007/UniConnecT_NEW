@@ -165,6 +165,7 @@ function MessageBubble({
         showAvatar
           ? (
             <Avatar
+              src={message.sender.profile.avatarUrl}
               initials={initials(message.sender.fullName)}
               color={seedColor(message.sender.id)}
               size={28}

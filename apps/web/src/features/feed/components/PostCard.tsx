@@ -351,7 +351,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
       <div className="feed-post-inner" style={{ padding: '14px 16px 12px' }}>
         {/* Header */}
         <div className="feed-post-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-          <Avatar initials={getInitials(author.fullName)} color={avatarColor(author.id)} size={40} />
+          <Avatar src={author.profile.avatarUrl} initials={getInitials(author.fullName)} color={avatarColor(author.id)} size={40} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>

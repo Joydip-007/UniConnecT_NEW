@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { ImageUploadField } from '@/components/ImageUploadField'
 import { useAuthStore } from '@/stores/authStore'
 import type { AllowedRole, Group, GroupType } from '../types'
 
@@ -37,8 +38,8 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
   const [type, setType] = useState<GroupType>('club')
   const [isPrivate, setIsPrivate] = useState(false)
   const [allowedRole, setAllowedRole] = useState<AllowedRole | null>(studentLock ? 'student' : null)
-  const [avatarUrl, setAvatarUrl] = useState('')
-  const [coverUrl, setCoverUrl] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -56,8 +57,8 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
         type,
         is_private: isPrivate,
         allowed_role: allowedRole,
-        avatar_url: avatarUrl.trim() ? avatarUrl.trim() : null,
-        cover_url: coverUrl.trim() ? coverUrl.trim() : null,
+        avatar_url: avatarUrl ?? null,
+        cover_url: coverUrl ?? null,
       }
       const res = await api.post<CreateGroupResponse>('/groups', payload)
       return res.data.data
@@ -208,23 +209,21 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
             </label>
           </Field>
 
-          <Field label="Avatar URL (optional)">
-            <input
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://…"
-              style={inputStyle}
-            />
-          </Field>
+          <ImageUploadField
+            value={avatarUrl}
+            onChange={setAvatarUrl}
+            folder="groups"
+            label="Group avatar (optional)"
+            aspectRatio="1 / 1"
+          />
 
-          <Field label="Cover URL (optional)">
-            <input
-              value={coverUrl}
-              onChange={(e) => setCoverUrl(e.target.value)}
-              placeholder="https://…"
-              style={inputStyle}
-            />
-          </Field>
+          <ImageUploadField
+            value={coverUrl}
+            onChange={setCoverUrl}
+            folder="groups"
+            label="Cover image (optional)"
+            aspectRatio="16 / 5"
+          />
         </div>
 
         <div

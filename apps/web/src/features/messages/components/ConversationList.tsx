@@ -75,7 +75,12 @@ function ConversationRow({
         transition: 'background 150ms',
       }}
     >
-      <Avatar initials={avatarInitials} color={avatarColor} size={42} />
+      <Avatar
+        src={conversation.otherParticipant?.profile.avatarUrl}
+        initials={avatarInitials}
+        color={avatarColor}
+        size={42}
+      />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

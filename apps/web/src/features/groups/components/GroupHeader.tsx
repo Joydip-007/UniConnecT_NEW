@@ -57,24 +57,9 @@ export function GroupHeader({ group }: { group: Group }) {
 
       <div style={{ padding: '0 16px 16px' }}>
         <div style={{ marginTop: -28, marginBottom: 10 }}>
-          {group.avatarUrl ? (
-            <img
-              src={group.avatarUrl}
-              alt={group.name}
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: '50%',
-                objectFit: 'cover',
-                border: '3px solid var(--surface-card)',
-                display: 'block',
-              }}
-            />
-          ) : (
-            <div style={{ border: '3px solid var(--surface-card)', borderRadius: '50%', display: 'inline-flex' }}>
-              <Avatar initials={getInitials(group.name)} color={seedColor(group.id)} size={56} />
-            </div>
-          )}
+          <div style={{ border: '3px solid var(--surface-card)', borderRadius: '50%', display: 'inline-flex' }}>
+            <Avatar src={group.avatarUrl} initials={getInitials(group.name)} color={seedColor(group.id)} size={56} />
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>

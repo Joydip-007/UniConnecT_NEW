@@ -1,12 +1,23 @@
+import { useEffect, useState } from 'react'
+
 interface AvatarProps {
-  initials: string;
-  color: string;
-  size?: number;
-  online?: boolean;
+  initials: string
+  color: string
+  size?: number
+  online?: boolean
+  src?: string | null
 }
 
-export function Avatar({ initials, color, size = 40, online = false }: AvatarProps) {
-  const dotSize = Math.round(size * 0.27);
+export function Avatar({ initials, color, size = 40, online = false, src }: AvatarProps) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const dotSize = Math.round(size * 0.27)
+
+  // Reset failure flag whenever src changes
+  useEffect(() => {
+    setImgFailed(false)
+  }, [src])
+
+  const showImage = !!src && !imgFailed
 
   return (
     <div
@@ -14,7 +25,7 @@ export function Avatar({ initials, color, size = 40, online = false }: AvatarPro
         width: size,
         height: size,
         borderRadius: '50%',
-        background: color,
+        background: showImage ? 'transparent' : color,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -23,9 +34,25 @@ export function Avatar({ initials, color, size = 40, online = false }: AvatarPro
         color: 'var(--text-primary)',
         flexShrink: 0,
         position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      {initials}
+      {showImage ? (
+        <img
+          src={src}
+          alt=""
+          onError={() => setImgFailed(true)}
+          style={{
+            width: size,
+            height: size,
+            objectFit: 'cover',
+            borderRadius: '50%',
+            display: 'block',
+          }}
+        />
+      ) : (
+        initials
+      )}
       {online && (
         <div
           style={{
@@ -41,5 +68,5 @@ export function Avatar({ initials, color, size = 40, online = false }: AvatarPro
         />
       )}
     </div>
-  );
+  )
 }

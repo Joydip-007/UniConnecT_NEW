@@ -139,15 +139,7 @@ function FollowRow({
         }}
         aria-label={`View ${user.fullName}'s profile`}
       >
-        {user.profile.avatarUrl ? (
-          <img
-            src={user.profile.avatarUrl}
-            alt={user.fullName}
-            style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : (
-          <Avatar initials={initials} color={color} size={40} />
-        )}
+        <Avatar src={user.profile.avatarUrl} initials={initials} color={color} size={40} />
       </button>
 
       <button

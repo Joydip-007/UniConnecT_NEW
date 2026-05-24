@@ -320,7 +320,7 @@ export function TopNav() {
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
-            <Avatar initials={initials} color={color} size={32} />
+            <Avatar src={user?.profile.avatarUrl} initials={initials} color={color} size={32} />
           </button>
 
           <AnimatePresence>

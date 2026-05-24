@@ -186,7 +186,7 @@ export function LeftSidebar() {
     items: Array<{ icon: LucideIcon; label: string; path: string; badge?: number; hasDot?: boolean }>
   }> = [
     {
-      groupLabel: 'main',
+      groupLabel: 'Main',
       items: [
         { icon: Home, label: 'Home', path: PATHS.FEED },
         { icon: Compass, label: 'Explore', path: PATHS.EXPLORE },
@@ -194,7 +194,7 @@ export function LeftSidebar() {
       ],
     },
     {
-      groupLabel: 'community',
+      groupLabel: 'Community',
       items: [
         { icon: Users, label: 'Groups', path: PATHS.GROUPS, hasDot: false },
         { icon: Calendar, label: 'Events', path: PATHS.EVENTS },
@@ -204,7 +204,7 @@ export function LeftSidebar() {
       ],
     },
     {
-      groupLabel: 'you',
+      groupLabel: 'You',
       items: [
         { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
         { icon: UserCircle2, label: 'My profile', path: profilePath },
@@ -248,15 +248,17 @@ export function LeftSidebar() {
           flexShrink: 0,
         }}
       >
-        {/* Cover with dot pattern */}
+        {/* Cover strip — user photo or dot-pattern fallback */}
         <div
           style={{
             height: 60,
-            background: [
-              'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
-              'var(--surface-raised)',
-            ].join(', '),
-            backgroundSize: '14px 14px',
+            background: user?.profile.coverUrl
+              ? `center / cover no-repeat url(${user.profile.coverUrl})`
+              : [
+                  'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
+                  'var(--surface-raised)',
+                ].join(', '),
+            backgroundSize: user?.profile.coverUrl ? undefined : '14px 14px',
           }}
         />
 
@@ -281,7 +283,7 @@ export function LeftSidebar() {
                 lineHeight: 0,
               }}
             >
-              <Avatar initials={initials} color={avatarBg} size={40} online />
+              <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
             </div>
           </div>
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
@@ -371,7 +373,7 @@ export function LeftSidebar() {
           label="eLMS"
           iconColor="var(--uc-orange-l)"
           iconBg="var(--uc-orange-bg)"
-          onClick={() => window.open('https://lms.uiu.ac.bd', '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open('https://elms.uiu.ac.bd', '_blank', 'noopener,noreferrer')}
         />
         <CampusTool
           icon={BarChart2}

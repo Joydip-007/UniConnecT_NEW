@@ -83,15 +83,7 @@ export function ProfileHeader({
             lineHeight: 0,
           }}
         >
-          {user.profile.avatarUrl ? (
-            <img
-              src={user.profile.avatarUrl}
-              alt={fullName}
-              style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-            />
-          ) : (
-            <Avatar initials={getInitials(fullName)} color={avatarColor} size={60} />
-          )}
+          <Avatar src={user.profile.avatarUrl} initials={getInitials(fullName)} color={avatarColor} size={60} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
