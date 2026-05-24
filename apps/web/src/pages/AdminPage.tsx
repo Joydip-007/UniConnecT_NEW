@@ -340,23 +340,18 @@ function AllowedDomainsPanel() {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => { setInput(e.target.value); setInputError(null) }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDomain() } }}
-                placeholder="e.g. bscse.uiu.ac.bd"
-                style={inputStyle}
-              />
-              {inputError && (
-                <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{inputError}</span>
-              )}
-            </div>
-            <GhostBtn onClick={addDomain} style={{ alignSelf: 'flex-start' }}>
-              Add
-            </GhostBtn>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => { setInput(e.target.value); setInputError(null) }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDomain() } }}
+              placeholder="Type a domain and press Enter, e.g. bscse.uiu.ac.bd"
+              style={inputStyle}
+            />
+            {inputError && (
+              <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{inputError}</span>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
