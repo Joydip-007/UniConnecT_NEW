@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
@@ -16,6 +16,7 @@ interface RequestModalProps {
 
 export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) {
   const [message, setMessage] = useState('')
+  const modalRef = useRef<HTMLDivElement>(null)
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -25,10 +26,41 @@ export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) 
     onSuccess: () => onSuccess(alumni.fullName),
   })
 
+  useEffect(() => {
+    const modal = modalRef.current
+    if (!modal) return
+
+    // Focus textarea on open
+    const textarea = modal.querySelector('textarea')
+    textarea?.focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !mutation.isPending) {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), textarea, input, a[href]',
+      )
+      if (!focusable) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey ? document.activeElement === first : document.activeElement === last) {
+        e.preventDefault()
+        ;(e.shiftKey ? last : first)?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [mutation.isPending, onClose])
+
   return (
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="request-modal-title"
       style={{
         position: 'fixed',
         inset: 0,
@@ -44,6 +76,7 @@ export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) 
       }}
     >
       <div
+        ref={modalRef}
         style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
@@ -59,7 +92,10 @@ export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar initials={getInitials(alumni.fullName)} color={avatarColor(alumni.id)} size={40} />
           <div>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
+            <p
+              id="request-modal-title"
+              style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}
+            >
               {alumni.fullName}
             </p>
             {alumni.headline && (

@@ -16,7 +16,7 @@ export function StatusBadge({ status }: { status: RequestStatus }) {
           lineHeight: 1,
           padding: '2px 9px',
           borderRadius: 'var(--r-pill)',
-          background: 'rgba(100, 116, 139, 0.12)',
+          background: 'var(--surface-raised)',
           color: 'var(--text-tertiary)',
         }}
       >
@@ -35,7 +35,7 @@ export function StatusBadge({ status }: { status: RequestStatus }) {
         lineHeight: 1,
         padding: '2px 9px',
         borderRadius: 'var(--r-pill)',
-        background: 'rgba(225, 29, 72, 0.12)',
+        background: 'var(--uc-red-bg)',
         color: 'var(--uc-red)',
       }}
     >

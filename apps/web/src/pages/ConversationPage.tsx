@@ -35,7 +35,7 @@ export default function ConversationPage() {
   const typingLabel: string | null = (() => {
     if (typingUserIds.length === 0) return null
     if (!isGroup && conv?.otherParticipant) {
-      const firstName = conv.otherParticipant.fullName.split(' ')[0]
+      const firstName = (conv.otherParticipant.fullName ?? '').split(' ')[0] || 'Someone'
       return `${firstName} is typing`
     }
     return typingUserIds.length === 1

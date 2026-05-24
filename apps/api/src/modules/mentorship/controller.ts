@@ -71,6 +71,13 @@ export const redeemGiftCard = asyncHandler(async (req: Request, res: Response) =
   sendSuccess(res, await mentorshipService.redeem(context, req.body as RedeemGiftCardInput), 201)
 })
 
+export const withdrawRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  await mentorshipService.withdrawRequest(context, requestId)
+  res.status(204).end()
+})
+
 // ── SESSION CRUD ──────────────────────────────────────────────────────────────
 
 export const listSessions = asyncHandler(async (req: Request, res: Response) => {

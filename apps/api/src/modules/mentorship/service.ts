@@ -486,6 +486,31 @@ export class MentorshipService {
     return this.getRequestById(requestId)
   }
 
+  async withdrawRequest(context: AuthContext, requestId: string) {
+    const request = await db('mentorship_requests')
+      .where({ id: requestId, university_id: context.universityId, is_deleted: false })
+      .select<{ student_id: string; status: RequestStatus; reminder_job_id: string | null; expire_job_id: string | null }[]>(
+        'student_id', 'status', 'reminder_job_id', 'expire_job_id',
+      )
+      .first()
+
+    if (!request) throw notFound('Mentorship request not found', 'REQUEST_NOT_FOUND')
+
+    if (context.userId !== request.student_id) {
+      throw forbidden('You do not have permission to withdraw this request', 'REQUEST_FORBIDDEN')
+    }
+
+    if (request.status !== 'pending') {
+      throw badRequest('Only pending requests can be withdrawn', 'REQUEST_NOT_PENDING')
+    }
+
+    await db('mentorship_requests')
+      .where({ id: requestId, university_id: context.universityId })
+      .update({ is_deleted: true, updated_at: db.fn.now() })
+
+    await this.cancelMentorshipJobs(request.reminder_job_id, request.expire_job_id)
+  }
+
   // ── SESSION CRUD ──────────────────────────────────────────────────────────
 
   async listSessions(context: AuthContext, requestId: string) {

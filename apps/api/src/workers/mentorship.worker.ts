@@ -11,7 +11,7 @@ mentorshipQueue.process(async (job) => {
   if (type === 'request_reminder') {
     // ── 48-hour alumni reminder ──────────────────────────────────────────────
     const request = await db('mentorship_requests')
-      .where({ id: requestId })
+      .where({ id: requestId, is_deleted: false })
       .select<{ status: string }[]>('status')
       .first()
 
@@ -50,7 +50,7 @@ mentorshipQueue.process(async (job) => {
   } else if (type === 'request_expire') {
     // ── 7-day auto-expiry ────────────────────────────────────────────────────
     const request = await db('mentorship_requests')
-      .where({ id: requestId })
+      .where({ id: requestId, is_deleted: false })
       .select<{ status: string }[]>('status')
       .first()
 

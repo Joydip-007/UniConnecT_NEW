@@ -15,6 +15,7 @@ import {
   redeemGiftCard,
   updateRequest,
   updateSession,
+  withdrawRequest,
 } from './controller'
 import {
   AlumniListQuerySchema,
@@ -59,6 +60,12 @@ mentorshipRouter.patch(
   requireRole('alumni', 'admin'),
   validate(UpdateRequestSchema),
   updateRequest,
+)
+
+mentorshipRouter.delete(
+  '/requests/:id',
+  requireRole('student'),
+  withdrawRequest,
 )
 
 // Session CRUD — accessible to both student and alumni on the request

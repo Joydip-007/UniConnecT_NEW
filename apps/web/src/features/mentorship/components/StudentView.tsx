@@ -22,6 +22,7 @@ export function StudentView({ addToast }: StudentViewProps) {
   const queryClient = useQueryClient()
 
   const [activeTab, setActiveTab] = useState<'browse' | 'mine'>('browse')
+  const [filterText, setFilterText] = useState('')
   const [modalAlumni, setModalAlumni] = useState<AlumniMentor | null>(null)
   const browseRef = useRef<HTMLDivElement>(null)
 
@@ -103,6 +104,8 @@ export function StudentView({ addToast }: StudentViewProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <nav
+        role="tablist"
+        aria-label="Mentor sections"
         style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
@@ -118,7 +121,13 @@ export function StudentView({ addToast }: StudentViewProps) {
             <button
               key={tab}
               type="button"
-              onClick={() => setActiveTab(tab)}
+              role="tab"
+              aria-selected={active}
+              id={`student-tab-${tab}`}
+              onClick={() => {
+                setActiveTab(tab)
+                if (tab !== 'browse') setFilterText('')
+              }}
               style={{
                 flex: 1,
                 padding: '7px 12px',
@@ -139,69 +148,117 @@ export function StudentView({ addToast }: StudentViewProps) {
       </nav>
 
       {activeTab === 'browse' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {isLoadingAlumni && (
-            <>
-              <AlumniCardSkeleton />
-              <AlumniCardSkeleton />
-              <AlumniCardSkeleton />
-            </>
-          )}
-
-          {alumni.map((alumnus) => (
-            <AlumniCard
-              key={alumnus.id}
-              alumnus={alumnus}
-              alreadySent={sentAlumniIds.has(alumnus.id)}
-              onAsk={() => setModalAlumni(alumnus)}
+        <div role="tabpanel" aria-labelledby="student-tab-browse">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input
+              type="search"
+              placeholder="Search by name, skill, or department…"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              style={{
+                width: '100%',
+                background: 'var(--surface-raised)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-md)',
+                color: 'var(--text-primary)',
+                fontSize: 13,
+                fontWeight: 400,
+                padding: '8px 12px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                transition: 'border-color 150ms',
+                fontFamily: 'inherit',
+              }}
             />
-          ))}
 
-          {!isLoadingAlumni && alumni.length === 0 && (
-            <EmptyState
-              icon={Users}
-              title="No mentors available right now"
-              description="Alumni who are open to mentorship will appear here."
-            />
-          )}
+            {isLoadingAlumni && (
+              <>
+                <AlumniCardSkeleton />
+                <AlumniCardSkeleton />
+                <AlumniCardSkeleton />
+              </>
+            )}
 
-          {isFetchingMoreAlumni && (
-            <>
-              <AlumniCardSkeleton />
-              <AlumniCardSkeleton />
-            </>
-          )}
+            {(() => {
+              const q = filterText.toLowerCase().trim()
+              const filtered = q
+                ? alumni.filter(
+                    (a) =>
+                      a.fullName.toLowerCase().includes(q) ||
+                      (a.headline ?? '').toLowerCase().includes(q) ||
+                      (a.department ?? '').toLowerCase().includes(q) ||
+                      a.skills.some((s) => s.toLowerCase().includes(q)),
+                  )
+                : alumni
 
-          <div ref={browseRef} style={{ height: 1 }} />
+              if (!isLoadingAlumni && filtered.length === 0 && filterText) {
+                return (
+                  <EmptyState
+                    icon={Users}
+                    title="No mentors match your search"
+                    description="Try a different skill, name, or department."
+                  />
+                )
+              }
+
+              return filtered.map((alumnus) => (
+                <AlumniCard
+                  key={alumnus.id}
+                  alumnus={alumnus}
+                  alreadySent={sentAlumniIds.has(alumnus.id)}
+                  onAsk={() => setModalAlumni(alumnus)}
+                />
+              ))
+            })()}
+
+            {!isLoadingAlumni && alumni.length === 0 && !filterText && (
+              <EmptyState
+                icon={Users}
+                title="No mentors available right now"
+                description="Alumni who are open to mentorship will appear here."
+              />
+            )}
+
+            {isFetchingMoreAlumni && (
+              <>
+                <AlumniCardSkeleton />
+                <AlumniCardSkeleton />
+              </>
+            )}
+
+            <div ref={browseRef} style={{ height: 1 }} />
+          </div>
         </div>
       )}
 
       {activeTab === 'mine' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {isLoadingMine && (
-            <>
-              <RequestRowSkeleton />
-              <RequestRowSkeleton />
-            </>
-          )}
+        <div role="tabpanel" aria-labelledby="student-tab-mine">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {isLoadingMine && (
+              <>
+                <RequestRowSkeleton />
+                <RequestRowSkeleton />
+              </>
+            )}
 
-          {myRequests.map((req) => (
-            <div key={req.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <MyRequestRow request={req} />
-              {req.status === 'accepted' && user && (
-                <SessionLogPanel requestId={req.id} currentUserId={user.id} />
-              )}
-            </div>
-          ))}
+            {myRequests.map((req) => (
+              <div key={req.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <MyRequestRow request={req} />
+                {req.status === 'accepted' && user && (
+                  <SessionLogPanel requestId={req.id} currentUserId={user.id} />
+                )}
+              </div>
+            ))}
 
-          {!isLoadingMine && myRequests.length === 0 && (
-            <EmptyState
-              icon={BookOpen}
-              title="No mentorship requests yet"
-              description="Browse alumni above to get started."
-              action={{ label: 'Browse mentors', onClick: () => setActiveTab('browse') }}
-            />
-          )}
+            {!isLoadingMine && myRequests.length === 0 && (
+              <EmptyState
+                icon={BookOpen}
+                title="No mentorship requests yet"
+                description="Browse alumni above to get started."
+                action={{ label: 'Browse mentors', onClick: () => setActiveTab('browse') }}
+              />
+            )}
+          </div>
         </div>
       )}
 

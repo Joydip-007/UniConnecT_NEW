@@ -8,6 +8,7 @@ import {
   type CreateSessionPayload,
 } from '../hooks/useSessionLog'
 import type { MentorshipSession } from '../types'
+import { SessionRowSkeleton } from './Skeletons'
 
 const KEYFRAMES = `
 @keyframes uc-session-slide-in {
@@ -19,6 +20,16 @@ const KEYFRAMES = `
   to   { opacity: 0; max-height: 0;    margin-bottom: 0;   }
 }
 `
+
+let _sessionKeyframesInjected = false
+function ensureSessionKeyframes() {
+  if (_sessionKeyframesInjected || typeof document === 'undefined') return
+  const el = document.createElement('style')
+  el.setAttribute('data-uc', 'session-keyframes')
+  el.textContent = KEYFRAMES
+  document.head.appendChild(el)
+  _sessionKeyframesInjected = true
+}
 
 const DURATIONS = [15, 30, 45, 60, 90, 120] as const
 
@@ -44,6 +55,7 @@ function emptyForm(): FormState {
 }
 
 export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelProps) {
+  ensureSessionKeyframes()
   const { data: sessions = [], isLoading } = useSessionLog(requestId)
   const createMutation = useCreateSession(requestId)
   const updateMutation = useUpdateSession(requestId)
@@ -112,19 +124,17 @@ export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelPro
   }
 
   return (
-    <>
-      <style>{KEYFRAMES}</style>
-      <div
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
+    <div
+      style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
@@ -238,9 +248,7 @@ export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelPro
         )}
 
         {/* Session list */}
-        {isLoading && (
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>Loading…</p>
-        )}
+        {isLoading && <SessionRowSkeleton />}
 
         {!isLoading && sessions.length === 0 && !showForm && (
           <div
@@ -275,8 +283,7 @@ export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelPro
             isSavingEdit={updateMutation.isPending}
           />
         ))}
-      </div>
-    </>
+    </div>
   )
 }
 
@@ -310,6 +317,7 @@ function SessionRow({
   isSavingEdit,
 }: SessionRowProps) {
   const [hovered, setHovered] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   if (isEditing) {
     return (
@@ -462,33 +470,75 @@ function SessionRow({
 
       {/* Owner actions — visible on hover */}
       {isOwner && (
-        <div
-          style={{
-            flexShrink: 0,
-            display: 'flex',
-            gap: 4,
-            opacity: hovered && !isDeleting ? 1 : 0,
-            transition: 'opacity 150ms',
-          }}
-        >
-          <button
-            type="button"
-            onClick={onEdit}
-            title="Edit session"
-            style={iconBtnStyle}
+        <>
+        {confirmingDelete ? (
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>
+              Delete?
+            </p>
+            <button
+              type="button"
+              onClick={() => { onDelete(); setConfirmingDelete(false) }}
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                padding: '5px 12px',
+                borderRadius: 'var(--r-pill)',
+                border: '0.5px solid var(--uc-orange-bdr, var(--border-default))',
+                background: 'var(--uc-orange-bg)',
+                color: 'var(--uc-orange-l)',
+                cursor: 'pointer',
+              }}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              style={{
+                fontSize: 12,
+                fontWeight: 400,
+                padding: '5px 10px',
+                borderRadius: 'var(--r-pill)',
+                border: '0.5px solid var(--border-default)',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              No
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              gap: 4,
+              opacity: hovered && !isDeleting ? 1 : 0,
+              transition: 'opacity 150ms',
+            }}
           >
-            <Edit2 size={12} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={isDeleting}
-            title="Delete session"
-            style={{ ...iconBtnStyle, color: 'var(--uc-red)' }}
-          >
-            <Trash2 size={12} strokeWidth={2} />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={onEdit}
+              title="Edit session"
+              style={iconBtnStyle}
+            >
+              <Edit2 size={12} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              disabled={isDeleting}
+              title="Delete session"
+              style={{ ...iconBtnStyle, color: 'var(--uc-red)' }}
+            >
+              <Trash2 size={12} strokeWidth={2} />
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   )

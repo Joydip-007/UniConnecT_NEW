@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MessageCircle } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Avatar } from '@/components/Avatar'
+import { api } from '@/lib/axios'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { PATHS } from '@/router/paths'
 import { formatDate } from '../constants'
@@ -13,6 +16,21 @@ interface MyRequestRowProps {
 
 export function MyRequestRow({ request }: MyRequestRowProps) {
   const isExpired = request.status === 'expired'
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false)
+
+  const queryClient = useQueryClient()
+
+  const withdrawMutation = useMutation({
+    mutationFn: () =>
+      api.delete(`/mentorship/requests/${request.id}`).then(() => undefined),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['mentorship', 'requests', 'mine'] })
+      setConfirmingWithdraw(false)
+    },
+    onError: () => {
+      setConfirmingWithdraw(false)
+    },
+  })
 
   return (
     <div
@@ -128,6 +146,70 @@ export function MyRequestRow({ request }: MyRequestRowProps) {
             <MessageCircle size={13} strokeWidth={2} />
             Open chat
           </Link>
+        )}
+
+        {/* Withdraw button — pending requests only */}
+        {request.status === 'pending' && (
+          <div style={{ marginTop: 2 }}>
+            {!confirmingWithdraw ? (
+              <button
+                type="button"
+                onClick={() => setConfirmingWithdraw(true)}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 400,
+                  color: 'var(--text-tertiary)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px 0',
+                  borderRadius: 'var(--r-pill)',
+                }}
+              >
+                Withdraw request
+              </button>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Withdraw this request?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => withdrawMutation.mutate()}
+                  disabled={withdrawMutation.isPending}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: '5px 12px',
+                    borderRadius: 'var(--r-pill)',
+                    border: 'none',
+                    background: 'var(--surface-raised)',
+                    color: 'var(--text-secondary)',
+                    cursor: withdrawMutation.isPending ? 'not-allowed' : 'pointer',
+                    opacity: withdrawMutation.isPending ? 0.6 : 1,
+                  }}
+                >
+                  Yes, withdraw
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingWithdraw(false)}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 400,
+                    padding: '5px 10px',
+                    borderRadius: 'var(--r-pill)',
+                    border: '0.5px solid var(--border-default)',
+                    background: 'transparent',
+                    color: 'var(--text-tertiary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

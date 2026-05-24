@@ -24,6 +24,7 @@ interface ConversationRow {
   university_id: string
   name: string | null
   is_group: boolean
+  type: 'direct' | 'group' | 'mentorship'
   avatar_url: string | null
   created_by: string
   created_at: Date
@@ -58,7 +59,7 @@ interface ParticipantRow {
   joined_at: Date
   email: string
   role: UserRole
-  full_name: string
+  full_name: string | null
   avatar_url: string | null
   headline: string | null
 }
@@ -80,7 +81,7 @@ interface MessageRow {
   created_at: Date
   sender_email: string
   sender_role: UserRole
-  sender_full_name: string
+  sender_full_name: string | null
   sender_avatar_url: string | null
   sender_headline: string | null
 }
@@ -360,6 +361,7 @@ function conversationListQuery(context: AuthContext) {
       'conversations.university_id',
       'conversations.name',
       'conversations.is_group',
+      'conversations.type',
       'conversations.avatar_url',
       'conversations.created_by',
       'conversations.created_at',
@@ -533,7 +535,7 @@ function toConversation(row: ConversationRow, participants: ReturnType<typeof to
     universityId: row.university_id,
     name: row.name,
     isGroup: row.is_group,
-    type: row.is_group ? 'group' : 'dm',
+    type: row.type,
     avatarUrl: row.avatar_url,
     createdBy: row.created_by,
     createdAt: row.created_at,
@@ -559,7 +561,7 @@ function toConversation(row: ConversationRow, participants: ReturnType<typeof to
     otherParticipant: otherParticipant
       ? {
           id: otherParticipant.id,
-          fullName: otherParticipant.fullName,
+          fullName: otherParticipant.fullName ?? 'Unknown User',
           role: otherParticipant.role,
           profile: {
             avatarUrl: otherParticipant.avatarUrl,
@@ -580,7 +582,7 @@ function toParticipant(row: ParticipantRow) {
       id: row.user_id,
       email: row.email,
       role: row.role,
-      fullName: row.full_name,
+      fullName: row.full_name ?? 'Unknown User',
       avatarUrl: row.avatar_url,
       headline: row.headline,
     },
@@ -605,7 +607,7 @@ function toMessage(row: MessageRow) {
       id: row.sender_id,
       email: row.sender_email,
       role: row.sender_role,
-      fullName: row.sender_full_name,
+      fullName: row.sender_full_name ?? 'Unknown User',
       avatarUrl: row.sender_avatar_url,
       headline: row.sender_headline,
       profile: {

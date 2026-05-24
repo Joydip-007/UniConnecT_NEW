@@ -6,28 +6,25 @@ interface PointsBalanceProps {
 }
 
 export function PointsBalance({ points }: PointsBalanceProps) {
-  const equivalentUsd = points / POINTS_PER_USD
-
   return (
     <div
       style={{
-        background:
-          'linear-gradient(135deg, var(--uc-orange-bg) 0%, var(--uc-indigo-bg) 100%)',
-        border: '0.5px solid var(--uc-orange-bdr)',
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
-        padding: 20,
+        padding: 16,
         display: 'flex',
         alignItems: 'center',
-        gap: 16,
+        gap: 12,
       }}
     >
       <div
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: 'var(--r-md)',
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--uc-orange-bdr)',
+          width: 36,
+          height: 36,
+          borderRadius: 'var(--r-pill)',
+          background: 'var(--uc-orange-bg)',
+          border: '0.5px solid var(--uc-orange-bdr, var(--border-default))',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -35,32 +32,20 @@ export function PointsBalance({ points }: PointsBalanceProps) {
           flexShrink: 0,
         }}
       >
-        <Sparkles size={22} strokeWidth={1.5} />
+        <Sparkles size={20} strokeWidth={1.5} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
         <p
           style={{
             margin: 0,
-            fontSize: 11,
-            fontWeight: 500,
-            color: 'var(--text-secondary)',
-            textTransform: 'none',
-            letterSpacing: 0,
-          }}
-        >
-          Available points
-        </p>
-        <p
-          style={{
-            margin: '4px 0 2px',
-            fontSize: 28,
+            fontSize: 15,
             fontWeight: 500,
             color: 'var(--text-primary)',
-            lineHeight: 1.1,
             fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1.3,
           }}
         >
-          {points.toLocaleString()}
+          {points.toLocaleString()} points
         </p>
         <p
           style={{
@@ -71,7 +56,9 @@ export function PointsBalance({ points }: PointsBalanceProps) {
             lineHeight: 1.4,
           }}
         >
-          Worth roughly ${equivalentUsd.toFixed(2)} · earn {POINTS_PER_SESSION} per completed session
+          {points === 0
+            ? `Complete a session to earn your first ${POINTS_PER_SESSION} pts`
+            : `Worth ~$${(points / POINTS_PER_USD).toFixed(2)} · earn ${POINTS_PER_SESSION} pts per session`}
         </p>
       </div>
     </div>

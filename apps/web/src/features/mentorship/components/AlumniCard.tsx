@@ -10,20 +10,11 @@ interface AlumniCardProps {
   onAsk: () => void
 }
 
-const capacityPulseKeyframes = `
-@keyframes uc-capacity-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.55; }
-}
-`
-
 export function AlumniCard({ alumnus, alreadySent, onAsk }: AlumniCardProps) {
   const isFull = alumnus.currentMentees >= alumnus.maxMentees
 
   return (
-    <>
-      <style>{capacityPulseKeyframes}</style>
-      <div
+    <div
         style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
@@ -69,7 +60,6 @@ export function AlumniCard({ alumnus, alreadySent, onAsk }: AlumniCardProps) {
                 border: `0.5px solid ${isFull ? 'var(--uc-orange-bdr, var(--border-default))' : 'var(--border-default)'}`,
                 background: isFull ? 'var(--uc-orange-bg)' : 'var(--surface-raised)',
                 color: isFull ? 'var(--uc-orange-l)' : 'var(--text-tertiary)',
-                animation: isFull ? 'uc-capacity-pulse 2s ease-in-out infinite' : 'none',
                 transition: 'background 200ms, color 200ms, border-color 200ms',
               }}
             >
@@ -124,6 +114,5 @@ export function AlumniCard({ alumnus, alreadySent, onAsk }: AlumniCardProps) {
           )}
         </div>
       </div>
-    </>
-  )
+    )
 }

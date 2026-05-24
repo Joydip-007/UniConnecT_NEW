@@ -82,6 +82,20 @@ export function RequestRowSkeleton() {
   )
 }
 
+export function SessionRowSkeleton() {
+  return (
+    <div
+      style={{
+        height: 52,
+        borderRadius: 'var(--r-md)',
+        background: 'var(--surface-raised)',
+        border: '0.5px solid var(--border-default)',
+        animation: 'uc-shimmer 1.4s ease-in-out infinite',
+      }}
+    />
+  )
+}
+
 export function GiftCardSkeleton() {
   return (
     <div

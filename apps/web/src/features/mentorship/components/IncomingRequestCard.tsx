@@ -30,10 +30,17 @@ export function IncomingRequestCard({
   const [notes, setNotes] = useState(request.sessionNotes ?? '')
   const [isSavingNotes, setIsSavingNotes] = useState(false)
   const [capacityError, setCapacityError] = useState<string | null>(null)
+  const [confirmingDecline, setConfirmingDecline] = useState(false)
+  const [confirmingComplete, setConfirmingComplete] = useState(false)
 
   useEffect(() => {
     setNotes(request.sessionNotes ?? '')
   }, [request.sessionNotes])
+
+  useEffect(() => {
+    setConfirmingDecline(false)
+    setConfirmingComplete(false)
+  }, [request.status])
 
   async function saveNotes() {
     if (notes === (request.sessionNotes ?? '')) return
@@ -206,24 +213,104 @@ export function IncomingRequestCard({
       )}
 
       {request.status === 'pending' && (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <MintBtn onClick={handleAccept} disabled={isUpdating}>
             <CheckCircle size={14} strokeWidth={2} />
             Accept
           </MintBtn>
-          <GhostBtn onClick={() => onStatusChange('declined')} disabled={isUpdating}>
-            <XCircle size={14} strokeWidth={2} />
-            Decline
-          </GhostBtn>
+          {!confirmingDecline ? (
+            <GhostBtn onClick={() => setConfirmingDecline(true)} disabled={isUpdating}>
+              <XCircle size={14} strokeWidth={2} />
+              Decline
+            </GhostBtn>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>
+                Decline this request?
+              </p>
+              <button
+                type="button"
+                onClick={() => { onStatusChange('declined'); setConfirmingDecline(false) }}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: '5px 12px',
+                  borderRadius: 'var(--r-pill)',
+                  border: 'none',
+                  background: 'var(--uc-orange)',
+                  color: 'var(--surface-page)',
+                  cursor: 'pointer',
+                }}
+              >
+                Yes, decline
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDecline(false)}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 400,
+                  padding: '5px 10px',
+                  borderRadius: 'var(--r-pill)',
+                  border: '0.5px solid var(--border-default)',
+                  background: 'transparent',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {request.status === 'accepted' && (
         <div>
-          <GhostBtn onClick={() => onStatusChange('completed')} disabled={isUpdating}>
-            <CheckCircle size={14} strokeWidth={2} />
-            Mark complete (+10 pts)
-          </GhostBtn>
+          {!confirmingComplete ? (
+            <GhostBtn onClick={() => setConfirmingComplete(true)} disabled={isUpdating}>
+              <CheckCircle size={14} strokeWidth={2} />
+              Mark complete (+10 pts)
+            </GhostBtn>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>
+                Mark session as complete?
+              </p>
+              <button
+                type="button"
+                onClick={() => { onStatusChange('completed'); setConfirmingComplete(false) }}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: '5px 12px',
+                  borderRadius: 'var(--r-pill)',
+                  border: 'none',
+                  background: 'var(--uc-orange)',
+                  color: 'var(--surface-page)',
+                  cursor: 'pointer',
+                }}
+              >
+                Yes, complete
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingComplete(false)}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 400,
+                  padding: '5px 10px',
+                  borderRadius: 'var(--r-pill)',
+                  border: '0.5px solid var(--border-default)',
+                  background: 'transparent',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
