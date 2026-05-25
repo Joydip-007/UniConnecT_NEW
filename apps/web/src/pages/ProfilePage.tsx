@@ -8,7 +8,7 @@ import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { EditProfileModal, ProfileHeader } from '@/features/profile'
 import { ProfileAbout } from '@/features/profile/components/ProfileAbout'
-import { ProfileActivity } from '@/features/profile/components/ProfileActivity'
+import { PostsPanel } from '@/features/profile/components/PostsPanel'
 import { ProfileExperience as ProfileExperienceSection } from '@/features/profile/components/ProfileExperience'
 import { ProfileEducation as ProfileEducationSection } from '@/features/profile/components/ProfileEducation'
 import { ProfileSkills } from '@/features/profile/components/ProfileSkills'
@@ -231,7 +231,7 @@ export default function ProfilePage() {
 
       {/* ── Posts tab ────────────────────────────────────────── */}
       {activeTab === 'posts' && (
-        <ProfileActivity userId={user.id} />
+        <PostsPanel userId={user.id} isOwnProfile={isOwnProfile} />
       )}
 
       {/* Modals */}
