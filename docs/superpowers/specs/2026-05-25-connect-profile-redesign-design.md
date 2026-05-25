@@ -35,7 +35,7 @@ Spec B depends on Spec A (connection status gates what profile content is visibl
 
 ### A1. Database
 
-#### New migration: `050_create_connections.ts`
+#### New migration: `051_create_connections.ts`
 
 ```sql
 CREATE TABLE connections (
@@ -55,7 +55,7 @@ CREATE INDEX idx_connections_addressee   ON connections (addressee_id);
 CREATE INDEX idx_connections_university  ON connections (university_id, status);
 ```
 
-#### New migration: `051_drop_follows.ts`
+#### New migration: `052_drop_follows.ts`
 
 ```sql
 DROP TABLE IF EXISTS follows;
@@ -217,7 +217,7 @@ Both use existing `user:{userId}` personal room — no new rooms needed.
 
 ### B1. Database
 
-#### `052_create_profile_experiences.ts`
+#### `053_create_profile_experiences.ts`
 
 ```sql
 CREATE TABLE profile_experiences (
@@ -237,7 +237,7 @@ CREATE INDEX idx_profile_exp_user ON profile_experiences (user_id);
 CREATE INDEX idx_profile_exp_uni  ON profile_experiences (university_id, user_id);
 ```
 
-#### `053_create_profile_education.ts`
+#### `054_create_profile_education.ts`
 
 ```sql
 CREATE TABLE profile_education (
@@ -258,7 +258,7 @@ CREATE INDEX idx_profile_edu_user ON profile_education (user_id);
 CREATE INDEX idx_profile_edu_uni  ON profile_education (university_id, user_id);
 ```
 
-#### `054_create_profile_featured.ts`
+#### `055_create_profile_featured.ts`
 
 ```sql
 CREATE TABLE profile_featured (
@@ -277,7 +277,7 @@ CREATE INDEX idx_profile_featured_user ON profile_featured (user_id);
 -- Max 5 items per user enforced in service layer
 ```
 
-#### `055_add_profile_fields.ts`
+#### `056_add_profile_fields.ts`
 
 ```sql
 ALTER TABLE profiles ADD COLUMN location      TEXT;
@@ -287,7 +287,7 @@ ALTER TABLE profiles ADD COLUMN portfolio_url TEXT;
 ALTER TABLE profiles ADD COLUMN is_open_to_msg BOOLEAN NOT NULL DEFAULT false;
 ```
 
-#### `056_create_profile_views.ts`
+#### `057_create_profile_views.ts`
 
 ```sql
 CREATE TABLE profile_views (
@@ -308,7 +308,7 @@ CREATE INDEX idx_profile_views_viewed ON profile_views (viewed_id, viewed_at DES
 
 | Method | Route | Auth |
 |--------|-------|------|
-| `GET` | `/users/:userId/experience` | Any authenticated user |
+| `GET` | `/users/:userId/experience` | Own profile **or** connected users only — returns `[]` for non-connections (no error) |
 | `POST` | `/users/me/experience` | Own profile only |
 | `PATCH` | `/users/me/experience/:id` | Own entry only |
 | `DELETE` | `/users/me/experience/:id` | Own entry only |
@@ -317,7 +317,7 @@ CREATE INDEX idx_profile_views_viewed ON profile_views (viewed_id, viewed_at DES
 
 | Method | Route | Auth |
 |--------|-------|------|
-| `GET` | `/users/:userId/education` | Any authenticated user |
+| `GET` | `/users/:userId/education` | Own profile **or** connected users only — returns `[]` for non-connections (no error) |
 | `POST` | `/users/me/education` | Own profile only |
 | `PATCH` | `/users/me/education/:id` | Own entry only |
 | `DELETE` | `/users/me/education/:id` | Own entry only |
@@ -326,7 +326,7 @@ CREATE INDEX idx_profile_views_viewed ON profile_views (viewed_id, viewed_at DES
 
 | Method | Route | Auth |
 |--------|-------|------|
-| `GET` | `/users/:userId/featured` | Any authenticated user |
+| `GET` | `/users/:userId/featured` | Own profile **or** connected users only — returns `[]` for non-connections (no error) |
 | `POST` | `/users/me/featured` | Own profile only (max 5 enforced) |
 | `DELETE` | `/users/me/featured/:id` | Own entry only |
 | `PATCH` | `/users/me/featured/reorder` | Own profile only |
@@ -610,7 +610,7 @@ All new UI follows existing token conventions:
 
 ## Implementation order
 
-1. DB migrations (050 → 056)
+1. DB migrations (051 → 057)
 2. Connections module (backend)
 3. Users module cleanup (remove follow, update getPublicProfile, getProgress, getSuggestions)
 4. Messages module (DM gating)
