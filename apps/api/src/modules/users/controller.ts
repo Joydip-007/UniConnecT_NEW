@@ -146,7 +146,7 @@ export const reorderFeatured = asyncHandler(async (req: Request, res: Response) 
 
 export const getMyAnalytics = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  sendSuccess(res, await usersService.getMyAnalytics(context.userId))
+  sendSuccess(res, await usersService.getMyAnalytics(context.userId, context.universityId))
 })
 
 export const getMyViewers = asyncHandler(async (req: Request, res: Response) => {
@@ -167,7 +167,11 @@ export const getUserConnections = asyncHandler(async (req: Request, res: Respons
     context.universityId,
     req.query as unknown as PaginationQuery,
   )
-  sendSuccess(res, result)
+  if (result.listHidden) {
+    sendSuccess(res, { total: result.total, listHidden: true })
+  } else {
+    sendPaginated(res, result.items, result.total, result.page, result.limit)
+  }
 })
 
 function getAuthContext(req: Request) {

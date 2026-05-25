@@ -147,7 +147,7 @@ export class UsersService {
 
     // Upsert profile view (fire-and-forget, don't await)
     if (currentUserId !== targetUserId) {
-      db('profile_views').insert({
+      void db('profile_views').insert({
         viewer_id: currentUserId,
         viewed_id: targetUserId,
         university_id: universityId,
@@ -160,7 +160,7 @@ export class UsersService {
 
     const [connections, pendingReceived, posts, connectionRow, mutualCount] = await Promise.all([
       // count accepted connections for target user
-      countUserConnections(targetUserId),
+      countUserConnections(targetUserId, universityId),
       // count pending received (only meaningful for own profile — 0 for others)
       currentUserId === targetUserId
         ? db('connections').where({ addressee_id: targetUserId, status: 'pending' }).count<CountRow[]>({ count: '*' }).then(([r]) => Number(r.count))
@@ -175,7 +175,7 @@ export class UsersService {
         : Promise.resolve(null),
       // count mutual connections
       currentUserId !== targetUserId
-        ? countMutualConnections(currentUserId, targetUserId)
+        ? countMutualConnections(currentUserId, targetUserId, universityId)
         : Promise.resolve(0),
     ])
 
@@ -301,7 +301,7 @@ export class UsersService {
       .count<[{ count: string }]>({ count: '*' })
     const hasMadePost = Number(postResult.count) > 0
 
-    const connectionCount = await countUserConnections(userId)
+    const connectionCount = await countUserConnections(userId, universityId)
 
     const [expResult] = await db('profile_experiences')
       .where({ user_id: userId })
@@ -345,7 +345,7 @@ export class UsersService {
 
     // Connection-gated: return [] if not own profile and not connected
     if (currentUserId !== targetUserId) {
-      const connected = await isConnected(currentUserId, targetUserId)
+      const connected = await isConnected(currentUserId, targetUserId, universityId)
       if (!connected) return []
     }
     return db('profile_experiences')
@@ -370,7 +370,7 @@ export class UsersService {
   }
 
   async updateExperience(userId: string, entryId: string, universityId: string, input: Partial<ExperienceInput>) {
-    const existing = await db('profile_experiences').where({ id: entryId, user_id: userId }).first()
+    const existing = await db('profile_experiences').where({ id: entryId, user_id: userId, university_id: universityId }).first()
     if (!existing) throw notFound('Experience entry not found')
     const update: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.title !== undefined) update.title = input.title
@@ -380,7 +380,7 @@ export class UsersService {
     if (input.endDate !== undefined) update.end_date = input.endDate
     if (input.description !== undefined) update.description = input.description
     const [row] = await db('profile_experiences')
-      .where({ id: entryId, user_id: userId })
+      .where({ id: entryId, user_id: userId, university_id: universityId })
       .update(update)
       .returning('*')
     return row
@@ -401,7 +401,7 @@ export class UsersService {
 
     // Connection-gated: return [] if not own profile and not connected
     if (currentUserId !== targetUserId) {
-      const connected = await isConnected(currentUserId, targetUserId)
+      const connected = await isConnected(currentUserId, targetUserId, universityId)
       if (!connected) return []
     }
     return db('profile_education')
@@ -427,7 +427,7 @@ export class UsersService {
   }
 
   async updateEducation(userId: string, entryId: string, universityId: string, input: Partial<EducationInput>) {
-    const existing = await db('profile_education').where({ id: entryId, user_id: userId }).first()
+    const existing = await db('profile_education').where({ id: entryId, user_id: userId, university_id: universityId }).first()
     if (!existing) throw notFound('Education entry not found')
     const update: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.institution !== undefined) update.institution = input.institution
@@ -438,7 +438,7 @@ export class UsersService {
     if (input.grade !== undefined) update.grade = input.grade
     if (input.description !== undefined) update.description = input.description
     const [row] = await db('profile_education')
-      .where({ id: entryId, user_id: userId })
+      .where({ id: entryId, user_id: userId, university_id: universityId })
       .update(update)
       .returning('*')
     return row
@@ -457,12 +457,12 @@ export class UsersService {
     if (!target) throw notFound('User not found')
 
     if (currentUserId !== targetUserId) {
-      const connected = await isConnected(currentUserId, targetUserId)
+      const connected = await isConnected(currentUserId, targetUserId, universityId)
       if (!connected) return []
     }
     return db('profile_featured')
       .where({ user_id: targetUserId })
-      .orderBy('sort_order', 'asc')
+      .orderBy('display_order', 'asc')
   }
 
   async createFeatured(userId: string, universityId: string, input: FeaturedInput) {
@@ -481,7 +481,7 @@ export class UsersService {
         link_url: input.linkUrl,
         link_title: input.linkTitle,
         link_description: input.linkDescription,
-        sort_order: count,
+        display_order: count,
       })
       .returning('*')
     return row
@@ -494,31 +494,31 @@ export class UsersService {
   }
 
   async reorderFeatured(userId: string, input: ReorderFeaturedInput) {
-    // Update sort_order for each ID in order
+    // Update display_order for each ID in order
     await Promise.all(
       input.order.map((id, index) =>
         db('profile_featured')
           .where({ id, user_id: userId })
-          .update({ sort_order: index, updated_at: db.fn.now() }),
+          .update({ display_order: index, updated_at: db.fn.now() }),
       ),
     )
-    return db('profile_featured').where({ user_id: userId }).orderBy('sort_order', 'asc')
+    return db('profile_featured').where({ user_id: userId }).orderBy('display_order', 'asc')
   }
 
   // ─── Analytics ──────────────────────────────────────────────────────────────
 
-  async getMyAnalytics(userId: string) {
+  async getMyAnalytics(userId: string, universityId: string) {
     const now = new Date()
     const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     const d90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
 
     const [views7, views30, views90, reactions, comments] = await Promise.all([
-      db('profile_views').where('viewed_id', userId).andWhere('viewed_at', '>=', d7).count<CountRow[]>('*'),
-      db('profile_views').where('viewed_id', userId).andWhere('viewed_at', '>=', d30).count<CountRow[]>('*'),
-      db('profile_views').where('viewed_id', userId).andWhere('viewed_at', '>=', d90).count<CountRow[]>('*'),
-      db('reactions').join('posts', 'posts.id', 'reactions.post_id').where('posts.author_id', userId).count<CountRow[]>('*'),
-      db('comments').join('posts', 'posts.id', 'comments.post_id').where('posts.author_id', userId).count<CountRow[]>('*'),
+      db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d7).count<CountRow[]>('*'),
+      db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d30).count<CountRow[]>('*'),
+      db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d90).count<CountRow[]>('*'),
+      db('reactions').join('posts', 'posts.id', 'reactions.post_id').where('posts.author_id', userId).andWhere('posts.university_id', universityId).count<CountRow[]>('*'),
+      db('comments').join('posts', 'posts.id', 'comments.post_id').where('posts.author_id', userId).andWhere('posts.university_id', universityId).count<CountRow[]>('*'),
     ])
 
     return {
@@ -542,6 +542,7 @@ export class UsersService {
 
     const [totalResult] = await db('profile_views')
       .where('viewed_id', userId)
+      .andWhere('profile_views.university_id', universityId)
       .andWhere('viewed_at', '>=', cutoff)
       .count<CountRow[]>({ count: '*' })
     const total = Number(totalResult.count)
@@ -550,6 +551,7 @@ export class UsersService {
       .join('users', 'users.id', 'profile_views.viewer_id')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where('profile_views.viewed_id', userId)
+      .andWhere('profile_views.university_id', universityId)
       .andWhere('profile_views.viewed_at', '>=', cutoff)
       .select(
         'profile_views.viewer_id',
@@ -617,10 +619,10 @@ export class UsersService {
 
     // Only visible to own profile or connections of that user
     if (currentUserId !== targetUserId) {
-      const connected = await isConnected(currentUserId, targetUserId)
+      const connected = await isConnected(currentUserId, targetUserId, universityId)
       if (!connected) {
         // Return count only, not the list
-        const total = await countUserConnections(targetUserId)
+        const total = await countUserConnections(targetUserId, universityId)
         return { items: [], total, page: 1, limit: query.limit, listHidden: true }
       }
     }
@@ -747,26 +749,29 @@ function toUserProfile(row: UserProfileRow, options: { includePhone: boolean; in
   }
 }
 
-async function countUserConnections(userId: string): Promise<number> {
+async function countUserConnections(userId: string, universityId: string): Promise<number> {
   const [{ count }] = await db('connections')
     .where(function() {
       this.where('requester_id', userId).orWhere('addressee_id', userId)
     })
     .andWhere('status', 'accepted')
+    .andWhere('university_id', universityId)
     .count<CountRow[]>({ count: '*' })
   return Number(count)
 }
 
-async function countMutualConnections(userA: string, userB: string): Promise<number> {
+async function countMutualConnections(userA: string, userB: string, universityId: string): Promise<number> {
   const myPartnerRows = await db('connections')
     .where(function() { this.where('requester_id', userA).orWhere('addressee_id', userA) })
     .andWhere('status', 'accepted')
+    .andWhere('university_id', universityId)
     .select('requester_id', 'addressee_id')
   const myIds = new Set(myPartnerRows.map((r) => r.requester_id === userA ? r.addressee_id : r.requester_id))
 
   const theirPartnerRows = await db('connections')
     .where(function() { this.where('requester_id', userB).orWhere('addressee_id', userB) })
     .andWhere('status', 'accepted')
+    .andWhere('university_id', universityId)
     .select('requester_id', 'addressee_id')
   const theirIds = new Set(theirPartnerRows.map((r) => r.requester_id === userB ? r.addressee_id : r.requester_id))
 
@@ -775,13 +780,14 @@ async function countMutualConnections(userA: string, userB: string): Promise<num
   return count
 }
 
-async function isConnected(userA: string, userB: string): Promise<boolean> {
+async function isConnected(userA: string, userB: string, universityId: string): Promise<boolean> {
   const row = await db('connections')
     .where(function() {
       this.where({ requester_id: userA, addressee_id: userB })
           .orWhere({ requester_id: userB, addressee_id: userA })
     })
     .andWhere('status', 'accepted')
+    .andWhere('university_id', universityId)
     .first()
   return !!row
 }
