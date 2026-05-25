@@ -31,7 +31,9 @@ export function ConnectButton({
   const { send, withdraw, accept, decline, remove } = useConnectionAction(targetUserId)
   const [modalOpen, setModalOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const pendingDropdownRef = useRef<HTMLDivElement>(null)
+  const connectedDropdownRef = useRef<HTMLDivElement>(null)
 
   const sz = sizeStyles[size]
 
@@ -39,7 +41,9 @@ export function ConnectButton({
   useEffect(() => {
     if (!dropdownOpen) return
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const isClickInPendingDropdown = pendingDropdownRef.current && pendingDropdownRef.current.contains(e.target as Node)
+      const isClickInConnectedDropdown = connectedDropdownRef.current && connectedDropdownRef.current.contains(e.target as Node)
+      if (!isClickInPendingDropdown && !isClickInConnectedDropdown) {
         setDropdownOpen(false)
       }
     }
@@ -98,6 +102,7 @@ export function ConnectButton({
     return (
       <>
         <button
+          ref={triggerRef}
           onClick={() => setModalOpen(true)}
           style={primaryStyle}
           disabled={send.isPending}
@@ -110,6 +115,7 @@ export function ConnectButton({
           targetName={targetName}
           onSend={handleSend}
           isPending={send.isPending}
+          triggerRef={triggerRef}
         />
       </>
     )
@@ -118,7 +124,7 @@ export function ConnectButton({
   // ── pending_sent → Pending (with withdraw dropdown) ───
   if (connectionStatus === 'pending_sent') {
     return (
-      <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-flex' }}>
+      <div ref={pendingDropdownRef} style={{ position: 'relative', display: 'inline-flex' }}>
         <button
           onClick={() => setDropdownOpen((v) => !v)}
           style={{ ...ghostStyle, opacity: withdraw.isPending ? 0.6 : 1 }}
@@ -179,7 +185,7 @@ export function ConnectButton({
 
   // ── connected → Connected (with message + remove dropdown) ──
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-flex' }}>
+    <div ref={connectedDropdownRef} style={{ position: 'relative', display: 'inline-flex' }}>
       <button
         onClick={() => setDropdownOpen((v) => !v)}
         style={{ ...ghostStyle, opacity: remove.isPending ? 0.6 : 1 }}

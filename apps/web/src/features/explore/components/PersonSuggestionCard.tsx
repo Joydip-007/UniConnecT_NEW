@@ -29,7 +29,7 @@ export function PersonSuggestionCard({ person }: Props) {
         to={`/profile/${person.id}`}
         style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
       >
-        <Avatar initials={getInitials(person.fullName)} color={avatarColor(person.id)} size={44} />
+        <Avatar src={person.avatarUrl ?? undefined} initials={getInitials(person.fullName)} color={avatarColor(person.id)} size={44} />
         <div style={{ textAlign: 'center' }}>
           <div
             style={{
