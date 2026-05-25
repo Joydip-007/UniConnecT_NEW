@@ -45,7 +45,7 @@ export function ProfileHeader({
     >
       <div
         style={{
-          height: 150,
+          height: 180,
           position: 'relative',
           background: user.profile.coverUrl
             ? `center / cover no-repeat url(${user.profile.coverUrl})`
@@ -70,14 +70,14 @@ export function ProfileHeader({
         <div
           style={{
             position: 'absolute',
-            top: -30,
+            top: -48,
             left: 20,
             borderRadius: '50%',
             border: '3px solid var(--surface-card)',
             lineHeight: 0,
           }}
         >
-          <Avatar src={user.profile.avatarUrl} initials={getInitials(fullName)} color={avatarColor} size={60} />
+          <Avatar src={user.profile.avatarUrl} initials={getInitials(fullName)} color={avatarColor} size={96} />
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
@@ -94,7 +94,7 @@ export function ProfileHeader({
           )}
         </div>
 
-        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 17, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
               {fullName}

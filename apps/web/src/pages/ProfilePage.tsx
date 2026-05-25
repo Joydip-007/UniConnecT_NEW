@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { publicUserProfileSchema } from '@uniconnect/shared'
@@ -16,6 +16,8 @@ import { ProfileContactInfo } from '@/features/profile/components/ProfileContact
 import { ProfileFeatured } from '@/features/profile/components/ProfileFeatured'
 import { ProfileAnalytics } from '@/features/profile/components/ProfileAnalytics'
 import { ProfileViewers } from '@/features/profile/components/ProfileViewers'
+import { ProfileTabs } from '@/features/profile/components/ProfileTabs'
+import type { ProfileTab } from '@/features/profile/components/ProfileTabs'
 import { ExperienceModal } from '@/features/profile/components/ExperienceModal'
 import { EducationModal } from '@/features/profile/components/EducationModal'
 import { FeaturedModal } from '@/features/profile/components/FeaturedModal'
@@ -34,8 +36,8 @@ function SkeletonProfile() {
           overflow: 'hidden',
         }}
       >
-        <div style={{ height: 150, background: 'var(--surface-raised)' }} />
-        <div style={{ padding: '46px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ height: 180, background: 'var(--surface-raised)' }} />
+        <div style={{ padding: '56px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ height: 16, width: '40%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
           <div style={{ height: 13, width: '60%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
           <div style={{ display: 'flex', gap: 20, marginTop: 4 }}>
@@ -101,6 +103,10 @@ export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const authUser = useAuthStore((s) => s.user)
   const isOwnProfile = authUser?.id === id
+  const qc = useQueryClient()
+
+  // Tab navigation
+  const [activeTab, setActiveTab] = useState<ProfileTab>('about')
 
   // General edit modal (intro / bio / contact / skills)
   const [editOpen, setEditOpen] = useState(false)
@@ -124,6 +130,14 @@ export default function ProfilePage() {
     retry: 1,
   })
 
+  // Delete featured item mutation — passed as onDelete to ProfileFeatured
+  const deleteFeatured = useMutation({
+    mutationFn: (entryId: string) => api.delete(`/users/me/featured/${entryId}`),
+    onSuccess: () => {
+      if (id) qc.invalidateQueries({ queryKey: ['profile', 'featured', id] })
+    },
+  })
+
   if (isLoading) return <SkeletonProfile />
 
   if (isError || !user) {
@@ -138,63 +152,87 @@ export default function ProfilePage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <ProfileHeader user={user} isOwnProfile={isOwnProfile} onEdit={() => setEditOpen(true)} />
 
-      {/* Own profile — resume export + analytics + viewers */}
+      {/* Resume export — own profile only, tucked under the header */}
       {isOwnProfile && (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <ResumeExportButton user={user} />
-          </div>
-          <ProfileAnalytics />
-          <ProfileViewers />
-        </>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <ResumeExportButton user={user} />
+        </div>
       )}
 
-      <ProfileAbout
-        bio={user.profile.bio}
-        isOwnProfile={isOwnProfile}
-        connectionStatus={connectionStatus}
-        onEdit={() => setEditOpen(true)}
+      {/* Tab navigation */}
+      <ProfileTabs
+        active={activeTab}
+        postsCount={user.stats.posts}
+        onChange={setActiveTab}
       />
 
-      <ProfileActivity userId={user.id} />
+      {/* ── About tab ────────────────────────────────────────── */}
+      {activeTab === 'about' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <ProfileAbout
+            bio={user.profile.bio}
+            isOwnProfile={isOwnProfile}
+            connectionStatus={connectionStatus}
+            onEdit={() => setEditOpen(true)}
+          />
 
-      <ProfileFeatured
-        userId={user.id}
-        isOwnProfile={isOwnProfile}
-        connectionStatus={connectionStatus}
-        onAdd={() => setFeaturedModalOpen(true)}
-        onDelete={() => {}}
-      />
+          <ProfileFeatured
+            userId={user.id}
+            isOwnProfile={isOwnProfile}
+            connectionStatus={connectionStatus}
+            onAdd={() => setFeaturedModalOpen(true)}
+            onDelete={(entryId) => deleteFeatured.mutate(entryId)}
+          />
 
-      <ProfileExperienceSection
-        userId={user.id}
-        isOwnProfile={isOwnProfile}
-        connectionStatus={connectionStatus}
-        onAdd={() => setExpModal({ open: true, entry: null })}
-        onEdit={(entry) => setExpModal({ open: true, entry })}
-      />
+          <ProfileSkills
+            skills={user.profile.skills}
+            isOwnProfile={isOwnProfile}
+            connectionStatus={connectionStatus}
+            onEdit={() => setEditOpen(true)}
+          />
 
-      <ProfileEducationSection
-        userId={user.id}
-        isOwnProfile={isOwnProfile}
-        connectionStatus={connectionStatus}
-        onAdd={() => setEduModal({ open: true, entry: null })}
-        onEdit={(entry) => setEduModal({ open: true, entry })}
-      />
+          <ProfileContactInfo
+            user={user}
+            isOwnProfile={isOwnProfile}
+            connectionStatus={connectionStatus}
+            onEdit={() => setEditOpen(true)}
+          />
 
-      <ProfileSkills
-        skills={user.profile.skills}
-        isOwnProfile={isOwnProfile}
-        connectionStatus={connectionStatus}
-        onEdit={() => setEditOpen(true)}
-      />
+          {/* Analytics and Viewers — own profile only, at the bottom of About */}
+          {isOwnProfile && (
+            <>
+              <ProfileAnalytics />
+              <ProfileViewers />
+            </>
+          )}
+        </div>
+      )}
 
-      <ProfileContactInfo
-        user={user}
-        isOwnProfile={isOwnProfile}
-        connectionStatus={connectionStatus}
-        onEdit={() => setEditOpen(true)}
-      />
+      {/* ── Experience tab ───────────────────────────────────── */}
+      {activeTab === 'experience' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <ProfileExperienceSection
+            userId={user.id}
+            isOwnProfile={isOwnProfile}
+            connectionStatus={connectionStatus}
+            onAdd={() => setExpModal({ open: true, entry: null })}
+            onEdit={(entry) => setExpModal({ open: true, entry })}
+          />
+
+          <ProfileEducationSection
+            userId={user.id}
+            isOwnProfile={isOwnProfile}
+            connectionStatus={connectionStatus}
+            onAdd={() => setEduModal({ open: true, entry: null })}
+            onEdit={(entry) => setEduModal({ open: true, entry })}
+          />
+        </div>
+      )}
+
+      {/* ── Posts tab ────────────────────────────────────────── */}
+      {activeTab === 'posts' && (
+        <ProfileActivity userId={user.id} />
+      )}
 
       {/* Modals */}
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}

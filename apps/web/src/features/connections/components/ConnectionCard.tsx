@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
@@ -27,6 +28,7 @@ export function ConnectionCard({ connection }: Props) {
   const navigate = useNavigate()
   const userId = connection.user?.id ?? ''
   const { remove } = useConnectionAction(userId)
+  const [confirming, setConfirming] = useState(false)
 
   const user = connection.user
   const fullName = user?.fullName ?? 'Unknown'
@@ -105,31 +107,77 @@ export function ConnectionCard({ connection }: Props) {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <button
-          onClick={handleMessage}
-          style={{
-            ...pillBase,
-            background: 'var(--uc-indigo)',
-            color: 'var(--uc-indigo-xl)',
-            border: 'none',
-          }}
-        >
-          Message
-        </button>
-        <button
-          onClick={() => remove.mutate()}
-          disabled={remove.isPending}
-          style={{
-            ...pillBase,
-            background: 'transparent',
-            border: '0.5px solid var(--border-hover)',
-            color: 'var(--text-secondary)',
-            opacity: remove.isPending ? 0.6 : 1,
-          }}
-        >
-          Remove
-        </button>
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+        {confirming ? (
+          // Inline confirmation — replaces both action buttons
+          <>
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              Remove?
+            </span>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              style={{
+                ...pillBase,
+                background: 'transparent',
+                border: '0.5px solid var(--border-hover)',
+                color: 'var(--text-secondary)',
+                fontFamily: 'inherit',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false)
+                remove.mutate()
+              }}
+              disabled={remove.isPending}
+              style={{
+                ...pillBase,
+                background: 'transparent',
+                border: '0.5px solid var(--uc-red)',
+                color: 'var(--uc-red)',
+                opacity: remove.isPending ? 0.6 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              Confirm
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleMessage}
+              style={{
+                ...pillBase,
+                background: 'var(--uc-indigo)',
+                color: 'var(--uc-indigo-xl)',
+                border: 'none',
+                fontFamily: 'inherit',
+              }}
+            >
+              Message
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              disabled={remove.isPending}
+              style={{
+                ...pillBase,
+                background: 'transparent',
+                border: '0.5px solid var(--border-hover)',
+                color: 'var(--text-secondary)',
+                opacity: remove.isPending ? 0.6 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              Remove
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

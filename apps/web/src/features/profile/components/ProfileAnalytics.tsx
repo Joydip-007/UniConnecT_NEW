@@ -37,11 +37,24 @@ function StatBox({ label, value, icon }: { label: string; value: number; icon: R
 }
 
 export function ProfileAnalytics() {
-  const { data, isLoading } = useQuery<ProfileAnalytics>({
+  // Wrap in try/catch so failures don't reach the global error toast —
+  // analytics is a non-critical widget and should fail silently.
+  const { data, isLoading } = useQuery<ProfileAnalytics | null>({
     queryKey: ['profile', 'analytics'],
-    queryFn: getMyAnalytics,
+    queryFn: async () => {
+      try {
+        return await getMyAnalytics()
+      } catch {
+        return null
+      }
+    },
     staleTime: 5 * 60 * 1000,
   })
+
+  // All-zero: the user is new and has no activity yet
+  const hasActivity =
+    data != null &&
+    (data.profileViews.last30d > 0 || data.postReach.reactions > 0 || data.postReach.comments > 0)
 
   return (
     <div
@@ -76,7 +89,12 @@ export function ProfileAnalytics() {
             />
           ))}
         </div>
-      ) : data ? (
+      ) : !data || !hasActivity ? (
+        // No data yet — friendly nudge, not an error message
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+          Complete your profile and start posting to see your analytics here.
+        </p>
+      ) : (
         <div style={{ display: 'flex', gap: 10 }}>
           <StatBox
             label="Profile views (7d)"
@@ -99,10 +117,6 @@ export function ProfileAnalytics() {
             icon={<MessageSquare size={15} strokeWidth={1.5} />}
           />
         </div>
-      ) : (
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-          Analytics unavailable.
-        </p>
       )}
 
       <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>

@@ -1,4 +1,4 @@
-export type ProfileTab = 'about' | 'posts' | 'badges'
+export type ProfileTab = 'about' | 'experience' | 'posts'
 
 interface TabDef {
   label: string
@@ -15,8 +15,8 @@ interface Props {
 export function ProfileTabs({ active, postsCount, onChange }: Props) {
   const tabs: TabDef[] = [
     { label: 'About', value: 'about' },
+    { label: 'Experience', value: 'experience' },
     { label: 'Posts', value: 'posts', count: postsCount },
-    { label: 'Badges', value: 'badges' },
   ]
 
   return (

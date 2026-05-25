@@ -85,15 +85,22 @@ function ViewerRow({ viewer }: { viewer: ProfileViewer }) {
 
 export function ProfileViewers() {
   const [page, setPage] = useState(1)
+  // Wrap in try/catch — viewer data is non-critical; failures should be silent
   const { data, isLoading } = useQuery({
     queryKey: ['profile', 'viewers', page],
-    queryFn: () => getMyViewers(page),
+    queryFn: async () => {
+      try {
+        return await getMyViewers(page)
+      } catch {
+        return null
+      }
+    },
     staleTime: 2 * 60 * 1000,
   })
 
   const viewers: ProfileViewer[] = data?.items ?? []
   const total = data?.total ?? 0
-  const hasMore = viewers.length < total
+  const hasMore = data != null && viewers.length < total
 
   return (
     <div
@@ -135,7 +142,9 @@ export function ProfileViewers() {
         </div>
       ) : viewers.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-          No profile views yet. Share your profile to get discovered.
+          {data == null
+            ? 'Complete your profile to get the full experience.'
+            : 'No one has viewed your profile yet. Share it to get discovered.'}
         </p>
       ) : (
         <>

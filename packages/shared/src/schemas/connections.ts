@@ -19,21 +19,27 @@ export const connectionSchema = z.object({
   }).optional(),
 })
 
+const connectionRequestUserBase = z.object({
+  id: z.string().uuid(),
+  fullName: z.string(),
+  avatarUrl: z.string().nullable(),
+  headline: z.string().nullable(),
+  role: z.enum(['student', 'alumni', 'faculty', 'admin']),
+  department: z.string().nullable(),
+})
+
 export const connectionRequestSchema = z.object({
   id: z.string().uuid(),
   requesterId: z.string().uuid(),
   addresseeId: z.string().uuid(),
   note: z.string().nullable(),
   createdAt: z.union([z.string(), z.date()]),
-  requester: z.object({
-    id: z.string().uuid(),
-    fullName: z.string(),
-    avatarUrl: z.string().nullable(),
-    headline: z.string().nullable(),
-    role: z.enum(['student', 'alumni', 'faculty', 'admin']),
-    department: z.string().nullable(),
+  // Populated for received requests — the person who sent the request
+  requester: connectionRequestUserBase.extend({
     mutualConnections: z.number().int().nonnegative(),
   }).optional(),
+  // Populated for sent requests — the person we sent the request to
+  addressee: connectionRequestUserBase.optional(),
 })
 
 export type Connection = z.infer<typeof connectionSchema>

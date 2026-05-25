@@ -139,7 +139,7 @@ function FeaturedCard({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
           Post
         </span>
         {isOwnProfile && (

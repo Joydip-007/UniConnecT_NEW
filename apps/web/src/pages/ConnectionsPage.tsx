@@ -110,11 +110,10 @@ function ErrorState() {
 function SentRequestCard({ request }: { request: ConnectionRequest }) {
   const userId = request.addresseeId
   const { withdraw } = useConnectionAction(userId)
+  const [confirming, setConfirming] = useState(false)
 
-  const user = request.requester
-  // For sent requests, the requester field may not be populated;
-  // use the addresseeId to look up user. The API returns the same
-  // ConnectionRequest shape so we handle what's available.
+  // For sent requests the backend populates `addressee`, not `requester`
+  const user = request.addressee
   const fullName = user?.fullName ?? 'Unknown'
   const initials = getInitials(fullName)
   const color = avatarColor(userId)
@@ -178,38 +177,78 @@ function SentRequestCard({ request }: { request: ConnectionRequest }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        {/* "Pending" pill badge */}
-        <span
-          style={{
-            borderRadius: 'var(--r-pill)',
-            background: 'var(--surface-raised)',
-            border: '0.5px solid var(--border-default)',
-            color: 'var(--text-tertiary)',
-            fontSize: 11,
-            fontWeight: 500,
-            padding: '3px 10px',
-            lineHeight: 1,
-          }}
-        >
-          Pending
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        {confirming ? (
+          // Inline confirmation — replaces both action buttons
+          <>
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              Withdraw?
+            </span>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              style={{
+                ...pillBase,
+                background: 'transparent',
+                border: '0.5px solid var(--border-hover)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false)
+                withdraw.mutate()
+              }}
+              disabled={withdraw.isPending}
+              style={{
+                ...pillBase,
+                background: 'transparent',
+                border: '0.5px solid var(--uc-red)',
+                color: 'var(--uc-red)',
+                opacity: withdraw.isPending ? 0.6 : 1,
+              }}
+            >
+              Confirm
+            </button>
+          </>
+        ) : (
+          <>
+            {/* "Pending" pill badge */}
+            <span
+              style={{
+                borderRadius: 'var(--r-pill)',
+                background: 'var(--surface-raised)',
+                border: '0.5px solid var(--border-default)',
+                color: 'var(--text-tertiary)',
+                fontSize: 11,
+                fontWeight: 500,
+                padding: '3px 10px',
+                lineHeight: 1,
+              }}
+            >
+              Pending
+            </span>
 
-        {/* Withdraw button */}
-        <button
-          type="button"
-          onClick={() => withdraw.mutate()}
-          disabled={withdraw.isPending}
-          style={{
-            ...pillBase,
-            background: 'transparent',
-            border: '0.5px solid var(--border-hover)',
-            color: 'var(--text-secondary)',
-            opacity: withdraw.isPending ? 0.6 : 1,
-          }}
-        >
-          Withdraw
-        </button>
+            {/* Withdraw button — triggers inline confirmation */}
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              disabled={withdraw.isPending}
+              style={{
+                ...pillBase,
+                background: 'transparent',
+                border: '0.5px solid var(--border-hover)',
+                color: 'var(--text-secondary)',
+                opacity: withdraw.isPending ? 0.6 : 1,
+              }}
+            >
+              Withdraw
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
