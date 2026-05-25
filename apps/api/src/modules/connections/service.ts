@@ -1,3 +1,4 @@
+import type { Knex } from 'knex'
 import { CONNECTION_EVENTS } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { notificationQueue } from '../../queues/notification.queue'
@@ -20,7 +21,7 @@ interface ConnectionRow {
   updated_at: Date
 }
 
-interface ConnectionWithUser extends ConnectionRow {
+interface ConnectionWithProfile extends ConnectionRow {
   full_name: string
   avatar_url: string | null
   headline: string | null
@@ -28,11 +29,12 @@ interface ConnectionWithUser extends ConnectionRow {
   department: string | null
 }
 
-interface ConnectionWithRequester extends ConnectionRow {
+interface MutualConnectionRow {
+  id: string
+  role: string
   full_name: string
   avatar_url: string | null
   headline: string | null
-  role: string
   department: string | null
 }
 
@@ -49,7 +51,7 @@ export class ConnectionsService {
 
     await assertUserInUniversity(targetUserId, universityId)
 
-    // Check for any existing relationship in either direction
+    // Check for any existing relationship in either direction, scoped to university
     const existing = await db('connections')
       .where(function () {
         this.where({ requester_id: currentUserId, addressee_id: targetUserId }).orWhere({
@@ -57,6 +59,7 @@ export class ConnectionsService {
           addressee_id: currentUserId,
         })
       })
+      .andWhere('university_id', universityId)
       .first<ConnectionRow>()
 
     if (existing) {
@@ -202,7 +205,7 @@ export class ConnectionsService {
   }
 
   async listConnections(userId: string, universityId: string, query: PaginationQuery) {
-    const baseWhere = (builder: ReturnType<typeof db>) => {
+    const baseWhere = (builder: Knex.QueryBuilder) => {
       builder
         .where(function () {
           this.where('connections.requester_id', userId).orWhere('connections.addressee_id', userId)
@@ -230,7 +233,7 @@ export class ConnectionsService {
         })
       })
       .join('profiles', 'profiles.user_id', 'users.id')
-      .select<ConnectionWithUser[]>(
+      .select<ConnectionWithProfile[]>(
         'connections.id',
         'connections.requester_id',
         'connections.addressee_id',
@@ -277,7 +280,7 @@ export class ConnectionsService {
       })
       .join('users', 'users.id', 'connections.requester_id')
       .join('profiles', 'profiles.user_id', 'users.id')
-      .select<ConnectionWithRequester[]>(
+      .select<ConnectionWithProfile[]>(
         'connections.id',
         'connections.requester_id',
         'connections.addressee_id',
@@ -296,23 +299,65 @@ export class ConnectionsService {
       .limit(query.limit)
       .offset(offset)
 
-    const items = await Promise.all(
-      rows.map(async (row) => {
-        const mutual = await this.countMutualConnections(userId, row.requester_id, universityId)
-        return {
-          ...toConnectionRequest(row),
-          requester: {
-            id: row.requester_id,
-            fullName: row.full_name,
-            avatarUrl: row.avatar_url,
-            headline: row.headline,
-            role: row.role,
-            department: row.department,
-            mutualConnections: mutual,
-          },
+    // ── Batch mutual-connection counts (fix N+1) ────────────────────────────
+    // Get my accepted partner IDs (one query)
+    const myPartnerRows = await db('connections')
+      .where(function () {
+        this.where('requester_id', userId).orWhere('addressee_id', userId)
+      })
+      .andWhere('status', 'accepted')
+      .select<{ requester_id: string; addressee_id: string }[]>('requester_id', 'addressee_id')
+
+    const myPartnerIds = new Set(
+      myPartnerRows.map((r) => (r.requester_id === userId ? r.addressee_id : r.requester_id)),
+    )
+
+    // Get all requesters' accepted partner IDs in one batched query
+    const requesterIds = rows.map((r) => r.requester_id)
+    const theirPartnerRows = await db('connections')
+      .where(function () {
+        this.whereIn('requester_id', requesterIds).orWhereIn('addressee_id', requesterIds)
+      })
+      .andWhere('status', 'accepted')
+      .select<{ requester_id: string; addressee_id: string }[]>('requester_id', 'addressee_id')
+
+    // Build map: requesterId → Set of their partner IDs
+    const partnerMap = new Map<string, Set<string>>()
+    for (const r of theirPartnerRows) {
+      for (const rid of requesterIds) {
+        if (r.requester_id === rid || r.addressee_id === rid) {
+          if (!partnerMap.has(rid)) partnerMap.set(rid, new Set())
+          const partnerId = r.requester_id === rid ? r.addressee_id : r.requester_id
+          partnerMap.get(rid)!.add(partnerId)
         }
+      }
+    }
+
+    // Compute mutual count per requester via JS intersection
+    const mutualCounts = new Map(
+      requesterIds.map((rid) => {
+        const theirPartners = partnerMap.get(rid) ?? new Set<string>()
+        let count = 0
+        for (const pid of myPartnerIds) {
+          if (theirPartners.has(pid)) count++
+        }
+        return [rid, count]
       }),
     )
+    // ────────────────────────────────────────────────────────────────────────
+
+    const items = rows.map((row) => ({
+      ...toConnectionRequest(row),
+      requester: {
+        id: row.requester_id,
+        fullName: row.full_name,
+        avatarUrl: row.avatar_url,
+        headline: row.headline,
+        role: row.role,
+        department: row.department,
+        mutualConnections: mutualCounts.get(row.requester_id) ?? 0,
+      },
+    }))
 
     return {
       items,
@@ -342,7 +387,7 @@ export class ConnectionsService {
       })
       .join('users', 'users.id', 'connections.addressee_id')
       .join('profiles', 'profiles.user_id', 'users.id')
-      .select<ConnectionWithRequester[]>(
+      .select<ConnectionWithProfile[]>(
         'connections.id',
         'connections.requester_id',
         'connections.addressee_id',
@@ -385,10 +430,42 @@ export class ConnectionsService {
     universityId: string,
     query: PaginationQuery,
   ) {
-    const mutual = await this.getMutualConnectionIds(currentUserId, targetUserId, universityId)
-    const total = mutual.length
+    await assertUserInUniversity(targetUserId, universityId)
+
+    // Use SQL intersection via subqueries to avoid in-memory fan-out
+    const myConnectionsSub = db('connections')
+      .where(function () {
+        this.where('requester_id', currentUserId).orWhere('addressee_id', currentUserId)
+      })
+      .andWhere('status', 'accepted')
+      .select(
+        db.raw(
+          `CASE WHEN requester_id = ? THEN addressee_id ELSE requester_id END as partner_id`,
+          [currentUserId],
+        ),
+      )
+
+    const targetConnectionsSub = db('connections')
+      .where(function () {
+        this.where('requester_id', targetUserId).orWhere('addressee_id', targetUserId)
+      })
+      .andWhere('status', 'accepted')
+      .select(
+        db.raw(
+          `CASE WHEN requester_id = ? THEN addressee_id ELSE requester_id END as partner_id`,
+          [targetUserId],
+        ),
+      )
+
+    const mutualRows = await db
+      .from(myConnectionsSub.as('mine'))
+      .join(targetConnectionsSub.as('theirs'), 'mine.partner_id', 'theirs.partner_id')
+      .select<{ partner_id: string }[]>('mine.partner_id')
+
+    const mutualIds = mutualRows.map((r) => r.partner_id)
+    const total = mutualIds.length
     const offset = (query.page - 1) * query.limit
-    const pageIds = mutual.slice(offset, offset + query.limit)
+    const pageIds = mutualIds.slice(offset, offset + query.limit)
 
     if (pageIds.length === 0) {
       return { count: total, items: [], page: query.page, limit: query.limit }
@@ -398,7 +475,7 @@ export class ConnectionsService {
       .join('profiles', 'profiles.user_id', 'users.id')
       .whereIn('users.id', pageIds)
       .andWhere('users.university_id', universityId)
-      .select(
+      .select<MutualConnectionRow[]>(
         'users.id',
         'users.role',
         'profiles.full_name',
@@ -409,7 +486,7 @@ export class ConnectionsService {
 
     return {
       count: total,
-      items: rows.map((row: { id: string; role: string; full_name: string; avatar_url: string | null; headline: string | null; department: string | null }) => ({
+      items: rows.map((row) => ({
         id: row.id,
         fullName: row.full_name,
         avatarUrl: row.avatar_url,
@@ -420,54 +497,6 @@ export class ConnectionsService {
       page: query.page,
       limit: query.limit,
     }
-  }
-
-  private async countMutualConnections(
-    userAId: string,
-    userBId: string,
-    universityId: string,
-  ): Promise<number> {
-    const ids = await this.getMutualConnectionIds(userAId, userBId, universityId)
-    return ids.length
-  }
-
-  private async getMutualConnectionIds(
-    userAId: string,
-    userBId: string,
-    universityId: string,
-  ): Promise<string[]> {
-    // Get all accepted connection partner IDs for userA
-    const aRows = await db('connections')
-      .where(function () {
-        this.where('requester_id', userAId).orWhere('addressee_id', userAId)
-      })
-      .andWhere('status', 'accepted')
-      .andWhere('university_id', universityId)
-      .select<{ requester_id: string; addressee_id: string }[]>('requester_id', 'addressee_id')
-
-    const aIds = new Set(
-      aRows.map((r) => (r.requester_id === userAId ? r.addressee_id : r.requester_id)),
-    )
-
-    if (aIds.size === 0) return []
-
-    // Get all accepted connection partner IDs for userB
-    const bRows = await db('connections')
-      .where(function () {
-        this.where('requester_id', userBId).orWhere('addressee_id', userBId)
-      })
-      .andWhere('status', 'accepted')
-      .andWhere('university_id', universityId)
-      .select<{ requester_id: string; addressee_id: string }[]>('requester_id', 'addressee_id')
-
-    const bIds = new Set(
-      bRows.map((r) => (r.requester_id === userBId ? r.addressee_id : r.requester_id)),
-    )
-
-    // Intersection — exclude the two users themselves
-    return [...aIds].filter(
-      (id) => bIds.has(id) && id !== userAId && id !== userBId,
-    )
   }
 }
 
@@ -488,7 +517,7 @@ async function getUserName(userId: string): Promise<string> {
   return row?.full_name ?? 'Someone'
 }
 
-function toConnectionWithUser(row: ConnectionWithUser, currentUserId: string) {
+function toConnectionWithUser(row: ConnectionWithProfile, currentUserId: string) {
   const otherUserId = row.requester_id === currentUserId ? row.addressee_id : row.requester_id
   return {
     id: row.id,
@@ -509,7 +538,7 @@ function toConnectionWithUser(row: ConnectionWithUser, currentUserId: string) {
   }
 }
 
-function toConnectionRequest(row: ConnectionWithRequester) {
+function toConnectionRequest(row: ConnectionWithProfile) {
   return {
     id: row.id,
     requesterId: row.requester_id,

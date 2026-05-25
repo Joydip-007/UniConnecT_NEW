@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const SendConnectionRequestSchema = z.object({
-  note: z.string().max(300).optional(),
+  note: z.string().trim().max(300).optional(),
 })
 export type SendConnectionRequestInput = z.infer<typeof SendConnectionRequestSchema>
 
