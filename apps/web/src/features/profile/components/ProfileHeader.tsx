@@ -1,4 +1,4 @@
-import { BadgeCheck, Briefcase } from 'lucide-react'
+import { BadgeCheck, Briefcase, MapPin } from 'lucide-react'
 import type { PublicUserProfile, UserRole } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
@@ -139,6 +139,23 @@ export function ProfileHeader({
           {user.profile.headline && (
             <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               {user.profile.headline}
+            </p>
+          )}
+
+          {user.profile.location && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                fontWeight: 400,
+                color: 'var(--text-tertiary)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <MapPin size={11} strokeWidth={1.5} />
+              {user.profile.location}
             </p>
           )}
 

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle } from 'lucide-react'
@@ -7,14 +6,17 @@ import type { PublicUserProfile } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import {
-  AboutPanel,
-  BadgesPanel,
   EditProfileModal,
-  PostsPanel,
   ProfileHeader,
-  ProfileTabs,
 } from '@/features/profile'
-import type { ProfileTab } from '@/features/profile'
+import { ProfileAbout } from '@/features/profile/components/ProfileAbout'
+import { ProfileActivity } from '@/features/profile/components/ProfileActivity'
+import { ProfileExperience } from '@/features/profile/components/ProfileExperience'
+import { ProfileEducation } from '@/features/profile/components/ProfileEducation'
+import { ProfileSkills } from '@/features/profile/components/ProfileSkills'
+import { ProfileContactInfo } from '@/features/profile/components/ProfileContactInfo'
+import { ProfileFeatured } from '@/features/profile/components/ProfileFeatured'
+import { useState } from 'react'
 
 function SkeletonProfile() {
   return (
@@ -110,7 +112,6 @@ function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () =
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const authUser = useAuthStore((s) => s.user)
-  const [activeTab, setActiveTab] = useState<ProfileTab>('about')
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: user, isLoading, isError, error, refetch } = useQuery<PublicUserProfile>({
@@ -139,6 +140,8 @@ export default function ProfilePage() {
     return <ProfileErrorCard message={message} onRetry={() => refetch()} />
   }
 
+  const connectionStatus = user.connectionStatus
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <ProfileHeader
@@ -147,15 +150,52 @@ export default function ProfilePage() {
         onEdit={() => setEditOpen(true)}
       />
 
-      <ProfileTabs
-        active={activeTab}
-        postsCount={user.stats.posts}
-        onChange={setActiveTab}
+      <ProfileAbout
+        bio={user.profile.bio}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onEdit={() => setEditOpen(true)}
       />
 
-      {activeTab === 'about' && <AboutPanel user={user} isOwnProfile={isOwnProfile} />}
-      {activeTab === 'posts' && <PostsPanel userId={user.id} isOwnProfile={isOwnProfile} />}
-      {activeTab === 'badges' && <BadgesPanel isOwnProfile={isOwnProfile} />}
+      <ProfileActivity userId={user.id} />
+
+      <ProfileFeatured
+        userId={user.id}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onAdd={() => {}}
+        onDelete={() => {}}
+      />
+
+      <ProfileExperience
+        userId={user.id}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onAdd={() => {}}
+        onEdit={() => {}}
+      />
+
+      <ProfileEducation
+        userId={user.id}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onAdd={() => {}}
+        onEdit={() => {}}
+      />
+
+      <ProfileSkills
+        skills={user.profile.skills}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onEdit={() => setEditOpen(true)}
+      />
+
+      <ProfileContactInfo
+        user={user}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onEdit={() => setEditOpen(true)}
+      />
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
     </div>
