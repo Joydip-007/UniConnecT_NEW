@@ -66,6 +66,8 @@ export const router = createBrowserRouter([
 
           { path: PATHS.EXPLORE, element: page(() => import('@/pages/ExplorePage')) },
           { path: PATHS.TAG, element: page(() => import('@/pages/TagPage')) },
+
+          { path: PATHS.CONNECTIONS, element: page(() => import('@/pages/ConnectionsPage')) },
         ],
       },
 

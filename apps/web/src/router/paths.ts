@@ -36,6 +36,8 @@ export const PATHS = {
   EXPLORE: '/explore',
   TAG: '/explore/tag/:tag',
 
+  CONNECTIONS: '/connections',
+
   ADMIN: '/admin',
 } as const
 

@@ -4,6 +4,7 @@ import {
   Home,
   Compass,
   Users,
+  Network,
   Calendar,
   Briefcase,
   Newspaper,
@@ -190,6 +191,7 @@ export function LeftSidebar() {
       items: [
         { icon: Home, label: 'Home', path: PATHS.FEED },
         { icon: Compass, label: 'Explore', path: PATHS.EXPLORE },
+        { icon: Network, label: 'My network', path: PATHS.CONNECTIONS },
         { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES, badge: messageCount },
       ],
     },
