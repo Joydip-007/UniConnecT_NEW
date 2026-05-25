@@ -7,6 +7,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      // Point Vite directly at the shared package's TS source so Rollup
+      // never has to parse the CJS dist — avoids named-export detection
+      // failures from the CommonJS plugin on Zod-heavy compiled output.
+      '@uniconnect/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
     },
   },
   server: {
