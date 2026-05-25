@@ -1,8 +1,6 @@
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Avatar } from '@/components/Avatar'
-import { api } from '@/lib/axios'
 import { highlightMatch } from '@/utils/highlightMatch'
+import { ConnectButton } from '@/features/connections'
 import type { UserSearchResult } from '../types'
 
 const AVATAR_PALETTE = ['var(--uc-indigo)', 'var(--uc-orange)', 'var(--uc-cyan)', 'var(--uc-mint)']
@@ -27,19 +25,6 @@ interface Props {
 }
 
 export function PeopleResultCard({ person, query }: Props) {
-  const [following, setFollowing] = useState(person.isFollowing)
-  const qc = useQueryClient()
-
-  const { mutate: toggleFollow, isPending } = useMutation({
-    mutationFn: () =>
-      following ? api.delete(`/users/${person.id}/follow`) : api.post(`/users/${person.id}/follow`),
-    onMutate: () => setFollowing((f) => !f),
-    onError: () => setFollowing((f) => !f),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['search', 'people'] })
-    },
-  })
-
   const color = seedColor(person.id)
   const initials = getInitials(person.fullName)
 
@@ -64,27 +49,18 @@ export function PeopleResultCard({ person, query }: Props) {
           </div>
         )}
       </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          toggleFollow()
-        }}
-        disabled={isPending}
-        style={{
-          padding: '4px 12px',
-          borderRadius: 'var(--r-pill)',
-          border: '0.5px solid var(--border-default)',
-          background: following ? 'var(--surface-raised)' : 'var(--uc-indigo)',
-          color: following ? 'var(--text-primary)' : 'var(--uc-indigo-xl)',
-          fontSize: 12,
-          fontWeight: 500,
-          cursor: isPending ? 'default' : 'pointer',
-          opacity: isPending ? 0.6 : 1,
-          flexShrink: 0,
-        }}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ flexShrink: 0 }}
       >
-        {following ? 'Following' : 'Follow'}
-      </button>
+        <ConnectButton
+          targetUserId={person.id}
+          targetName={person.fullName}
+          connectionStatus={person.connectionStatus ?? 'none'}
+          connectionId={person.connectionId ?? null}
+          size="sm"
+        />
+      </div>
     </div>
   )
 }

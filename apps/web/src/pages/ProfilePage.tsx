@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { AlertCircle } from 'lucide-react'
 import { publicUserProfileSchema } from '@uniconnect/shared'
 import type { PublicUserProfile } from '@uniconnect/shared'
@@ -10,12 +10,11 @@ import {
   AboutPanel,
   BadgesPanel,
   EditProfileModal,
-  FollowModal,
   PostsPanel,
   ProfileHeader,
   ProfileTabs,
 } from '@/features/profile'
-import type { FollowMode, ProfileTab } from '@/features/profile'
+import type { ProfileTab } from '@/features/profile'
 
 function SkeletonProfile() {
   return (
@@ -72,7 +71,7 @@ function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () =
     >
       <AlertCircle size={28} strokeWidth={1.5} color="var(--uc-red)" />
       <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-        We couldn’t load this profile
+        We couldn't load this profile
       </p>
       <p
         style={{
@@ -111,10 +110,8 @@ function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () =
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const authUser = useAuthStore((s) => s.user)
-  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<ProfileTab>('about')
   const [editOpen, setEditOpen] = useState(false)
-  const [followModal, setFollowModal] = useState<FollowMode | null>(null)
 
   const { data: user, isLoading, isError, error, refetch } = useQuery<PublicUserProfile>({
     queryKey: ['user', id],
@@ -128,26 +125,6 @@ export default function ProfilePage() {
     },
     enabled: !!id,
     retry: 1,
-  })
-
-  const followMutation = useMutation({
-    mutationFn: (isFollowing: boolean) =>
-      isFollowing
-        ? api.delete(`/users/${id}/follow`)
-        : api.post(`/users/${id}/follow`),
-    onSuccess: (_data, wasFollowing) => {
-      queryClient.setQueryData<PublicUserProfile>(['user', id], (prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          isFollowing: !wasFollowing,
-          stats: {
-            ...prev.stats,
-            followers: prev.stats.followers + (wasFollowing ? -1 : 1),
-          },
-        }
-      })
-    },
   })
 
   const isOwnProfile = authUser?.id === id
@@ -167,10 +144,7 @@ export default function ProfilePage() {
       <ProfileHeader
         user={user}
         isOwnProfile={isOwnProfile}
-        followPending={followMutation.isPending}
-        onFollowToggle={() => followMutation.mutate(user.isFollowing)}
         onEdit={() => setEditOpen(true)}
-        onOpenFollowers={setFollowModal}
       />
 
       <ProfileTabs
@@ -184,15 +158,6 @@ export default function ProfilePage() {
       {activeTab === 'badges' && <BadgesPanel isOwnProfile={isOwnProfile} />}
 
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
-
-      {followModal && (
-        <FollowModal
-          userId={user.id}
-          mode={followModal}
-          count={followModal === 'followers' ? user.stats.followers : user.stats.following}
-          onClose={() => setFollowModal(null)}
-        />
-      )}
     </div>
   )
 }
