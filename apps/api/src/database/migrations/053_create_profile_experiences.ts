@@ -3,7 +3,7 @@ import type { Knex } from 'knex'
 export async function up(knex: Knex) {
   await knex.schema.createTable('profile_experiences', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'))
-    table.uuid('university_id').notNullable().references('id').inTable('universities')
+    table.uuid('university_id').notNullable().references('id').inTable('universities').onDelete('CASCADE')
     table.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
     table.text('title').notNullable()
     table.text('company').notNullable()

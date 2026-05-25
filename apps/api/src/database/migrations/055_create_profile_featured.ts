@@ -3,7 +3,7 @@ import type { Knex } from 'knex'
 export async function up(knex: Knex) {
   await knex.schema.createTable('profile_featured', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'))
-    table.uuid('university_id').notNullable().references('id').inTable('universities')
+    table.uuid('university_id').notNullable().references('id').inTable('universities').onDelete('CASCADE')
     table.uuid('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
     table.text('type').notNullable()
     table.uuid('post_id').nullable().references('id').inTable('posts').onDelete('CASCADE')
@@ -12,6 +12,7 @@ export async function up(knex: Knex) {
     table.text('link_description').nullable()
     table.integer('display_order').notNullable().defaultTo(0)
     table.timestamp('created_at', { useTz: true }).notNullable().defaultTo(knex.fn.now())
+    table.timestamp('updated_at', { useTz: true }).defaultTo(knex.fn.now())
   })
 
   await knex.raw(`
