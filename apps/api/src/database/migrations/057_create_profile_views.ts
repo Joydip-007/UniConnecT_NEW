@@ -9,9 +9,9 @@ export async function up(knex: Knex) {
     table.primary(['viewer_id', 'viewed_id'])
   })
 
-  await knex.schema.alterTable('profile_views', (table) => {
-    table.index(['viewed_id', 'viewed_at'], 'idx_profile_views_viewed')
-  })
+  await knex.raw(
+    'CREATE INDEX idx_profile_views_viewed ON profile_views (viewed_id, viewed_at DESC)'
+  )
 }
 
 export async function down(knex: Knex) {
