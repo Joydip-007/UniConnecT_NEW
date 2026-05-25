@@ -44,7 +44,7 @@ interface TrendingTag {
 interface UserProgress {
   profileScore: number
   hasMadePost: boolean
-  followerCount: number
+  connectionCount: number
   isVerified: boolean
 }
 
@@ -469,7 +469,7 @@ export function RightSidebar() {
 
   const progressIncomplete =
     progress != null &&
-    (progress.profileScore < 100 || !progress.hasMadePost || progress.followerCount < 10 || !progress.isVerified)
+    (progress.profileScore < 100 || !progress.hasMadePost || progress.connectionCount < 10 || !progress.isVerified)
 
   return (
     <aside
@@ -519,10 +519,10 @@ export function RightSidebar() {
                   state: progress.hasMadePost ? 'done' : 'in-progress',
                 },
                 {
-                  icon: progress.followerCount >= 10 ? CheckCircle2 : Circle,
+                  icon: progress.connectionCount >= 10 ? CheckCircle2 : Circle,
                   label: '10 connections',
-                  state: progress.followerCount >= 10 ? 'done' : 'in-progress',
-                  progress: Math.min(progress.followerCount, 10),
+                  state: progress.connectionCount >= 10 ? 'done' : 'in-progress',
+                  progress: Math.min(progress.connectionCount, 10),
                   total: 10,
                 },
                 {
