@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx pnpm --filter web build",
+  "buildCommand": "npx pnpm --filter @uniconnect/shared build && npx pnpm --filter web build",
   "outputDirectory": "apps/web/dist",
   "installCommand": "npx pnpm install --frozen-lockfile",
   "framework": "vite",
