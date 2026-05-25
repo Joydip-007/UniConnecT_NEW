@@ -17,6 +17,11 @@ export const userProfileFieldsSchema = z.object({
   isOpenToWork: z.boolean(),
   isOpenToMentorship: z.boolean(),
   mentorshipPoints: z.number().int().nonnegative(),
+  location: z.string().nullable(),
+  websiteUrl: z.string().nullable(),
+  githubUrl: z.string().nullable(),
+  portfolioUrl: z.string().nullable(),
+  isOpenToMsg: z.boolean(),
 })
 
 export const themePreferenceSchema = z.enum(['light', 'dark', 'system'])
@@ -33,12 +38,14 @@ export const publicUserProfileSchema = z.object({
   lastActiveAt: z.union([z.string(), z.date()]).nullable().optional(),
   createdAt: z.union([z.string(), z.date()]),
   profile: userProfileFieldsSchema,
+  connectionStatus: z.enum(['none', 'pending_sent', 'pending_received', 'connected']),
+  connectionId: z.string().uuid().nullable(),
+  mutualConnections: z.number().int().nonnegative(),
   stats: z.object({
-    followers: z.number().int().nonnegative(),
-    following: z.number().int().nonnegative(),
+    connections: z.number().int().nonnegative(),
+    pendingReceived: z.number().int().nonnegative(),
     posts: z.number().int().nonnegative(),
   }),
-  isFollowing: z.boolean(),
 })
 
 export type PublicUserProfile = z.infer<typeof publicUserProfileSchema>
