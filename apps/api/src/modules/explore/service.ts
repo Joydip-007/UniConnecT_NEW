@@ -23,7 +23,8 @@ export interface UserSuggestion {
   batchYear: string | null
   avatarUrl: string | null
   followerCount: number
-  isFollowing: boolean
+  connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+  connectionId: string | null
 }
 
 export interface GroupSummary {
@@ -133,15 +134,23 @@ async function getPeopleSuggestions(universityId: string, requesterId: string): 
   const dept = requesterProfile?.department ?? ''
   const batch = requesterProfile?.batch_year ?? ''
 
+  // Exclude users who are already accepted-connected (still show pending so button reflects state)
   const rows = await db('users as u')
     .join('profiles as p', 'p.user_id', 'u.id')
-    .leftJoin('follows as f', function () {
-      this.on('f.following_id', 'u.id').andOn('f.follower_id', db.raw('?', [requesterId]))
-    })
     .where('u.university_id', universityId)
     .where('u.is_active', true)
     .whereNot('u.id', requesterId)
-    .whereNull('f.follower_id')
+    .whereRaw(
+      `NOT EXISTS (
+        SELECT 1 FROM connections c
+        WHERE c.status = 'accepted'
+        AND (
+          (c.requester_id = ? AND c.addressee_id = u.id)
+          OR (c.requester_id = u.id AND c.addressee_id = ?)
+        )
+      )`,
+      [requesterId, requesterId],
+    )
     .select(
       'u.id',
       'u.role',
@@ -150,7 +159,11 @@ async function getPeopleSuggestions(universityId: string, requesterId: string): 
       'p.department',
       'p.batch_year as batchYear',
       'p.avatar_url as avatarUrl',
-      db.raw(`(SELECT COUNT(*)::int FROM follows WHERE following_id = u.id) AS follower_count`),
+      db.raw(`(
+        SELECT COUNT(*)::int FROM connections
+        WHERE status = 'accepted'
+        AND (requester_id = u.id OR addressee_id = u.id)
+      ) AS connection_count`),
     )
     .orderByRaw(
       `(
@@ -162,29 +175,76 @@ async function getPeopleSuggestions(universityId: string, requesterId: string): 
         END
         + LEAST(
             COALESCE((
-              SELECT COUNT(*)::int FROM follows
-              WHERE following_id = u.id
-              AND follower_id IN (SELECT following_id FROM follows WHERE follower_id = ?)
+              SELECT COUNT(*)::int FROM connections c1
+              WHERE c1.status = 'accepted'
+              AND (c1.requester_id = u.id OR c1.addressee_id = u.id)
+              AND EXISTS (
+                SELECT 1 FROM connections c2
+                WHERE c2.status = 'accepted'
+                AND (c2.requester_id = ? OR c2.addressee_id = ?)
+                AND (
+                  (c2.requester_id = c1.requester_id OR c2.requester_id = c1.addressee_id
+                   OR c2.addressee_id = c1.requester_id OR c2.addressee_id = c1.addressee_id)
+                )
+                AND c2.requester_id != u.id AND c2.addressee_id != u.id
+              )
             ), 0),
             1
           )
       ) DESC,
-      (SELECT COUNT(*)::int FROM follows WHERE following_id = u.id) DESC`,
-      [dept, batch, dept, batch, requesterId],
+      (SELECT COUNT(*)::int FROM connections WHERE status = 'accepted' AND (requester_id = u.id OR addressee_id = u.id)) DESC`,
+      [dept, batch, dept, batch, requesterId, requesterId],
     )
     .limit(6)
 
-  return rows.map((r) => ({
-    id: r.id,
-    role: r.role,
-    fullName: r.fullName,
-    headline: r.headline,
-    department: r.department,
-    batchYear: r.batchYear,
-    avatarUrl: r.avatarUrl,
-    followerCount: Number(r.follower_count),
-    isFollowing: false,
-  }))
+  if (rows.length === 0) return []
+
+  // Fetch any pending/accepted connections between requester and these candidates
+  const userIds = rows.map((r: { id: string }) => r.id)
+  const connRows = await db('connections')
+    .where(function () {
+      this.where('requester_id', requesterId).whereIn('addressee_id', userIds)
+    })
+    .orWhere(function () {
+      this.whereIn('requester_id', userIds).where('addressee_id', requesterId)
+    })
+    .select<{ id: string; requester_id: string; addressee_id: string; status: string }[]>(
+      'id',
+      'requester_id',
+      'addressee_id',
+      'status',
+    )
+
+  const connMap = new Map<string, { id: string; status: string; direction: 'sent' | 'received' }>()
+  for (const c of connRows) {
+    const otherId = c.requester_id === requesterId ? c.addressee_id : c.requester_id
+    const direction = c.requester_id === requesterId ? 'sent' : 'received'
+    connMap.set(otherId, { id: c.id, status: c.status, direction })
+  }
+
+  return rows.map((r: Record<string, unknown>) => {
+    const conn = connMap.get(r.id as string)
+    let connectionStatus: UserSuggestion['connectionStatus'] = 'none'
+    let connectionId: string | null = null
+    if (conn) {
+      connectionId = conn.id
+      if (conn.status === 'accepted') connectionStatus = 'connected'
+      else if (conn.direction === 'sent') connectionStatus = 'pending_sent'
+      else connectionStatus = 'pending_received'
+    }
+    return {
+      id: r.id as string,
+      role: r.role as string,
+      fullName: r.fullName as string,
+      headline: (r.headline as string | null) ?? null,
+      department: (r.department as string | null) ?? null,
+      batchYear: (r.batchYear as string | null) ?? null,
+      avatarUrl: (r.avatarUrl as string | null) ?? null,
+      followerCount: Number(r.connection_count),
+      connectionStatus,
+      connectionId,
+    }
+  })
 }
 
 async function getActiveGroups(universityId: string, requesterId: string): Promise<GroupSummary[]> {
@@ -258,13 +318,22 @@ async function getUpcomingEvents(universityId: string, requesterId: string): Pro
 async function getFeaturedAlumni(universityId: string, requesterId: string): Promise<UserSuggestion[]> {
   const rows = await db('users as u')
     .join('profiles as p', 'p.user_id', 'u.id')
-    .leftJoin('follows as f', function () {
-      this.on('f.following_id', 'u.id').andOn('f.follower_id', db.raw('?', [requesterId]))
-    })
     .where('u.university_id', universityId)
     .where('u.role', 'alumni')
     .where('u.is_active', true)
     .whereNot('u.id', requesterId)
+    // Exclude already accepted-connected alumni
+    .whereRaw(
+      `NOT EXISTS (
+        SELECT 1 FROM connections c
+        WHERE c.status = 'accepted'
+        AND (
+          (c.requester_id = ? AND c.addressee_id = u.id)
+          OR (c.requester_id = u.id AND c.addressee_id = ?)
+        )
+      )`,
+      [requesterId, requesterId],
+    )
     .select(
       'u.id',
       'u.role',
@@ -273,23 +342,63 @@ async function getFeaturedAlumni(universityId: string, requesterId: string): Pro
       'p.department',
       'p.batch_year as batchYear',
       'p.avatar_url as avatarUrl',
-      db.raw(`(SELECT COUNT(*)::int FROM follows WHERE following_id = u.id) AS follower_count`),
-      db.raw('f.follower_id IS NOT NULL AS "isFollowing"'),
+      db.raw(`(
+        SELECT COUNT(*)::int FROM connections
+        WHERE status = 'accepted'
+        AND (requester_id = u.id OR addressee_id = u.id)
+      ) AS connection_count`),
     )
-    .orderBy('follower_count', 'desc')
+    .orderBy('connection_count', 'desc')
     .limit(4)
 
-  return rows.map((r) => ({
-    id: r.id,
-    role: r.role,
-    fullName: r.fullName,
-    headline: r.headline,
-    department: r.department,
-    batchYear: r.batchYear,
-    avatarUrl: r.avatarUrl,
-    followerCount: Number(r.follower_count),
-    isFollowing: Boolean(r.isFollowing),
-  }))
+  if (rows.length === 0) return []
+
+  // Fetch any pending/accepted connections between requester and these alumni
+  const userIds = rows.map((r: { id: string }) => r.id)
+  const connRows = await db('connections')
+    .where(function () {
+      this.where('requester_id', requesterId).whereIn('addressee_id', userIds)
+    })
+    .orWhere(function () {
+      this.whereIn('requester_id', userIds).where('addressee_id', requesterId)
+    })
+    .select<{ id: string; requester_id: string; addressee_id: string; status: string }[]>(
+      'id',
+      'requester_id',
+      'addressee_id',
+      'status',
+    )
+
+  const connMap = new Map<string, { id: string; status: string; direction: 'sent' | 'received' }>()
+  for (const c of connRows) {
+    const otherId = c.requester_id === requesterId ? c.addressee_id : c.requester_id
+    const direction = c.requester_id === requesterId ? 'sent' : 'received'
+    connMap.set(otherId, { id: c.id, status: c.status, direction })
+  }
+
+  return rows.map((r: Record<string, unknown>) => {
+    const conn = connMap.get(r.id as string)
+    let connectionStatus: UserSuggestion['connectionStatus'] = 'none'
+    let connectionId: string | null = null
+    if (conn) {
+      connectionId = conn.id
+      if (conn.status === 'accepted') connectionStatus = 'connected'
+      else if (conn.direction === 'sent') connectionStatus = 'pending_sent'
+      else connectionStatus = 'pending_received'
+    }
+    return {
+      id: r.id as string,
+      role: r.role as string,
+      fullName: r.fullName as string,
+      headline: (r.headline as string | null) ?? null,
+      department: (r.department as string | null) ?? null,
+      batchYear: (r.batchYear as string | null) ?? null,
+      avatarUrl: (r.avatarUrl as string | null) ?? null,
+      followerCount: Number(r.connection_count),
+      connectionStatus,
+      connectionId,
+    }
+  })
 }
 
 // ── Public service functions ──────────────────────────────────────────────────
@@ -309,7 +418,7 @@ export async function getDiscovery(universityId: string, requesterId: string): P
 
 export async function getTagPosts(
   universityId: string,
-  requesterId: string,
+  _requesterId: string,
   tag: string,
   page: number,
   limit: number,
