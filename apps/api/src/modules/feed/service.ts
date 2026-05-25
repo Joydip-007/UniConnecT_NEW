@@ -48,6 +48,7 @@ interface PostRow {
   comment_count: string | number
   own_reaction: ReactionType | null
   is_saved: boolean | null
+  is_connected: number | null
 }
 
 interface CommentRow {
@@ -99,13 +100,14 @@ export class FeedService {
     const total = Number(count)
     const offset = (query.page - 1) * query.limit
 
-    const rows = (await postSelectQuery(db, userId)
+    const rows = (await postSelectQuery(db, userId, universityId)
       .where('posts.university_id', universityId)
       .modify((builder) => {
         if (query.type) builder.andWhere('posts.type', query.type)
         if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
       })
       .orderBy('posts.is_pinned', 'desc')
+      .orderByRaw('is_connected DESC NULLS LAST')
       .orderBy('posts.created_at', 'desc')
       .limit(query.limit)
       .offset(offset)) as PostRow[]
@@ -612,7 +614,7 @@ export class FeedService {
 
 export const feedService = new FeedService()
 
-function postSelectQuery(knex: Knex, userId: string) {
+function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
   return knex('posts')
     .join('users', 'users.id', 'posts.author_id')
     .join('profiles', 'profiles.user_id', 'users.id')
@@ -659,6 +661,21 @@ function postSelectQuery(knex: Knex, userId: string) {
         [userId],
       ),
       knex.raw('saved_posts.user_id IS NOT NULL AS is_saved'),
+      universityId
+        ? knex.raw(
+            `CASE WHEN posts.author_id IN (
+              SELECT CASE
+                WHEN c.requester_id = ? THEN c.addressee_id
+                ELSE c.requester_id
+              END
+              FROM connections c
+              WHERE (c.requester_id = ? OR c.addressee_id = ?)
+                AND c.status = 'accepted'
+                AND c.university_id = ?
+            ) THEN 1 ELSE 0 END AS is_connected`,
+            [userId, userId, userId, universityId],
+          )
+        : knex.raw('NULL AS is_connected'),
     )
 }
 

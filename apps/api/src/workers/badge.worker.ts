@@ -60,8 +60,14 @@ async function getActivityCount(
       return countRows('job_applications', { applicant_id: userId })
     case 'job_posted':
       return countRows('jobs', { posted_by: userId })
-    case 'follow_count':
-      return countRows('follows', { follower_id: userId })
+    case 'connection_count':
+      return db('connections')
+        .where(function () {
+          this.where('requester_id', userId).orWhere('addressee_id', userId)
+        })
+        .andWhere('status', 'accepted')
+        .count<[{ count: string }]>({ count: '*' })
+        .then(([r]) => Number(r.count))
     case 'event_rsvp':
       return countRows('event_rsvps', { user_id: userId })
     case 'mentorship_accept':

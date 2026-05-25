@@ -44,6 +44,7 @@ interface ConversationAccessRow {
   university_id: string
   name: string | null
   is_group: boolean
+  type: 'direct' | 'group' | 'mentorship'
   avatar_url: string | null
   created_by: string
   created_at: Date
@@ -114,6 +115,36 @@ export class MessagesService {
     }
 
     await assertUsersInUniversity([input.participantId], context.universityId)
+
+    // Direct conversations require a connection (unless admin, mentorship, or open_to_msg)
+    if (!input.is_group) {
+      const isAdmin = context.role === 'admin'
+      if (!isAdmin) {
+        // Check if target has open_to_msg
+        const targetProfile = await db('profiles')
+          .where({ user_id: input.participantId })
+          .select('is_open_to_msg')
+          .first<{ is_open_to_msg: boolean }>()
+
+        if (!targetProfile?.is_open_to_msg) {
+          // Check connection
+          const connection = await db('connections')
+            .where(function () {
+              this.where({ requester_id: context.userId, addressee_id: input.participantId }).orWhere({
+                requester_id: input.participantId,
+                addressee_id: context.userId,
+              })
+            })
+            .andWhere('status', 'accepted')
+            .andWhere('university_id', context.universityId)
+            .first()
+
+          if (!connection) {
+            throw forbidden('You must be connected to message this person', 'NOT_CONNECTED')
+          }
+        }
+      }
+    }
 
     const existing = await findDirectConversation(context.userId, input.participantId, context.universityId)
     if (existing) return { data: await this.getConversation(context, existing.id), created: false }
@@ -200,7 +231,40 @@ export class MessagesService {
   }
 
   async createMessage(context: AuthContext, convId: string, input: CreateMessageInput) {
-    await assertParticipant(context, convId)
+    const conversation = await assertParticipant(context, convId)
+
+    // Re-check connection for direct conversations (handles post-disconnect edge case)
+    if (!conversation.is_group && conversation.type === 'direct') {
+      if (context.role !== 'admin') {
+        const otherParticipants = (await getParticipantsForConversations([convId]))
+          .get(convId)
+          ?.filter((p) => p.userId !== context.userId) ?? []
+
+        for (const other of otherParticipants) {
+          const targetProfile = await db('profiles')
+            .where({ user_id: other.userId })
+            .select('is_open_to_msg')
+            .first<{ is_open_to_msg: boolean }>()
+
+          if (!targetProfile?.is_open_to_msg) {
+            const connection = await db('connections')
+              .where(function () {
+                this.where({ requester_id: context.userId, addressee_id: other.userId }).orWhere({
+                  requester_id: other.userId,
+                  addressee_id: context.userId,
+                })
+              })
+              .andWhere('status', 'accepted')
+              .andWhere('university_id', context.universityId)
+              .first()
+
+            if (!connection) {
+              throw forbidden('You must be connected to message this person', 'NOT_CONNECTED')
+            }
+          }
+        }
+      }
+    }
 
     if (input.reply_to_id) {
       const reply = await db('messages').where({ id: input.reply_to_id, conversation_id: convId }).first()
@@ -417,6 +481,7 @@ async function assertParticipant(context: AuthContext, convId: string) {
       'conversations.university_id',
       'conversations.name',
       'conversations.is_group',
+      'conversations.type',
       'conversations.avatar_url',
       'conversations.created_by',
       'conversations.created_at',

@@ -297,21 +297,36 @@ export async function seed(knex: Knex) {
     await knex('profiles').insert({ ...base, ...(skills ? { skills } : {}) }).onConflict('user_id').merge(row)
   }
 
-  // ── 5. Follows ────────────────────────────────────────────────────────────
-  const follows = [
-    [aliceId, carolId], [aliceId, eveId],   [aliceId, joydipId],
-    [bobId, carolId],   [bobId, henryId],   [bobId, joydipId],
-    [frankId, aliceId], [frankId, bobId],   [frankId, eveId],
-    [graceId, eveId],   [graceId, aliceId], [graceId, bobId],
-    [carolId, eveId],   [carolId, joydipId],
-    [henryId, daveId],  [henryId, carolId],
-    [daveId, carolId],
-    [joydipId, aliceId], [joydipId, eveId], [joydipId, bobId],
-    [eveId, joydipId],
+  // ── 5. Connections (replaces follows) ────────────────────────────────────
+  const connectionPairs = [
+    [aliceId,  carolId ],
+    [aliceId,  eveId   ],
+    [aliceId,  joydipId],
+    [bobId,    carolId ],
+    [bobId,    henryId ],
+    [bobId,    joydipId],
+    [frankId,  aliceId ],
+    [frankId,  bobId   ],
+    [frankId,  eveId   ],
+    [graceId,  eveId   ],
+    [graceId,  aliceId ],
+    [graceId,  bobId   ],
+    [carolId,  eveId   ],
+    [carolId,  joydipId],
+    [henryId,  daveId  ],
+    [henryId,  carolId ],
+    [daveId,   carolId ],
+    [joydipId, aliceId ],
+    [joydipId, eveId   ],
+    [joydipId, bobId   ],
+    [eveId,    joydipId],
   ]
 
-  for (const [follower_id, following_id] of follows) {
-    await knex('follows').insert({ follower_id, following_id }).onConflict(['follower_id', 'following_id']).ignore()
+  for (const [requester_id, addressee_id] of connectionPairs) {
+    await knex('connections')
+      .insert({ university_id: UNI, requester_id, addressee_id, status: 'accepted', note: null })
+      .onConflict(['requester_id', 'addressee_id'])
+      .ignore()
   }
 
   // ── 6. Tags ───────────────────────────────────────────────────────────────
@@ -1180,18 +1195,18 @@ export async function seed(knex: Knex) {
     .delete()
 
   const notifications = [
-    { user_id: aliceId, type: 'reaction', actor_id: carolId,  reference_id: P1,      reference_type: 'post',    content: 'Carol Ahmed reacted to your post',        is_read: false },
-    { user_id: aliceId, type: 'comment',  actor_id: eveId,    reference_id: CMT1,    reference_type: 'comment', content: 'Dr. Eve Islam commented on your post',     is_read: false },
-    { user_id: aliceId, type: 'follow',   actor_id: joydipId, reference_id: aliceId, reference_type: 'user',    content: 'Joydip Datta started following you',       is_read: true  },
-    { user_id: aliceId, type: 'reaction', actor_id: frankId,  reference_id: P1,      reference_type: 'post',    content: 'Frank Khan liked your post',               is_read: false },
-    { user_id: bobId,   type: 'reaction', actor_id: carolId,  reference_id: P4,      reference_type: 'post',    content: 'Carol Ahmed celebrated your post',         is_read: false },
-    { user_id: bobId,   type: 'comment',  actor_id: carolId,  reference_id: CMT3,    reference_type: 'comment', content: 'Carol Ahmed commented on your post',       is_read: false },
-    { user_id: bobId,   type: 'follow',   actor_id: joydipId, reference_id: bobId,   reference_type: 'user',    content: 'Joydip Datta started following you',       is_read: true  },
-    { user_id: carolId, type: 'follow',   actor_id: aliceId,  reference_id: carolId, reference_type: 'user',    content: 'Alice Rahman started following you',       is_read: true  },
-    { user_id: carolId, type: 'comment',  actor_id: aliceId,  reference_id: CMT4,    reference_type: 'comment', content: 'Alice Rahman commented on your post',      is_read: false },
-    { user_id: frankId, type: 'follow',   actor_id: joydipId, reference_id: frankId, reference_type: 'user',    content: 'Joydip Datta started following you',       is_read: false },
-    { user_id: graceId, type: 'reaction', actor_id: bobId,    reference_id: P_POLL,  reference_type: 'post',    content: 'Bob Hossain reacted to your poll',         is_read: false },
-    { user_id: joydipId,type: 'reaction', actor_id: bobId,    reference_id: P1,      reference_type: 'post',    content: 'Bob Hossain reacted to a post you follow', is_read: false },
+    { user_id: aliceId, type: 'reaction',            actor_id: carolId,  reference_id: P1,      reference_type: 'post',    content: 'Carol Ahmed reacted to your post',              is_read: false },
+    { user_id: aliceId, type: 'comment',             actor_id: eveId,    reference_id: CMT1,    reference_type: 'comment', content: 'Dr. Eve Islam commented on your post',           is_read: false },
+    { user_id: aliceId, type: 'connection_accepted', actor_id: joydipId, reference_id: aliceId, reference_type: 'user',    content: 'Joydip Datta accepted your connection request',   is_read: true  },
+    { user_id: aliceId, type: 'reaction',            actor_id: frankId,  reference_id: P1,      reference_type: 'post',    content: 'Frank Khan liked your post',                     is_read: false },
+    { user_id: bobId,   type: 'reaction',            actor_id: carolId,  reference_id: P4,      reference_type: 'post',    content: 'Carol Ahmed celebrated your post',               is_read: false },
+    { user_id: bobId,   type: 'comment',             actor_id: carolId,  reference_id: CMT3,    reference_type: 'comment', content: 'Carol Ahmed commented on your post',             is_read: false },
+    { user_id: bobId,   type: 'connection_accepted', actor_id: joydipId, reference_id: bobId,   reference_type: 'user',    content: 'Joydip Datta accepted your connection request',   is_read: true  },
+    { user_id: carolId, type: 'connection_request',  actor_id: aliceId,  reference_id: carolId, reference_type: 'user',    content: 'Alice Rahman sent you a connection request',      is_read: true  },
+    { user_id: carolId, type: 'comment',             actor_id: aliceId,  reference_id: CMT4,    reference_type: 'comment', content: 'Alice Rahman commented on your post',            is_read: false },
+    { user_id: frankId, type: 'connection_request',  actor_id: joydipId, reference_id: frankId, reference_type: 'user',    content: 'Joydip Datta sent you a connection request',      is_read: false },
+    { user_id: graceId, type: 'reaction',            actor_id: bobId,    reference_id: P_POLL,  reference_type: 'post',    content: 'Bob Hossain reacted to your poll',               is_read: false },
+    { user_id: joydipId,type: 'reaction',            actor_id: bobId,    reference_id: P1,      reference_type: 'post',    content: 'Bob Hossain reacted to a post you reacted to',   is_read: false },
   ]
 
   for (const n of notifications) {
