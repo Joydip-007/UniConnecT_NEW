@@ -10,7 +10,8 @@ export interface UserSearchResult {
   batchYear: string | null
   avatarUrl: string | null
   role: string
-  isFollowing: boolean
+  connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+  connectionId: string | null
 }
 
 export interface PostSearchResult {
@@ -92,8 +93,12 @@ export async function searchPeople(
 
   const rows = await baseQuery
     .clone()
-    .leftJoin('follows as f', function () {
-      this.on('f.following_id', 'u.id').andOn('f.follower_id', db.raw('?', [requesterId]))
+    .leftJoin('connections as c', function () {
+      this.on(function () {
+        this.on('c.requester_id', db.raw('?', [requesterId])).andOn('c.addressee_id', 'u.id')
+      }).orOn(function () {
+        this.on('c.addressee_id', db.raw('?', [requesterId])).andOn('c.requester_id', 'u.id')
+      })
     })
     .select(
       'u.id',
@@ -103,7 +108,17 @@ export async function searchPeople(
       'p.department',
       'p.batch_year as batchYear',
       'p.avatar_url as avatarUrl',
-      db.raw('f.follower_id IS NOT NULL as "isFollowing"'),
+      'c.id as connectionId',
+      db.raw(
+        `CASE
+          WHEN c.id IS NULL THEN 'none'
+          WHEN c.status = 'accepted' THEN 'connected'
+          WHEN c.requester_id = ? AND c.status = 'pending' THEN 'pending_sent'
+          WHEN c.addressee_id = ? AND c.status = 'pending' THEN 'pending_received'
+          ELSE 'none'
+        END AS "connectionStatus"`,
+        [requesterId, requesterId],
+      ),
     )
     .limit(limit)
     .offset((page - 1) * limit)
@@ -120,7 +135,8 @@ export async function searchPeople(
     batchYear: r.batchYear,
     avatarUrl: r.avatarUrl,
     role: r.role,
-    isFollowing: Boolean(r.isFollowing),
+    connectionStatus: (r.connectionStatus as UserSearchResult['connectionStatus']) ?? 'none',
+    connectionId: r.connectionId ?? null,
   }))
 
   return paginate(items, Number(count), page, limit)

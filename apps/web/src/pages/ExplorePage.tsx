@@ -313,7 +313,6 @@ export default function ExplorePage() {
     if (items.length === 0) return <EmptyState icon={<Search size={40} />} title="No people found" message="Try adjusting your filters." />
     return (
       <>
-        <FilterPills />
         <div style={cardWrapStyle}>{items.map((p) => <PeopleResultCard key={p.id} person={p} query={q} />)}</div>
         {hasMorePeople && (
           <button style={loadMoreStyle} onClick={() => fetchMorePeople()} disabled={fetchingMorePeople}>
