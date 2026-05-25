@@ -15,6 +15,7 @@ import { messagesRouter } from './modules/messages'
 import { newsRouter } from './modules/news'
 import { notificationsRouter } from './modules/notifications'
 import { campusRouter } from './modules/campus'
+import { connectionsRouter } from './modules/connections'
 import { mentorshipRouter } from './modules/mentorship'
 import { searchRouter } from './modules/search'
 import { exploreRouter } from './modules/explore'
@@ -77,6 +78,7 @@ export function createApp() {
   app.use('/api/v1/conversations', messagesRouter)
   app.use('/api/v1/notifications', notificationsRouter)
   app.use('/api/v1/news', newsRouter)
+  app.use('/api/v1/connections', connectionsRouter)
   app.use('/api/v1/mentorship', mentorshipRouter)
   app.use('/api/v1/search', searchRouter)
   app.use('/api/v1/explore', exploreRouter)

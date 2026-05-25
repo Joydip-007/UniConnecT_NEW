@@ -93,7 +93,7 @@ Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/
 
 All feature modules live under `apps/api/src/modules/`. Each module follows the same shape: `router.ts` (route declarations only), `controller.ts` (request/response handling), `service.ts` (all business logic + DB access), `schema.ts` (Zod schemas), `index.ts` (barrel).
 
-Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`, `explore`.
+Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`, `explore`, `connections`.
 
 The `admin` module (`/api/v1/admin`) requires `faculty` or `admin` role (stats endpoint requires `admin` only) and exposes: stats, user list + role/status management, invitations (create/list/delete/bulk), content reports (list/resolve), and allowed email domains management. Admin actions are recorded in `university_audit_log`.
 
@@ -102,6 +102,19 @@ The `groups` module now includes: join-request flow (private groups → request 
 The `campus` module covers lost-and-found items and shuttle schedules (no dedicated `lost-found` or `shuttle` module — both live under `/api/v1/campus`).
 
 The `mentorship` module has a points economy (`POINTS_PER_SESSION = 10`, `POINTS_PER_USD = 100`) and supports gift card redemption. It also manages: a `mentorship_sessions` child table (per-session date/duration/topic/notes, editable by either party), alumni capacity enforcement (`max_mentees` on profiles, default 3, checked at accept time), Bull lifecycle jobs per request (48 h alumnus reminder → `request_reminder`; 7 d auto-expiry → `request_expire`, status transitions to `expired`), and automatic conversation creation on accept (`conversations.type = 'mentorship'`, FK `mentorship_requests.conversation_id`).
+
+The `connections` module (`/api/v1/connections`) implements a **bidirectional LinkedIn-style connection graph** — the old `follows` table has been dropped (migration `052_drop_follows`). Connections have `status: 'pending' | 'accepted'` and an optional `note`. Key routes: `POST /connections/request/:userId`, `DELETE /connections/request/:userId` (withdraw), `POST /connections/:connectionId/accept`, `POST /connections/:connectionId/decline`, `DELETE /connections/:userId` (remove), `GET /connections` (my accepted), `GET /connections/pending` (received), `GET /connections/sent`, `GET /connections/mutual/:userId`. On accept/receive, the service emits `CONNECTION_EVENTS.ACCEPTED` / `CONNECTION_EVENTS.REQUEST_RECEIVED` (from `@uniconnect/shared`) to the target's `user:{userId}` room.
+
+The `users` module owns the full profile sub-API in addition to user lookup. Extra endpoints beyond `GET/PATCH /users/me`:
+- **Experience**: `GET /:userId/experience`, `POST /me/experience`, `PATCH /me/experience/:entryId`, `DELETE /me/experience/:entryId` — table `profile_experiences`
+- **Education**: same shape — table `profile_education`
+- **Featured**: `GET /:userId/featured`, `POST /me/featured` (max 5), `DELETE /me/featured/:entryId`, `PATCH /me/featured/reorder` — table `profile_featured` with `display_order`
+- **Analytics**: `GET /me/analytics` — returns 7/30/90-day profile-view counts from `profile_views`
+- **Viewers**: `GET /me/viewers` — paginated list of recent profile viewers (last 90 days)
+- **Connections**: `GET /:userId/connections` — public list of a user's accepted connections
+- **Suggestions**: `GET /users/suggestions` — people the current user might know
+
+**Profile view side-effect:** `GET /users/:userId` (`getUser`) silently upserts a row in `profile_views` (no separate endpoint needed). The `profiles` table has new optional columns: `location`, `website_url`, `github_url`, `portfolio_url`, `is_open_to_msg` (boolean).
 
 ---
 
@@ -163,6 +176,16 @@ Cross-cutting services not owned by any module: `token.service.ts`, `email.servi
 | `src/styles/` | `tokens.css` (CSS vars), `index.css` (Tailwind entry + token import) |
 | `src/router/` | `index.tsx` (router), `paths.ts` (PATHS constants), `ProtectedRoute`, `AdminRoute`, `GuestRoute` |
 
+**Implemented feature bundles** (each at `src/features/{domain}/` with `components/`, `hooks/`, `index.ts`):
+`feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `mentorship`, `explore`, `search`, `landing`, `connections`, `profile`
+
+Notable feature internals:
+- `src/features/connections/` — `ConnectButton`, `ConnectionRequestModal`, `PendingRequestCard`, `ConnectionCard`; hooks `useConnectionAction`, `useMyConnections`, `usePendingReceived`, `usePendingSent`, `useMutualConnections`
+- `src/features/profile/` — `ProfileHeader`, `ProfileAbout`, `ProfileExperience`, `ProfileEducation`, `ProfileSkills`, `ProfileFeatured`, `ProfileContactInfo`, `ProfileActivity`, `ProfileAnalytics`, `ProfileViewers`, `ResumeExportButton`, plus editing modals (`ExperienceModal`, `EducationModal`, `FeaturedModal`, `EditProfileModal`)
+
+**All implemented page routes** (`src/router/paths.ts` + lazy pages in `src/pages/`):
+`/feed`, `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/explore`, `/explore/tag/:tag`, `/connections`, `/admin`
+
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
 - `useQuery` key: `['domain', 'action', { param1, param2 }]`
@@ -178,7 +201,7 @@ Exports TypeScript types, Zod schemas, and socket event name constants consumed 
 
 - `src/types/` — interfaces (`UserProfile`, `JobApplication`, …)
 - `src/schemas/` — Zod schemas, one file per domain (e.g. `src/schemas/jobs.ts`)
-- `src/constants/socket.ts` — Socket.io event name constants
+- `src/constants/socket.ts` — Socket.io event name constants: `UNIVERSITY_EVENTS`, `CONNECTION_EVENTS` (`REQUEST_RECEIVED`, `ACCEPTED`)
 
 Zod schemas are the **single source of truth** for validation and TS types. Use `z.infer<typeof schema>` — never duplicate types manually. Schema naming: `camelCase` + `Schema` suffix (e.g. `createJobSchema`).
 
@@ -192,7 +215,7 @@ Strict mode on everywhere. No `any` — use `unknown` + narrowing or a specific 
 
 ## Design system (non-negotiable)
 
-CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/styles/index.css`. Default theme: **Warm Futuristic Dark** — navy surfaces, UIU orange identity, indigo interactive. A **Warm Neutral Light** theme is also defined under `[data-theme='light']` in the same file (toggled via `theme_preference` on the `users` table and stored in `uiStore`). Full token reference is in `DESIGN.md`.
+CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/styles/index.css`. Default theme: **Warm Futuristic Dark** — navy surfaces, UIU orange identity, indigo interactive. A **Warm Neutral Light** theme is also defined under `[data-theme='light']` in the same file (toggled via `theme_preference` on the `users` table and stored in `uiStore`). Full token reference is in `docs/DESIGN.md`.
 
 | Rule | Detail |
 |------|--------|
@@ -237,7 +260,8 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 - Always index FK columns used in WHERE, and `(university_id, created_at DESC)` on high-volume tables.
 - Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
 - Redis keys: `{prefix}:{university_id}:{id}`. Never hardcode TTL values — centralise them (see `src/config/redis.ts` for the client; OTP TTL lives in env `OTP_EXPIRES_MINUTES`).
-- DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Audit (`university_audit_log`).
+- DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Connections (`connections`), Profile sections (`profile_experiences`, `profile_education`, `profile_featured`, `profile_views`), Audit (`university_audit_log`).
+- Latest migration: `057_create_profile_views`. The `follows` table no longer exists (dropped in `052_drop_follows`).
 
 ---
 

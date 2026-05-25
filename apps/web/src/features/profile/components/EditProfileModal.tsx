@@ -250,6 +250,11 @@ export function EditProfileModal({ onClose }: Props) {
   const [phone, setPhone] = useState(p?.phone ?? '')
   const [skills, setSkills] = useState<string[]>(p?.skills ?? [])
   const [isOpenToWork, setIsOpenToWork] = useState(p?.isOpenToWork ?? false)
+  const [location, setLocation] = useState(p?.location ?? '')
+  const [websiteUrl, setWebsiteUrl] = useState(p?.websiteUrl ?? '')
+  const [githubUrl, setGithubUrl] = useState(p?.githubUrl ?? '')
+  const [portfolioUrl, setPortfolioUrl] = useState(p?.portfolioUrl ?? '')
+  const [isOpenToMsg, setIsOpenToMsg] = useState(p?.isOpenToMsg ?? false)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(p?.avatarUrl ?? null)
   const [coverPreview, setCoverPreview] = useState<string | null>(p?.coverUrl ?? null)
 
@@ -315,6 +320,11 @@ export function EditProfileModal({ onClose }: Props) {
           phone: phone.trim() || null,
           skills,
           isOpenToWork,
+          location: location.trim() || null,
+          websiteUrl: websiteUrl.trim() || null,
+          githubUrl: githubUrl.trim() || null,
+          portfolioUrl: portfolioUrl.trim() || null,
+          isOpenToMsg,
         })
         .then((r) => r.data.data),
     onSuccess: (updated) => {
@@ -676,6 +686,54 @@ export function EditProfileModal({ onClose }: Props) {
               />
             </FieldRow>
 
+            <FieldRow label="Location" optional>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Dhaka, Bangladesh"
+                style={inputBase}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+            </FieldRow>
+
+            <FieldRow label="Website" optional>
+              <input
+                type="url"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://yoursite.com"
+                style={inputBase}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+            </FieldRow>
+
+            <FieldRow label="GitHub URL" optional>
+              <input
+                type="url"
+                value={githubUrl}
+                onChange={(e) => setGithubUrl(e.target.value)}
+                placeholder="https://github.com/yourusername"
+                style={inputBase}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+            </FieldRow>
+
+            <FieldRow label="Portfolio URL" optional>
+              <input
+                type="url"
+                value={portfolioUrl}
+                onChange={(e) => setPortfolioUrl(e.target.value)}
+                placeholder="https://yourportfolio.com"
+                style={inputBase}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+            </FieldRow>
+
             <FieldRow label="Skills" optional>
               <TagInput tags={skills} onChange={setSkills} />
               <p
@@ -719,6 +777,37 @@ export function EditProfileModal({ onClose }: Props) {
                 </p>
               </div>
               <Toggle value={isOpenToWork} onChange={setIsOpenToWork} />
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                background: 'var(--surface-raised)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-md)',
+              }}
+            >
+              <div>
+                <p
+                  style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}
+                >
+                  Open to messages
+                </p>
+                <p
+                  style={{
+                    margin: '2px 0 0',
+                    fontSize: 12,
+                    fontWeight: 400,
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  Allow anyone to send you a direct message
+                </p>
+              </div>
+              <Toggle value={isOpenToMsg} onChange={setIsOpenToMsg} />
             </div>
           </div>
 

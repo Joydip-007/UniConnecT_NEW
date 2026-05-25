@@ -1,18 +1,15 @@
-import { BadgeCheck, Briefcase } from 'lucide-react'
+import { BadgeCheck, Briefcase, MapPin } from 'lucide-react'
 import type { PublicUserProfile, UserRole } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
-import { GhostBtn, PrimaryBtn } from '@/components/Button'
-import type { FollowMode } from './FollowModal'
+import { GhostBtn } from '@/components/Button'
+import { ConnectButton } from '@/features/connections'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 interface Props {
   user: PublicUserProfile
   isOwnProfile: boolean
-  followPending: boolean
-  onFollowToggle: () => void
   onEdit: () => void
-  onOpenFollowers: (mode: FollowMode) => void
 }
 
 
@@ -31,10 +28,7 @@ function roleLabel(role: UserRole): string {
 export function ProfileHeader({
   user,
   isOwnProfile,
-  followPending,
-  onFollowToggle,
   onEdit,
-  onOpenFollowers,
 }: Props) {
   const fullName = user.profile.fullName
   const avatarColor = seedColor(user.id)
@@ -90,21 +84,13 @@ export function ProfileHeader({
           {isOwnProfile ? (
             <GhostBtn onClick={onEdit}>Edit profile</GhostBtn>
           ) : (
-            <PrimaryBtn
-              onClick={onFollowToggle}
-              disabled={followPending}
-              style={
-                user.isFollowing
-                  ? {
-                      background: 'transparent',
-                      border: '0.5px solid var(--border-hover)',
-                      color: 'var(--text-secondary)',
-                    }
-                  : undefined
-              }
-            >
-              {user.isFollowing ? 'Following' : 'Follow'}
-            </PrimaryBtn>
+            <ConnectButton
+              targetUserId={user.id}
+              targetName={fullName}
+              connectionStatus={user.connectionStatus}
+              connectionId={user.connectionId}
+              size="md"
+            />
           )}
         </div>
 
@@ -155,6 +141,29 @@ export function ProfileHeader({
               {user.profile.headline}
             </p>
           )}
+
+          {user.profile.location && (
+            <p
+              style={{
+                margin: 0,
+                fontSize: 12,
+                fontWeight: 400,
+                color: 'var(--text-tertiary)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <MapPin size={11} strokeWidth={1.5} />
+              {user.profile.location}
+            </p>
+          )}
+
+          {user.mutualConnections > 0 && (
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+              {user.mutualConnections} mutual connection{user.mutualConnections !== 1 ? 's' : ''}
+            </p>
+          )}
         </div>
 
         <div
@@ -168,15 +177,12 @@ export function ProfileHeader({
         >
           {(
             [
-              { label: 'following', value: user.stats.following, mode: 'following' as FollowMode },
-              { label: 'followers', value: user.stats.followers, mode: 'followers' as FollowMode },
-              { label: 'posts', value: user.stats.posts, mode: null },
+              { label: 'connections', value: user.stats.connections },
+              { label: 'posts', value: user.stats.posts },
             ] as const
-          ).map(({ label, value, mode }, idx) => (
-            <button
+          ).map(({ label, value }, idx) => (
+            <div
               key={label}
-              type="button"
-              onClick={mode ? () => onOpenFollowers(mode) : undefined}
               style={{
                 flex: 1,
                 display: 'flex',
@@ -184,18 +190,7 @@ export function ProfileHeader({
                 alignItems: 'center',
                 gap: 2,
                 borderLeft: idx > 0 ? '0.5px solid var(--border-default)' : 'none',
-                background: 'none',
-                border: 'none',
-                cursor: mode ? 'pointer' : 'default',
                 padding: '4px 0',
-                borderRadius: 'var(--r-sm)',
-                transition: 'background 150ms',
-              }}
-              onMouseEnter={(e) => {
-                if (mode) e.currentTarget.style.background = 'var(--surface-hover)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
               }}
             >
               <span
@@ -211,7 +206,7 @@ export function ProfileHeader({
               <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
                 {label}
               </span>
-            </button>
+            </div>
           ))}
         </div>
       </div>

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -10,11 +9,11 @@ import {
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
-import { GhostBtn } from '@/components/Button'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import type { UserRole } from '@uniconnect/shared/types'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { ConnectButton } from '@/features/connections'
 
 // ── Local types ──────────────────────────────────────────
 
@@ -26,6 +25,8 @@ interface SuggestedUser {
     department: string | null
     batchYear: string | null
   }
+  connectionStatus?: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+  connectionId?: string | null
 }
 
 interface EventItem {
@@ -160,21 +161,6 @@ function PersonRow({ user, isLast = false }: { user: SuggestedUser; isLast?: boo
   const navigate = useNavigate()
   const initials = getInitials(user.profile.fullName)
   const color = avatarColor(user.id)
-  const [isFollowing, setIsFollowing] = useState(false)
-
-  async function handleFollow() {
-    const prev = isFollowing
-    setIsFollowing(!prev)
-    try {
-      if (prev) {
-        await api.delete(`/users/${user.id}/follow`)
-      } else {
-        await api.post(`/users/${user.id}/follow`)
-      }
-    } catch {
-      setIsFollowing(prev)
-    }
-  }
 
   return (
     <div
@@ -226,12 +212,15 @@ function PersonRow({ user, isLast = false }: { user: SuggestedUser; isLast?: boo
         </Badge>
       </div>
 
-      <GhostBtn
-        onClick={handleFollow}
-        style={{ flexShrink: 0, padding: '4px 10px', fontSize: 12, opacity: isFollowing ? 0.6 : 1 }}
-      >
-        {isFollowing ? 'Following' : 'Follow'}
-      </GhostBtn>
+      <div style={{ flexShrink: 0 }}>
+        <ConnectButton
+          targetUserId={user.id}
+          targetName={user.profile.fullName}
+          connectionStatus={user.connectionStatus ?? 'none'}
+          connectionId={user.connectionId ?? null}
+          size="sm"
+        />
+      </div>
     </div>
   )
 }

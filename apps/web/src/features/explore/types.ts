@@ -19,7 +19,8 @@ export interface UserSuggestion {
   batchYear: string | null
   avatarUrl: string | null
   followerCount: number
-  isFollowing: boolean
+  connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+  connectionId: string | null
 }
 
 export interface GroupSummary {

@@ -17,6 +17,12 @@ export interface UserProfile {
   isOpenToMentorship: boolean
   mentorshipPoints: number
   maxMentees: number
+  // Extended profile fields
+  location: string | null
+  websiteUrl: string | null
+  githubUrl: string | null
+  portfolioUrl: string | null
+  isOpenToMsg: boolean
 }
 
 export interface User {

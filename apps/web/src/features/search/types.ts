@@ -6,7 +6,8 @@ export interface UserSearchResult {
   batchYear: string | null
   avatarUrl: string | null
   role: string
-  isFollowing: boolean
+  connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+  connectionId: string | null
 }
 
 export interface PostSearchResult {

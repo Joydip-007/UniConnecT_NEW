@@ -4,6 +4,7 @@ import {
   Home,
   Compass,
   Users,
+  Network,
   Calendar,
   Briefcase,
   Newspaper,
@@ -190,6 +191,7 @@ export function LeftSidebar() {
       items: [
         { icon: Home, label: 'Home', path: PATHS.FEED },
         { icon: Compass, label: 'Explore', path: PATHS.EXPLORE },
+        { icon: Network, label: 'My network', path: PATHS.CONNECTIONS },
         { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES, badge: messageCount },
       ],
     },
@@ -293,11 +295,11 @@ export function LeftSidebar() {
             {deptLabel}
           </div>
 
-          {/* Follower / following stats */}
+          {/* Connection stats */}
           <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
             {[
-              { label: 'followers', value: profileData?.stats.followers ?? 0 },
-              { label: 'following', value: profileData?.stats.following ?? 0 },
+              { label: 'connections', value: profileData?.stats.connections ?? 0 },
+              { label: 'pending', value: profileData?.stats.pendingReceived ?? 0 },
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>

@@ -1,21 +1,27 @@
-import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { AlertCircle } from 'lucide-react'
+import { useState } from 'react'
 import { publicUserProfileSchema } from '@uniconnect/shared'
-import type { PublicUserProfile } from '@uniconnect/shared'
+import type { PublicUserProfile, ProfileExperience, ProfileEducation } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
-import {
-  AboutPanel,
-  BadgesPanel,
-  EditProfileModal,
-  FollowModal,
-  PostsPanel,
-  ProfileHeader,
-  ProfileTabs,
-} from '@/features/profile'
-import type { FollowMode, ProfileTab } from '@/features/profile'
+import { EditProfileModal, ProfileHeader } from '@/features/profile'
+import { ProfileAbout } from '@/features/profile/components/ProfileAbout'
+import { ProfileActivity } from '@/features/profile/components/ProfileActivity'
+import { ProfileExperience as ProfileExperienceSection } from '@/features/profile/components/ProfileExperience'
+import { ProfileEducation as ProfileEducationSection } from '@/features/profile/components/ProfileEducation'
+import { ProfileSkills } from '@/features/profile/components/ProfileSkills'
+import { ProfileContactInfo } from '@/features/profile/components/ProfileContactInfo'
+import { ProfileFeatured } from '@/features/profile/components/ProfileFeatured'
+import { ProfileAnalytics } from '@/features/profile/components/ProfileAnalytics'
+import { ProfileViewers } from '@/features/profile/components/ProfileViewers'
+import { ExperienceModal } from '@/features/profile/components/ExperienceModal'
+import { EducationModal } from '@/features/profile/components/EducationModal'
+import { FeaturedModal } from '@/features/profile/components/FeaturedModal'
+import { ResumeExportButton } from '@/features/profile/components/ResumeExportButton'
+
+// ── Skeleton ───────────────────────────────────────────────────────────────────
 
 function SkeletonProfile() {
   return (
@@ -30,23 +36,11 @@ function SkeletonProfile() {
       >
         <div style={{ height: 150, background: 'var(--surface-raised)' }} />
         <div style={{ padding: '46px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div
-            style={{ height: 16, width: '40%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }}
-          />
-          <div
-            style={{ height: 13, width: '60%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }}
-          />
+          <div style={{ height: 16, width: '40%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
+          <div style={{ height: 13, width: '60%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
           <div style={{ display: 'flex', gap: 20, marginTop: 4 }}>
             {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                style={{
-                  height: 32,
-                  width: 64,
-                  background: 'var(--surface-raised)',
-                  borderRadius: 'var(--r-sm)',
-                }}
-              />
+              <div key={i} style={{ height: 32, width: 64, background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
             ))}
           </div>
         </div>
@@ -54,6 +48,8 @@ function SkeletonProfile() {
     </div>
   )
 }
+
+// ── Error card ─────────────────────────────────────────────────────────────────
 
 function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -72,18 +68,9 @@ function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () =
     >
       <AlertCircle size={28} strokeWidth={1.5} color="var(--uc-red)" />
       <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-        We couldn’t load this profile
+        We couldn't load this profile
       </p>
-      <p
-        style={{
-          margin: 0,
-          fontSize: 13,
-          fontWeight: 400,
-          color: 'var(--text-secondary)',
-          maxWidth: 360,
-          lineHeight: 1.6,
-        }}
-      >
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', maxWidth: 360, lineHeight: 1.6 }}>
         {message}
       </p>
       <button
@@ -108,89 +95,130 @@ function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () =
   )
 }
 
+// ── ProfilePage ────────────────────────────────────────────────────────────────
+
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const authUser = useAuthStore((s) => s.user)
-  const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<ProfileTab>('about')
+  const isOwnProfile = authUser?.id === id
+
+  // General edit modal (intro / bio / contact / skills)
   const [editOpen, setEditOpen] = useState(false)
-  const [followModal, setFollowModal] = useState<FollowMode | null>(null)
+
+  // Experience modal: null entry = add, defined entry = edit
+  const [expModal, setExpModal] = useState<{ open: boolean; entry?: ProfileExperience | null }>({ open: false })
+  // Education modal
+  const [eduModal, setEduModal] = useState<{ open: boolean; entry?: ProfileEducation | null }>({ open: false })
+  // Featured modal
+  const [featuredModalOpen, setFeaturedModalOpen] = useState(false)
 
   const { data: user, isLoading, isError, error, refetch } = useQuery<PublicUserProfile>({
     queryKey: ['user', id],
     queryFn: async () => {
       const r = await api.get<{ data: unknown }>(`/users/${id}`)
       const parsed = publicUserProfileSchema.safeParse(r.data.data)
-      if (!parsed.success) {
-        throw new Error('Unexpected response shape from the server')
-      }
+      if (!parsed.success) throw new Error('Unexpected response shape from the server')
       return parsed.data
     },
     enabled: !!id,
     retry: 1,
   })
 
-  const followMutation = useMutation({
-    mutationFn: (isFollowing: boolean) =>
-      isFollowing
-        ? api.delete(`/users/${id}/follow`)
-        : api.post(`/users/${id}/follow`),
-    onSuccess: (_data, wasFollowing) => {
-      queryClient.setQueryData<PublicUserProfile>(['user', id], (prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          isFollowing: !wasFollowing,
-          stats: {
-            ...prev.stats,
-            followers: prev.stats.followers + (wasFollowing ? -1 : 1),
-          },
-        }
-      })
-    },
-  })
-
-  const isOwnProfile = authUser?.id === id
-
   if (isLoading) return <SkeletonProfile />
 
   if (isError || !user) {
     const message =
-      error instanceof Error
-        ? error.message
-        : 'Something went wrong while loading this profile.'
+      error instanceof Error ? error.message : 'Something went wrong while loading this profile.'
     return <ProfileErrorCard message={message} onRetry={() => refetch()} />
   }
 
+  const connectionStatus = user.connectionStatus
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <ProfileHeader
+      <ProfileHeader user={user} isOwnProfile={isOwnProfile} onEdit={() => setEditOpen(true)} />
+
+      {/* Own profile — resume export + analytics + viewers */}
+      {isOwnProfile && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <ResumeExportButton user={user} />
+          </div>
+          <ProfileAnalytics />
+          <ProfileViewers />
+        </>
+      )}
+
+      <ProfileAbout
+        bio={user.profile.bio}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onEdit={() => setEditOpen(true)}
+      />
+
+      <ProfileActivity userId={user.id} />
+
+      <ProfileFeatured
+        userId={user.id}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onAdd={() => setFeaturedModalOpen(true)}
+        onDelete={() => {}}
+      />
+
+      <ProfileExperienceSection
+        userId={user.id}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onAdd={() => setExpModal({ open: true, entry: null })}
+        onEdit={(entry) => setExpModal({ open: true, entry })}
+      />
+
+      <ProfileEducationSection
+        userId={user.id}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onAdd={() => setEduModal({ open: true, entry: null })}
+        onEdit={(entry) => setEduModal({ open: true, entry })}
+      />
+
+      <ProfileSkills
+        skills={user.profile.skills}
+        isOwnProfile={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onEdit={() => setEditOpen(true)}
+      />
+
+      <ProfileContactInfo
         user={user}
         isOwnProfile={isOwnProfile}
-        followPending={followMutation.isPending}
-        onFollowToggle={() => followMutation.mutate(user.isFollowing)}
+        connectionStatus={connectionStatus}
         onEdit={() => setEditOpen(true)}
-        onOpenFollowers={setFollowModal}
       />
 
-      <ProfileTabs
-        active={activeTab}
-        postsCount={user.stats.posts}
-        onChange={setActiveTab}
-      />
-
-      {activeTab === 'about' && <AboutPanel user={user} isOwnProfile={isOwnProfile} />}
-      {activeTab === 'posts' && <PostsPanel userId={user.id} isOwnProfile={isOwnProfile} />}
-      {activeTab === 'badges' && <BadgesPanel isOwnProfile={isOwnProfile} />}
-
+      {/* Modals */}
       {editOpen && <EditProfileModal onClose={() => setEditOpen(false)} />}
 
-      {followModal && (
-        <FollowModal
+      {expModal.open && (
+        <ExperienceModal
           userId={user.id}
-          mode={followModal}
-          count={followModal === 'followers' ? user.stats.followers : user.stats.following}
-          onClose={() => setFollowModal(null)}
+          entry={expModal.entry}
+          onClose={() => setExpModal({ open: false })}
+        />
+      )}
+
+      {eduModal.open && (
+        <EducationModal
+          userId={user.id}
+          entry={eduModal.entry}
+          onClose={() => setEduModal({ open: false })}
+        />
+      )}
+
+      {featuredModalOpen && (
+        <FeaturedModal
+          userId={user.id}
+          onClose={() => setFeaturedModalOpen(false)}
         />
       )}
     </div>

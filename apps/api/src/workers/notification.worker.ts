@@ -43,7 +43,7 @@ function inferReferenceType(type: string) {
   if (type.startsWith('job')) return 'job'
   if (type.startsWith('event')) return 'event'
   if (type.startsWith('post') || type === 'like' || type === 'comment') return 'post'
-  if (type === 'follow') return 'user'
+  if (type === 'connection_request' || type === 'connection_accepted') return 'user'
   return null
 }
 

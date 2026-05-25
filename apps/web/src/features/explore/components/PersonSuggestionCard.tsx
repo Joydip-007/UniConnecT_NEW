@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Avatar } from '@/components/Avatar'
-import { api } from '@/lib/axios'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { ConnectButton } from '@/features/connections'
 import type { UserSuggestion } from '../types'
 
 interface Props {
@@ -11,17 +9,6 @@ interface Props {
 }
 
 export function PersonSuggestionCard({ person }: Props) {
-  const [following, setFollowing] = useState(person.isFollowing)
-  const qc = useQueryClient()
-
-  const { mutate: toggleFollow, isPending } = useMutation({
-    mutationFn: () =>
-      following ? api.delete(`/users/${person.id}/follow`) : api.post(`/users/${person.id}/follow`),
-    onMutate: () => setFollowing((f) => !f),
-    onError: () => setFollowing((f) => !f),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['explore', 'discovery'] }),
-  })
-
   return (
     <div
       style={{
@@ -42,7 +29,7 @@ export function PersonSuggestionCard({ person }: Props) {
         to={`/profile/${person.id}`}
         style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
       >
-        <Avatar initials={getInitials(person.fullName)} color={avatarColor(person.id)} size={44} />
+        <Avatar src={person.avatarUrl ?? undefined} initials={getInitials(person.fullName)} color={avatarColor(person.id)} size={44} />
         <div style={{ textAlign: 'center' }}>
           <div
             style={{
@@ -65,24 +52,15 @@ export function PersonSuggestionCard({ person }: Props) {
           )}
         </div>
       </Link>
-      <button
-        onClick={() => toggleFollow()}
-        disabled={isPending}
-        style={{
-          width: '100%',
-          padding: '5px 0',
-          borderRadius: 'var(--r-pill)',
-          border: '0.5px solid var(--border-default)',
-          background: following ? 'var(--surface-raised)' : 'var(--uc-indigo)',
-          color: following ? 'var(--text-primary)' : 'var(--uc-indigo-xl)',
-          fontSize: 12,
-          fontWeight: 500,
-          cursor: isPending ? 'default' : 'pointer',
-          opacity: isPending ? 0.6 : 1,
-        }}
-      >
-        {following ? 'Following' : 'Follow'}
-      </button>
+      <div style={{ width: '100%' }}>
+        <ConnectButton
+          targetUserId={person.id}
+          targetName={person.fullName}
+          connectionStatus={person.connectionStatus ?? 'none'}
+          connectionId={person.connectionId ?? null}
+          size="sm"
+        />
+      </div>
     </div>
   )
 }
