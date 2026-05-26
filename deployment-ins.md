@@ -1,7 +1,7 @@
 # UniConnecT — Deployment Instructions
 
 **Domain:** `uniconnectt.me`  
-**Stack:** Azure App Service B1 · Neon PostgreSQL · Upstash Redis · Cloudflare R2 · Vercel  
+**Stack:** Azure App Service B1 · Neon PostgreSQL · Redis Cloud · Cloudflare R2 · Vercel  
 **Estimated monthly Azure cost:** ~$13 → ~7 months on $100 student credit
 
 ---
@@ -14,8 +14,8 @@ api.uniconnectt.me                    ──→  Azure App Service B1 (Express +
                                                │
                     ┌──────────────────────────┼──────────────────────────┐
                     │                          │                          │
-              Neon PostgreSQL           Upstash Redis             Cloudflare R2
-              (free, 0.5 GB)       (free, rediss:// TLS)      (free, 10 GB, S3)
+              Neon PostgreSQL           Redis Cloud               Cloudflare R2
+              (free, 0.5 GB)       (free, 30 MB, no cmd cap)  (free, 10 GB, S3)
 ```
 
 ---
@@ -43,24 +43,42 @@ postgresql://user:password@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=re
 
 ---
 
-## 2 — Upstash Redis
+## 2 — Redis Cloud (Database)
 
 ### Sign up & create database
 
-1. Go to [upstash.com](https://upstash.com) → **Sign up** → **Create database**
-2. Name: `uniconnect-redis` · Type: **Redis** · Region: **AWS ap-southeast-1 (Singapore)**
-3. Click database → **Details** tab → copy the **Redis URL** (starts with `rediss://`)
+1. Go to [redis.io/try-free](https://redis.io/try-free) → **Sign up** (use GitHub)
+2. **New database** → select **Redis Cloud Essentials (Free)**
+3. Fill in:
 
-The URL looks like:
+   | Field | Value |
+   |---|---|
+   | Database name | `uniconnect-redis` |
+   | Cloud provider | **AWS** |
+   | Region | **ap-southeast-1 (Singapore)** |
+
+4. Click **Create** — wait ~30 seconds for provisioning
+5. Dashboard → click your database → **Configuration** tab → copy the **Public endpoint** and **Password**
+
+Build the connection URL yourself:
 ```
-rediss://default:AxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAA==@xxx-xxx.upstash.io:6379
+rediss://default:<password>@<host>:<port>
+
 ```
+
+Example:
+```
+rediss://default:AbCdEfGhIjKlMnOpQrStUvWxYz123456@redis-12345.c1.ap-southeast-1-1.ec2.redns.redis-cloud.com:12345
+```
+
+> Note the `rediss://` scheme (double-s) — Redis Cloud enforces TLS on all free-tier connections.
 
 ### Notes
 
-- Free tier: **10,000 commands/day**, 256 MB — sufficient for a demo
+- Free tier: **30 MB storage**, **no command cap** — runs indefinitely without hitting a daily limit
 - Used for: Bull job queues (email, notifications, badges, mentorship, digest) + Socket.io pub/sub adapter
-- The API automatically enables TLS when the URL starts with `rediss://` (no extra config needed)
+- The API automatically enables TLS when the URL starts with `rediss://` — no extra config needed
+- `ioredis` (used by Bull and the Socket.io adapter) supports `rediss://` natively — zero code changes required
 
 ---
 
@@ -149,7 +167,7 @@ Portal → `uniconnect-api` → **Configuration → Application settings** → *
 |---|---|
 | `NODE_ENV` | `production` |
 | `DATABASE_URL` | Neon connection string (§1) |
-| `REDIS_URL` | Upstash `rediss://` URL (§2) |
+| `REDIS_URL` | Redis Cloud `rediss://` URL (§2) |
 | `JWT_SECRET` | Run `openssl rand -hex 32` → paste result |
 | `JWT_REFRESH_SECRET` | Run `openssl rand -hex 32` → paste a **different** result |
 | `CLIENT_URL` | `https://uniconnectt.me,https://www.uniconnectt.me` |
@@ -450,7 +468,7 @@ docker compose up -d
 |---|---|---|---|
 | Azure App Service B1 | `uniconnect-api.azurewebsites.net` | — | ~$13/month |
 | Neon PostgreSQL | [console.neon.tech](https://console.neon.tech) | 0.5 GB | $0 |
-| Upstash Redis | [console.upstash.com](https://console.upstash.com) | 10K cmds/day | $0 |
+| Redis Cloud | [app.redislabs.com](https://app.redislabs.com) | 30 MB, no cmd cap | $0 |
 | Cloudflare R2 | [dash.cloudflare.com](https://dash.cloudflare.com) → R2 | 10 GB | $0 |
 | Vercel (frontend) | `uniconnectt.me` | 100 GB bandwidth | $0 |
 | Resend (email) | [resend.com](https://resend.com) | 100 emails/day | $0 |
