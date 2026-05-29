@@ -130,7 +130,7 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/.claude/settings.json": {
-    "mtime": 1780033939.4562569,
+    "mtime": 1780035945.8264322,
     "ast_hash": "3715794178a83dae2ea28bcd2be697d1",
     "semantic_hash": ""
   },
@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/explore/components/FilterPills.tsx": {
-    "mtime": 1779536714.0044005,
-    "ast_hash": "3bcc247b6833eb0a8da45217e20a1402",
+    "mtime": 1780036676.921107,
+    "ast_hash": "de894408357e3a059ac23b6787e76d88",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/explore/components/PeopleSuggestions.tsx": {
@@ -695,13 +695,13 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/explore/components/DiscoverySection.tsx": {
-    "mtime": 1779536714.003538,
-    "ast_hash": "8ebe99abefb3a98114ed6c8a8c3b1cff",
+    "mtime": 1780036205.6030974,
+    "ast_hash": "054dbdd5b021b121d4abbfedb334caeb",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/explore/components/EventSummaryCard.tsx": {
-    "mtime": 1779536714.003924,
-    "ast_hash": "90c870cac1228d9be0711a5cd45ce4eb",
+    "mtime": 1780036164.5158281,
+    "ast_hash": "293cbb7f0edfd60a57e65b5f7bcb21fb",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/explore/components/UpcomingEvents.tsx": {
@@ -710,8 +710,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/explore/components/FeaturedAlumni.tsx": {
-    "mtime": 1779536714.004167,
-    "ast_hash": "e49961b542fb3322c0160e78b32ffb79",
+    "mtime": 1780035724.6900342,
+    "ast_hash": "13e5726193fe778d05ad15d1c8cc3dfb",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/explore/components/ActiveGroups.tsx": {
@@ -1525,8 +1525,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/ExplorePage.tsx": {
-    "mtime": 1779735754.9174001,
-    "ast_hash": "2295db004e946c01bc41a33239436162",
+    "mtime": 1780036197.0543263,
+    "ast_hash": "cff9874cb011c55f0dfeb37ae847d3a0",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/LostFoundPage.tsx": {
