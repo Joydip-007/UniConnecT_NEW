@@ -1,16 +1,16 @@
 # Graph Report - UniConnecT_NEW  (2026-05-29)
 
 ## Corpus Check
-- 683 files · ~718,904 words
+- 683 files · ~718,672 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3476 nodes · 7006 edges · 258 communities (229 shown, 29 thin omitted)
-- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 189 edges (avg confidence: 0.77)
+- 3481 nodes · 7042 edges · 254 communities (224 shown, 30 thin omitted)
+- Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 181 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2a1c337a`
+- Built from commit: `998bcef7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -203,10 +203,6 @@
 - [[_COMMUNITY_Community 246|Community 246]]
 - [[_COMMUNITY_Community 247|Community 247]]
 - [[_COMMUNITY_Community 248|Community 248]]
-- [[_COMMUNITY_Community 249|Community 249]]
-- [[_COMMUNITY_Community 250|Community 250]]
-- [[_COMMUNITY_Community 251|Community 251]]
-- [[_COMMUNITY_Community 252|Community 252]]
 - [[_COMMUNITY_Community 253|Community 253]]
 - [[_COMMUNITY_Community 254|Community 254]]
 - [[_COMMUNITY_Community 255|Community 255]]
@@ -215,121 +211,121 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `notFound()` - 105 edges
-2. `api` - 91 edges
+2. `api` - 93 edges
 3. `db` - 86 edges
-4. `useAuthStore` - 50 edges
+4. `useAuthStore` - 52 edges
 5. `GroupsService` - 49 edges
 6. `forbidden()` - 47 edges
-7. `AdminPage()` - 43 edges
-8. `Avatar()` - 41 edges
+7. `Avatar()` - 43 edges
+8. `AdminPage()` - 43 edges
 9. `getIo()` - 38 edges
 10. `Users Table` - 36 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `toConversation()` --semantically_similar_to--> `Recent Conversations Preview`  [INFERRED] [semantically similar]
-  api/src/modules/messages/service.ts → apps/web/src/features/messages/components/MessagesPopup.tsx
-- `Sidebar Conversation Row` --semantically_similar_to--> `toConversation()`  [INFERRED] [semantically similar]
-  apps/web/src/features/messages/components/ConversationsSidebar.tsx → api/src/modules/messages/service.ts
 - `FilterPills()` --calls--> `pillStyle()`  [INFERRED]
   apps/web/src/features/explore/components/FilterPills.tsx → web/src/features/groups/components/GroupBadges.tsx
 - `UserSuggestion` --shares_data_with--> `Connect Button`  [INFERRED]
   web/src/features/explore/types.ts → apps/web/src/features/connections/components/ConnectButton.tsx
 - `Reward Gift Card Redemption Grid` --shares_data_with--> `RedemptionHistory`  [INFERRED]
   apps/web/src/features/mentorship/components/GiftCardGrid.tsx → web/src/features/mentorship/hooks/useRewards.ts
+- `Messages Controller` --calls--> `MessagesService`  [EXTRACTED]
+  apps/api/src/modules/messages/controller.ts → api/src/modules/messages/service.ts
+- `toConversation()` --conceptually_related_to--> `Connection Message Conversation Action`  [INFERRED]
+  api/src/modules/messages/service.ts → apps/web/src/features/connections/components/ConnectButton.tsx
 
-## Communities (258 total, 29 thin omitted)
+## Communities (254 total, 30 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.14
-Nodes (21): applyToJob, createJob, deleteJob, getJob, listJobApplications, listJobs, listMyApplications, listMyJobs (+13 more)
+Nodes (22): applyToJob, createJob, deleteJob, getJob, listJobApplications, listJobs, listMyApplications, listMyJobs (+14 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.10
-Nodes (14): Profile Completion Progress, User Preferences, EducationInput, ExperienceInput, PaginationQuery, UserListQuery, Users Service, applyUserFilters() (+6 more)
+Nodes (18): NewsService, Profile Completion Progress, System Group Membership Sync, User Preferences, EducationInput, ExperienceInput, PaginationQuery, UpdateProfileInput (+10 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.06
-Nodes (64): AnimatedTabBar(), Props, TabDef, Avatar(), AvatarProps, CollabPage, CollabTab(), ApiError (+56 more)
+Cohesion: 0.07
+Nodes (44): AboutTab(), Props, AnimatedTabBar(), Props, TabDef, PrimaryBtn(), CollabPage, CollabTab() (+36 more)
 
 ### Community 3 - "Community 3"
 Cohesion: 0.06
 Nodes (36): api, api, createGroupWith3Members(), api, api, createGroupWithAdminAndModerator(), api, createGroupWithRoles() (+28 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.08
-Nodes (40): ChatView(), Message, MessageSender, MessagesPage, ReplyContext, LastMessage, MessagesPopupProps, BadgeVariant (+32 more)
+Cohesion: 0.10
+Nodes (40): ChatView(), DateDivider(), dateLabel(), Message, MessageBubble(), MessageSender, MessagesPage, pendingToMessage() (+32 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.25
-Nodes (15): CreatePost(), CreatePostInput, useCreatePost(), useDeletePost(), FeedInfiniteData, FeedPage, POSTS_FEED_KEY, PROFILE_POSTS_KEY (+7 more)
+Cohesion: 0.09
+Nodes (38): CreatePost(), PhotoItem, pollInputStyle, PollOption, PostType, Props, TabBtnProps, TabMode (+30 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.17
-Nodes (12): Resend Email Service, Email Result Contract, Email Templates, EmailResult, escapeHtml(), otpMessages, OtpPurpose, otpSubjects (+4 more)
+Cohesion: 0.14
+Nodes (16): Resend Email Service, Email Result Contract, Email HTML Sanitization, Invitation Email Template, OTP Email Templates, Email Templates, Template Email Payload Parser, EmailResult (+8 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.15
-Nodes (14): SkeletonPost(), PostsPanel(), Props, Feed DOM Post Articles, Feed Keyboard Navigation, ShortcutHandlers, FeedFilter, usePosts() (+6 more)
+Cohesion: 0.08
+Nodes (16): EMPTY, EventForm, EventTypeOption, fieldStyle, Props, CATEGORIES, CreateNewsForm(), EMPTY (+8 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.14
-Nodes (6): EditProfileModal(), inputBase, Props, UploadSlot, PresignResponse, usePresignedUpload S3 Flow
+Cohesion: 0.09
+Nodes (34): ActiveGroups(), AlumniCard(), AlumniCardProps, Avatar(), AvatarProps, EditProfileModal(), inputBase, Props (+26 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.13
-Nodes (25): AVATAR_PALETTE, GroupResultCard(), Props, AVATAR_PALETTE, PostResultCard(), Props, Props, SearchPanel() (+17 more)
+Cohesion: 0.14
+Nodes (24): AVATAR_PALETTE, GroupResultCard(), Props, AVATAR_PALETTE, PeopleResultCard(), Props, Props, SearchPanel() (+16 more)
 
 ### Community 10 - "Community 10"
-Cohesion: 0.09
-Nodes (24): joinOrRequestGroup, PaginationQuery, assertCanAdminGroup(), assertCanAssignRole(), assertCanJoinGroup(), assertCanRemoveRole(), assertGroupAccess(), assertGroupAdminAccess() (+16 more)
+Cohesion: 0.05
+Nodes (41): joinOrRequestGroup, AllowedRole, PaginationQuery, applyGroupFilters(), assertCanAdminGroup(), assertCanAssignRole(), assertCanJoinGroup(), assertCanRemoveRole() (+33 more)
 
 ### Community 11 - "Community 11"
 Cohesion: 0.21
 Nodes (8): AVATAR_PALETTE, Event, EventAttendee, EventCard(), EventKind, RsvpStatus, TYPE_META, EventsPageData
 
 ### Community 12 - "Community 12"
-Cohesion: 0.06
-Nodes (37): AlumniCard(), AlumniCardProps, ApplyModal(), inputStyle, Props, UploadState, Badge(), BadgeProps (+29 more)
+Cohesion: 0.07
+Nodes (36): EmptyState(), ApplyModal(), inputStyle, Props, UploadState, BadgesPanel(), Props, BaseProps (+28 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.05
-Nodes (44): AboutSection(), TEAM, BaseProps, ContextualBtnProps, GhostBtn(), OrangeBtn(), EMPTY, EventForm (+36 more)
+Cohesion: 0.06
+Nodes (42): Admin Module Index, Admin Router, AboutSection(), TEAM, BrandLogo(), BrandLogoProps, OrangeBtn(), CtaSection() (+34 more)
 
 ### Community 14 - "Community 14"
 Cohesion: 0.07
-Nodes (45): User Theme Preference, Admin Bulk Invitation Contract, Admin Single Invitation Contract, Invitation Token Lookup Contract, OTP Verification Contract, Auth Registration Contract, Role Profile Required Fields Contract, Auth Login Refresh Logout Me Contract (+37 more)
+Nodes (44): Admin Bulk Invitation Contract, Admin Single Invitation Contract, Invitation Token Lookup Contract, OTP Verification Contract, Auth Registration Contract, Role Profile Required Fields Contract, Auth Login Refresh Logout Me Contract, Explore Discovery Contract (+36 more)
 
 ### Community 15 - "Community 15"
 Cohesion: 0.14
 Nodes (18): LoginInput, OtpPurpose, RegisterInput, AuthDeviceInfo, authMessages, enforceOtpResendLimit(), findUserByEmail(), findUserWithProfile() (+10 more)
 
 ### Community 16 - "Community 16"
-Cohesion: 0.10
-Nodes (17): eventsRouter, Event Contracts, exploreRouter, Tag Posts Query Contract, Feed Controller, Feed Router, feedRouter, pollsRouter (+9 more)
+Cohesion: 0.08
+Nodes (22): eventsRouter, Event Contracts, exploreRouter, Tag Posts Query Contract, Feed Controller, Feed Router, feedRouter, pollsRouter (+14 more)
 
 ### Community 17 - "Community 17"
-Cohesion: 0.07
-Nodes (39): Badge Queue, Badge Worker, bullQueueOptions, isTls, Email Queue, Email Worker, Group Digest Queue, Group Digest Worker (+31 more)
+Cohesion: 0.08
+Nodes (36): Badge Queue, Badge Worker, bullQueueOptions, isTls, Email Queue, Email Worker, Group Digest Queue, Group Digest Worker (+28 more)
 
 ### Community 18 - "Community 18"
-Cohesion: 0.07
-Nodes (26): createGroup, AllowedRole, CreateStudySessionInput, GroupListQuery, MembersQuery, ResourceListQuery, applyGroupFilters(), assertCanViewGroup() (+18 more)
+Cohesion: 0.16
+Nodes (18): createMessage, deleteMessage, leaveConversation, listConversations, listMessages, markRead, Messages Controller, updateConversation (+10 more)
 
 ### Community 19 - "Community 19"
 Cohesion: 0.11
-Nodes (27): addCommentReaction, addReaction, createComment, createPost, deleteComment, deletePost, getComments, getPost (+19 more)
+Nodes (28): addCommentReaction, addReaction, createComment, createPost, deleteComment, deletePost, getComments, getPost (+20 more)
 
 ### Community 20 - "Community 20"
-Cohesion: 0.06
-Nodes (54): Accepted Mentorship Conversation, Mentorship Queue Lifecycle Jobs, Mentorship Request Lifecycle, mentorship_requests Table, createConversation, createMessage, deleteMessage, leaveConversation (+46 more)
+Cohesion: 0.11
+Nodes (24): createConversation, CreateMessageInput, assertParticipant(), AuthContext, ConversationAccessRow, enqueueMessageNotifications(), findDirectConversation(), getConversationParticipantIds() (+16 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.11
 Nodes (31): createBulkInvitations, createInvitation, deleteContentItem, deleteInvitation, deleteUser, getAllowedDomains, getStats, listAdminRedemptions (+23 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.18
-Nodes (19): FilterBar(), FilterBarProps, LostFoundCard(), LostFoundCardProps, PostItemModal(), useLostFoundList(), AVATAR_PALETTE, blurBorder() (+11 more)
+Cohesion: 0.17
+Nodes (20): FilterBar(), FilterBarProps, LostFoundCard(), LostFoundCardProps, PostItemModal(), useLostFoundList(), AVATAR_PALETTE, blurBorder() (+12 more)
 
 ### Community 23 - "Community 23"
 Cohesion: 0.05
@@ -340,16 +336,16 @@ Cohesion: 0.17
 Nodes (19): createEvent, deleteEvent, deleteRsvp, getEvent, getEventIcal, listAttendees, listEvents, listMyEvents (+11 more)
 
 ### Community 25 - "Community 25"
-Cohesion: 0.09
-Nodes (26): AttendeesQuery, CreateEventInput, PaginationQuery, applyEventFilters(), assertCanMutateEvent(), assertCanViewEvent(), assertEventInUniversity(), assertVisibleEvent() (+18 more)
+Cohesion: 0.10
+Nodes (24): AttendeesQuery, CreateEventInput, PaginationQuery, applyEventFilters(), assertCanMutateEvent(), assertCanViewEvent(), assertEventInUniversity(), assertVisibleEvent() (+16 more)
 
 ### Community 26 - "Community 26"
-Cohesion: 0.15
-Nodes (17): S3 Presigned Uploads, buildPublicUrl(), createPutObjectCommand(), CreateUploadCommandInput, createUploadKey(), encodeS3Key(), getPresignedUploadUrl(), s3Client (+9 more)
+Cohesion: 0.08
+Nodes (32): App Error Helpers, Auth Context, Refresh Token Cookie Helpers, Express Request Context, Notifications Controller, Refresh Cookie Helpers, API Response Helpers, S3 Presigned Uploads (+24 more)
 
 ### Community 27 - "Community 27"
-Cohesion: 0.13
-Nodes (21): createNews, deleteNews, getNews, listNews, News Controller, updateNews, newsRouter, CreateNewsSchema (+13 more)
+Cohesion: 0.16
+Nodes (17): createNews, deleteNews, getNews, listNews, updateNews, CreateNewsSchema, NewsListQuery, UpdateNewsSchema (+9 more)
 
 ### Community 28 - "Community 28"
 Cohesion: 0.07
@@ -357,7 +353,7 @@ Nodes (25): AdminContentItem, AdminEventItem, AdminJobItem, AdminNewsItem, Admin
 
 ### Community 29 - "Community 29"
 Cohesion: 0.06
-Nodes (49): cancelJoinRequest, deleteGroup, deleteResource, deleteStudySession, getGroup, getGroupStats, inviteToGroup, joinGroup (+41 more)
+Nodes (54): cancelJoinRequest, createGroup, deleteGroup, deleteResource, deleteStudySession, getGroup, getGroupStats, inviteToGroup (+46 more)
 
 ### Community 30 - "Community 30"
 Cohesion: 0.10
@@ -365,19 +361,19 @@ Nodes (25): loginLimiter, otpLimiter, checkInvitation, login, logout, me, refres
 
 ### Community 31 - "Community 31"
 Cohesion: 0.09
-Nodes (23): CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput, assertCanUsePostType(), AuthContext, CommentRow, CountRow (+15 more)
+Nodes (24): CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput, assertCanUsePostType(), AuthContext, CommentRow, CountRow (+16 more)
 
 ### Community 32 - "Community 32"
-Cohesion: 0.07
-Nodes (35): Admin Content Moderation, Optimistic Admin Mutations, Admin Route Guard, Group Detail API Contract, Group Role-Based Tabs, Groups Directory Page, Groups Infinite Query, Guest Route Guard (+27 more)
+Cohesion: 0.08
+Nodes (31): Admin Content Moderation, Optimistic Admin Mutations, Admin Route Guard, Group Detail API Contract, Group Role-Based Tabs, Groups Directory Page, Groups Infinite Query, Guest Route Guard (+23 more)
 
 ### Community 33 - "Community 33"
 Cohesion: 0.23
 Nodes (14): searchAllController, searchEventsController, searchGroupsController, searchJobsController, searchPeopleController, searchPostsController, Search Query Schemas, Search Router (+6 more)
 
 ### Community 34 - "Community 34"
-Cohesion: 0.09
-Nodes (20): updateUserPreferences(), AuthLoader(), MeResponse, RefreshResponse, mocks, btn, spy, user (+12 more)
+Cohesion: 0.15
+Nodes (9): updateUserPreferences(), CurtainPhase, PAGE_COLOR, ResolvedTheme, resolveMode(), scheduleApi(), systemResolved(), s (+1 more)
 
 ### Community 35 - "Community 35"
 Cohesion: 0.21
@@ -388,44 +384,44 @@ Cohesion: 0.09
 Nodes (16): Connections Controller, Connections Module Index, connectionsRouter, Connection Request Contracts, PaginationQuery, Connections Service, ConnectionRow, ConnectionWithProfile (+8 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.18
-Nodes (19): ActiveGroups(), Props, FeaturedAlumni(), Props, Props, PersonSuggestionCard(), Props, Props (+11 more)
+Cohesion: 0.13
+Nodes (21): Props, Props, FeaturedAlumni(), Props, Props, Props, Props, Props (+13 more)
 
 ### Community 38 - "Community 38"
-Cohesion: 0.10
-Nodes (23): FeedLayout(), LeftSidebar(), NavItemProps, FOCUSABLE_SELECTOR, MoreItem, AVATAR_PALETTE, DROPDOWN_SPRING, getInitials() (+15 more)
+Cohesion: 0.07
+Nodes (34): FeedLayout(), LeftSidebar(), NavItemProps, FOCUSABLE_SELECTOR, MoreItem, AVATAR_PALETTE, DROPDOWN_SPRING, getInitials() (+26 more)
 
 ### Community 39 - "Community 39"
-Cohesion: 0.14
-Nodes (12): Comment Thread Flow, Reaction Notification Flow, Notification List Query Schema, Notifications Router, NotificationListQuery, Notifications Service, CountRow, CreateNotificationInput (+4 more)
+Cohesion: 0.21
+Nodes (8): Comment Thread Flow, Reaction Notification Flow, Notifications Service, CountRow, CreateNotificationInput, notificationSelectQuery(), toNotification(), getIo()
 
 ### Community 40 - "Community 40"
-Cohesion: 0.14
-Nodes (9): createKnexConfig(), createPostgresConnection(), createStableMigrationSource(), MigrationExtension, MigrationFile, shouldUseSsl(), db, config (+1 more)
+Cohesion: 0.09
+Nodes (15): createKnexConfig(), createPostgresConnection(), createStableMigrationSource(), MigrationExtension, MigrationFile, shouldUseSsl(), db, config (+7 more)
 
 ### Community 41 - "Community 41"
-Cohesion: 0.20
-Nodes (12): Authenticated University Scope, Feed Poll Cache Update, Feed Socket Events, Post Update API, Posts List API Endpoint, Posts Feed Cache, Profile Posts API Query, Profile Posts Cache (+4 more)
+Cohesion: 0.08
+Nodes (27): Authenticated University Scope, Feed Poll Cache Update, Feed Socket Events, FeedCommentDeletedPayload, FeedCommentNewPayload, FeedPollUpdatedPayload, FeedPostNewPayload, FeedReactionUpdatedPayload (+19 more)
 
 ### Community 42 - "Community 42"
-Cohesion: 0.17
-Nodes (20): createEducation, createExperience, createFeatured, deleteEducation, deleteExperience, deleteFeatured, getMe, getMyAnalytics (+12 more)
+Cohesion: 0.11
+Nodes (29): createEducation, createExperience, createFeatured, deleteEducation, deleteExperience, deleteFeatured, getMe, getMyAnalytics (+21 more)
 
 ### Community 43 - "Community 43"
-Cohesion: 0.12
-Nodes (24): Admin Allowed Email Domains Panel, Admin Invitation Management, Admin Page Dashboard, Admin Report Resolution Tab, Admin User Management Tab, Axios API Authenticated Tenant Client, Axios Token Refresh Queue, Connections Page Network Requests (+16 more)
+Cohesion: 0.13
+Nodes (23): Admin Allowed Email Domains Panel, Admin Invitation Management, Admin Page Dashboard, Admin Report Resolution Tab, Admin User Management Tab, Axios API Authenticated Tenant Client, Axios Token Refresh Queue, Connections Page Network Requests (+15 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.08
-Nodes (18): createEducation(), createExperience(), createFeatured(), deleteEducation(), deleteExperience(), getMyViewers(), updateEducation(), updateExperience() (+10 more)
+Cohesion: 0.11
+Nodes (14): createEducation(), createExperience(), deleteEducation(), deleteExperience(), getMyViewers(), updateEducation(), updateExperience(), currentYear (+6 more)
 
 ### Community 45 - "Community 45"
-Cohesion: 0.25
-Nodes (9): Messages Feature Public API, Socket Token Authentication, Conversation Socket Rooms, Socket Payload Extractors, Socket.IO Server Setup, University Socket Rooms, Single Conversation Query, Message Cache Synchronization (+1 more)
+Cohesion: 0.18
+Nodes (13): validate(), validateBody(), validateRequest(), ValidationSchemas, Notification List Query Schema, acceptGroupInvite, deleteNotification, listNotifications (+5 more)
 
 ### Community 46 - "Community 46"
-Cohesion: 0.07
-Nodes (34): createRequest, deleteSession, getAuthContext(), getIncomingRequests, getMyRequests, getMyRewards, listAlumni, listGiftCards (+26 more)
+Cohesion: 0.11
+Nodes (25): createRequest, deleteSession, getIncomingRequests, getMyRequests, getMyRewards, listAlumni, listGiftCards, listSessions (+17 more)
 
 ### Community 47 - "Community 47"
 Cohesion: 0.13
@@ -433,7 +429,7 @@ Nodes (16): DiscoverySection(), Props, FilterPills(), ROLES, cardWrapStyle, cont
 
 ### Community 48 - "Community 48"
 Cohesion: 0.14
-Nodes (11): Env, envSchema, parsedEnv, isTls, pingRedis(), redis, connectAdapterClients(), connectIfWaiting() (+3 more)
+Nodes (12): Env, envSchema, parsedEnv, isTls, pingRedis(), redis, connectAdapterClients(), connectIfWaiting() (+4 more)
 
 ### Community 49 - "Community 49"
 Cohesion: 0.08
@@ -441,23 +437,23 @@ Nodes (25): devDependencies, autoprefixer, eslint, @eslint/js, eslint-plugin-rea
 
 ### Community 50 - "Community 50"
 Cohesion: 0.11
-Nodes (12): updateUserRole, AdminFulfillRedemptionInput, AdminRedemptionListQuery, CreateInvitationInput, countActive(), CountRow, countWhere(), InvitationRow (+4 more)
+Nodes (12): resolveReport, updateUserRole, AdminFulfillRedemptionInput, CreateInvitationInput, countActive(), CountRow, countWhere(), InvitationRow (+4 more)
 
 ### Community 51 - "Community 51"
 Cohesion: 0.13
-Nodes (20): db, DiscoveryResult, EventSummary, getActiveGroups(), getDiscovery(), getFeaturedAlumni(), getPeopleSuggestions(), getTagPosts() (+12 more)
+Nodes (19): db, DiscoveryResult, EventSummary, getActiveGroups(), getDiscovery(), getFeaturedAlumni(), getPeopleSuggestions(), getTagPosts() (+11 more)
 
 ### Community 52 - "Community 52"
-Cohesion: 0.13
-Nodes (12): ProfileAbout(), Props, ProfileActivity(), Props, ProfileContactInfo(), Props, ProfileSkills(), Props (+4 more)
+Cohesion: 0.11
+Nodes (16): createFeatured(), FeaturedModal(), inputBase, Props, ProfileAbout(), Props, ProfileContactInfo(), Props (+8 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.16
-Nodes (17): acceptRequest, declineRequest, getMutualConnections, listConnections, listPendingReceived, listPendingSent, removeConnection, sendRequest (+9 more)
+Cohesion: 0.23
+Nodes (12): acceptRequest, declineRequest, getMutualConnections, listConnections, listPendingReceived, listPendingSent, removeConnection, sendRequest (+4 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.10
-Nodes (17): Async Handler, requireAuth, requireRole(), createRateLimiter(), generalLimiter, loginLimiter, otpLimiter, RateLimiterOptions (+9 more)
+Cohesion: 0.18
+Nodes (9): Async Handler, requireAuth, requireRole(), createRateLimiter(), generalLimiter, loginLimiter, otpLimiter, RateLimiterOptions (+1 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.13
@@ -468,68 +464,68 @@ Cohesion: 0.10
 Nodes (21): dependencies, @aws-sdk/client-s3, @aws-sdk/s3-request-presigner, bcryptjs, bull, cookie-parser, cors, dotenv (+13 more)
 
 ### Community 57 - "Community 57"
-Cohesion: 0.16
-Nodes (20): API Server Bootstrap, Async Express Handler, Badge Activity Count, Badge Award Worker, Email Queue Worker, Application Error Contract, Group Digest Notifications, Weekly Group Digest Worker (+12 more)
+Cohesion: 0.11
+Nodes (28): API Server Bootstrap, Async Express Handler, Badge Activity Count, Badge Award Worker, Email Queue Worker, Application Error Contract, Group Digest Notifications, Weekly Group Digest Worker (+20 more)
 
 ### Community 58 - "Community 58"
 Cohesion: 0.18
-Nodes (21): GroupResultCard Search Result Row, GroupResultCard Optimistic Membership Toggle, PeopleResultCard Search Result Row, PostResultCard Post Age Formatter, PostResultCard Search Result Row, Search All Aggregator, Events Search, Groups Search (+13 more)
+Nodes (22): GroupResultCard Search Result Row, GroupResultCard Optimistic Membership Toggle, PeopleResultCard Search Result Row, PostResultCard Post Age Formatter, PostResultCard Search Result Row, Search All Aggregator, Events Search, Groups Search (+14 more)
 
 ### Community 59 - "Community 59"
-Cohesion: 0.15
-Nodes (12): UpdateLostFoundInput, assertCanModify(), assertLostFoundOwner(), AuthContext, CountRow, CourseRow, LostFoundRow, lostFoundSelectQuery() (+4 more)
+Cohesion: 0.14
+Nodes (13): createLostFound, UpdateLostFoundInput, assertCanModify(), assertLostFoundOwner(), AuthContext, CountRow, CourseRow, LostFoundRow (+5 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.08
-Nodes (30): Auth Zustand Store, Client Session Lifecycle, University Socket Membership, Avatar Identity Helpers, Search Match Highlighting Utility, Search Highlighting Tests, MSW Handler Registry, MSW Test Server (+22 more)
+Cohesion: 0.33
+Nodes (7): MSW Handler Registry, MSW Test Server, Vitest Browser Test Runtime Setup, Tailwind Content Scan Configuration, Web TypeScript Compiler Contract, Vite App Build Contract, Vitest Web Test Contract
 
 ### Community 61 - "Community 61"
-Cohesion: 0.05
-Nodes (39): Admin Module Index, Admin Router, BrandLogo(), BrandLogoProps, PrimaryBtn(), Minimal Page Footer, AdminPage(), ConfirmModalProps (+31 more)
+Cohesion: 0.10
+Nodes (13): AdminPage(), ConfirmModalProps, inputStyle, Invitation, ModalVariant, Paginated, Report, selectStyle (+5 more)
 
 ### Community 62 - "Community 62"
-Cohesion: 0.18
-Nodes (10): CATEGORIES, Props, ResourcesTab(), GroupStats, PaginatedResponse, useCreateResource(), useDeleteResource(), useGroupResources() (+2 more)
+Cohesion: 0.09
+Nodes (22): AdminStatsTab(), Props, CATEGORIES, Props, ResourcesTab(), Props, StudySessionsTab(), createResource (+14 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.14
-Nodes (21): Conversation Participants Table, Conversations Table, Messages Table, Notifications Table, Reports Table, Users Table, Core User Indexes Migration, Remove User OTP Columns Migration (+13 more)
+Cohesion: 0.16
+Nodes (17): Conversation Participants Table, Conversations Table, Messages Table, Notifications Table, Reports Table, User Theme Preference, User Soft Delete, Bootstrap Admin Users (+9 more)
 
 ### Community 64 - "Community 64"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowImportingTsExtensions, isolatedModules, jsx, lib, module, moduleDetection, moduleResolution (+11 more)
 
 ### Community 65 - "Community 65"
-Cohesion: 0.12
-Nodes (23): createCourse, createLostFound, createShuttleLocation, createShuttleRoute, enrollCourse, getLostFound, listCourses, listLostFound (+15 more)
+Cohesion: 0.16
+Nodes (16): createCourse, createShuttleLocation, createShuttleRoute, enrollCourse, getLostFound, listCourses, listLostFound, listMyCourses (+8 more)
 
 ### Community 66 - "Community 66"
-Cohesion: 0.15
-Nodes (16): Connection Lifecycle, Connection Notifications, Mutual Connection Intersection, Event RSVP Capacity Flow, Explore Controller, Discovery Aggregation, Discovery Service, People Suggestion Ranking (+8 more)
+Cohesion: 0.14
+Nodes (18): Connection Lifecycle, Connection Notifications, Mutual Connection Intersection, Event Projection, Event RSVP Capacity Flow, iCalendar Export, Explore Controller, Discovery Aggregation (+10 more)
 
 ### Community 67 - "Community 67"
 Cohesion: 0.13
 Nodes (17): default, dependencies, zod, devDependencies, typescript, exports, files, main (+9 more)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.06
-Nodes (35): DropdownItemProps, Props, sizeStyles, Props, Props, BadgeProgressItem, EventItem, EventMini() (+27 more)
+Cohesion: 0.08
+Nodes (28): DropdownItemProps, Props, sizeStyles, Props, Props, Connect Button, Connection Card, Connection Request Modal (+20 more)
 
 ### Community 69 - "Community 69"
-Cohesion: 0.31
-Nodes (11): createResource, Groups Feature Public Exports, Group Resources, ResourceRow, Groups Domain Contracts, MemberRoleTag Role Badge, MembersTab Group Members List, MembersTab Invite Permission Gate (+3 more)
+Cohesion: 0.29
+Nodes (11): Group Study Session Factory, Groups Feature Public Exports, toStudySession(), Groups Domain Contracts, MemberRoleTag Role Badge, MembersTab Group Members List, MembersTab Invite Permission Gate, MembersTab Members Query (+3 more)
 
 ### Community 70 - "Community 70"
-Cohesion: 0.18
-Nodes (17): Profile Education Entries, Profile Feature Public Exports, Profile Views Analytics, ProfileHeader Connection or Edit Action, ProfileHeader Identity Summary, ProfileHeader Role Badge Logic, ProfileSkills Skill Preview, ProfileSkills Connection Visibility Gate (+9 more)
+Cohesion: 0.19
+Nodes (16): Profile Education Entries, Profile Feature Public Exports, Profile Views Analytics, ProfileHeader Connection or Edit Action, ProfileHeader Identity Summary, ProfileHeader Role Badge Logic, ProfileSkills Skill Preview, ProfileSkills Connection Visibility Gate (+8 more)
 
 ### Community 71 - "Community 71"
-Cohesion: 0.16
-Nodes (10): Campus Auth Context, Campus Controller, ShuttleLocationInput, ShuttleRouteInput, Campus Service, toShuttleRoute(), Course Enrollment Workflow, Lost And Found Workflow (+2 more)
+Cohesion: 0.19
+Nodes (8): Campus Auth Context, Campus Controller, ShuttleLocationInput, ShuttleRouteInput, Campus Service, toShuttleRoute(), Course Enrollment Workflow, Lost And Found Workflow
 
 ### Community 72 - "Community 72"
-Cohesion: 0.18
-Nodes (13): AboutTab Component, GroupBadges Components, GroupCard Component, GroupHeader Component, InviteMemberModal Component, JoinRequestsTab Component, Group Header Identity, Group Invitation API (+5 more)
+Cohesion: 0.13
+Nodes (17): AboutTab Component, CreateGroupModal Component, GroupBadges Components, GroupCard Component, GroupHeader Component, InviteMemberModal Component, JoinRequestsTab Component, Group Creation Payload (+9 more)
 
 ### Community 73 - "Community 73"
 Cohesion: 0.16
@@ -544,8 +540,8 @@ Cohesion: 0.18
 Nodes (13): COMMUNITY_LINKS, LandingFooter(), LEGAL_LINKS, PLATFORM_LINKS, SOCIAL_LINKS, FacebookIcon(), GitHubIcon(), IconProps (+5 more)
 
 ### Community 76 - "Community 76"
-Cohesion: 0.17
-Nodes (14): AlumniViewProps, GiftCardGridProps, PointsBalance(), PointsBalanceProps, RewardsPanelProps, StudentViewProps, Mentorship Points and Formatting Constants, useRewards() (+6 more)
+Cohesion: 0.16
+Nodes (16): Accepted Mentorship Conversation, Mentorship Queue Lifecycle Jobs, Mentorship Request Lifecycle, mentorship_requests Table, Conversation Lifecycle, conversation_participants Table, conversations Table, Message Lifecycle (+8 more)
 
 ### Community 77 - "Community 77"
 Cohesion: 0.15
@@ -560,12 +556,12 @@ Cohesion: 0.12
 Nodes (15): compilerOptions, esModuleInterop, forceConsistentCasingInFileNames, lib, module, moduleResolution, outDir, paths (+7 more)
 
 ### Community 80 - "Community 80"
-Cohesion: 0.21
-Nodes (6): CreateCommentInput, assertPostInUniversity(), commentSelectQuery(), FeedService, getReactionCounts(), toComment()
+Cohesion: 0.23
+Nodes (5): CreateCommentInput, assertPostInUniversity(), commentSelectQuery(), FeedService, getReactionCounts()
 
 ### Community 81 - "Community 81"
-Cohesion: 0.16
-Nodes (13): Admin Controller, University Email Domain Controls, Auth Controller, OTP Verification Flow, Password Reset Flow, Authenticated User Profile Projection, Refresh Token Session Flow, Invitation Aware Registration Flow (+5 more)
+Cohesion: 0.14
+Nodes (15): Admin Controller, University Email Domain Controls, Auth Controller, OTP Verification Flow, Password Reset Flow, Authenticated User Profile Projection, Refresh Token Session Flow, Invitation Aware Registration Flow (+7 more)
 
 ### Community 82 - "Community 82"
 Cohesion: 0.13
@@ -576,20 +572,20 @@ Cohesion: 0.11
 Nodes (18): dependencies, framer-motion, devDependencies, react-doctor, shadcn, typescript, engines, node (+10 more)
 
 ### Community 84 - "Community 84"
-Cohesion: 0.13
-Nodes (5): ReactionBtn(), markdownComponents, PostCard(), PostCardProps, link
+Cohesion: 0.09
+Nodes (11): ReactionBtn(), FeedPageData, SkeletonPost(), markdownComponents, PostCard(), PostCardProps, link, PostsPanel() (+3 more)
 
 ### Community 85 - "Community 85"
-Cohesion: 0.17
-Nodes (12): ApplyJobInput, applicationSelectQuery(), assertJobInUniversity(), AuthContext, CountRow, getApplicationById(), isUniqueViolation(), JobOwnerRow (+4 more)
+Cohesion: 0.24
+Nodes (7): ApplyJobInput, applicationSelectQuery(), assertJobInUniversity(), getApplicationById(), isUniqueViolation(), pickDefined(), toApplication()
 
 ### Community 86 - "Community 86"
-Cohesion: 0.25
-Nodes (8): CreateSessionPayload, UpdateSessionPayload, useCreateSession(), useDeleteSession(), useSessionLog(), useUpdateSession(), useToast(), ToastItem
+Cohesion: 0.33
+Nodes (5): CreateSessionPayload, UpdateSessionPayload, useDeleteSession(), useSessionLog(), useUpdateSession()
 
 ### Community 87 - "Community 87"
-Cohesion: 0.34
-Nodes (11): ApiError, ApiSuccess, FeedComment, FeedPoll, FeedPollOption, FeedPost, FeedPostAuthor, ThemePreference (+3 more)
+Cohesion: 0.10
+Nodes (27): CONNECTION_EVENTS, UNIVERSITY_EVENTS, LoginInput, loginSchema, RegisterInput, registerSchema, ResendOtpInput, resendOtpSchema (+19 more)
 
 ### Community 88 - "Community 88"
 Cohesion: 0.13
@@ -609,7 +605,7 @@ Nodes (9): ACTIVE_KINDS, AuthorJoinRow, CountRow, EventRow, JobRow, NewsRow, PIN
 
 ### Community 92 - "Community 92"
 Cohesion: 0.15
-Nodes (8): updateUserStatus, Mentor Redemption Fulfillment, Admin Report Resolution Workflow, PaginationQuery, Admin Service, Admin User Lifecycle Management, Email Queue Delivery, System Group Membership Sync
+Nodes (8): Mentor Redemption Fulfillment, Admin Report Resolution Workflow, AdminRedemptionListQuery, PaginationQuery, Admin Service, Admin User Lifecycle Management, Shuttle Route And Location Tracking, Socket Real Time Events
 
 ### Community 93 - "Community 93"
 Cohesion: 0.19
@@ -624,16 +620,16 @@ Cohesion: 0.19
 Nodes (14): Database Migration CLI Script, group_resources Table, Group Resources Migration, Users Email Index Cleanup Migration, University Audit Log Migration, Profile Views Migration, mentorship_sessions Table, mentorship_sessions Table (+6 more)
 
 ### Community 96 - "Community 96"
-Cohesion: 0.17
-Nodes (13): News Table, Courses Table, Lost And Found Table, Shuttle Locations Table, Shuttle Routes Table, User Courses Table, University Allowed Email Domains, System Group Backfill (+5 more)
+Cohesion: 0.20
+Nodes (11): News Table, Courses Table, Lost And Found Table, Shuttle Locations Table, Shuttle Routes Table, User Courses Table, University Allowed Email Domains, System Group Backfill (+3 more)
 
 ### Community 97 - "Community 97"
-Cohesion: 0.23
-Nodes (13): Group Members Table, Group Membership Roles, Groups Table, Trigram Search Indexes, Event Group Foreign Key, Admin System Groups, Faculty Department Groups, User Soft Delete (+5 more)
+Cohesion: 0.27
+Nodes (11): Group Members Table, Group Membership Roles, Groups Table, Trigram Search Indexes, Event Group Foreign Key, Admin System Groups, Faculty Department Groups, Batch System Groups (+3 more)
 
 ### Community 98 - "Community 98"
-Cohesion: 0.20
-Nodes (12): FeedService Group Posts, Group Events And Collaborations, Job Application Lifecycle, job_applications Table, Job Posting Lifecycle, Job Socket Events, jobs Table, Saved Jobs (+4 more)
+Cohesion: 0.32
+Nodes (8): FeedService Group Posts, Group Events And Collaborations, Job Application Lifecycle, job_applications Table, Job Posting Lifecycle, Job Socket Events, jobs Table, Saved Jobs
 
 ### Community 99 - "Community 99"
 Cohesion: 0.25
@@ -648,8 +644,8 @@ Cohesion: 0.20
 Nodes (3): handlers, server, MemoryStorage
 
 ### Community 102 - "Community 102"
-Cohesion: 0.11
-Nodes (20): Event Create Mutation, Event Card, Event Attendee Face Stack, Event RSVP Mutation, Mobile Bottom Navigation, Mobile More Sheet, Mini Event Row, Trending Tags Query (+12 more)
+Cohesion: 0.08
+Nodes (27): BadgeProgressItem, EventItem, EventMini(), formatDate(), PersonRow(), roleBadgeVariant(), roleLabel(), SuggestedUser (+19 more)
 
 ### Community 104 - "Community 104"
 Cohesion: 0.22
@@ -672,40 +668,40 @@ Cohesion: 0.27
 Nodes (10): Express App Factory, API Health Endpoint, API V1 Router Mounts, Bull Queue Redis Options, Bull Redis Client Factory, Knex Database Configuration, Stable Migration Source, Runtime Environment Configuration (+2 more)
 
 ### Community 109 - "Community 109"
-Cohesion: 0.16
-Nodes (15): App Error Helpers, Auth Context, Refresh Token Cookie Helpers, Express Request Context, Notifications Controller, Refresh Cookie Helpers, API Response Helpers, Search Controller (+7 more)
+Cohesion: 0.13
+Nodes (9): AlumniRow, AuthContext, CountRow, GiftCardRow, isUniqueViolation(), RequestDetailRow, RequestRow, RequestStatus (+1 more)
 
 ### Community 110 - "Community 110"
-Cohesion: 0.18
-Nodes (17): AlumniMentorToggle(), GiftCardGrid(), HistoryRow(), AlumniCardSkeleton(), GiftCardSkeleton(), SessionRowSkeleton(), Reward Gift Card Redemption Grid, GiftCard (+9 more)
+Cohesion: 0.07
+Nodes (51): AlumniMentorToggle(), AlumniTab, AlumniView(), AlumniViewProps, TABS, Badge(), BadgeProps, BadgeVariant (+43 more)
 
 ### Community 111 - "Community 111"
 Cohesion: 0.07
-Nodes (39): EmptyState(), ActiveRequests(), AlumniTab, AlumniView(), TABS, BadgesPanel(), Props, PhotoItem (+31 more)
+Nodes (31): ActiveRequests(), AuthLoader(), MeResponse, RefreshResponse, mocks, FOCUSABLE_SELECTOR, Props, ShortcutHelp() (+23 more)
 
 ### Community 112 - "Community 112"
 Cohesion: 0.31
 Nodes (7): AboutPanel(), batchLabel(), buildRows(), formatJoined(), Props, ROLE_HEADLINE, Row
 
 ### Community 113 - "Community 113"
-Cohesion: 0.12
-Nodes (25): Comment Reaction API, Comments Query Cache, ReactionBtnProps, CommentDrawer(), CommentItem(), Props, FeedPageData, FeedTab() (+17 more)
+Cohesion: 0.20
+Nodes (14): Comment Reaction API, Comments Query Cache, ReactionBtnProps, CommentDrawer(), CommentItem(), Props, CommentsData, CommentsPage (+6 more)
 
 ### Community 114 - "Community 114"
 Cohesion: 0.31
 Nodes (9): Alumni Mentor Discovery Card, Alumni Mentor Opt In Controls, Active Incoming Requests Flow, Alumni Mentor Dashboard, Previous Sessions Flow, Incoming Mentor Request Card, Optimistic Mentorship Request Status Cache, Realtime New Mentorship Request Event (+1 more)
 
 ### Community 115 - "Community 115"
-Cohesion: 0.17
-Nodes (15): Mentorship Feature Public Exports, Mentorship Request Submission, Mentorship Skeleton Components, Request Status Badge, Alumni Browse Query, Mentorship Request Socket Handlers, My Mentorship Requests Query, Student Mentorship View (+7 more)
+Cohesion: 0.20
+Nodes (11): Mentorship Request Submission, Mentorship Skeleton Components, Request Status Badge, Alumni Browse Query, Mentorship Request Socket Handlers, My Mentorship Requests Query, Student Mentorship View, Alumni Mentor Contract (+3 more)
 
 ### Community 116 - "Community 116"
 Cohesion: 0.22
 Nodes (9): connections Table, follows Table, Connections Migration, Drop Follows Migration, Connection, ConnectionRequest, connectionRequestSchema, connectionRequestUserBase (+1 more)
 
 ### Community 117 - "Community 117"
-Cohesion: 0.22
-Nodes (8): LoginInput, loginSchema, RegisterInput, registerSchema, ResendOtpInput, resendOtpSchema, VerifyOtpInput, verifyOtpSchema
+Cohesion: 0.15
+Nodes (8): BadgeVariant, CreateConversationBody, CreatedConversation, inputStyle, Props, ROLE_BADGE, UserResult, UsersPage
 
 ### Community 118 - "Community 118"
 Cohesion: 0.32
@@ -728,12 +724,12 @@ Cohesion: 0.29
 Nodes (7): Staff To Faculty Role Migration, System Group Role Restriction Fields, Group Join Requests Table, Invitations Table, Group Pinned Text And Rules, Group Notification Queue Usage, getDomainError()
 
 ### Community 123 - "Community 123"
-Cohesion: 0.29
-Nodes (7): Admin Validation Schemas, Auth Validation Schemas, Campus Module Index, Campus Router, Campus Validation Schemas, API Error Handler, Zod Request Validation Middleware
+Cohesion: 0.40
+Nodes (5): Admin Validation Schemas, Auth Validation Schemas, Campus Validation Schemas, API Error Handler, Zod Request Validation Middleware
 
 ### Community 124 - "Community 124"
-Cohesion: 0.29
-Nodes (6): PublicUserProfile, publicUserProfileSchema, ThemePreferenceInput, themePreferenceSchema, userProfileFieldsSchema, userRoleSchema
+Cohesion: 0.18
+Nodes (10): BATCH_YEARS, inputStyle, InvitePreview, InvitePreviewResponse, isBatchRequired(), isDeptRequired(), RegisterResponse, selectStyle (+2 more)
 
 ### Community 125 - "Community 125"
 Cohesion: 0.25
@@ -741,7 +737,7 @@ Nodes (8): scripts, build, dev, doctor, lint, preview, test, typecheck
 
 ### Community 126 - "Community 126"
 Cohesion: 0.12
-Nodes (13): group_members Table, Group Membership Lifecycle, groups Table, Alumni Discovery, gift_cards Table, isUniqueViolation(), mentor_redemptions Table, MentorshipService (+5 more)
+Nodes (13): group_members Table, Group Membership Lifecycle, groups Table, Alumni Discovery, gift_cards Table, mentor_redemptions Table, MentorshipService, Mentorship Rewards Redemption (+5 more)
 
 ### Community 127 - "Community 127"
 Cohesion: 0.40
@@ -804,8 +800,8 @@ Cohesion: 0.50
 Nodes (4): Profile Theme Hydration, Session Rehydration Flow, StrictMode Refresh Guard, AuthLoader Missing Token Test
 
 ### Community 145 - "Community 145"
-Cohesion: 0.15
-Nodes (10): reorderFeatured, EducationSchema, ExperienceSchema, FeaturedInput, FeaturedSchema, optionalString, PaginationQuerySchema, UpdatePreferencesSchema (+2 more)
+Cohesion: 0.20
+Nodes (8): CourseListQuery, CourseListQuerySchema, CourseSchema, EnrollCourseSchema, LostFoundTypeSchema, ShuttleLocationSchema, ShuttleRouteSchema, UpdateLostFoundSchema
 
 ### Community 146 - "Community 146"
 Cohesion: 0.83
@@ -815,49 +811,49 @@ Nodes (4): LiveBadge Liveness Indicator, LiveTrackerCard ETA and Stop Logic, Liv
 Cohesion: 1.00
 Nodes (3): Graduation Cap Symbol, Orange Brand Mark, Favicon SVG
 
+### Community 203 - "Community 203"
+Cohesion: 0.22
+Nodes (3): resolveUniversity, UniversityRow, AppError
+
 ### Community 206 - "Community 206"
-Cohesion: 0.24
-Nodes (6): CreateJobInput, PaginationQuery, assertCanMutateJob(), jobSelectQuery(), JobsService, toJob()
+Cohesion: 0.30
+Nodes (4): PaginationQuery, assertCanMutateJob(), jobSelectQuery(), JobsService
 
 ### Community 227 - "Community 227"
-Cohesion: 0.18
-Nodes (11): FeedCommentDeletedPayload, FeedCommentNewPayload, FeedPollUpdatedPayload, FeedPostNewPayload, FeedReactionUpdatedPayload, NEWS_KEY_PREFIX, NewsItem, NewsPage (+3 more)
+Cohesion: 0.25
+Nodes (9): Comments Table, Poll Options Table, Poll Votes Table, Polls Table, Post Tags Join Table, Posts Table, Reactions Table, Saved Posts Table (+1 more)
 
 ### Community 232 - "Community 232"
-Cohesion: 0.27
-Nodes (8): Props, StudySessionsTab(), Group Study Session Factory, toStudySession(), useRsvpStudySession(), useStudySessions(), createSession, StudySessionsTab Study Session Surface
-
-### Community 233 - "Community 233"
-Cohesion: 0.27
-Nodes (10): Chat View, Message Bubble, Message Contract, Messages Infinite Query, Scroll Anchor Pagination, dateLabel(), safeParse(), Optimistic Send Flow (+2 more)
+Cohesion: 0.43
+Nodes (7): Auth Zustand Store, Avatar Identity Helpers, Theme Curtain Transition, HTML Data Theme Contract, Theme Preference Persistence, Theme Store Behavior Tests, Theme Zustand Store
 
 ### Community 234 - "Community 234"
 Cohesion: 0.24
 Nodes (10): CollabTab Component, EventsTab Component, FeedTab Component, Event and Post Entry Rendering, Group Collaborations Query, Group Events Query, Group Posts Query, Infinite Scroll Observer (+2 more)
 
 ### Community 235 - "Community 235"
-Cohesion: 0.13
-Nodes (17): getAuthContext(), getAuthContext(), getAuthContext(), discoveryController, getAuthContext(), tagPostsController, TagPostsQuery, TagPostsQuerySchema (+9 more)
+Cohesion: 0.12
+Nodes (18): getAuthContext(), getAuthContext(), getAuthContext(), discoveryController, getAuthContext(), tagPostsController, TagPostsQuery, TagPostsQuerySchema (+10 more)
 
 ### Community 236 - "Community 236"
-Cohesion: 0.25
-Nodes (6): api, createdPostIds, manyTags, names, postId, tags
+Cohesion: 0.33
+Nodes (7): Client Session Lifecycle, University Socket Membership, Unread Notification Counts Store, Pending Message Retry Flow, Optimistic Pending Messages Store, Socket Connection Status Store, Vite ImportMeta Environment Contract
 
 ### Community 237 - "Community 237"
 Cohesion: 0.13
 Nodes (12): getUserEducation(), getUserExperience(), Props, formatDateRange(), fmt(), Props, ResumeExportButton(), Profile Education Migration (+4 more)
 
 ### Community 238 - "Community 238"
-Cohesion: 0.22
-Nodes (10): Notifications Socket Hook Wiring, Socket Reconnect Banner, Feed Three Column Layout Shell, Admin Panel Role Gate, External Campus Tools, Grouped Campus Navigation, Mark All Notifications Read Mutation, Unread Notifications Query (+2 more)
+Cohesion: 0.33
+Nodes (7): Notifications Socket Hook Wiring, Socket Reconnect Banner, Feed Three Column Layout Shell, Admin Panel Role Gate, External Campus Tools, Grouped Campus Navigation, Notifications Feature Public API
 
 ### Community 239 - "Community 239"
-Cohesion: 0.42
-Nodes (9): LostFoundListQuery, Lost Found UI Helpers, Lost Found Filter Bar, Lost Found Public Exports, LostFoundType, Lost Found Item Card, Report Lost Found Item Modal, Lost Found Domain Types (+1 more)
+Cohesion: 0.46
+Nodes (8): LostFoundListQuery, Lost Found UI Helpers, Lost Found Filter Bar, Lost Found Public Exports, Lost Found Item Card, Report Lost Found Item Modal, Lost Found Domain Types, Resolve Lost Found Item Mutation
 
 ### Community 240 - "Community 240"
-Cohesion: 0.17
-Nodes (8): AVATAR_PALETTE, PeopleResultCard(), Props, container, mark, marks, node, result
+Cohesion: 0.15
+Nodes (9): AVATAR_PALETTE, PostResultCard(), Props, PostSearchResult, container, mark, marks, node (+1 more)
 
 ### Community 241 - "Community 241"
 Cohesion: 0.25
@@ -872,44 +868,24 @@ Cohesion: 0.25
 Nodes (7): After making React code changes:, code:bash (curl --fail --silent --show-error \), code:bash (npx react-doctor@latest --verbose --diff), Command, /doctor — full local triage workflow, For general cleanup or code improvement:, React Doctor
 
 ### Community 244 - "Community 244"
-Cohesion: 0.47
-Nodes (4): Props, Props, UpcomingEvents(), EventSummary
+Cohesion: 0.33
+Nodes (7): Search Match Highlighting Utility, Search Highlighting Tests, PATHS Route Constants, Markdown Hashtag Link Preprocessor, Hashtag Preprocessor Tests, Guest Route Group, Protected Feed Routes
 
 ### Community 245 - "Community 245"
-Cohesion: 0.33
-Nodes (6): Optimistic Post Save State, Optimistic Reaction Cache, Post Reaction API, Post Save API, useSavePost Hook, useUpsertReaction Hook
+Cohesion: 0.47
+Nodes (4): Lazy Page Loader, router, App(), useThemeStore
 
 ### Community 246 - "Community 246"
 Cohesion: 0.40
 Nodes (4): hooks, PreToolUse, permissions, allow
 
 ### Community 247 - "Community 247"
-Cohesion: 0.40
-Nodes (3): AdminStatsTab(), Props, useGroupStats()
-
-### Community 248 - "Community 248"
 Cohesion: 0.50
-Nodes (4): CreateGroupModal Component, Group Creation Payload, Group Media Upload, Group Role Lock
-
-### Community 249 - "Community 249"
-Cohesion: 0.50
-Nodes (3): Jobs Controller, jobsRouter, Job Zod Schemas
-
-### Community 250 - "Community 250"
-Cohesion: 0.67
-Nodes (3): AboutTab(), Props, useSetRules()
-
-### Community 251 - "Community 251"
-Cohesion: 0.50
-Nodes (4): FOCUSABLE_SELECTOR, Props, ShortcutHelp(), SHORTCUTS
-
-### Community 252 - "Community 252"
-Cohesion: 0.67
-Nodes (4): Email HTML Sanitization, Invitation Email Template, OTP Email Templates, Template Email Payload Parser
+Nodes (4): btn, spy, user, Theme Toggle Button
 
 ### Community 253 - "Community 253"
-Cohesion: 0.50
-Nodes (3): JobListQuery, activeJobsBaseQuery(), applyJobFilters()
+Cohesion: 0.20
+Nodes (9): JobListQuery, activeJobsBaseQuery(), applyJobFilters(), AuthContext, CountRow, JobOwnerRow, JobRow, JobType (+1 more)
 
 ## Ambiguous Edges - Review These
 - `NotificationsService Invite Creation` → `Group Invite Flow`  [AMBIGUOUS]
@@ -920,9 +896,9 @@ Nodes (3): JobListQuery, activeJobsBaseQuery(), applyJobFilters()
   apps/web/src/pages/ForgotPasswordPage.tsx · relation: rationale_for
 
 ## Knowledge Gaps
-- **964 isolated node(s):** `allow`, `PreToolUse`, `PreToolUse`, `graphify`, `After making React code changes:` (+959 more)
+- **964 isolated node(s):** `ConversationsSidebarProps`, `MessageInputProps`, `MessagesPopupProps`, `UserResult`, `CreateConversationBody` (+959 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **29 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **30 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -933,11 +909,11 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `Axios Token Refresh Queue` and `Forgot Password Page Reset Flow`?**
   _Edge tagged AMBIGUOUS (relation: rationale_for) - confidence is low._
-- **Why does `api` connect `Community 113` to `Community 2`, `Community 4`, `Community 5`, `Community 8`, `Community 9`, `Community 11`, `Community 12`, `Community 13`, `Community 142`, `Community 22`, `Community 28`, `Community 32`, `Community 34`, `Community 35`, `Community 37`, `Community 38`, `Community 44`, `Community 52`, `Community 61`, `Community 62`, `Community 68`, `Community 74`, `Community 84`, `Community 86`, `Community 89`, `Community 110`, `Community 111`, `Community 244`, `Community 245`?**
-  _High betweenness centrality (0.097) - this node is a cross-community bridge._
-- **Why does `db` connect `Community 51` to `Community 129`, `Community 1`, `Community 3`, `Community 4`, `Community 10`, `Community 141`, `Community 15`, `Community 16`, `Community 17`, `Community 18`, `Community 20`, `Community 25`, `Community 27`, `Community 31`, `Community 36`, `Community 39`, `Community 40`, `Community 46`, `Community 48`, `Community 50`, `Community 54`, `Community 59`, `Community 80`, `Community 85`, `Community 91`, `Community 103`, `Community 236`?**
-  _High betweenness centrality (0.094) - this node is a cross-community bridge._
-- **Why does `toConversation()` connect `Community 4` to `Community 2`, `Community 68`, `Community 111`, `Community 113`, `Community 51`, `Community 20`?**
-  _High betweenness centrality (0.070) - this node is a cross-community bridge._
-- **What connects `allow`, `PreToolUse`, `PreToolUse` to the rest of the system?**
+- **Why does `api` connect `Community 5` to `Community 2`, `Community 4`, `Community 7`, `Community 8`, `Community 9`, `Community 11`, `Community 12`, `Community 13`, `Community 142`, `Community 22`, `Community 28`, `Community 35`, `Community 37`, `Community 38`, `Community 44`, `Community 52`, `Community 61`, `Community 62`, `Community 68`, `Community 74`, `Community 84`, `Community 86`, `Community 89`, `Community 102`, `Community 110`, `Community 111`, `Community 113`, `Community 117`, `Community 124`?**
+  _High betweenness centrality (0.099) - this node is a cross-community bridge._
+- **Why does `db` connect `Community 51` to `Community 129`, `Community 1`, `Community 3`, `Community 4`, `Community 10`, `Community 141`, `Community 15`, `Community 16`, `Community 17`, `Community 19`, `Community 20`, `Community 25`, `Community 27`, `Community 31`, `Community 36`, `Community 39`, `Community 40`, `Community 48`, `Community 50`, `Community 59`, `Community 203`, `Community 80`, `Community 85`, `Community 91`, `Community 103`, `Community 109`, `Community 253`?**
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+- **Why does `toConversation()` connect `Community 4` to `Community 5`, `Community 102`, `Community 8`, `Community 12`, `Community 51`, `Community 20`?**
+  _High betweenness centrality (0.073) - this node is a cross-community bridge._
+- **What connects `ConversationsSidebarProps`, `MessageInputProps`, `MessagesPopupProps` to the rest of the system?**
   _964 weakly-connected nodes found - possible documentation gaps or missing edges._

@@ -470,48 +470,43 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/index.ts": {
-    "mtime": 1779540631.6993108,
-    "ast_hash": "e26caf8fba7012d7f40a5801fc6d4e47",
+    "mtime": 1780041260.875081,
+    "ast_hash": "98c14c6f81e8ad449a141bfd3962dd46",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/components/MessageInput.tsx": {
-    "mtime": 1779562547.4015737,
-    "ast_hash": "c786380c533a6b190f316407022ef1d7",
-    "semantic_hash": ""
-  },
-  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/components/ConversationList.tsx": {
-    "mtime": 1779647790.6506317,
-    "ast_hash": "8f8e1e9f4016a9bb9fe3864cbaf677a7",
+    "mtime": 1780040228.9470952,
+    "ast_hash": "bce875058fec46885892712fa5ba1790",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/components/ConversationsSidebar.tsx": {
-    "mtime": 1779562537.9958863,
-    "ast_hash": "9ddddbea51d2e576eb4b7561c5e8ceb2",
+    "mtime": 1780041408.8064535,
+    "ast_hash": "46366fadf649521513cccf4a5ba87a04",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/components/NewConversationModal.tsx": {
-    "mtime": 1779562551.9810815,
-    "ast_hash": "55aa9d78c8e5a6c640091add152ff331",
+    "mtime": 1780040655.5538225,
+    "ast_hash": "584d5511d761d503daabab2f6fd4f346",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/components/ChatView.tsx": {
-    "mtime": 1779664780.078505,
-    "ast_hash": "2cbf8c376ce595f065ddaa421d2f8dbe",
+    "mtime": 1780040865.3989782,
+    "ast_hash": "1fc598f67ccfc2752a926c7196b1789d",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/components/MessagesPopup.tsx": {
-    "mtime": 1779562542.63321,
-    "ast_hash": "7cc61eb48770361f0f501de3de277562",
+    "mtime": 1780041244.0765026,
+    "ast_hash": "a11165473bedbbb96d2e8cdc5ff3e1c9",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/hooks/useConversation.ts": {
-    "mtime": 1779014409.0534525,
-    "ast_hash": "0578d00e9988ebeeeee4c14e17a46c06",
+    "mtime": 1780041243.0177228,
+    "ast_hash": "7a04d9879390353d9989567852814f84",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/hooks/useConversationSocket.ts": {
-    "mtime": 1779014409.0543275,
-    "ast_hash": "7870b17828e397fb3c7a64f79a374b60",
+    "mtime": 1780041244.8943965,
+    "ast_hash": "b2cbf62bdd08b87ffc00d4d5bbb83875",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/groups/types.ts": {
@@ -1535,8 +1530,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/MessagesPage.tsx": {
-    "mtime": 1779562289.3173983,
-    "ast_hash": "777747eb6e34d0ba8be78bf6b181656d",
+    "mtime": 1780041403.7703967,
+    "ast_hash": "07830c372f7f37fd33151e1379ca2647",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/GroupsPage.tsx": {
@@ -1565,8 +1560,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/ConversationPage.tsx": {
-    "mtime": 1779575026.9592729,
-    "ast_hash": "086f0f02983828d922af406743284ca9",
+    "mtime": 1780040866.2603705,
+    "ast_hash": "efbd49ba3f3f19770390912da98460d4",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/NewsDetailPage.tsx": {
@@ -2490,8 +2485,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/users/service.ts": {
-    "mtime": 1779714360.9663553,
-    "ast_hash": "084483e44ced4a0e027de792e6bf7afa",
+    "mtime": 1780039658.772207,
+    "ast_hash": "a381aa9c2502c501da0e005ef17686c5",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/mentorship/schema.ts": {
@@ -3502,6 +3497,11 @@
   "/Users/joydipdatta/UniConnecT_NEW/.impeccable/critique/shots/feed-auth-mobile-390.png": {
     "mtime": 1779210886.2900796,
     "ast_hash": "e4a5bcb2221760e0c6d0675f1f4c7c3c",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/types.ts": {
+    "mtime": 1780041237.436871,
+    "ast_hash": "9ceed0be8b6003b1b62adddfe9d7fbc7",
     "semantic_hash": ""
   }
 }

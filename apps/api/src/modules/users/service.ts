@@ -158,7 +158,7 @@ export class UsersService {
       .catch(() => {}) // silent fail
     }
 
-    const [connections, pendingReceived, posts, connectionRow, mutualCount] = await Promise.all([
+    const [connections, pendingReceived, posts, connectionRow, mutualCount, mentorshipRow] = await Promise.all([
       // count accepted connections for target user
       countUserConnections(targetUserId, universityId),
       // count pending received (only meaningful for own profile — 0 for others)
@@ -177,6 +177,13 @@ export class UsersService {
       currentUserId !== targetUserId
         ? countMutualConnections(currentUserId, targetUserId, universityId)
         : Promise.resolve(0),
+      // check accepted mentorship between these two users
+      currentUserId !== targetUserId
+        ? db('mentorship_requests').where(function() {
+            this.where({ student_id: currentUserId, alumni_id: targetUserId })
+                .orWhere({ student_id: targetUserId, alumni_id: currentUserId })
+          }).andWhere('status', 'accepted').andWhere('university_id', universityId).andWhere('is_deleted', false).first<{ id: string } | undefined>()
+        : Promise.resolve(null),
     ])
 
     // Derive connectionStatus from connectionRow
@@ -194,7 +201,7 @@ export class UsersService {
       }
     }
 
-    const isConnected = connectionStatus === 'connected'
+    const isConnected = connectionStatus === 'connected' || !!mentorshipRow
     const isOwnProfile = currentUserId === targetUserId
 
     return {
@@ -781,7 +788,7 @@ async function countMutualConnections(userA: string, userB: string, universityId
 }
 
 async function isConnected(userA: string, userB: string, universityId: string): Promise<boolean> {
-  const row = await db('connections')
+  const connection = await db('connections')
     .where(function() {
       this.where({ requester_id: userA, addressee_id: userB })
           .orWhere({ requester_id: userB, addressee_id: userA })
@@ -789,5 +796,17 @@ async function isConnected(userA: string, userB: string, universityId: string): 
     .andWhere('status', 'accepted')
     .andWhere('university_id', universityId)
     .first()
-  return !!row
+  if (connection) return true
+
+  // Accepted mentorship also grants profile visibility
+  const mentorship = await db('mentorship_requests')
+    .where(function() {
+      this.where({ student_id: userA, alumni_id: userB })
+          .orWhere({ student_id: userB, alumni_id: userA })
+    })
+    .andWhere('status', 'accepted')
+    .andWhere('university_id', universityId)
+    .andWhere('is_deleted', false)
+    .first()
+  return !!mentorship
 }
