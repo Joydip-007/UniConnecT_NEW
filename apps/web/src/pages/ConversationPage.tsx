@@ -156,7 +156,7 @@ export default function ConversationPage() {
                       flexShrink: 0,
                       padding: '2px 8px',
                       borderRadius: 'var(--r-pill)',
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: 500,
                       background: 'var(--uc-orange-bg)',
                       border: '0.5px solid var(--uc-orange-bdr)',

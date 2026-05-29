@@ -269,7 +269,7 @@ function MessageBubble({
             paddingInline: 2,
           }}
         >
-          <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+          <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
             {timeLabel}
           </span>
 
@@ -292,7 +292,7 @@ function MessageBubble({
               display: 'flex',
               alignItems: 'center',
               gap: 5,
-              padding: '5px 12px',
+              padding: '9px 14px',
               marginTop: 2,
               borderRadius: 'var(--r-pill)',
               background: 'var(--uc-red-bg)',
@@ -433,17 +433,23 @@ export function ChatView({ convId }: { convId: string }) {
     return () => observer.disconnect()
   }, []) // stable — reads live values from refs
 
-  // Flatten pages chronologically (oldest at top), then append pending
-  const confirmedMessages = data
-    ? [...data.pages].reverse().flatMap((p) => p.items)
-    : []
-  const allMessages = [...confirmedMessages, ...pendingMsgs.map(pendingToMessage)]
+  // Flatten pages chronologically (oldest at top) — memoized to avoid allocations on every render
+  const confirmedMessages = useMemo(
+    () => (data ? [...data.pages].reverse().flatMap((p) => p.items) : []),
+    [data],
+  )
+  const allMessages = useMemo(
+    () => [...confirmedMessages, ...pendingMsgs.map(pendingToMessage)],
+    [confirmedMessages, pendingMsgs],
+  )
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
       <div
+        role="status"
+        aria-label="Loading messages"
         style={{
           flex: 1,
           display: 'flex',
@@ -452,7 +458,7 @@ export function ChatView({ convId }: { convId: string }) {
           color: 'var(--text-tertiary)',
         }}
       >
-        <Loader2 size={20} strokeWidth={1.5} className="spin" />
+        <Loader2 size={20} strokeWidth={1.5} className="spin" aria-hidden="true" />
       </div>
     )
   }
@@ -460,6 +466,7 @@ export function ChatView({ convId }: { convId: string }) {
   if (isError) {
     return (
       <div
+        role="alert"
         style={{
           flex: 1,
           display: 'flex',
@@ -521,6 +528,8 @@ export function ChatView({ convId }: { convId: string }) {
       {/* Fetching older messages indicator */}
       {isFetchingNextPage && (
         <div
+          role="status"
+          aria-label="Loading older messages"
           style={{
             display: 'flex',
             justifyContent: 'center',
@@ -528,7 +537,7 @@ export function ChatView({ convId }: { convId: string }) {
             color: 'var(--text-tertiary)',
           }}
         >
-          <Loader2 size={14} strokeWidth={1.5} className="spin" />
+          <Loader2 size={14} strokeWidth={1.5} className="spin" aria-hidden="true" />
         </div>
       )}
 
@@ -536,10 +545,9 @@ export function ChatView({ convId }: { convId: string }) {
       {confirmedMessages.map((msg, i) => {
         const prevMsg = confirmedMessages[i - 1]
 
-        const newDay =
-          !prevMsg ||
-          format(safeParse(msg.sentAt), 'yyyy-MM-dd') !==
-            format(safeParse(prevMsg.sentAt), 'yyyy-MM-dd')
+        const msgDate = safeParse(msg.sentAt)
+        const msgDay = format(msgDate, 'yyyy-MM-dd')
+        const newDay = !prevMsg || msgDay !== format(safeParse(prevMsg.sentAt), 'yyyy-MM-dd')
 
         // Collapse consecutive same-sender messages within a 2-minute window
         const RUN_WINDOW_MS = 2 * 60 * 1000
@@ -547,7 +555,7 @@ export function ChatView({ convId }: { convId: string }) {
           !newDay &&
           !!prevMsg &&
           msg.senderId === prevMsg.senderId &&
-          safeParse(msg.sentAt).getTime() - safeParse(prevMsg.sentAt).getTime() < RUN_WINDOW_MS
+          msgDate.getTime() - safeParse(prevMsg.sentAt).getTime() < RUN_WINDOW_MS
 
         return (
           <React.Fragment key={msg.id}>

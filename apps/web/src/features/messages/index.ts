@@ -1,5 +1,4 @@
-export { ConversationList } from './components/ConversationList'
-export type { Conversation } from './components/ConversationList'
+export type { Conversation } from './types'
 
 export { ConversationsSidebar } from './components/ConversationsSidebar'
 export { MessagesPopup } from './components/MessagesPopup'

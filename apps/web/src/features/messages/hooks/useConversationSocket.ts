@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { socket } from '@/lib/socket'
 import { useAuthStore } from '@/stores/authStore'
 import type { Message, MessagesPage } from '../components/ChatView'
-import type { Conversation } from '../components/ConversationList'
+import type { Conversation } from '../types'
 
 // ── Payload shapes (docs/socket-events.md#messaging-events) ──────────────────
 

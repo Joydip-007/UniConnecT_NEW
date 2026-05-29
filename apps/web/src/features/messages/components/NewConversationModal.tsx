@@ -368,9 +368,11 @@ export function NewConversationModal({ onClose }: Props) {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              padding: 4,
+              padding: 8,
+              margin: -8,
               color: 'var(--text-tertiary)',
               lineHeight: 0,
+              flexShrink: 0,
             }}
           >
             <X size={18} strokeWidth={1.5} />

@@ -8,7 +8,7 @@ import { api } from '@/lib/axios'
 import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
 import { PATHS } from '@/router/paths'
 import { NewConversationModal } from './NewConversationModal'
-import type { Conversation } from './ConversationList'
+import type { Conversation } from '../types'
 import { seedColor, initials, relativeTime } from '../utils'
 
 // ── MessagesPopup ─────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
               display: 'flex',
               alignItems: 'center',
               gap: 5,
-              padding: '4px 10px',
+              padding: '7px 12px',
               borderRadius: 'var(--r-pill)',
               background: 'var(--uc-orange-bg)',
               border: '0.5px solid var(--uc-orange-bdr)',
@@ -227,7 +227,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                             flexShrink: 0,
                             padding: '1px 5px',
                             borderRadius: 'var(--r-pill)',
-                            fontSize: 9,
+                            fontSize: 11,
                             fontWeight: 500,
                             background: 'var(--uc-orange-bg)',
                             border: '0.5px solid var(--uc-orange-bdr)',

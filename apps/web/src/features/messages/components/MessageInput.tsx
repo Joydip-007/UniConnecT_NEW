@@ -104,7 +104,7 @@ export function MessageInput({ convId }: MessageInputProps) {
         onBlur={handleBlur}
         onFocus={handleFocus}
         placeholder="Type a message…"
-        title="Press Enter to send, Shift+Enter for a new line"
+        aria-label="Message. Press Enter to send, Shift+Enter for a new line."
         rows={1}
         style={{
           flex: 1,

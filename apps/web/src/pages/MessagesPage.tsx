@@ -25,7 +25,7 @@ export default function MessagesPage() {
           <ConversationsSidebar onNewClick={() => setNewOpen(true)} />
         </div>
 
-        {/* Right: empty state — desktop only */}
+        {/* Right: empty / first-run state — desktop only */}
         <div
           className="msg-right-desktop-only"
           style={{
@@ -34,39 +34,53 @@ export default function MessagesPage() {
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'column',
-            gap: 16,
+            gap: 20,
             background: 'var(--surface-page)',
           }}
         >
-          <MessageCircle
-            size={36}
-            strokeWidth={1}
-            style={{ color: 'var(--text-tertiary)' }}
-          />
-          <div style={{ textAlign: 'center' }}>
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--uc-indigo-bg)',
+              border: '0.5px solid var(--uc-indigo-bdr)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MessageCircle
+              size={22}
+              strokeWidth={1.5}
+              style={{ color: 'var(--uc-indigo-l)' }}
+            />
+          </div>
+
+          <div style={{ textAlign: 'center', maxWidth: 280 }}>
             <p
               style={{
-                margin: '0 0 6px',
+                margin: '0 0 8px',
                 fontSize: 15,
                 fontWeight: 500,
-                color: 'var(--text-secondary)',
+                color: 'var(--text-primary)',
               }}
             >
-              No conversation selected
+              Connect with your campus
             </p>
             <p
               style={{
                 margin: 0,
                 fontSize: 13,
                 fontWeight: 400,
-                color: 'var(--text-tertiary)',
-                maxWidth: 240,
-                lineHeight: 1.6,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.65,
               }}
             >
-              Pick one from the sidebar or start a new one.
+              Message alumni for career advice, find study partners, or follow up with your mentor between sessions.
             </p>
           </div>
+
           <button
             type="button"
             onClick={() => setNewOpen(true)}

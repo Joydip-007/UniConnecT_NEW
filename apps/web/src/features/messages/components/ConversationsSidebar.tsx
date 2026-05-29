@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MessageCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -7,7 +7,7 @@ import { api } from '@/lib/axios'
 import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
 import { EmptyState } from '@/components/EmptyState'
 import { NewConversationModal } from './NewConversationModal'
-import type { Conversation } from './ConversationList'
+import type { Conversation } from '../types'
 import { seedColor, initials, relativeTime } from '../utils'
 
 // ── SidebarRow ────────────────────────────────────────────────────────────────
@@ -35,10 +35,16 @@ function SidebarRow({
     : null
   const hasUnread = conversation.unreadCount > 0
 
+  const buttonLabel = hasUnread
+    ? `${displayName}, ${conversation.unreadCount} unread message${conversation.unreadCount === 1 ? '' : 's'}${isActive ? ', currently open' : ''}`
+    : `${displayName}${isActive ? ', currently open' : ''}`
+
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={buttonLabel}
+      aria-current={isActive ? 'true' : undefined}
       className={isActive ? undefined : 'row-hover-bg'}
       style={{
         display: 'flex',
@@ -54,23 +60,7 @@ function SidebarRow({
         transition: 'background 150ms',
       }}
     >
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <Avatar initials={avatarInitials} color={avatarColor} size={38} />
-        {hasUnread && !isActive && (
-          <span
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: 9,
-              height: 9,
-              borderRadius: '50%',
-              background: 'var(--uc-indigo)',
-              border: '1.5px solid var(--surface-card)',
-            }}
-          />
-        )}
-      </div>
+      <div style={{ flexShrink: 0 }}><Avatar initials={avatarInitials} color={avatarColor} size={38} /></div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -94,7 +84,7 @@ function SidebarRow({
                 flexShrink: 0,
                 padding: '1px 5px',
                 borderRadius: 'var(--r-pill)',
-                fontSize: 9,
+                fontSize: 11,
                 fontWeight: 500,
                 background: 'var(--uc-orange-bg)',
                 border: '0.5px solid var(--uc-orange-bdr)',
@@ -119,20 +109,43 @@ function SidebarRow({
           )}
         </div>
 
-        <span
-          style={{
-            display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: 12,
-            fontWeight: 400,
-            color: hasUnread ? 'var(--text-secondary)' : 'var(--text-tertiary)',
-            marginTop: 1,
-          }}
-        >
-          {preview || ' '}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: 12,
+              fontWeight: 400,
+              color: hasUnread ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+            }}
+          >
+            {preview || ' '}
+          </span>
+          {hasUnread && !isActive && (
+            <span
+              aria-hidden="true"
+              style={{
+                flexShrink: 0,
+                minWidth: 18,
+                height: 18,
+                borderRadius: 'var(--r-pill)',
+                background: 'var(--uc-indigo)',
+                color: 'var(--text-primary)',
+                fontSize: 11,
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 5px',
+              }}
+            >
+              {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+            </span>
+          )}
+        </div>
       </div>
     </button>
   )
@@ -158,14 +171,18 @@ export function ConversationsSidebar({ activeConvId, onNewClick }: Conversations
       api.get<{ data: Conversation[] }>('/conversations').then((r) => r.data.data),
   })
 
-  // Sort newest-last-message first
-  const sorted = data
-    ? [...data].sort((a, b) => {
-        const at = a.lastMessage?.sentAt ? new Date(a.lastMessage.sentAt).getTime() : 0
-        const bt = b.lastMessage?.sentAt ? new Date(b.lastMessage.sentAt).getTime() : 0
-        return bt - at
-      })
-    : []
+  // Sort newest-last-message first — memoized so socket-driven re-renders skip the sort
+  const sorted = useMemo(
+    () =>
+      data
+        ? [...data].sort((a, b) => {
+            const at = a.lastMessage?.sentAt ? new Date(a.lastMessage.sentAt).getTime() : 0
+            const bt = b.lastMessage?.sentAt ? new Date(b.lastMessage.sentAt).getTime() : 0
+            return bt - at
+          })
+        : [],
+    [data],
+  )
 
   return (
     <>
@@ -196,8 +213,8 @@ export function ConversationsSidebar({ activeConvId, onNewClick }: Conversations
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 28,
-              height: 28,
+              width: 34,
+              height: 34,
               borderRadius: 'var(--r-pill)',
               background: 'var(--uc-orange-bg)',
               border: '0.5px solid var(--uc-orange-bdr)',
@@ -233,6 +250,7 @@ export function ConversationsSidebar({ activeConvId, onNewClick }: Conversations
 
           {!isLoading && isError && (
             <div
+              role="alert"
               style={{
                 padding: '24px 12px',
                 textAlign: 'center',
@@ -268,7 +286,7 @@ export function ConversationsSidebar({ activeConvId, onNewClick }: Conversations
             <EmptyState
               icon={MessageCircle}
               title="No conversations yet"
-              description="Message a classmate or alumni to get started."
+              description="Start a conversation with a classmate, alumni, or faculty member."
             />
           )}
 

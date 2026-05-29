@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
-import type { Conversation } from '../components/ConversationList'
+import type { Conversation } from '../types'
 
 export function useConversation(convId: string) {
   const queryClient = useQueryClient()
