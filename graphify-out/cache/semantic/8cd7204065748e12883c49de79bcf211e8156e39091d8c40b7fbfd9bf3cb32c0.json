@@ -1,0 +1,1 @@
+{"nodes": [{"id": "msw_handlers_empty_registry", "label": "MSW Handler Registry", "file_type": "code", "source_file": "apps/web/src/tests/msw/handlers.ts", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

@@ -19,18 +19,16 @@ export function DiscoverySection({ label, seeAllTo, seeAllLabel = 'See all', chi
           marginBottom: 10,
         }}
       >
-        <p
+        <h2
           style={{
             fontSize: 11,
             fontWeight: 500,
             color: 'var(--text-secondary)',
-            letterSpacing: '0.04em',
             margin: 0,
-            textTransform: 'uppercase',
           }}
         >
           {label}
-        </p>
+        </h2>
         {seeAllTo && (
           <Link
             to={seeAllTo}
@@ -48,6 +46,8 @@ export function DiscoverySection({ label, seeAllTo, seeAllLabel = 'See all', chi
           scrollSnapType: 'x mandatory',
           paddingBottom: 4,
           scrollbarWidth: 'none',
+          maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
         }}
       >
         {children}

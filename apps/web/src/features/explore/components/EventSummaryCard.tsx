@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { formatDistanceToNow, parseISO } from 'date-fns'
+import { Check } from 'lucide-react'
 import { api } from '@/lib/axios'
 import type { EventSummary } from '../types'
 
@@ -36,6 +37,7 @@ export function EventSummaryCard({ event }: Props) {
         <img
           src={event.coverUrl}
           alt=""
+          loading="lazy"
           style={{ width: '100%', height: 72, objectFit: 'cover', display: 'block' }}
         />
       )}
@@ -63,20 +65,33 @@ export function EventSummaryCard({ event }: Props) {
         <button
           onClick={() => rsvp()}
           disabled={isPending}
+          aria-label={isGoing ? `You're going to ${event.title}` : `RSVP going to ${event.title}`}
           style={{
             width: '100%',
-            padding: '4px 0',
+            padding: '8px 0',
+            minHeight: 44,
             borderRadius: 'var(--r-pill)',
             border: '0.5px solid var(--border-default)',
             background: isGoing ? 'var(--surface-raised)' : 'var(--uc-indigo)',
-            color: isGoing ? 'var(--text-primary)' : 'var(--uc-indigo-xl)',
+            color: 'var(--text-primary)',
             fontSize: 11,
             fontWeight: 500,
             cursor: isPending ? 'default' : 'pointer',
             opacity: isPending ? 0.6 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
           }}
         >
-          {isGoing ? 'Going ✓' : 'Going?'}
+          {isGoing ? (
+            <>
+              <Check size={10} aria-hidden="true" />
+              Going
+            </>
+          ) : (
+            'Going?'
+          )}
         </button>
       </div>
     </div>

@@ -33,11 +33,88 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'groups', label: 'Groups' },
 ]
 
-// ── Shared skeleton / empty ────────────────────────────────────────────────────
+// ── Stable styles ─────────────────────────────────────────────────────────────
+
+const containerStyle: React.CSSProperties = {
+  maxWidth: 720,
+  margin: '0 auto',
+  padding: '20px 20px 80px',
+}
+
+const searchInputWrapStyle: React.CSSProperties = {
+  position: 'relative',
+  marginBottom: 24,
+}
+
+const tabBarStyle: React.CSSProperties = {
+  display: 'flex',
+  borderBottom: '0.5px solid var(--border-default)',
+  marginBottom: 20,
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
+}
+
+function tabStyle(active: boolean): React.CSSProperties {
+  return {
+    padding: '10px 14px',
+    fontSize: 13,
+    fontWeight: 500,
+    color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+    background: 'none',
+    border: 'none',
+    borderBottom: active ? '2px solid var(--uc-indigo)' : '2px solid transparent',
+    cursor: 'pointer',
+    marginBottom: -1,
+    flexShrink: 0,
+  }
+}
+
+const sectionHeaderStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 500,
+  color: 'var(--text-secondary)',
+  marginBottom: 8,
+  marginTop: 20,
+}
+
+const loadMoreStyle: React.CSSProperties = {
+  display: 'block',
+  width: '100%',
+  marginTop: 12,
+  padding: '10px',
+  fontSize: 13,
+  color: 'var(--uc-indigo-xl)',
+  background: 'var(--surface-raised)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-md)',
+  cursor: 'pointer',
+  fontWeight: 500,
+  textAlign: 'center',
+}
+
+const cardWrapStyle: React.CSSProperties = {
+  background: 'var(--surface-card)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-lg)',
+  overflow: 'hidden',
+  marginBottom: 16,
+}
+
+const srOnlyStyle: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+}
+
+// ── Shared skeleton / empty ───────────────────────────────────────────────────
 
 function SkeletonRow() {
   return (
     <div
+      aria-hidden="true"
       style={{
         height: 52,
         marginBottom: 8,
@@ -63,7 +140,7 @@ function EmptyState({ icon, title, message }: { icon: React.ReactNode; title: st
 
 function DiscoverySkeleton() {
   return (
-    <>
+    <div aria-hidden="true">
       {[1, 2, 3].map((s) => (
         <section key={s} style={{ marginBottom: 28 }}>
           <div
@@ -93,7 +170,7 @@ function DiscoverySkeleton() {
           </div>
         </section>
       ))}
-    </>
+    </div>
   )
 }
 
@@ -107,8 +184,8 @@ export default function ExplorePage() {
   const department = searchParams.get('department') ?? undefined
   const batch = searchParams.get('batch') ?? undefined
 
-  // Local search input state (debounced into URL)
   const [inputValue, setInputValue] = useState(q)
+  const [searchFocused, setSearchFocused] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Keep local input in sync if URL q changes externally (e.g. TopNav Enter)
@@ -116,7 +193,8 @@ export default function ExplorePage() {
     setInputValue(q)
   }, [q])
 
-  const isSearchMode = q.length >= 2
+  // view=search allows browse tabs without a query (e.g. "See all" from discovery sections)
+  const isSearchMode = q.length >= 2 || searchParams.get('view') === 'search'
 
   function handleInputChange(value: string) {
     setInputValue(value)
@@ -126,9 +204,11 @@ export default function ExplorePage() {
       if (value.trim().length >= 2) {
         next.set('q', value.trim())
         next.set('tab', 'all')
+        next.delete('view')
       } else {
         next.delete('q')
         next.delete('tab')
+        next.delete('view')
       }
       setSearchParams(next, { replace: true })
     }, 400)
@@ -171,74 +251,15 @@ export default function ExplorePage() {
     fetchNextPage: fetchMoreGroups, hasNextPage: hasMoreGroups, isFetchingNextPage: fetchingMoreGroups,
   } = useSearchGroups(q)
 
-  // ── Styles ──────────────────────────────────────────────────────────────────
+  const activeTabLoading =
+    tab === 'all' ? allLoading :
+    tab === 'people' ? peopleLoading :
+    tab === 'posts' ? postsLoading :
+    tab === 'jobs' ? jobsLoading :
+    tab === 'events' ? eventsLoading :
+    groupsLoading
 
-  const containerStyle: React.CSSProperties = {
-    maxWidth: 720,
-    margin: '0 auto',
-    padding: '20px 20px 80px',
-  }
-
-  const searchInputWrapStyle: React.CSSProperties = {
-    position: 'relative',
-    marginBottom: 24,
-  }
-
-  const tabBarStyle: React.CSSProperties = {
-    display: 'flex',
-    borderBottom: '0.5px solid var(--border-default)',
-    marginBottom: 20,
-    overflowX: 'auto',
-    scrollbarWidth: 'none',
-  }
-
-  function tabStyle(active: boolean): React.CSSProperties {
-    return {
-      padding: '10px 14px',
-      fontSize: 13,
-      fontWeight: 500,
-      color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-      background: 'none',
-      border: 'none',
-      borderBottom: active ? '2px solid var(--uc-indigo)' : '2px solid transparent',
-      cursor: 'pointer',
-      marginBottom: -1,
-      flexShrink: 0,
-    }
-  }
-
-  const sectionHeaderStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 500,
-    color: 'var(--text-secondary)',
-    letterSpacing: '0.04em',
-    marginBottom: 8,
-    marginTop: 20,
-    textTransform: 'uppercase',
-  }
-
-  const loadMoreStyle: React.CSSProperties = {
-    display: 'block',
-    width: '100%',
-    marginTop: 12,
-    padding: '10px',
-    fontSize: 13,
-    color: 'var(--uc-indigo-xl)',
-    background: 'var(--surface-raised)',
-    border: '0.5px solid var(--border-default)',
-    borderRadius: 'var(--r-md)',
-    cursor: 'pointer',
-    fontWeight: 500,
-    textAlign: 'center',
-  }
-
-  const cardWrapStyle: React.CSSProperties = {
-    background: 'var(--surface-card)',
-    border: '0.5px solid var(--border-default)',
-    borderRadius: 'var(--r-lg)',
-    overflow: 'hidden',
-    marginBottom: 16,
-  }
+  const isContentLoading = isSearchMode ? activeTabLoading : discoveryLoading
 
   // ── Search tab renderers ────────────────────────────────────────────────────
 
@@ -255,21 +276,21 @@ export default function ExplorePage() {
       <>
         {allData.people.length > 0 && (
           <>
-            <p style={sectionHeaderStyle}>People</p>
+            <h2 style={sectionHeaderStyle}>People</h2>
             <div style={cardWrapStyle}>{allData.people.map((p) => <PeopleResultCard key={p.id} person={p} query={q} />)}</div>
             <button style={loadMoreStyle} onClick={() => setTab('people')}>See all people results</button>
           </>
         )}
         {allData.posts.length > 0 && (
           <>
-            <p style={sectionHeaderStyle}>Posts</p>
+            <h2 style={sectionHeaderStyle}>Posts</h2>
             <div style={cardWrapStyle}>{allData.posts.map((p) => <PostResultCard key={p.id} post={p} query={q} />)}</div>
             <button style={loadMoreStyle} onClick={() => setTab('posts')}>See all post results</button>
           </>
         )}
         {allData.jobs.length > 0 && (
           <>
-            <p style={sectionHeaderStyle}>Jobs</p>
+            <h2 style={sectionHeaderStyle}>Jobs</h2>
             <div style={cardWrapStyle}>
               {allData.jobs.map((j) => (
                 <div key={j.id} style={{ padding: '10px 14px', borderBottom: '0.5px solid var(--border-default)', fontSize: 14 }}>
@@ -283,7 +304,7 @@ export default function ExplorePage() {
         )}
         {allData.events.length > 0 && (
           <>
-            <p style={sectionHeaderStyle}>Events</p>
+            <h2 style={sectionHeaderStyle}>Events</h2>
             <div style={cardWrapStyle}>
               {allData.events.map((ev) => (
                 <div key={ev.id} style={{ padding: '10px 14px', borderBottom: '0.5px solid var(--border-default)', fontSize: 14 }}>
@@ -297,7 +318,7 @@ export default function ExplorePage() {
         )}
         {allData.groups.length > 0 && (
           <>
-            <p style={sectionHeaderStyle}>Groups</p>
+            <h2 style={sectionHeaderStyle}>Groups</h2>
             <div style={cardWrapStyle}>{allData.groups.map((g) => <GroupResultCard key={g.id} group={g} />)}</div>
             <button style={loadMoreStyle} onClick={() => setTab('groups')}>See all group results</button>
           </>
@@ -419,10 +440,16 @@ export default function ExplorePage() {
 
   return (
     <div style={containerStyle}>
+      {/* Screen reader loading announcements */}
+      <div role="status" aria-live="polite" style={srOnlyStyle}>
+        {isContentLoading ? 'Loading content…' : ''}
+      </div>
+
       {/* Search input */}
       <div style={searchInputWrapStyle}>
         <Search
           size={16}
+          aria-hidden="true"
           style={{
             position: 'absolute',
             left: 12,
@@ -434,9 +461,12 @@ export default function ExplorePage() {
         />
         <input
           type="text"
+          aria-label="Search people, posts, groups, events"
           placeholder="Explore people, posts, groups, events…"
           value={inputValue}
           onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
           style={{
             width: '100%',
             height: 40,
@@ -446,7 +476,8 @@ export default function ExplorePage() {
             padding: '0 14px 0 36px',
             fontSize: 14,
             color: 'var(--text-primary)',
-            outline: 'none',
+            outline: searchFocused ? `2px solid var(--uc-indigo)` : 'none',
+            outlineOffset: 2,
             boxSizing: 'border-box',
           }}
         />
@@ -458,13 +489,13 @@ export default function ExplorePage() {
           {discoveryLoading && <DiscoverySkeleton />}
           {discovery && (
             <>
-              <DiscoverySection label="Trending" seeAllTo={`${PATHS.EXPLORE}?q= &tab=posts`}>
+              <DiscoverySection label="Trending" seeAllTo={`${PATHS.EXPLORE}?view=search&tab=posts`}>
                 <TrendingPosts posts={discovery.trendingPosts} />
               </DiscoverySection>
 
               <DiscoverySection
                 label="People you may know"
-                seeAllTo={`${PATHS.EXPLORE}?q= &tab=people`}
+                seeAllTo={`${PATHS.EXPLORE}?view=search&tab=people`}
               >
                 <PeopleSuggestions people={discovery.peopleSuggestions} />
               </DiscoverySection>
@@ -479,7 +510,7 @@ export default function ExplorePage() {
 
               <DiscoverySection
                 label="Featured alumni"
-                seeAllTo={`${PATHS.EXPLORE}?q= &tab=people&role=alumni`}
+                seeAllTo={`${PATHS.EXPLORE}?view=search&tab=people&role=alumni`}
               >
                 <FeaturedAlumni alumni={discovery.featuredAlumni} />
               </DiscoverySection>
@@ -491,15 +522,43 @@ export default function ExplorePage() {
       {/* Search mode */}
       {isSearchMode && (
         <>
-          <div style={tabBarStyle}>
+          <div
+            role="tablist"
+            aria-label="Search categories"
+            style={tabBarStyle}
+            onKeyDown={(e) => {
+              const keys = TABS.map((t) => t.key)
+              const idx = keys.indexOf(tab)
+              if (e.key === 'ArrowRight') { e.preventDefault(); setTab(keys[(idx + 1) % keys.length]) }
+              if (e.key === 'ArrowLeft')  { e.preventDefault(); setTab(keys[(idx - 1 + keys.length) % keys.length]) }
+              if (e.key === 'Home')       { e.preventDefault(); setTab(keys[0]) }
+              if (e.key === 'End')        { e.preventDefault(); setTab(keys[keys.length - 1]) }
+            }}
+          >
             {TABS.map(({ key, label }) => (
-              <button key={key} style={tabStyle(tab === key)} onClick={() => setTab(key)}>
+              <button
+                key={key}
+                role="tab"
+                id={`explore-tab-${key}`}
+                aria-selected={tab === key}
+                aria-controls="explore-panel"
+                tabIndex={tab === key ? 0 : -1}
+                style={tabStyle(tab === key)}
+                onClick={() => setTab(key)}
+              >
                 {label}
               </button>
             ))}
           </div>
           {tab === 'people' && <FilterPills />}
-          {tabContent[tab]()}
+          <div
+            role="tabpanel"
+            id="explore-panel"
+            aria-labelledby={`explore-tab-${tab}`}
+            tabIndex={0}
+          >
+            {tabContent[tab]()}
+          </div>
         </>
       )}
     </div>
