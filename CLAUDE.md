@@ -172,7 +172,7 @@ Cross-cutting services not owned by any module: `token.service.ts`, `email.servi
 | `src/hooks/` | Truly shared hooks: `useAuth`, `useSocket` |
 | `src/lib/` | Singleton instances: axios, queryClient, socket |
 | `src/pages/` | Route-level components — thin orchestrators, no business logic |
-| `src/stores/` | Zustand stores: `authStore`, `notificationsStore`, `uiStore`, `socketStore` |
+| `src/stores/` | Zustand stores: `authStore`, `notificationsStore`, `themeStore`, `socketStore` |
 | `src/styles/` | `tokens.css` (CSS vars), `index.css` (Tailwind entry + token import) |
 | `src/router/` | `index.tsx` (router), `paths.ts` (PATHS constants), `ProtectedRoute`, `AdminRoute`, `GuestRoute` |
 
@@ -330,3 +330,13 @@ Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`. CI (lint + 
 ### Deployment
 
 Render.com (`render.yaml`): API on Node runtime (Singapore region), frontend as static site, Postgres managed DB, Redis key-value store. Frontend can alternatively be deployed to Vercel (`vercel.json`). Production start command runs `db:migrate:prod` before starting the server.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
