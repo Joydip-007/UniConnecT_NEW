@@ -1,0 +1,173 @@
+title: UniConnecT Content Sync
+description: >
+  Scrapes a university website's news, notice and event pages, follows each item to its
+  detail page, and returns structured items (with attachments + an LLM sub-category) for
+  UniConnecT to import. Parameterized per tenant. Each list block returns the most-recent
+  detail-page URLs as plain strings; a goto_url + extraction pair then fetches each one.
+  Capped to the 5 most recent per source as a cost guard. Deduplication of already-imported
+  items is handled by the UniConnecT worker (app-level skip + a DB unique index on
+  (university_id, source_url)), not by this workflow.
+workflow_definition:
+  parameters:
+    - parameter_type: workflow
+      key: news_url
+      workflow_parameter_type: string
+      default_value: ""
+    - parameter_type: workflow
+      key: notice_url
+      workflow_parameter_type: string
+      default_value: ""
+    - parameter_type: workflow
+      key: event_url
+      workflow_parameter_type: string
+      default_value: ""
+  blocks:
+    - block_type: extraction
+      label: news_list
+      url: "{{ news_url or notice_url or event_url }}"
+      parameter_keys:
+        - news_url
+        - notice_url
+        - event_url
+      data_extraction_goal: >
+        If news_url is empty, return an empty list. Otherwise look at the news listing page
+        {{ news_url }} and return items as an array of the absolute detail-page URLs (plain
+        strings) of the 5 most recent news articles.
+      data_schema:
+        type: object
+        properties:
+          items:
+            type: array
+            items:
+              type: string
+    - block_type: for_loop
+      label: news_details
+      loop_variable_reference: "{{ news_list_output.items }}"
+      complete_if_empty: true
+      loop_blocks:
+        - block_type: goto_url
+          label: news_goto
+          url: "{{ current_value }}"
+        - block_type: extraction
+          label: news_detail
+          data_extraction_goal: >
+            Extract the full content of the news article on the CURRENT page. Return
+            source_url set to the current page URL, the title, the complete body text,
+            publishedDate if shown, a subCategory which is one of "academic", "campus" or
+            "events" that best describes it, and attachments: every downloadable file or
+            document linked in the article (PDF, DOCX, images) as objects with url and
+            fileName.
+          data_schema:
+            type: object
+            properties:
+              source_url: { type: string }
+              title: { type: string }
+              body: { type: string }
+              publishedDate: { type: string }
+              subCategory: { type: string }
+              attachments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url: { type: string }
+                    fileName: { type: string }
+    - block_type: extraction
+      label: notice_list
+      url: "{{ notice_url or news_url or event_url }}"
+      parameter_keys:
+        - news_url
+        - notice_url
+        - event_url
+      data_extraction_goal: >
+        If notice_url is empty, return an empty list. Otherwise look at the notice listing
+        page {{ notice_url }} and return items as an array of the absolute detail-page URLs
+        (plain strings) of the 5 most recent notices.
+      data_schema:
+        type: object
+        properties:
+          items:
+            type: array
+            items:
+              type: string
+    - block_type: for_loop
+      label: notice_details
+      loop_variable_reference: "{{ notice_list_output.items }}"
+      complete_if_empty: true
+      loop_blocks:
+        - block_type: goto_url
+          label: notice_goto
+          url: "{{ current_value }}"
+        - block_type: extraction
+          label: notice_detail
+          data_extraction_goal: >
+            Extract the full content of the notice on the CURRENT page. Return source_url set
+            to the current page URL, the title, the complete body text, publishedDate if
+            shown, and attachments: every downloadable file or document linked in the notice
+            (PDF, DOCX, images) as objects with url and fileName.
+          data_schema:
+            type: object
+            properties:
+              source_url: { type: string }
+              title: { type: string }
+              body: { type: string }
+              publishedDate: { type: string }
+              attachments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url: { type: string }
+                    fileName: { type: string }
+    - block_type: extraction
+      label: event_list
+      url: "{{ event_url or news_url or notice_url }}"
+      parameter_keys:
+        - news_url
+        - notice_url
+        - event_url
+      data_extraction_goal: >
+        If event_url is empty, return an empty list. Otherwise look at the event listing page
+        {{ event_url }} and return items as an array of the absolute detail-page URLs (plain
+        strings) of the 5 most recent events.
+      data_schema:
+        type: object
+        properties:
+          items:
+            type: array
+            items:
+              type: string
+    - block_type: for_loop
+      label: event_details
+      loop_variable_reference: "{{ event_list_output.items }}"
+      complete_if_empty: true
+      loop_blocks:
+        - block_type: goto_url
+          label: event_goto
+          url: "{{ current_value }}"
+        - block_type: extraction
+          label: event_detail
+          data_extraction_goal: >
+            Extract the full details of the event on the CURRENT page. Return source_url set
+            to the current page URL, the title, the complete description as body, the location,
+            startsAt (event start date/time in ISO 8601 if possible), endsAt if shown, a
+            subCategory which is one of "general", "career_fair", "seminar", "alumni_meetup",
+            "workshop" or "club", and attachments: every downloadable file linked on the page
+            as objects with url and fileName.
+          data_schema:
+            type: object
+            properties:
+              source_url: { type: string }
+              title: { type: string }
+              body: { type: string }
+              location: { type: string }
+              startsAt: { type: string }
+              endsAt: { type: string }
+              subCategory: { type: string }
+              attachments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url: { type: string }
+                    fileName: { type: string }

@@ -3,6 +3,7 @@ import { db } from '../../config/db'
 import { getIo } from '../../socket'
 import { forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
+import { getAttachmentsFor } from '../content-sync/attachments'
 import type { CreateNewsInput, NewsListQuery, UpdateNewsInput } from './schema'
 
 interface AuthContext {
@@ -26,6 +27,9 @@ interface NewsRow {
   category: string
   is_published: boolean
   is_pinned: boolean
+  is_announcement: boolean
+  is_imported: boolean
+  source_url: string | null
   view_count: number
   published_at: Date | null
   created_at: Date
@@ -101,12 +105,19 @@ export class NewsService {
         .catch((error: unknown) => logger.warn('Failed to increment news view count', { error, newsId }))
     }
 
-    return toNews(row)
+    const attachments = await getAttachmentsFor('news', newsId)
+    return { ...toNews(row), attachments }
   }
 
   async updateNews(context: AuthContext, newsId: string, input: UpdateNewsInput) {
     const existing = await db('news')
-      .select<{ id: string; author_id: string; is_published: boolean; title: string }[]>('id', 'author_id', 'is_published', 'title')
+      .select<{ id: string; author_id: string; is_published: boolean; title: string; category: string }[]>(
+        'id',
+        'author_id',
+        'is_published',
+        'title',
+        'category',
+      )
       .where({ id: newsId, university_id: context.universityId })
       .first()
 
@@ -116,6 +127,7 @@ export class NewsService {
     }
 
     const publishingNow = input.is_published === true && !existing.is_published
+    const effectiveCategory = input.category ?? existing.category
     await db('news')
       .where({ id: newsId, university_id: context.universityId })
       .update({
@@ -132,11 +144,32 @@ export class NewsService {
         updated_at: db.fn.now(),
       })
 
+    // A notice becoming published takes over as the single featured announcement,
+    // demoting the previous one to the normal notice list.
+    if (publishingNow && effectiveCategory === 'notice') {
+      await this.rotateAnnouncement(context.universityId, newsId)
+    }
+
     const news = await this.getNews({ ...context, role: 'admin' }, newsId, { incrementView: false })
     if (publishingNow) {
       getIo().to(`uni:${context.universityId}`).emit('news:published', { news })
     }
     return news
+  }
+
+  /**
+   * Makes `newsId` the single featured announcement for the university.
+   * Clears the previous one first (in one transaction) so the partial unique
+   * index `(university_id) where is_announcement` is never violated.
+   */
+  async rotateAnnouncement(universityId: string, newsId: string) {
+    await db.transaction(async (trx) => {
+      await trx('news')
+        .where({ university_id: universityId, is_announcement: true })
+        .whereNot('id', newsId)
+        .update({ is_announcement: false })
+      await trx('news').where({ id: newsId, university_id: universityId }).update({ is_announcement: true })
+    })
   }
 
   async deleteNews(context: AuthContext, newsId: string) {
@@ -171,6 +204,9 @@ function newsSelectQuery() {
       'news.category',
       'news.is_published',
       'news.is_pinned',
+      'news.is_announcement',
+      'news.is_imported',
+      'news.source_url',
       'news.view_count',
       'news.published_at',
       'news.created_at',
@@ -220,6 +256,9 @@ function toNews(row: NewsRow) {
     category: row.category,
     isPublished: row.is_published,
     isPinned: row.is_pinned,
+    isAnnouncement: row.is_announcement,
+    isImported: row.is_imported,
+    sourceUrl: row.source_url,
     viewCount: row.view_count,
     publishedAt: row.published_at,
     createdAt: row.created_at,

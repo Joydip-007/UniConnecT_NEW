@@ -24,6 +24,10 @@ const envSchema = z.object({
   DEV_INVITE_TOKEN: z.string().default('dev-invite'),
   DEV_INVITE_EMAIL: z.string().email().default('student@uiu.ac.bd'),
   DEV_INVITE_ROLE: z.enum(['student', 'alumni', 'faculty', 'admin']).default('student'),
+  SKYVERN_API_KEY: z.string().optional(),
+  SKYVERN_BASE_URL: z.string().url().default('https://api.skyvern.com'),
+  SKYVERN_CONTENT_WORKFLOW_ID: z.string().optional(),
+  SKYVERN_RUN_TIMEOUT_MS: z.coerce.number().int().positive().default(600000),
 })
 
 const parsedEnv = envSchema.parse(process.env)

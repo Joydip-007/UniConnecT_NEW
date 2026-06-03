@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Newspaper, Plus } from 'lucide-react'
+import { Newspaper, Plus, Megaphone } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { api } from '@/lib/axios'
 import { EmptyState } from '@/components/EmptyState'
@@ -16,6 +16,7 @@ interface NewsItem {
   body: string
   coverUrl: string | null
   category: string
+  isAnnouncement?: boolean
   publishedAt: string | null
   createdAt: string
   author: { fullName: string | null }
@@ -25,7 +26,7 @@ interface NewsPageData {
   items: NewsItem[]
 }
 
-const CATEGORIES = ['all', 'academic', 'events', 'campus'] as const
+const CATEGORIES = ['all', 'notice', 'academic', 'events', 'campus'] as const
 
 export default function NewsPage() {
   const [params, setParams] = useSearchParams()
@@ -45,6 +46,9 @@ export default function NewsPage() {
   })
 
   const news = data ?? []
+  const announcement = (category === 'all' || category === 'notice')
+    ? news.find((item) => item.isAnnouncement)
+    : undefined
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: canCreate ? 80 : 0 }}>
@@ -69,6 +73,28 @@ export default function NewsPage() {
           </button>
         ))}
       </nav>
+
+      {announcement && (
+        <Link
+          to={`/news/${announcement.id}`}
+          style={{
+            display: 'block',
+            textDecoration: 'none',
+            padding: 16,
+            background: 'var(--uc-orange-bg)',
+            border: '0.5px solid var(--uc-orange-l)',
+            borderRadius: 'var(--r-lg)',
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--uc-orange-l)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Megaphone size={13} /> Announcement
+          </p>
+          <h2 style={{ margin: '6px 0 4px', fontSize: 17, fontWeight: 500, color: 'var(--uc-orange-l)' }}>{announcement.title}</h2>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--uc-orange-l)', opacity: 0.85, lineHeight: 1.5 }}>
+            {announcement.body.slice(0, 160)}{announcement.body.length > 160 ? '…' : ''}
+          </p>
+        </Link>
+      )}
 
       {isLoading ? (
         <p style={mutedStyle}>Loading news…</p>

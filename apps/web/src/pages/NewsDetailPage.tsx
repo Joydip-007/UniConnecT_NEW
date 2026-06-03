@@ -2,7 +2,9 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
+import type { ContentAttachment } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
+import { AttachmentList } from '@/features/content-sync'
 
 interface NewsDetail {
   id: string
@@ -13,6 +15,7 @@ interface NewsDetail {
   publishedAt: string | null
   createdAt: string
   author: { fullName: string | null }
+  attachments?: ContentAttachment[]
 }
 
 export default function NewsDetailPage() {
@@ -41,6 +44,7 @@ export default function NewsDetailPage() {
           {format(parseISO(data.publishedAt ?? data.createdAt), 'MMM d, yyyy')} · {data.author.fullName ?? 'UniConnecT'}
         </p>
         <div style={{ whiteSpace: 'pre-wrap', fontSize: 15, lineHeight: 1.75, color: 'var(--text-secondary)' }}>{data.body}</div>
+        <AttachmentList attachments={data.attachments} />
       </div>
     </article>
   )

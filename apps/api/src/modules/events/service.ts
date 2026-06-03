@@ -4,6 +4,7 @@ import { db } from '../../config/db'
 import { env } from '../../config/env'
 import { getIo } from '../../socket'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
+import { getAttachmentsFor } from '../content-sync/attachments'
 import type { AttendeesQuery, CreateEventInput, EventListQuery, PaginationQuery, UpdateEventInput } from './schema'
 
 type EventType = 'general' | 'career_fair' | 'seminar' | 'alumni_meetup' | 'workshop' | 'club'
@@ -123,7 +124,8 @@ export class EventsService {
 
     if (!row) throw notFound('Event not found', 'EVENT_NOT_FOUND')
     assertCanViewEvent(context, row)
-    return toEvent(row)
+    const attachments = await getAttachmentsFor('event', eventId)
+    return { ...toEvent(row), attachments }
   }
 
   async updateEvent(context: AuthContext, eventId: string, input: UpdateEventInput) {

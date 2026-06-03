@@ -16,6 +16,7 @@ import { newsRouter } from './modules/news'
 import { notificationsRouter } from './modules/notifications'
 import { campusRouter } from './modules/campus'
 import { connectionsRouter } from './modules/connections'
+import { contentSyncRouter } from './modules/content-sync'
 import { mentorshipRouter } from './modules/mentorship'
 import { searchRouter } from './modules/search'
 import { exploreRouter } from './modules/explore'
@@ -67,6 +68,7 @@ export function createApp() {
   )
 
   app.use('/api/v1/admin', adminRouter)
+  app.use('/api/v1/admin/content-sync', contentSyncRouter)
   app.use('/api/v1/auth', authRouter)
   app.use('/api/v1/users', usersRouter)
   app.use('/api/v1/upload', uploadRouter)

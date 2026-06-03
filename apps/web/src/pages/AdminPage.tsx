@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
   Users, FileText, Mail, Flag, Trash2, X,
-  ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle,
+  ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw,
 } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
@@ -14,6 +14,7 @@ import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
 import { ContentTab } from '@/pages/admin/ContentTab'
+import { ContentSyncPanel } from '@/features/content-sync'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -161,12 +162,13 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'reports'
+type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'content-sync' | 'reports'
 const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Overview', value: 'overview', icon: <FileText size={14} /> },
   { label: 'Users', value: 'users', icon: <Users size={14} /> },
   { label: 'Invite', value: 'invitations', icon: <Mail size={14} /> },
   { label: 'Content', value: 'content', icon: <LayoutGrid size={14} /> },
+  { label: 'Content sync', value: 'content-sync', icon: <RefreshCw size={14} /> },
   { label: 'Reports', value: 'reports', icon: <Flag size={14} /> },
 ]
 
@@ -1429,6 +1431,7 @@ export default function AdminPage() {
         {activeTab === 'users' && <UsersTab />}
         {activeTab === 'invitations' && <InvitationsTab />}
         {activeTab === 'content' && <ContentTab />}
+        {activeTab === 'content-sync' && <ContentSyncPanel />}
         {activeTab === 'reports' && <ReportsTab />}
       </div>
     </div>

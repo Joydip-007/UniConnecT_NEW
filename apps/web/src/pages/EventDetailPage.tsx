@@ -13,10 +13,12 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
+import type { ContentAttachment } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { queryClient } from '@/lib/queryClient'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn } from '@/components/Button'
+import { AttachmentList } from '@/features/content-sync'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ interface EventDetail {
   organizer: { id: string; fullName: string; avatarUrl: string | null }
   rsvpCounts: { going: number; maybe: number; not_going: number }
   myRsvp: RsvpStatus
+  attachments?: ContentAttachment[]
 }
 
 interface AttendeeItem {
@@ -752,6 +755,7 @@ export default function EventDetailPage() {
         >
           {event.description}
         </p>
+        <AttachmentList attachments={event.attachments} />
       </div>
 
       {/* ── Attendees ───────────────────────────────────────────────────── */}
