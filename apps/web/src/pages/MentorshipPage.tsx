@@ -1,12 +1,29 @@
 import { BookOpen } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { AlumniView, StudentView, ToastContainer, useToast } from '@/features/mentorship'
+import { MentorshipTab } from '@/pages/admin/MentorshipTab'
 
 export default function MentorshipPage() {
   const role = useAuthStore((s) => s.user?.role)
   const { toasts, addToast } = useToast()
 
-  if (role === 'faculty' || role === 'admin') {
+  if (role === 'admin') {
+    return (
+      <div>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Mentorship
+          </h1>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
+            Alumni mentor progress, points, and completed session feedback.
+          </p>
+        </div>
+        <MentorshipTab />
+      </div>
+    )
+  }
+
+  if (role === 'faculty') {
     return (
       <div
         style={{
