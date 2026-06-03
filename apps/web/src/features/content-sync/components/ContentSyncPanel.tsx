@@ -5,6 +5,8 @@ import { RefreshCw, Check, AlertTriangle } from 'lucide-react'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import {
   useContentSyncConfig,
+  usePendingImported,
+  usePublishImported,
   useSyncRuns,
   useTriggerSync,
   useUpdateContentSyncConfig,
@@ -41,6 +43,8 @@ const SOURCES = [
 export function ContentSyncPanel() {
   const { data: config, isLoading } = useContentSyncConfig()
   const { data: runs } = useSyncRuns()
+  const { data: pending } = usePendingImported()
+  const publishImported = usePublishImported()
   const updateConfig = useUpdateContentSyncConfig()
   const triggerSync = useTriggerSync()
 
@@ -143,6 +147,53 @@ export function ContentSyncPanel() {
           )}
         </div>
       </div>
+
+      {(() => {
+        const pendingItems = [
+          ...(pending?.news ?? []).map((n) => ({ kind: 'news' as const, id: n.id, title: n.title, meta: n.category })),
+          ...(pending?.events ?? []).map((e) => ({ kind: 'event' as const, id: e.id, title: e.title, meta: 'event' })),
+        ]
+        if (pendingItems.length === 0) return null
+        return (
+          <div style={card}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Pending review</h3>
+              <p style={{ ...label, marginTop: 4 }}>
+                Imported drafts awaiting publish. Publishing a notice also makes it the featured announcement.
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {pendingItems.map((item) => (
+                <div
+                  key={`${item.kind}-${item.id}`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 12px',
+                    background: 'var(--surface-page)',
+                    borderRadius: 'var(--r-md)',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.title}
+                    </p>
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.meta}</span>
+                  </div>
+                  <PrimaryBtn
+                    onClick={() => publishImported.mutate({ kind: item.kind, id: item.id })}
+                    disabled={publishImported.isPending}
+                  >
+                    Publish
+                  </PrimaryBtn>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       <div style={card}>
         <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Recent syncs</h3>

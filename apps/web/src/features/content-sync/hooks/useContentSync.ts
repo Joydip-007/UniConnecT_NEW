@@ -39,6 +39,34 @@ export function useTriggerSync() {
   })
 }
 
+export interface PendingImported {
+  news: Array<{ id: string; title: string; category: string; createdAt: string }>
+  events: Array<{ id: string; title: string; startsAt: string; createdAt: string }>
+}
+
+/** Imported drafts awaiting admin review (bot-authored, so not in any author's Drafts view). */
+export function usePendingImported() {
+  return useQuery<PendingImported>({
+    queryKey: ['content-sync', 'pending'],
+    queryFn: () =>
+      api.get<{ data: PendingImported }>('/admin/content-sync/pending').then((r) => r.data.data),
+  })
+}
+
+export function usePublishImported() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ kind, id }: { kind: 'news' | 'event'; id: string }) =>
+      api
+        .patch(kind === 'news' ? `/news/${id}` : `/events/${id}`, { is_published: true })
+        .then((r) => r.data),
+    onSuccess: (_data, { kind }) => {
+      void qc.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
+      void qc.invalidateQueries({ queryKey: [kind === 'news' ? 'news' : 'events'] })
+    },
+  })
+}
+
 export function useSyncRuns() {
   return useQuery<ContentSyncRun[]>({
     queryKey: ['content-sync', 'runs'],

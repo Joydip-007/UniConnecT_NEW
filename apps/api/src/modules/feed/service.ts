@@ -35,6 +35,7 @@ interface PostRow {
   media_urls: string[] | null
   group_id: string | null
   is_pinned: boolean
+  is_published: boolean
   view_count: number
   created_at: Date
   updated_at: Date
@@ -92,7 +93,8 @@ interface SavedPostRow {
 
 export class FeedService {
   async listPosts(universityId: string, userId: string, query: PostListQuery) {
-    const countQuery = db('posts').where('posts.university_id', universityId)
+    // Drafts (is_published = false) never appear in the public feed — only in the author's Drafts view.
+    const countQuery = db('posts').where('posts.university_id', universityId).andWhere('posts.is_published', true)
     if (query.type) countQuery.andWhere('posts.type', query.type)
     if (query.authorId) countQuery.andWhere('posts.author_id', query.authorId)
 
@@ -102,6 +104,7 @@ export class FeedService {
 
     const rows = (await postSelectQuery(db, userId, universityId)
       .where('posts.university_id', universityId)
+      .andWhere('posts.is_published', true)
       .modify((builder) => {
         if (query.type) builder.andWhere('posts.type', query.type)
         if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
@@ -118,12 +121,12 @@ export class FeedService {
 
   async listGroupPosts(universityId: string, userId: string, groupId: string, query: PaginationQuery) {
     const [{ count }] = await db('posts')
-      .where({ university_id: universityId, group_id: groupId })
+      .where({ university_id: universityId, group_id: groupId, is_published: true })
       .count<CountRow[]>({ count: '*' })
     const total = Number(count)
 
     const rows = (await postSelectQuery(db, userId)
-      .where({ 'posts.university_id': universityId, 'posts.group_id': groupId })
+      .where({ 'posts.university_id': universityId, 'posts.group_id': groupId, 'posts.is_published': true })
       .orderBy('posts.is_pinned', 'desc')
       .orderBy('posts.created_at', 'desc')
       .limit(query.limit)
@@ -145,6 +148,7 @@ export class FeedService {
           content: input.content,
           media_urls: input.media_urls,
           group_id: input.group_id ?? null,
+          is_published: input.is_published ?? true,
         })
         .returning<{ id: string }[]>('id')
 
@@ -193,9 +197,12 @@ export class FeedService {
     })
 
     const post = await this.getPost(context.universityId, context.userId, postId, { incrementView: false })
-    const io = getIo()
-    io.to(`uni:${context.universityId}`).emit('post:created', post)
-    io.to(`uni:${context.universityId}`).emit('feed:post:new', { post })
+    // Drafts are not broadcast to the feed — only published posts reach other users.
+    if (post.isPublished) {
+      const io = getIo()
+      io.to(`uni:${context.universityId}`).emit('post:created', post)
+      io.to(`uni:${context.universityId}`).emit('feed:post:new', { post })
+    }
     return post
   }
 
@@ -210,6 +217,8 @@ export class FeedService {
       .first<PostRow>()
 
     if (!row) throw notFound('Post not found', 'POST_NOT_FOUND')
+    // A draft post is visible only to its author.
+    if (!row.is_published && row.author_id !== userId) throw notFound('Post not found', 'POST_NOT_FOUND')
 
     if (options.incrementView !== false) {
       void db('posts')
@@ -236,9 +245,13 @@ export class FeedService {
           type: input.type,
           group_id: input.group_id,
           is_pinned: input.is_pinned,
+          is_published: input.is_published,
         }),
         updated_at: db.fn.now(),
       })
+
+    // Publishing a draft for the first time broadcasts it to the feed.
+    const publishingNow = input.is_published === true && !post.is_published
 
     // Re-sync hashtags when content is being updated
     if (input.content !== undefined) {
@@ -262,7 +275,13 @@ export class FeedService {
       }
     }
 
-    return this.getPost(context.universityId, context.userId, postId, { incrementView: false })
+    const updated = await this.getPost(context.universityId, context.userId, postId, { incrementView: false })
+    if (publishingNow) {
+      const io = getIo()
+      io.to(`uni:${context.universityId}`).emit('post:created', updated)
+      io.to(`uni:${context.universityId}`).emit('feed:post:new', { post: updated })
+    }
+    return updated
   }
 
   async deletePost(context: AuthContext, postId: string) {
@@ -630,6 +649,7 @@ function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
       'posts.media_urls',
       'posts.group_id',
       'posts.is_pinned',
+      'posts.is_published',
       'posts.view_count',
       'posts.created_at',
       'posts.updated_at',
@@ -717,7 +737,12 @@ function commentSelectQuery(knex: Knex, userId: string) {
 
 async function assertPostInUniversity(postId: string, universityId: string) {
   const post = await db('posts')
-    .select<{ id: string; author_id: string; university_id: string }[]>('id', 'author_id', 'university_id')
+    .select<{ id: string; author_id: string; university_id: string; is_published: boolean }[]>(
+      'id',
+      'author_id',
+      'university_id',
+      'is_published',
+    )
     .where({ id: postId, university_id: universityId })
     .first()
 
@@ -789,6 +814,7 @@ function toPost(row: PostRow) {
     mediaUrls: row.media_urls ?? [],
     groupId: row.group_id,
     isPinned: row.is_pinned,
+    isPublished: row.is_published,
     viewCount: row.view_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Bus,
   PackageSearch,
+  FileText,
   UserCircle2,
   BookOpen,
   BarChart2,
@@ -208,6 +209,7 @@ export function LeftSidebar() {
     {
       groupLabel: 'You',
       items: [
+        { icon: FileText, label: 'Drafts', path: PATHS.DRAFTS },
         { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
         { icon: UserCircle2, label: 'My profile', path: profilePath },
         ...(user?.role === 'admin'

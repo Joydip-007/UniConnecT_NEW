@@ -243,7 +243,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
     return text.trim().length > 0
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(asDraft = false) {
     if (!canSubmit()) return
     const mediaUrls = photos.filter((p) => p.s3Url).map((p) => p.s3Url!)
     const pollData =
@@ -270,6 +270,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
         content: text.trim(),
         media_urls: mediaUrls,
         poll: pollData,
+        is_published: !asDraft,
       })
     }
     handleClose()
@@ -746,10 +747,15 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
+                {!isEditMode && (
+                  <GhostBtn onClick={() => handleSubmit(true)} disabled={!canSubmit()}>
+                    Save as draft
+                  </GhostBtn>
+                )}
                 <GhostBtn onClick={handleClose} disabled={isSubmitting}>
                   Cancel
                 </GhostBtn>
-                <PrimaryBtn onClick={handleSubmit} disabled={!canSubmit()}>
+                <PrimaryBtn onClick={() => handleSubmit(false)} disabled={!canSubmit()}>
                   {isSubmitting
                     ? isEditMode
                       ? 'Saving…'

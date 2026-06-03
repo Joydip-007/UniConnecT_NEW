@@ -41,8 +41,9 @@ interface NewsRow {
 
 export class NewsService {
   async listNews(context: AuthContext, query: NewsListQuery) {
-    const countQuery = db('news').where('university_id', context.universityId)
-    if (context.role !== 'admin') countQuery.andWhere('is_published', true)
+    // Drafts are never shown in the public list — for anyone. They surface only in the
+    // author's "Drafts" view (and, for imported items, the admin content-sync review).
+    const countQuery = db('news').where('university_id', context.universityId).andWhere('is_published', true)
     if (query.category) countQuery.andWhere('category', query.category)
 
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
@@ -50,8 +51,8 @@ export class NewsService {
 
     const rows = (await newsSelectQuery()
       .where('news.university_id', context.universityId)
+      .andWhere('news.is_published', true)
       .modify((builder) => {
-        if (context.role !== 'admin') builder.andWhere('news.is_published', true)
         if (query.category) builder.andWhere('news.category', query.category)
       })
       .orderBy('news.is_pinned', 'desc')
@@ -94,7 +95,10 @@ export class NewsService {
       .where({ 'news.id': newsId, 'news.university_id': context.universityId })
       .first<NewsRow>()
 
-    if (!row || (context.role !== 'admin' && !row.is_published)) {
+    // Visible if published, or it's the author's own draft, or (for imported items) an admin reviewing.
+    const canViewDraft =
+      row && (row.author_id === context.userId || (context.role === 'admin' && row.is_imported))
+    if (!row || (!row.is_published && !canViewDraft)) {
       throw notFound('News not found', 'NEWS_NOT_FOUND')
     }
 

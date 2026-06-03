@@ -38,6 +38,8 @@ export const PATHS = {
 
   CONNECTIONS: '/connections',
 
+  DRAFTS: '/drafts',
+
   ADMIN: '/admin',
 } as const
 

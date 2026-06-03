@@ -9,6 +9,8 @@ export interface CreatePostInput {
   media_urls?: string[]
   poll?: { question: string; options: string[]; expires_at?: string | null }
   group_id?: string | null
+  /** false → save as a private draft; it must NOT be inserted into the live feed. */
+  is_published?: boolean
 }
 
 export function useCreatePost() {
@@ -16,7 +18,12 @@ export function useCreatePost() {
   return useMutation({
     mutationFn: (input: CreatePostInput) =>
       api.post<{ data: FeedPost }>('/posts', input).then((r) => r.data.data),
-    onSuccess: (newPost) => {
+    onSuccess: (newPost, variables) => {
+      // Drafts never enter the feed cache — they live only in the Drafts view.
+      if (variables.is_published === false) {
+        queryClient.invalidateQueries({ queryKey: ['drafts', 'mine'] })
+        return
+      }
       queryClient.setQueriesData<FeedInfiniteData>(
         { queryKey: POSTS_FEED_KEY },
         (old) => {

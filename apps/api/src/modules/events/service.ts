@@ -36,6 +36,7 @@ interface EventRow {
   capacity: number | null
   type: EventType
   is_published: boolean
+  is_imported: boolean
   created_at: Date
   organizer_full_name: string
   organizer_avatar_url: string | null
@@ -78,8 +79,8 @@ export class EventsService {
 
     const rows = (await eventSelectQuery(db, context.userId)
       .where('events.university_id', context.universityId)
+      .andWhere('events.is_published', true)
       .modify((builder) => {
-        if (context.role !== 'admin') builder.andWhere('events.is_published', true)
         applyEventFilters(builder, query)
       })
       .orderBy('events.starts_at', 'asc')
@@ -273,9 +274,7 @@ export class EventsService {
         'my_rsvp_filter.status': 'going',
         'events.university_id': context.universityId,
       })
-      .modify((builder) => {
-        if (context.role !== 'admin') builder.andWhere('events.is_published', true)
-      })
+      .andWhere('events.is_published', true)
       .orderBy('events.starts_at', 'asc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as EventRow[]
@@ -287,9 +286,8 @@ export class EventsService {
 export const eventsService = new EventsService()
 
 function eventBaseQuery(knex: Knex, context: AuthContext) {
-  const query = knex('events').where('events.university_id', context.universityId)
-  if (context.role !== 'admin') query.andWhere('events.is_published', true)
-  return query
+  // Drafts never appear in public listings — author-only, surfaced in the "Drafts" view.
+  return knex('events').where('events.university_id', context.universityId).andWhere('events.is_published', true)
 }
 
 function applyEventFilters(query: Knex.QueryBuilder, filters: Partial<EventListQuery>) {
@@ -318,6 +316,7 @@ function eventSelectQuery(knex: Knex, userId: string) {
       'events.capacity',
       'events.type',
       'events.is_published',
+      'events.is_imported',
       'events.created_at',
       'profiles.full_name as organizer_full_name',
       'profiles.avatar_url as organizer_avatar_url',
@@ -354,8 +353,14 @@ async function assertVisibleEvent(context: AuthContext, eventId: string) {
   return event
 }
 
-function assertCanViewEvent(context: AuthContext, event: { organizer_id: string; is_published: boolean }) {
-  if (event.is_published || context.role === 'admin' || context.userId === event.organizer_id) return
+function assertCanViewEvent(
+  context: AuthContext,
+  event: { organizer_id: string; is_published: boolean; is_imported?: boolean },
+) {
+  // Published → anyone. Draft → only the organizer, or an admin reviewing an imported item.
+  if (event.is_published) return
+  if (context.userId === event.organizer_id) return
+  if (context.role === 'admin' && event.is_imported) return
   throw notFound('Event not found', 'EVENT_NOT_FOUND')
 }
 

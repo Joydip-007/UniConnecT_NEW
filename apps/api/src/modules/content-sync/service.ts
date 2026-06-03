@@ -82,6 +82,38 @@ export class ContentSyncService {
     return { runId: run.id }
   }
 
+  /**
+   * Imported drafts awaiting admin review. Imported items are authored by the campus bot,
+   * so they never appear in any author's "Drafts" view — this is the admin review queue.
+   */
+  async listPendingImported(universityId: string) {
+    const [news, events] = await Promise.all([
+      db('news')
+        .where({ university_id: universityId, is_imported: true, is_published: false })
+        .orderBy('created_at', 'desc')
+        .select<{ id: string; title: string; category: string; created_at: Date }[]>(
+          'id',
+          'title',
+          'category',
+          'created_at',
+        ),
+      db('events')
+        .where({ university_id: universityId, is_imported: true, is_published: false })
+        .orderBy('created_at', 'desc')
+        .select<{ id: string; title: string; starts_at: Date; created_at: Date }[]>(
+          'id',
+          'title',
+          'starts_at',
+          'created_at',
+        ),
+    ])
+
+    return {
+      news: news.map((n) => ({ id: n.id, title: n.title, category: n.category, createdAt: n.created_at })),
+      events: events.map((e) => ({ id: e.id, title: e.title, startsAt: e.starts_at, createdAt: e.created_at })),
+    }
+  }
+
   async listRuns(universityId: string, page: number, limit: number) {
     const [{ count }] = await db('content_sync_runs')
       .where({ university_id: universityId })

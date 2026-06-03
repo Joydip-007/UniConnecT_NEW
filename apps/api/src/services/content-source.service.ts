@@ -97,8 +97,15 @@ async function tryWordPress(spec: SourceSpec): Promise<RawItem[] | null> {
     `?per_page=${PER_PAGE}&_embed=1&orderby=date&order=desc`
 
   try {
+    // A real browser UA + JSON Accept maximizes the chance non-Cloudflare WAFs serve the
+    // REST API (the free path). Sites behind a JS challenge (e.g. BRACU/Cloudflare) still
+    // 403 here and correctly fall through to the Skyvern browser path.
     const res = await fetch(endpoint, {
-      headers: { 'user-agent': 'UniConnecT-ContentSync/1.0', accept: 'application/json' },
+      headers: {
+        'user-agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        accept: 'application/json',
+      },
     })
     if (!res.ok) return null
     const data: unknown = await res.json()

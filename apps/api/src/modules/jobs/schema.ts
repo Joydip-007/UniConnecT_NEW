@@ -34,6 +34,8 @@ export const CreateJobSchema = z
     application_url: z.string().url().nullable().optional(),
     applicationUrl: z.string().url().nullable().optional(),
     deadline: z.string().datetime({ offset: true }),
+    is_published: z.boolean().optional(),
+    isPublished: z.boolean().optional(),
   })
   .transform((value) => ({
     title: value.title,
@@ -45,6 +47,7 @@ export const CreateJobSchema = z
     salary_range: value.salary_range ?? value.salaryRange,
     application_url: value.application_url ?? value.applicationUrl,
     deadline: value.deadline,
+    is_published: value.is_published ?? value.isPublished ?? true,
   }))
 
 export const UpdateJobSchema = z
@@ -62,6 +65,8 @@ export const UpdateJobSchema = z
     deadline: z.string().datetime({ offset: true }).optional(),
     is_active: z.boolean().optional(),
     isActive: z.boolean().optional(),
+    is_published: z.boolean().optional(),
+    isPublished: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',
@@ -77,6 +82,7 @@ export const UpdateJobSchema = z
     application_url: value.application_url ?? value.applicationUrl,
     deadline: value.deadline,
     is_active: value.is_active ?? value.isActive,
+    is_published: value.is_published ?? value.isPublished,
   }))
 
 export const ApplyJobSchema = z

@@ -22,6 +22,11 @@ export const triggerRun = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await contentSyncService.triggerRun(universityId, userId), 202)
 })
 
+export const listPendingImported = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await contentSyncService.listPendingImported(universityId))
+})
+
 export const listRuns = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
   const { page, limit } = req.query as unknown as RunsQuery

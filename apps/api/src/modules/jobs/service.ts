@@ -40,6 +40,7 @@ interface JobRow {
   application_url: string | null
   deadline: Date
   is_active: boolean
+  is_published: boolean
   view_count: number
   created_at: Date
   poster_full_name: string
@@ -56,6 +57,7 @@ interface JobOwnerRow {
   university_id: string
   posted_by: string
   is_active: boolean
+  is_published: boolean
 }
 
 interface ApplicationRow {
@@ -107,6 +109,7 @@ export class JobsService {
     const rows = (await jobSelectQuery(db, userId)
       .where('jobs.university_id', universityId)
       .andWhere('jobs.is_active', true)
+      .andWhere('jobs.is_published', true)
       .andWhere('jobs.deadline', '>=', db.fn.now())
       .modify((builder) => applyJobFilters(builder, query))
       .orderBy('jobs.deadline', 'asc')
@@ -132,6 +135,7 @@ export class JobsService {
           salary_range: input.salary_range ?? null,
           application_url: input.application_url ?? null,
           deadline: new Date(input.deadline),
+          is_published: input.is_published ?? true,
         })
         .returning<{ id: string }[]>('id')
 
@@ -140,7 +144,8 @@ export class JobsService {
     })
 
     const job = await this.getJob(context.universityId, context.userId, jobId, { incrementView: false })
-    getIo().to(`uni:${context.universityId}`).emit('job:created', job)
+    // Drafts are not broadcast — only published jobs reach the board.
+    if (job.isPublished) getIo().to(`uni:${context.universityId}`).emit('job:created', job)
     return job
   }
 
@@ -155,6 +160,8 @@ export class JobsService {
       .first<JobRow>()
 
     if (!row || !row.is_active) throw notFound('Job not found', 'JOB_NOT_FOUND')
+    // A draft job is visible only to the user who posted it.
+    if (!row.is_published && row.posted_by !== userId) throw notFound('Job not found', 'JOB_NOT_FOUND')
 
     if (options.incrementView !== false) {
       void db('jobs')
@@ -184,10 +191,14 @@ export class JobsService {
           application_url: input.application_url,
           deadline: input.deadline ? new Date(input.deadline) : undefined,
           is_active: input.is_active,
+          is_published: input.is_published,
         }),
       })
 
-    return this.getJob(context.universityId, context.userId, jobId, { incrementView: false })
+    const publishingNow = input.is_published === true && !job.is_published
+    const updated = await this.getJob(context.universityId, context.userId, jobId, { incrementView: false })
+    if (publishingNow) getIo().to(`uni:${context.universityId}`).emit('job:created', updated)
+    return updated
   }
 
   async deleteJob(context: AuthContext, jobId: string) {
@@ -380,6 +391,7 @@ function activeJobsBaseQuery(knex: Knex, universityId: string) {
   return knex('jobs')
     .where('jobs.university_id', universityId)
     .andWhere('jobs.is_active', true)
+    .andWhere('jobs.is_published', true)
     .andWhere('jobs.deadline', '>=', knex.fn.now())
 }
 
@@ -414,6 +426,7 @@ function jobSelectQuery(knex: Knex, userId: string) {
       'jobs.application_url',
       'jobs.deadline',
       'jobs.is_active',
+      'jobs.is_published',
       'jobs.view_count',
       'jobs.created_at',
       'profiles.full_name as poster_full_name',
@@ -460,7 +473,7 @@ async function assertJobInUniversity(
   options: { includeInactive?: boolean } = {},
 ) {
   const query = db('jobs')
-    .select<JobOwnerRow[]>('id', 'university_id', 'posted_by', 'is_active')
+    .select<JobOwnerRow[]>('id', 'university_id', 'posted_by', 'is_active', 'is_published')
     .where({ id: jobId, university_id: universityId })
 
   if (!options.includeInactive) query.andWhere('is_active', true)
@@ -494,6 +507,7 @@ function toJob(row: JobRow) {
     applicationUrl: row.application_url,
     deadline: row.deadline,
     isActive: row.is_active,
+    isPublished: row.is_published,
     viewCount: row.view_count,
     createdAt: row.created_at,
     postedByUser: {

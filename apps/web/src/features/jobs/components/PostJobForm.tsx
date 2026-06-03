@@ -216,7 +216,7 @@ export function PostJobForm({ onClose }: Props) {
   }
 
   const postMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (isPublished: boolean) =>
       api
         .post<{ data: Job }>('/jobs', {
           title: form.title,
@@ -225,20 +225,22 @@ export function PostJobForm({ onClose }: Props) {
           type: form.type || undefined,
           description: form.description,
           requirements,
+          isPublished,
           ...(form.salaryRange.trim() && { salaryRange: form.salaryRange.trim() }),
           ...(form.applicationUrl.trim() && { applicationUrl: form.applicationUrl.trim() }),
           ...(form.deadline && { deadline: new Date(form.deadline).toISOString() }),
         })
         .then((r) => r.data.data),
-    onSuccess: () => {
+    onSuccess: (_data, isPublished) => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] })
+      if (!isPublished) queryClient.invalidateQueries({ queryKey: ['drafts', 'mine'] })
       onClose()
     },
   })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    postMutation.mutate()
+    postMutation.mutate(true)
   }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -483,6 +485,9 @@ export function PostJobForm({ onClose }: Props) {
           >
             <GhostBtn type="button" onClick={onClose}>
               Cancel
+            </GhostBtn>
+            <GhostBtn type="button" disabled={!isValid || postMutation.isPending} onClick={() => postMutation.mutate(false)}>
+              Save as draft
             </GhostBtn>
             <OrangeBtn type="submit" disabled={!isValid || postMutation.isPending}>
               {postMutation.isPending ? 'Posting…' : 'Post job'}

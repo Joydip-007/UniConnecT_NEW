@@ -19,6 +19,8 @@ export const CreatePostSchema = z.object({
   media_urls: z.array(z.string().url()).default([]),
   type: CreatePostTypeSchema.default('post'),
   group_id: z.string().uuid().nullable().optional(),
+  /** false → save as a private draft (author-only, not broadcast to the feed). */
+  is_published: z.boolean().default(true),
   poll: z
     .object({
       question: z.string().trim().min(1).max(500),
@@ -35,6 +37,7 @@ export const UpdatePostSchema = z
     type: CreatePostTypeSchema.optional(),
     group_id: z.string().uuid().nullable().optional(),
     is_pinned: z.boolean().optional(),
+    is_published: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',

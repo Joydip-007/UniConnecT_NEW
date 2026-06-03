@@ -68,6 +68,8 @@ export const router = createBrowserRouter([
           { path: PATHS.TAG, element: page(() => import('@/pages/TagPage')) },
 
           { path: PATHS.CONNECTIONS, element: page(() => import('@/pages/ConnectionsPage')) },
+
+          { path: PATHS.DRAFTS, element: page(() => import('@/pages/DraftsPage')) },
         ],
       },
 
