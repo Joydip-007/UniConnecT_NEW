@@ -12,6 +12,7 @@ import type {
   IncomingRequestsQuery,
   PaginationQuery,
   RedeemGiftCardInput,
+  SubmitFeedbackInput,
   UpdateRequestInput,
   UpdateSessionInput,
 } from './schema'
@@ -602,6 +603,86 @@ export class MentorshipService {
     }
 
     await db('mentorship_sessions').where({ id: sessionId }).delete()
+  }
+
+  // ── FEEDBACK ─────────────────────────────────────────────────────────────────
+
+  async submitFeedback(context: AuthContext, requestId: string, input: SubmitFeedbackInput) {
+    const request = await db('mentorship_requests')
+      .where({ id: requestId, university_id: context.universityId, is_deleted: false })
+      .select<{ student_id: string; alumni_id: string; status: RequestStatus }[]>(
+        'student_id', 'alumni_id', 'status',
+      )
+      .first()
+
+    if (!request) throw notFound('Mentorship request not found', 'REQUEST_NOT_FOUND')
+
+    if (request.status !== 'completed') {
+      throw badRequest('Feedback can only be submitted for completed requests', 'FEEDBACK_REQUEST_NOT_COMPLETED')
+    }
+
+    const isStudent = context.userId === request.student_id
+    const isAlumni = context.userId === request.alumni_id
+    if (!isStudent && !isAlumni) throw forbidden()
+
+    const authorRole = isStudent ? 'student' : 'alumni'
+
+    try {
+      const [row] = await db('mentorship_feedback')
+        .insert({
+          university_id: context.universityId,
+          request_id: requestId,
+          author_id: context.userId,
+          author_role: authorRole,
+          rating: input.rating,
+          comment: input.comment ?? null,
+        })
+        .returning<{ id: string; author_role: string; rating: number; comment: string | null; created_at: Date }[]>(
+          ['id', 'author_role', 'rating', 'comment', 'created_at'],
+        )
+
+      if (!row) throw badRequest('Feedback could not be saved', 'FEEDBACK_CREATE_FAILED')
+
+      return {
+        id: row.id,
+        authorId: context.userId,
+        authorRole: row.author_role,
+        rating: row.rating,
+        comment: row.comment,
+        createdAt: row.created_at,
+      }
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw conflict('Feedback already submitted', 'FEEDBACK_ALREADY_SUBMITTED')
+      }
+      throw error
+    }
+  }
+
+  async getRequestFeedback(context: AuthContext, requestId: string) {
+    const request = await db('mentorship_requests')
+      .where({ id: requestId, university_id: context.universityId, is_deleted: false })
+      .select<{ student_id: string; alumni_id: string }[]>('student_id', 'alumni_id')
+      .first()
+
+    if (!request) throw notFound('Mentorship request not found', 'REQUEST_NOT_FOUND')
+
+    const isParticipant = context.userId === request.student_id || context.userId === request.alumni_id
+    if (!isParticipant && context.role !== 'admin') throw forbidden()
+
+    const rows = await db('mentorship_feedback')
+      .where({ request_id: requestId })
+      .select<{ id: string; author_id: string; author_role: string; rating: number; comment: string | null; created_at: Date }[]>(
+        'id', 'author_id', 'author_role', 'rating', 'comment', 'created_at',
+      )
+
+    const studentRow = rows.find((r) => r.author_role === 'student')
+    const alumniRow = rows.find((r) => r.author_role === 'alumni')
+
+    const toEntry = (r: typeof rows[number] | undefined) =>
+      r ? { id: r.id, authorId: r.author_id, authorRole: r.author_role, rating: r.rating, comment: r.comment, createdAt: r.created_at } : null
+
+    return { student: toEntry(studentRow), alumni: toEntry(alumniRow) }
   }
 
   // ── REWARDS ───────────────────────────────────────────────────────────────

@@ -113,6 +113,20 @@ export const updateAllowedDomains = asyncHandler(async (req: Request, res: Respo
   sendSuccess(res, await adminService.updateAllowedEmailDomains(universityId, userId, allowed_email_domains))
 })
 
+export const listMentors = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const page = Number(req.query.page ?? 1)
+  const limit = Number(req.query.limit ?? 20)
+  const result = await adminService.listMentors(universityId, { page, limit })
+  sendPaginated(res, result.items, result.total, result.page, limit)
+})
+
+export const getMentorRequests = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const alumniId = req.params.alumniId as string
+  sendSuccess(res, await adminService.getMentorRequests(universityId, alumniId))
+})
+
 function getAdminContext(req: Request) {
   if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
   if (!req.university) throw new AppError('University not resolved', 500, 'UNIVERSITY_NOT_RESOLVED')

@@ -11,6 +11,7 @@ import { avatarColor, getInitials } from '@/utils/avatar'
 import { PATHS } from '@/router/paths'
 import { formatDate } from '../constants'
 import type { AddToast, IncomingRequest, RequestStatus } from '../types'
+import { FeedbackSection } from './FeedbackSection'
 import { StatusBadge } from './StatusBadge'
 
 interface IncomingRequestCardProps {
@@ -312,6 +313,11 @@ export function IncomingRequestCard({
             </div>
           )}
         </div>
+      )}
+
+      {/* Feedback — completed requests only */}
+      {request.status === 'completed' && (
+        <FeedbackSection requestId={request.id} authorRole="alumni" />
       )}
     </div>
   )

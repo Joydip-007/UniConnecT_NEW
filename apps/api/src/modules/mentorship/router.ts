@@ -9,10 +9,12 @@ import {
   getIncomingRequests,
   getMyRequests,
   getMyRewards,
+  getRequestFeedback,
   listAlumni,
   listGiftCards,
   listSessions,
   redeemGiftCard,
+  submitFeedback,
   updateRequest,
   updateSession,
   withdrawRequest,
@@ -24,6 +26,7 @@ import {
   IncomingRequestsQuerySchema,
   PaginationQuerySchema,
   RedeemGiftCardSchema,
+  SubmitFeedbackSchema,
   UpdateRequestSchema,
   UpdateSessionSchema,
 } from './schema'
@@ -84,6 +87,9 @@ mentorshipRouter.patch(
 )
 
 mentorshipRouter.delete('/requests/:id/sessions/:sid', deleteSession)
+
+mentorshipRouter.get('/requests/:id/feedback', getRequestFeedback)
+mentorshipRouter.post('/requests/:id/feedback', validate(SubmitFeedbackSchema), submitFeedback)
 
 mentorshipRouter.get('/rewards/me', requireRole('alumni'), getMyRewards)
 mentorshipRouter.get('/gift-cards', listGiftCards)

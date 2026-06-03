@@ -10,6 +10,7 @@ import type {
   IncomingRequestsQuery,
   PaginationQuery,
   RedeemGiftCardInput,
+  SubmitFeedbackInput,
   UpdateRequestInput,
   UpdateSessionInput,
 } from './schema'
@@ -105,4 +106,18 @@ export const deleteSession = asyncHandler(async (req: Request, res: Response) =>
   const sessionId = req.params.sid as string
   await mentorshipService.deleteSession(context, requestId, sessionId)
   res.status(204).end()
+})
+
+// ── FEEDBACK ──────────────────────────────────────────────────────────────────
+
+export const submitFeedback = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  sendSuccess(res, await mentorshipService.submitFeedback(context, requestId, req.body as SubmitFeedbackInput), 201)
+})
+
+export const getRequestFeedback = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  sendSuccess(res, await mentorshipService.getRequestFeedback(context, requestId))
 })

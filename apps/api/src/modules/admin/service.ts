@@ -39,6 +39,15 @@ interface CountRow {
   count: string | number
 }
 
+interface FeedbackEntry {
+  id: string
+  authorId: string
+  authorRole: 'student' | 'alumni'
+  rating: number
+  comment: string | null
+  createdAt: Date
+}
+
 interface AdminUserRow {
   id: string
   university_id: string
@@ -545,6 +554,171 @@ export class AdminService {
 
       return { id: redemptionId, status: input.status }
     })
+  }
+
+  // ── MENTORSHIP DASHBOARD ──────────────────────────────────────────────────────
+
+  async listMentors(universityId: string, query: { page: number; limit: number }) {
+    const countResult = await db.raw<{ rows: { count: string }[] }>(
+      `SELECT COUNT(DISTINCT alumni_id) as count
+       FROM mentorship_requests
+       WHERE university_id = ? AND is_deleted = false`,
+      [universityId],
+    )
+    const total = Number(countResult.rows[0]?.count ?? 0)
+
+    interface MentorRow {
+      id: string
+      full_name: string
+      avatar_url: string | null
+      department: string | null
+      batch_year: string | null
+      mentorship_points: number
+      max_mentees: number
+      current_mentees: string | number
+      completed_count: string | number
+      total_sessions: string | number
+    }
+
+    const rows = await db('mentorship_requests')
+      .where({ 'mentorship_requests.university_id': universityId, 'mentorship_requests.is_deleted': false })
+      .join('users as u', 'u.id', 'mentorship_requests.alumni_id')
+      .join('profiles as p', 'p.user_id', 'u.id')
+      .groupBy('u.id', 'p.user_id', 'p.full_name', 'p.avatar_url', 'p.department', 'p.batch_year', 'p.mentorship_points', 'p.max_mentees')
+      .select<MentorRow[]>(
+        'u.id',
+        'p.full_name',
+        'p.avatar_url',
+        'p.department',
+        'p.batch_year',
+        'p.mentorship_points',
+        'p.max_mentees',
+        db.raw(`COUNT(CASE WHEN mentorship_requests.status = 'accepted' THEN 1 END)::int AS current_mentees`),
+        db.raw(`COUNT(CASE WHEN mentorship_requests.status = 'completed' THEN 1 END)::int AS completed_count`),
+        db.raw(`COALESCE((
+          SELECT COUNT(*)::int
+          FROM mentorship_sessions ms
+          JOIN mentorship_requests mr2 ON ms.request_id = mr2.id
+          WHERE mr2.alumni_id = u.id
+            AND mr2.university_id = ?
+            AND mr2.is_deleted = false
+        ), 0) AS total_sessions`, [universityId]),
+      )
+      .orderBy('p.full_name', 'asc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        fullName: r.full_name,
+        avatarUrl: r.avatar_url,
+        department: r.department,
+        batchYear: r.batch_year,
+        mentorshipPoints: r.mentorship_points,
+        maxMentees: r.max_mentees,
+        currentMentees: Number(r.current_mentees),
+        completedCount: Number(r.completed_count),
+        totalSessions: Number(r.total_sessions),
+      })),
+      total,
+      page: query.page,
+      hasMore: query.page * query.limit < total,
+    }
+  }
+
+  async getMentorRequests(universityId: string, alumniId: string) {
+    interface MentorRequestRow {
+      id: string
+      status: string
+      message: string
+      created_at: Date
+      updated_at: Date
+      student_id: string
+      student_full_name: string
+      student_avatar_url: string | null
+      student_department: string | null
+      student_batch_year: string | null
+      session_count: string | number
+    }
+
+    const rows = await db('mentorship_requests')
+      .where({
+        'mentorship_requests.university_id': universityId,
+        'mentorship_requests.alumni_id': alumniId,
+        'mentorship_requests.is_deleted': false,
+      })
+      .join('users as su', 'su.id', 'mentorship_requests.student_id')
+      .join('profiles as sp', 'sp.user_id', 'su.id')
+      .select<MentorRequestRow[]>(
+        'mentorship_requests.id',
+        'mentorship_requests.status',
+        'mentorship_requests.message',
+        'mentorship_requests.created_at',
+        'mentorship_requests.updated_at',
+        'su.id as student_id',
+        'sp.full_name as student_full_name',
+        'sp.avatar_url as student_avatar_url',
+        'sp.department as student_department',
+        'sp.batch_year as student_batch_year',
+        db.raw(
+          `(SELECT COUNT(*)::int FROM mentorship_sessions ms WHERE ms.request_id = mentorship_requests.id) AS session_count`,
+        ),
+      )
+      .orderBy('mentorship_requests.created_at', 'desc')
+
+    if (rows.length === 0) return []
+
+    const requestIds = rows.map((r) => r.id)
+
+    interface FeedbackRow {
+      request_id: string
+      id: string
+      author_id: string
+      author_role: string
+      rating: number
+      comment: string | null
+      created_at: Date
+    }
+
+    const feedbackRows = await db('mentorship_feedback')
+      .whereIn('request_id', requestIds)
+      .select<FeedbackRow[]>('request_id', 'id', 'author_id', 'author_role', 'rating', 'comment', 'created_at')
+
+    const feedbackMap = new Map<string, { student: FeedbackEntry | null; alumni: FeedbackEntry | null }>()
+    for (const fb of feedbackRows) {
+      if (!feedbackMap.has(fb.request_id)) {
+        feedbackMap.set(fb.request_id, { student: null, alumni: null })
+      }
+      const slot = feedbackMap.get(fb.request_id)!
+      const entry: FeedbackEntry = {
+        id: fb.id,
+        authorId: fb.author_id,
+        authorRole: fb.author_role as 'student' | 'alumni',
+        rating: fb.rating,
+        comment: fb.comment,
+        createdAt: fb.created_at,
+      }
+      if (fb.author_role === 'student') slot.student = entry
+      else slot.alumni = entry
+    }
+
+    return rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      message: r.message,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      sessionCount: Number(r.session_count),
+      student: {
+        id: r.student_id,
+        fullName: r.student_full_name,
+        avatarUrl: r.student_avatar_url,
+        department: r.student_department,
+        batchYear: r.student_batch_year,
+      },
+      feedback: feedbackMap.get(r.id) ?? { student: null, alumni: null },
+    }))
   }
 }
 

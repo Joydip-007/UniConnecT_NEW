@@ -10,10 +10,12 @@ import {
   deleteInvitation,
   deleteUser,
   getAllowedDomains,
+  getMentorRequests,
   getStats,
   listAdminRedemptions,
   listContent,
   listInvitations,
+  listMentors,
   listReports,
   listUsers,
   resolveReport,
@@ -82,6 +84,9 @@ adminRouter.delete('/content/:kind/:id', validateContentKind, deleteContentItem)
 adminRouter.patch('/content/:kind/:id/pin', validateContentKind, validate(TogglePinSchema), togglePin)
 adminRouter.patch('/content/:kind/:id/publish', validateContentKind, validate(TogglePublishSchema), togglePublish)
 adminRouter.patch('/content/:kind/:id/active', validateContentKind, validate(ToggleActiveSchema), toggleActive)
+
+adminRouter.get('/mentorship/mentors', validateRequest({ query: PaginationQuerySchema }), listMentors)
+adminRouter.get('/mentorship/mentors/:alumniId', getMentorRequests)
 
 adminRouter.get(
   '/mentorship/redemptions',

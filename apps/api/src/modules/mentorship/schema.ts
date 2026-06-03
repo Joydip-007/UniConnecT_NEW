@@ -61,3 +61,10 @@ export type UpdateRequestInput = z.infer<typeof UpdateRequestSchema>
 export type RedeemGiftCardInput = z.infer<typeof RedeemGiftCardSchema>
 export type CreateSessionInput = z.infer<typeof CreateSessionSchema>
 export type UpdateSessionInput = z.infer<typeof UpdateSessionSchema>
+
+export const SubmitFeedbackSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().max(1000).optional(),
+})
+
+export type SubmitFeedbackInput = z.infer<typeof SubmitFeedbackSchema>

@@ -8,6 +8,7 @@ import { avatarColor, getInitials } from '@/utils/avatar'
 import { PATHS } from '@/router/paths'
 import { formatDate } from '../constants'
 import type { MyRequest } from '../types'
+import { FeedbackSection } from './FeedbackSection'
 import { StatusBadge } from './StatusBadge'
 
 interface MyRequestRowProps {
@@ -146,6 +147,11 @@ export function MyRequestRow({ request }: MyRequestRowProps) {
             <MessageCircle size={13} strokeWidth={2} />
             Open chat
           </Link>
+        )}
+
+        {/* Feedback — completed requests only */}
+        {request.status === 'completed' && (
+          <FeedbackSection requestId={request.id} authorRole="student" />
         )}
 
         {/* Withdraw button — pending requests only */}
