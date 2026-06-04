@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-04
 **Status:** Approved (pending implementation plan)
-**Author:** Joydip + Claude
+**Author:** Joydip
 
 ## Summary
 
@@ -211,29 +211,3 @@ Per-tenant source URLs live in `university_settings` (set from the admin panel),
 ## Open questions
 
 None outstanding — all major decisions resolved during brainstorming.
-
-## Addendum (2026-06-04): WordPress REST primary, Skyvern fallback
-
-During implementation we found that `uiu.ac.bd` (and many university sites) run WordPress,
-which exposes a public REST API returning fully structured content — **zero browser
-automation, zero Skyvern credits**:
-
-- `GET {origin}/wp-json/wp/v2/{notice|news|event}?per_page=5&_embed=1&orderby=date&order=desc`
-- Per item: `link` (source_url), `title.rendered`, `content.rendered` (full HTML body),
-  `date` (ISO), `_embedded['wp:featuredmedia'][0].source_url` (cover), and for events the
-  `acf` block (`event_date_start`, `event_date_end`, `event_venue`, `event_organizer`,
-  `registration_url`). Attachments (PDF/DOC/XLS/PPT/ZIP) are parsed out of the body HTML.
-
-**Architecture decision:** `apps/api/src/services/content-source.service.ts` (`fetchContentItems`)
-probes each configured source's `/wp-json` endpoint. WordPress sources are fetched via REST
-and HTML is converted to plain text (the UI renders `body` as `white-space: pre-wrap`).
-Any source that is **not** WordPress falls back to the existing Skyvern workflow for those
-sources only. The worker then validates every item against `skyvernItemSchema` regardless of
-origin, so the rest of the pipeline (dedup, drafts, announcement rotation, attachment
-download) is unchanged.
-
-**Consequences:**
-- `triggerRun` no longer requires Skyvern to be configured — a WordPress tenant syncs with no
-  `SKYVERN_API_KEY` at all. Skyvern env vars are only needed for non-WordPress tenants.
-- For UIU specifically, the Skyvern workflow path is never exercised, so the `apps/api/skyvern/`
-  workflow remains a fallback and has not been re-validated live (saving credits).

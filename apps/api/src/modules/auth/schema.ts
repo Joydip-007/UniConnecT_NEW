@@ -54,10 +54,16 @@ export const ResendOtpSchema = z.object({
   purpose: OtpPurposeSchema,
 })
 
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
 export type RegisterInput = z.infer<typeof RegisterSchema>
 export type LoginInput = z.infer<typeof LoginSchema>
 export type VerifyOtpInput = z.infer<typeof VerifyOtpSchema>
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>
 export type ResendOtpInput = z.infer<typeof ResendOtpSchema>
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>
 export type OtpPurpose = z.infer<typeof OtpPurposeSchema>

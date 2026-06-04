@@ -2,6 +2,7 @@ import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
+import { tokenService } from '../../services/token.service'
 import { systemGroupsService } from '../groups/system-groups.service'
 import type {
   EducationInput,
@@ -139,11 +140,24 @@ export class UsersService {
     return this.getCurrentUser(userId, universityId)
   }
 
+  /** Reversible self-deactivation: hides the account and revokes every session. Reactivated on next login. */
+  async deactivateAccount(userId: string, universityId: string) {
+    const affected = await db('users')
+      .where({ id: userId, university_id: universityId })
+      .update({ is_active: false, deactivated_at: db.fn.now() })
+    if (affected === 0) throw notFound('User not found')
+
+    await tokenService.revokeAllUserSessions(userId)
+    return { deactivated: true }
+  }
+
   async getPublicProfile(currentUserId: string, targetUserId: string, universityId: string) {
     const user = await getUserProfileQuery()
       .where({ 'users.id': targetUserId, 'users.university_id': universityId })
       .first<UserProfileRow>()
     if (!user) throw notFound('User not found')
+    // Deactivated accounts are hidden from everyone except their owner.
+    if (!user.is_active && currentUserId !== targetUserId) throw notFound('User not found')
 
     // Upsert profile view (fire-and-forget, don't await)
     if (currentUserId !== targetUserId) {
@@ -253,6 +267,7 @@ export class UsersService {
 
     const rows = await getUserProfileQuery()
       .where('users.university_id', universityId)
+      .where('users.is_active', true)
       .whereNot('users.id', currentUserId)
       .modify((builder) => {
         if (currentUser.department) {
@@ -707,6 +722,7 @@ function getUserProfileQuery() {
 }
 
 function applyUserFilters(query: Knex.QueryBuilder, filters: Partial<UserListQuery>) {
+  query.where('users.is_active', true) // hide deactivated accounts from discovery
   if (filters.role) query.where('users.role', filters.role)
   if (filters.department) query.where('profiles.department', filters.department)
   if (filters.batch_year) query.where('profiles.batch_year', filters.batch_year)

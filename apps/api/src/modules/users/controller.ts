@@ -39,6 +39,11 @@ export const updateMyPreferences = asyncHandler(async (req: Request, res: Respon
   )
 })
 
+export const deactivateMe = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await usersService.deactivateAccount(context.userId, context.universityId))
+})
+
 export const getUser = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await usersService.getPublicProfile(context.userId, getUserIdParam(req), context.universityId))

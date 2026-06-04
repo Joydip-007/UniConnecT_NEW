@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, Check, LogOut, MessageSquare, Monitor, Moon, Search, Sun, User } from 'lucide-react'
+import { Bell, Check, LogOut, MessageSquare, Monitor, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
@@ -398,6 +398,16 @@ export function TopNav() {
               >
                 <User size={14} />
                 View profile
+              </button>
+
+              <button
+                role="menuitem"
+                onClick={() => { setMenuOpen(false); navigate(PATHS.SETTINGS) }}
+                className="nav-menu-item"
+                style={menuItemStyle}
+              >
+                <Settings size={14} />
+                Settings
               </button>
 
               <button

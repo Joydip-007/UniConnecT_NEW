@@ -28,6 +28,10 @@ const envSchema = z.object({
   SKYVERN_BASE_URL: z.string().url().default('https://api.skyvern.com'),
   SKYVERN_CONTENT_WORKFLOW_ID: z.string().optional(),
   SKYVERN_RUN_TIMEOUT_MS: z.coerce.number().int().positive().default(600000),
+  // Web Push (VAPID). Generate with: npx web-push generate-vapid-keys
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:noreply@uniconnectt.me'),
 })
 
 const parsedEnv = envSchema.parse(process.env)

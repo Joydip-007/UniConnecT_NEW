@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from 'react'
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
 import GuestRoute from './GuestRoute'
@@ -70,6 +70,30 @@ export const router = createBrowserRouter([
           { path: PATHS.CONNECTIONS, element: page(() => import('@/pages/ConnectionsPage')) },
 
           { path: PATHS.DRAFTS, element: page(() => import('@/pages/DraftsPage')) },
+
+          {
+            path: PATHS.SETTINGS,
+            element: page(() => import('@/pages/SettingsPage')),
+            children: [
+              { index: true, element: <Navigate to={PATHS.SETTINGS_NOTIFICATIONS} replace /> },
+              {
+                path: 'notifications',
+                element: page(() => import('@/features/settings/components/NotificationsSection')),
+              },
+              {
+                path: 'appearance',
+                element: page(() => import('@/features/settings/components/AppearanceSection')),
+              },
+              {
+                path: 'account',
+                element: page(() => import('@/features/settings/components/AccountSection')),
+              },
+              {
+                path: 'privacy',
+                element: page(() => import('@/features/settings/components/PrivacyPlaceholder')),
+              },
+            ],
+          },
         ],
       },
 

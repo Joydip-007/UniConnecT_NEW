@@ -4,8 +4,10 @@ import { rateLimiter } from '../../middleware/rateLimiter'
 import { resolveUniversity } from '../../middleware/university'
 import { validateBody } from '../../middleware/validate'
 import {
+  changePassword,
   checkInvitation,
   forgotPassword,
+  listSessions,
   login,
   logout,
   me,
@@ -13,10 +15,13 @@ import {
   register,
   resendOtp,
   resetPassword,
+  revokeOtherSessions,
+  revokeSession,
   verifyLoginOtp,
   verifyOtp,
 } from './controller'
 import {
+  ChangePasswordSchema,
   ForgotPasswordSchema,
   LoginSchema,
   RegisterSchema,
@@ -42,4 +47,8 @@ authRouter.post('/logout', logout)
 authRouter.post('/forgot-password', validateBody(ForgotPasswordSchema), forgotPassword)
 authRouter.post('/reset-password', otpLimiter, validateBody(ResetPasswordSchema), resetPassword)
 authRouter.get('/me', requireAuth, me)
+authRouter.post('/change-password', requireAuth, validateBody(ChangePasswordSchema), changePassword)
+authRouter.get('/sessions', requireAuth, listSessions)
+authRouter.delete('/sessions', requireAuth, revokeOtherSessions)
+authRouter.delete('/sessions/:sessionId', requireAuth, revokeSession)
 authRouter.get('/invitation/:token', checkInvitation)

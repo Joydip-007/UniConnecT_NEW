@@ -6,6 +6,7 @@ import {
   createEducation,
   createExperience,
   createFeatured,
+  deactivateMe,
   deleteEducation,
   deleteExperience,
   deleteFeatured,
@@ -44,6 +45,7 @@ usersRouter.use(requireAuth, resolveUniversity)
 usersRouter.get('/me', getMe)
 usersRouter.patch('/me', validate(UpdateProfileSchema), updateMe)
 usersRouter.patch('/me/preferences', validate(UpdatePreferencesSchema), updateMyPreferences)
+usersRouter.post('/me/deactivate', deactivateMe)
 usersRouter.get('/me/progress', getProgress)
 usersRouter.get('/suggestions', getSuggestions)
 usersRouter.get('/', validateRequest({ query: UserListQuerySchema }), listUsers)

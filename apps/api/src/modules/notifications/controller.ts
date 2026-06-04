@@ -4,6 +4,24 @@ import { sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import { notificationsService } from './service'
 import type { NotificationListQuery } from './schema'
+import type { NotificationPreferencesInput } from '@uniconnect/shared'
+
+export const getPreferences = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await notificationsService.getPreferences(context.userId))
+})
+
+export const updatePreferences = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await notificationsService.updatePreferences(
+      context.userId,
+      context.universityId,
+      req.body as NotificationPreferencesInput,
+    ),
+  )
+})
 
 export const listNotifications = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)

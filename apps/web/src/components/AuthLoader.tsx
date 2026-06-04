@@ -12,6 +12,36 @@ interface MeResponse {
   data: User
 }
 
+const DEV_MOCK_USER: User = {
+  id: 'dev-00000000-0000-0000-0000-000000000001',
+  email: 'dev@uiu.ac.bd',
+  role: 'student',
+  universityId: 'dev-00000000-0000-0000-0000-000000000002',
+  isVerified: true,
+  themePreference: 'dark',
+  profile: {
+    fullName: 'Dev User',
+    bio: 'Development bypass account for design verification.',
+    avatarUrl: null,
+    coverUrl: null,
+    headline: 'Software Engineering Student',
+    department: 'CSE',
+    batchYear: '2024',
+    linkedinUrl: null,
+    phone: null,
+    skills: ['React', 'TypeScript', 'Node.js'],
+    isOpenToWork: false,
+    isOpenToMentorship: false,
+    mentorshipPoints: 0,
+    maxMentees: 3,
+    location: 'Dhaka, Bangladesh',
+    websiteUrl: null,
+    githubUrl: null,
+    portfolioUrl: null,
+    isOpenToMsg: true,
+  },
+}
+
 export function AuthLoader({ children }: { children: ReactNode }) {
   const isLoading = useAuthStore((s) => s.isLoading)
   // Prevents React StrictMode's double-invocation from firing two simultaneous
@@ -25,6 +55,13 @@ export function AuthLoader({ children }: { children: ReactNode }) {
 
     async function rehydrate() {
       const { setAuth, setLoading, clearAuth } = useAuthStore.getState()
+
+      // DEV ONLY: ?dev-auth=1 seeds a mock user and skips the real refresh/login flow.
+      // Used for design verification screenshots without a running backend.
+      if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev-auth') === '1') {
+        setAuth(DEV_MOCK_USER, 'dev-bypass-token')
+        return
+      }
 
       // Skip refresh entirely when there's no prior session — avoids a guaranteed
       // 401 on every public page (forgot-password, login, register, etc.).

@@ -184,7 +184,7 @@ Notable feature internals:
 - `src/features/profile/` — `ProfileHeader`, `ProfileAbout`, `ProfileExperience`, `ProfileEducation`, `ProfileSkills`, `ProfileFeatured`, `ProfileContactInfo`, `ProfileActivity`, `ProfileAnalytics`, `ProfileViewers`, `ResumeExportButton`, plus editing modals (`ExperienceModal`, `EducationModal`, `FeaturedModal`, `EditProfileModal`)
 
 **All implemented page routes** (`src/router/paths.ts` + lazy pages in `src/pages/`):
-`/feed`, `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/explore`, `/explore/tag/:tag`, `/connections`, `/admin`
+`/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/admin`
 
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
@@ -329,7 +329,33 @@ Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`. CI (lint + 
 
 ### Deployment
 
-Render.com (`render.yaml`): API on Node runtime (Singapore region), frontend as static site, Postgres managed DB, Redis key-value store. Frontend can alternatively be deployed to Vercel (`vercel.json`). Production start command runs `db:migrate:prod` before starting the server.
+Azure App Service (CI/CD via GitHub Actions on `main`). The frontend can alternatively be deployed to Vercel (`vercel.json`). Production start command runs `db:migrate:prod` before starting the server.
+
+## Screenshots
+
+`screenshots/` holds reference PNG captures of every built page — used by Figma design sessions as the source of truth for what the live app looks like.
+
+**After any UI change to `apps/web/src/`, update the affected page screenshot(s):**
+
+```bash
+node scripts/screenshot.cjs <name>   # single page
+node scripts/screenshot.cjs all      # all pages
+```
+
+| Name | Route | Auth needed |
+|---|---|---|
+| `feed` | `/feed` | yes |
+| `profile` | `/profile/:devId` | yes |
+| `login` | `/login` | no |
+| `login-mob` | `/login` (390×844) | no |
+| `register` | `/register` | no |
+| `otp` | `/otp` | no |
+
+Rules:
+- Requires Vite dev server running (`npx pnpm --filter web dev`, port 5173). No backend needed.
+- Pages that require auth use `?dev-auth=1` — `AuthLoader` detects this in DEV mode and seeds a mock user, bypassing the real refresh/login flow entirely.
+- Replace the old screenshot — never keep both. The file in `screenshots/` is always the current state.
+- When adding a new page to `ROUTES` in `scripts/screenshot.cjs`, also add a row to this table.
 
 ## graphify
 

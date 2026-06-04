@@ -1,7 +1,17 @@
 import type { UserRole } from '@uniconnect/shared'
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_CATEGORY_MAP,
+  USER_CONTROLLABLE_CATEGORIES,
+  resolveNotificationCategory,
+  type ControllableCategory,
+  type NotificationPreferences,
+  type NotificationPreferencesInput,
+} from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { getIo } from '../../socket'
 import { notFound } from '../../utils/errors'
+import { enqueuePush } from '../push/service'
 import type { NotificationListQuery } from './schema'
 
 interface CountRow {
@@ -34,9 +44,16 @@ interface NotificationRow {
 
 export class NotificationsService {
   async listNotifications(userId: string, query: NotificationListQuery) {
-    const countQuery = db('notifications').where({ user_id: userId })
-    if (query.isRead !== undefined) countQuery.andWhere('is_read', query.isRead)
+    const prefs = await this.getEffectivePreferences(userId)
+    const hiddenTypes = disabledTypesFor(prefs)
 
+    const applyFilters = (builder: ReturnType<typeof db>) => {
+      if (query.isRead !== undefined) builder.andWhere('is_read', query.isRead)
+      if (hiddenTypes.length > 0) builder.whereNotIn('type', hiddenTypes)
+    }
+
+    const countQuery = db('notifications').where({ user_id: userId })
+    applyFilters(countQuery)
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
 
@@ -44,14 +61,15 @@ export class NotificationsService {
       .where('notifications.user_id', userId)
       .modify((builder) => {
         if (query.isRead !== undefined) builder.andWhere('notifications.is_read', query.isRead)
+        if (hiddenTypes.length > 0) builder.whereNotIn('notifications.type', hiddenTypes)
       })
       .orderBy('notifications.created_at', 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as NotificationRow[]
 
-    const [{ count: unreadCount }] = await db('notifications')
-      .where({ user_id: userId, is_read: false })
-      .count<CountRow[]>({ count: '*' })
+    const unreadQuery = db('notifications').where({ user_id: userId, is_read: false })
+    if (hiddenTypes.length > 0) unreadQuery.whereNotIn('type', hiddenTypes)
+    const [{ count: unreadCount }] = await unreadQuery.count<CountRow[]>({ count: '*' })
 
     return {
       items: rows.map(toNotification),
@@ -62,7 +80,16 @@ export class NotificationsService {
     }
   }
 
+  // The row is always persisted (some notifications, e.g. group_invite, are actionable and
+  // looked up by id later). The in-app channel gates the live socket emit + list visibility;
+  // the push channel gates web-push delivery. The `system` category bypasses both toggles.
   async createNotification(input: CreateNotificationInput) {
+    const category = resolveNotificationCategory(input.type)
+    const isSystem = category === 'system'
+    const channels = isSystem
+      ? { in_app: true, push: true }
+      : (await this.getEffectivePreferences(input.userId))[category as ControllableCategory]
+
     const [row] = await db('notifications')
       .insert({
         user_id: input.userId,
@@ -77,9 +104,55 @@ export class NotificationsService {
     if (!row) throw notFound('Notification not found', 'NOTIFICATION_NOT_FOUND')
 
     const notification = await this.getNotification(input.userId, row.id)
-    getIo().to(`user:${input.userId}`).emit('notification:new', { notification })
-    getIo().to(`user:${input.userId}`).emit('notification:new:legacy', notification)
+
+    if (channels.in_app) {
+      getIo().to(`user:${input.userId}`).emit('notification:new', { notification })
+      getIo().to(`user:${input.userId}`).emit('notification:new:legacy', notification)
+    }
+
+    if (channels.push) {
+      enqueuePush(input.userId, {
+        title: 'UniConnecT',
+        body: input.content,
+        url: notification.refUrl ?? '/notifications',
+      })
+    }
+
     return notification
+  }
+
+  async getPreferences(userId: string): Promise<NotificationPreferences> {
+    return this.getEffectivePreferences(userId)
+  }
+
+  async updatePreferences(
+    userId: string,
+    universityId: string,
+    input: NotificationPreferencesInput,
+  ): Promise<NotificationPreferences> {
+    const current = await this.getEffectivePreferences(userId)
+    const merged = mergePreferences(current, input)
+
+    await db('user_settings')
+      .insert({
+        user_id: userId,
+        university_id: universityId,
+        notification_preferences: merged,
+      })
+      .onConflict('user_id')
+      .merge({ notification_preferences: merged, updated_at: db.fn.now() })
+
+    return merged
+  }
+
+  private async getEffectivePreferences(userId: string): Promise<NotificationPreferences> {
+    const row = await db('user_settings')
+      .where({ user_id: userId })
+      .select<{ notification_preferences: Partial<NotificationPreferences> | null }[]>(
+        'notification_preferences',
+      )
+      .first()
+    return mergePreferences(row?.notification_preferences)
   }
 
   async markRead(userId: string, notificationId: string) {
@@ -151,6 +224,36 @@ export class NotificationsService {
 }
 
 export const notificationsService = new NotificationsService()
+
+/** Merge stored prefs (and an optional partial override) over the all-on defaults into a full matrix. */
+function mergePreferences(
+  stored?: Partial<NotificationPreferences> | null,
+  override?: NotificationPreferencesInput,
+): NotificationPreferences {
+  const result = {} as NotificationPreferences
+  for (const category of USER_CONTROLLABLE_CATEGORIES) {
+    const base = DEFAULT_NOTIFICATION_PREFERENCES[category]
+    const storedCat = stored?.[category]
+    const overrideCat = override?.[category]
+    result[category] = {
+      in_app: overrideCat?.in_app ?? storedCat?.in_app ?? base.in_app,
+      push: overrideCat?.push ?? storedCat?.push ?? base.push,
+    }
+  }
+  return result
+}
+
+/** Expand categories whose in-app channel is off into the concrete notification `type` values to hide. */
+function disabledTypesFor(prefs: NotificationPreferences): string[] {
+  const disabled = new Set<ControllableCategory>()
+  for (const category of USER_CONTROLLABLE_CATEGORIES) {
+    if (!prefs[category].in_app) disabled.add(category)
+  }
+  if (disabled.size === 0) return []
+  return Object.entries(NOTIFICATION_CATEGORY_MAP)
+    .filter(([, category]) => disabled.has(category as ControllableCategory))
+    .map(([type]) => type)
+}
 
 function notificationSelectQuery() {
   return db('notifications')

@@ -11,6 +11,7 @@ import { AppError } from '../../utils/errors'
 import { env } from '../../config/env'
 import { logger } from '../../utils/logger'
 import { systemGroupsService } from '../groups/system-groups.service'
+import { notificationsService } from '../notifications/service'
 import type { LoginInput, OtpPurpose, RegisterInput } from './schema'
 
 interface UserRow {
@@ -21,6 +22,16 @@ interface UserRow {
   role: UserRole
   is_verified: boolean
   is_active: boolean
+  deactivated_at?: Date | null
+}
+
+interface SessionRow {
+  id: string
+  device_info: Record<string, unknown> | null
+  ip_address: string | null
+  created_at: Date
+  expires_at: Date
+  refresh_token: string
 }
 
 interface UserWithProfileRow extends UserRow {
@@ -199,7 +210,13 @@ export class AuthService {
 
   async login(email: string, password: LoginInput['password'], universityId: string, ipAddress: string | null, deviceInfo: AuthDeviceInfo) {
     const user = await findUserWithProfileByEmail(email, universityId)
-    if (!user || !user.is_active) {
+    if (!user) {
+      throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
+    }
+
+    // Admin-disabled accounts (is_active false with no deactivated_at) cannot log in.
+    // Self-deactivated accounts (deactivated_at set) are reactivated below after the password check.
+    if (!user.is_active && !user.deactivated_at) {
       throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
     }
 
@@ -210,6 +227,11 @@ export class AuthService {
     if (!user.password_hash) throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
     const isPasswordValid = await bcrypt.compare(password, user.password_hash)
     if (!isPasswordValid) throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
+
+    // Valid credentials on a self-deactivated account → reactivate it.
+    if (!user.is_active && user.deactivated_at) {
+      await db('users').where({ id: user.id }).update({ is_active: true, deactivated_at: null })
+    }
 
     const accessToken = tokenService.generateAccessToken({
       userId: user.id,
@@ -344,6 +366,61 @@ export class AuthService {
 
     return toAuthUser(user)
   }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await db<UserRow>('users')
+      .where({ id: userId, is_deleted: false })
+      .select('id', 'password_hash')
+      .first()
+    if (!user) throw new AppError('User not found', 404, 'NOT_FOUND')
+    if (!user.password_hash) throw new AppError('Password is not set for this account', 400, 'BAD_REQUEST')
+
+    const isValid = await bcrypt.compare(currentPassword, user.password_hash)
+    if (!isValid) throw new AppError('Current password is incorrect', 400, 'INVALID_PASSWORD')
+
+    const passwordHash = await bcrypt.hash(newPassword, 12)
+    await db('users').where({ id: userId }).update({ password_hash: passwordHash })
+
+    await notificationsService
+      .createNotification({
+        userId,
+        type: 'password_changed',
+        content: 'Your password was changed.',
+      })
+      .catch((error: unknown) => logger.warn('Failed to create password_changed notification', { error }))
+
+    return { changed: true }
+  }
+
+  async listSessions(userId: string, currentRefreshToken?: string) {
+    const rows = await db<SessionRow>('user_sessions')
+      .where({ user_id: userId })
+      .orderBy('created_at', 'desc')
+      .select('id', 'device_info', 'ip_address', 'created_at', 'expires_at', 'refresh_token')
+
+    return rows.map((row) => ({
+      id: row.id,
+      deviceInfo: row.device_info,
+      ipAddress: row.ip_address,
+      createdAt: row.created_at,
+      expiresAt: row.expires_at,
+      isCurrent: Boolean(currentRefreshToken) && row.refresh_token === currentRefreshToken,
+    }))
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    const deleted = await db('user_sessions').where({ id: sessionId, user_id: userId }).delete()
+    if (deleted === 0) throw new AppError('Session not found', 404, 'NOT_FOUND')
+    return { revoked: true }
+  }
+
+  /** Logs out every other device, keeping the current session active. */
+  async revokeOtherSessions(userId: string, currentRefreshToken?: string) {
+    const query = db('user_sessions').where({ user_id: userId })
+    if (currentRefreshToken) query.andWhereNot({ refresh_token: currentRefreshToken })
+    const revoked = await query.delete()
+    return { revoked }
+  }
 }
 
 export const authService = new AuthService()
@@ -383,6 +460,7 @@ async function findUserWithProfile(userId: string) {
       'profiles.is_open_to_mentorship',
       'profiles.mentorship_points',
       'users.theme_preference',
+      'users.deactivated_at',
     )
     .where('users.id', userId)
     .where('users.is_deleted', false)
@@ -414,6 +492,7 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
       'profiles.is_open_to_mentorship',
       'profiles.mentorship_points',
       'users.theme_preference',
+      'users.deactivated_at',
     )
     .where({
       'users.email': email.toLowerCase(),

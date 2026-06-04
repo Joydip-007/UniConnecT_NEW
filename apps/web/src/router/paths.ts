@@ -40,6 +40,12 @@ export const PATHS = {
 
   DRAFTS: '/drafts',
 
+  SETTINGS: '/settings',
+  SETTINGS_NOTIFICATIONS: '/settings/notifications',
+  SETTINGS_APPEARANCE: '/settings/appearance',
+  SETTINGS_ACCOUNT: '/settings/account',
+  SETTINGS_PRIVACY: '/settings/privacy',
+
   ADMIN: '/admin',
 } as const
 

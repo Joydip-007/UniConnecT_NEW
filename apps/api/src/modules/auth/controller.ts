@@ -5,6 +5,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { AppError } from '../../utils/errors'
 import { authService } from './service'
 import type {
+  ChangePasswordInput,
   ForgotPasswordInput,
   LoginInput,
   RegisterInput,
@@ -113,6 +114,28 @@ export const checkInvitation = asyncHandler(async (req: Request, res: Response) 
   const { token } = req.params as { token: string }
   const data = await authService.peekInvitation(token, getUniversityId(req))
   res.json({ data })
+})
+
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
+  const body = req.body as ChangePasswordInput
+  res.json({ data: await authService.changePassword(req.user.userId, body.currentPassword, body.newPassword) })
+})
+
+export const listSessions = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
+  res.json({ data: await authService.listSessions(req.user.userId, req.cookies?.[refreshCookieName]) })
+})
+
+export const revokeSession = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
+  const { sessionId } = req.params as { sessionId: string }
+  res.json({ data: await authService.revokeSession(req.user.userId, sessionId) })
+})
+
+export const revokeOtherSessions = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
+  res.json({ data: await authService.revokeOtherSessions(req.user.userId, req.cookies?.[refreshCookieName]) })
 })
 
 function setRefreshCookie(res: Response, refreshToken: string) {
