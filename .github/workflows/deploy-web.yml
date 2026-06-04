@@ -40,4 +40,7 @@ jobs:
             > .vercel/project.json
 
       - name: Deploy to Vercel
-        run: npx vercel --prod --yes --token "${{ secrets.VERCEL_TOKEN }}"
+        # --archive=tgz uploads a single tarball instead of thousands of
+        # individual files, avoiding the Hobby-tier "api-upload-free" 5000
+        # files / 24h upload cap.
+        run: npx vercel --prod --yes --archive=tgz --token "${{ secrets.VERCEL_TOKEN }}"
