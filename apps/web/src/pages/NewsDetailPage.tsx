@@ -51,8 +51,8 @@ export default function NewsDetailPage() {
   if (isLoading) return <p style={mutedStyle}>Loading news…</p>
   if (!data) return <p style={mutedStyle}>News not found.</p>
 
-  // Authors can edit their own article; admins can edit imported (campus-bot) drafts.
-  const canEdit = Boolean(user && (user.id === data.authorId || (user.role === 'admin' && data.isImported)))
+  // Authors can edit their own article; admins can edit any news item.
+  const canEdit = Boolean(user && (user.id === data.authorId || user.role === 'admin'))
 
   return (
     <article style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
