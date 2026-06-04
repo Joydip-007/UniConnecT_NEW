@@ -51,25 +51,20 @@ export async function fetchContentItems(
         sources: skyvernSources.map((s) => s.source),
       })
     } else {
-      logger.info('Content source: Skyvern fallback', { sources: skyvernSources.map((s) => s.source) })
-      const raw = await pollRun(
-        await triggerWorkflow({
-          newsUrl: pick(skyvernSources, 'news'),
-          noticeUrl: pick(skyvernSources, 'notice'),
-          eventUrl: pick(skyvernSources, 'event'),
-          knownSourceUrls,
-        }),
-      )
-      const sk = parseSkyvernOutput(raw)
-      for (const spec of skyvernSources) grouped[spec.source] = sk[spec.source]
+      // The Skyvern workflow is single-source (one listing URL per run), so call it once per
+      // non-WordPress source. This keeps the workflow site-agnostic and sidesteps the
+      // empty-source navigation problem a multi-URL workflow would hit for tenants that only
+      // configure some of the three pages. Runs are sequential — fallback sources are rare.
+      for (const spec of skyvernSources) {
+        if (!spec.url) continue
+        logger.info('Content source: Skyvern fallback', { source: spec.source })
+        const raw = await pollRun(await triggerWorkflow({ listUrl: spec.url, knownSourceUrls }))
+        grouped[spec.source] = extractDetailItems(raw)
+      }
     }
   }
 
   return grouped
-}
-
-function pick(specs: SourceSpec[], source: ContentSyncSource): string | null {
-  return specs.find((s) => s.source === source)?.url ?? null
 }
 
 // ---------------------------------------------------------------------------
@@ -238,22 +233,15 @@ function safeCodePoint(code: number): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Normalizes Skyvern's run output into raw detail items grouped by source.
- * Each for_loop's output is exposed under `<source>_details_output` as an array of
+ * Normalizes one single-source Skyvern run's output into raw detail items.
+ * The `details` for_loop's output is exposed under `details_output` as an array of
  * iterations; each iteration is an array of nested-block outputs, and the extraction
  * block's data lives at `output_value.extracted_information`.
  */
-function parseSkyvernOutput(raw: unknown): Grouped {
-  const empty: Grouped = { news: [], notice: [], event: [] }
+function extractDetailItems(raw: unknown): RawItem[] {
   const parsed = typeof raw === 'string' ? safeJson(raw) : raw
-  if (!parsed || typeof parsed !== 'object') return empty
-
-  const obj = parsed as Record<string, unknown>
-  return {
-    news: extractLoopItems(obj.news_details_output),
-    notice: extractLoopItems(obj.notice_details_output),
-    event: extractLoopItems(obj.event_details_output),
-  }
+  if (!parsed || typeof parsed !== 'object') return []
+  return extractLoopItems((parsed as Record<string, unknown>).details_output)
 }
 
 function extractLoopItems(loopOutput: unknown): RawItem[] {

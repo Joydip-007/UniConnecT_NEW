@@ -9,9 +9,8 @@ import { logger } from '../utils/logger'
  */
 
 export interface SkyvernWorkflowParameters {
-  newsUrl?: string | null
-  noticeUrl?: string | null
-  eventUrl?: string | null
+  /** The single listing-page URL (news, notice, or event) this run scrapes. */
+  listUrl: string
   /** source_urls already ingested for this tenant — the workflow skips these. */
   knownSourceUrls: string[]
 }
@@ -69,9 +68,7 @@ export async function triggerWorkflow(params: SkyvernWorkflowParameters): Promis
       method: 'POST',
       body: JSON.stringify({
         data: {
-          news_url: params.newsUrl ?? null,
-          notice_url: params.noticeUrl ?? null,
-          event_url: params.eventUrl ?? null,
+          list_url: params.listUrl,
           known_source_urls: params.knownSourceUrls,
         },
       }),
