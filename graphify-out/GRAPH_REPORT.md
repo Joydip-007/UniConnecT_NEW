@@ -1,16 +1,16 @@
 # Graph Report - UniConnecT_NEW  (2026-06-04)
 
 ## Corpus Check
-- 751 files · ~987,245 words
+- 780 files · ~980,885 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 10071 nodes · 17506 edges · 742 communities (683 shown, 59 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 329 edges (avg confidence: 0.81)
+- 10295 nodes · 17914 edges · 770 communities (701 shown, 69 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 303 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6ab18283`
+- Built from commit: `4eb32271`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -627,7 +627,6 @@
 - [[_COMMUNITY_Community 672|Community 672]]
 - [[_COMMUNITY_Community 673|Community 673]]
 - [[_COMMUNITY_Community 674|Community 674]]
-- [[_COMMUNITY_Community 675|Community 675]]
 - [[_COMMUNITY_Community 676|Community 676]]
 - [[_COMMUNITY_Community 677|Community 677]]
 - [[_COMMUNITY_Community 678|Community 678]]
@@ -682,36 +681,59 @@
 - [[_COMMUNITY_Community 734|Community 734]]
 - [[_COMMUNITY_Community 735|Community 735]]
 - [[_COMMUNITY_Community 736|Community 736]]
+- [[_COMMUNITY_Community 738|Community 738]]
 - [[_COMMUNITY_Community 739|Community 739]]
 - [[_COMMUNITY_Community 740|Community 740]]
 - [[_COMMUNITY_Community 741|Community 741]]
 - [[_COMMUNITY_Community 742|Community 742]]
+- [[_COMMUNITY_Community 743|Community 743]]
+- [[_COMMUNITY_Community 744|Community 744]]
+- [[_COMMUNITY_Community 745|Community 745]]
 - [[_COMMUNITY_Community 746|Community 746]]
 - [[_COMMUNITY_Community 747|Community 747]]
+- [[_COMMUNITY_Community 748|Community 748]]
+- [[_COMMUNITY_Community 749|Community 749]]
+- [[_COMMUNITY_Community 750|Community 750]]
+- [[_COMMUNITY_Community 751|Community 751]]
+- [[_COMMUNITY_Community 752|Community 752]]
+- [[_COMMUNITY_Community 753|Community 753]]
+- [[_COMMUNITY_Community 754|Community 754]]
+- [[_COMMUNITY_Community 755|Community 755]]
+- [[_COMMUNITY_Community 756|Community 756]]
+- [[_COMMUNITY_Community 757|Community 757]]
+- [[_COMMUNITY_Community 758|Community 758]]
+- [[_COMMUNITY_Community 759|Community 759]]
+- [[_COMMUNITY_Community 760|Community 760]]
+- [[_COMMUNITY_Community 761|Community 761]]
+- [[_COMMUNITY_Community 765|Community 765]]
+- [[_COMMUNITY_Community 766|Community 766]]
+- [[_COMMUNITY_Community 767|Community 767]]
+- [[_COMMUNITY_Community 768|Community 768]]
+- [[_COMMUNITY_Community 769|Community 769]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `api` - 161 edges
-2. `notFound()` - 116 edges
-3. `db` - 111 edges
-4. `useAuthStore` - 77 edges
+1. `api` - 163 edges
+2. `notFound()` - 117 edges
+3. `db` - 116 edges
+4. `useAuthStore` - 82 edges
 5. `Avatar()` - 73 edges
 6. `GhostBtn()` - 62 edges
 7. `UserRole` - 56 edges
-8. `avatarColor()` - 52 edges
-9. `forbidden()` - 52 edges
+8. `forbidden()` - 54 edges
+9. `avatarColor()` - 52 edges
 10. `GroupsService` - 51 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Mobile Bottom Navigation Bar` --references--> `Notification Count Store`  [EXTRACTED]
-  .impeccable/critique/shots/feed-auth-mobile-390.png → apps/web/src/components/TopNav.tsx
-- `design system: Warm Futuristic Dark, CSS tokens, no hardcoded hex` --rationale_for--> `apps/web workspace`  [INFERRED]
-  CLAUDE.md → package.json
-- `Vercel frontend deployment` --conceptually_related_to--> `apps/web workspace`  [INFERRED]
-  deployment-ins.md → package.json
-- `JWT + refresh token auth flow` --conceptually_related_to--> `apps/api workspace`  [INFERRED]
-  CLAUDE.md → package.json
-- `test setup: supertest, loginAs, x-university-domain header` --conceptually_related_to--> `apps/api workspace`  [INFERRED]
-  CLAUDE.md → package.json
+- `Search Floating Panel HTML prototype (dark nav, 500px results panel, SSE tabs, keyboard hints)` --references--> `Impeccable Design JSON (UniConnecT design system: colors, typography, components, narrative)`  [INFERRED]
+  .superpowers/brainstorm/19907-1778866321/content/search-floating.html → .impeccable/design.json
+- `useConversationSocket hook` --implements--> `Socket.io conv:{conversationId} room`  [EXTRACTED]
+  apps/web/src/features/messages/hooks/useConversationSocket.ts → docs/architecture.md
+- `conversations DB table` --shares_data_with--> `Conversation`  [INFERRED]
+  docs/uniconnect_schema.sql → apps/web/src/features/messages/types.ts
+- `Sign In Card / Modal` --references--> `forgotPassword`  [EXTRACTED]
+  .impeccable/critique/shots/feed-unauth-desktop-1440.png → apps/api/src/modules/auth/controller.ts
+- `Mobile Bottom Navigation Bar` --implements--> `Mobile More Sheet`  [EXTRACTED]
+  .impeccable/critique/shots/feed-auth-mobile-390.png → apps/web/src/components/MobileBottomNav.tsx
 
 ## Hyperedges (group relationships)
 - **Vitest Runtime Uses MSW Server and Setup Contract** — vitestconfig_test_build_contract, setup_test_runtime, msw_server_test_server, msw_handlers_empty_registry [EXTRACTED 1.00]
@@ -776,91 +798,91 @@
 - **Favicon Education Brand Identity** — favicon_svg, favicon_orange_brand_mark, favicon_graduation_cap_symbol [INFERRED 0.80]
 - **UniConnecT Brand Identity** — logo_uniconnect_logo_asset, logo_academic_emblem, logo_wordmark, logo_orange_navy_brand_palette [INFERRED 0.86]
 
-## Communities (742 total, 59 thin omitted)
+## Communities (770 total, 69 thin omitted)
 
 ### Community 0 - "Feed UI & Admin Components"
-Cohesion: 0.05
-Nodes (109): Comment Reaction API, Comments Query Cache, ReactionBtn(), ReactionBtnProps, ActionBtn(), ActionBtnProps, CommentDrawer(), CommentItem() (+101 more)
+Cohesion: 0.08
+Nodes (54): CreatePost(), PhotoItem, pollInputStyle, PollOption, PostType, Props, TabBtnProps, TabMode (+46 more)
 
 ### Community 1 - "Jobs Backend Module"
-Cohesion: 0.05
-Nodes (57): FeedService Group Posts, Group Events And Collaborations, applyToJob, createJob, deleteJob, getJob, Jobs Controller, listJobApplications (+49 more)
+Cohesion: 0.06
+Nodes (56): FeedService Group Posts, Group Events And Collaborations, applyToJob, createJob, deleteJob, getJob, Jobs Controller, listJobApplications (+48 more)
 
 ### Community 2 - "Events Backend Module"
-Cohesion: 0.07
-Nodes (42): createEducation, createExperience, createFeatured, deleteEducation, deleteExperience, deleteFeatured, getMe, getMyAnalytics (+34 more)
+Cohesion: 0.08
+Nodes (39): createEducation, createExperience, createFeatured, deactivateMe, deleteEducation, deleteExperience, deleteFeatured, getMe (+31 more)
 
 ### Community 3 - "Feed Backend Module"
 Cohesion: 0.11
 Nodes (27): addCommentReaction, addReaction, createComment, createPost, deleteComment, deletePost, getComments, getPost (+19 more)
 
 ### Community 4 - "Groups Frontend"
-Cohesion: 0.05
-Nodes (106): getMyViewers(), ActiveGroups(), Props, AlumniCard(), AlumniCardProps, AnimatedTabBar(), Props, TabDef (+98 more)
+Cohesion: 0.10
+Nodes (21): buildSectionVisibility(), canViewSection(), evaluateTier(), isAcceptedConnection(), loadPrivacy(), mergePrivacy(), updatePrivacy(), EducationInput (+13 more)
 
 ### Community 5 - "Landing & Shared UI"
-Cohesion: 0.04
-Nodes (80): EmptyState(), ApplyModal(), blurBorder(), focusBorder(), inputStyle, Props, UploadState, BaseProps (+72 more)
+Cohesion: 0.09
+Nodes (35): blurBorder(), CreateEventForm(), EMPTY, EventEditInitial, EventForm, EventTypeOption, fieldStyle, focusBorder() (+27 more)
 
 ### Community 6 - "Mentorship & Nav UI"
-Cohesion: 0.22
-Nodes (10): Notifications Socket Hook Wiring, Socket Reconnect Banner, Feed Three Column Layout Shell, Admin Panel Role Gate, External Campus Tools, Grouped Campus Navigation, Mark All Notifications Read Mutation, Unread Notifications Query (+2 more)
+Cohesion: 0.67
+Nodes (3): Admin Panel Role Gate, External Campus Tools, Grouped Campus Navigation
 
 ### Community 7 - "Campus Tools Backend"
 Cohesion: 0.12
-Nodes (24): createCourse, createShuttleLocation, createShuttleRoute, enrollCourse, getLostFound, listCourses, listLostFound, listMyCourses (+16 more)
+Nodes (25): createCourse, createLostFound, createShuttleLocation, createShuttleRoute, enrollCourse, getLostFound, listCourses, listLostFound (+17 more)
 
 ### Community 8 - "Mentorship Backend"
 Cohesion: 0.05
-Nodes (46): createRequest, deleteSession, getIncomingRequests, getMyRequests, getMyRewards, getRequestFeedback, listAlumni, listGiftCards (+38 more)
+Nodes (45): createRequest, deleteSession, getIncomingRequests, getMyRequests, getMyRewards, getRequestFeedback, listAlumni, listGiftCards (+37 more)
 
 ### Community 9 - "Admin Module"
-Cohesion: 0.04
-Nodes (74): AuthLoader(), DEV_MOCK_USER, MeResponse, RefreshResponse, mocks, BrandLogo(), BrandLogoProps, FeedLayout() (+66 more)
+Cohesion: 0.12
+Nodes (16): FeedbackEntry, MentorRequest, MentorRequestList(), MentorshipTab(), MentorSummary, Paginated, useAdminMentorRequests(), useAdminMentors() (+8 more)
 
 ### Community 10 - "Integration Test Suite"
 Cohesion: 0.04
-Nodes (53): api, createPrivateGroup(), createPublicGroup(), api, api, createGroupWith3Members(), api, createGroupWithMember() (+45 more)
+Nodes (59): api, createPrivateGroup(), createPublicGroup(), api, api, createGroupWith3Members(), api, createGroupWithMember() (+51 more)
 
 ### Community 11 - "Screenshot Utility (agents)"
 Cohesion: 0.07
-Nodes (67): $(), ae(), at(), be(), bt(), ce(), ct(), de() (+59 more)
+Nodes (66): $(), ae(), at(), be(), bt(), ce(), ct(), de() (+58 more)
 
 ### Community 12 - "Screenshot Utility (claude)"
 Cohesion: 0.07
-Nodes (64): $(), ae(), at(), be(), bt(), ct(), de(), dt() (+56 more)
+Nodes (65): $(), ae(), at(), be(), bt(), ce(), ct(), de() (+57 more)
 
 ### Community 13 - "Design System Concepts"
 Cohesion: 0.14
 Nodes (25): AI Design Anti-patterns (Banned Patterns), Brand Register Design Rules, Color Strategy (Restrained/Committed/Full palette/Drenched), Font Selection Procedure and Reflex-reject List, Impeccable Command System, Impeccable Live Variant Mode, OKLCH Color System, Product Register Design Rules (+17 more)
 
 ### Community 14 - "Messages Backend"
-Cohesion: 0.07
-Nodes (51): Messages Module Barrel (messagesRouter), Messages Router, createConversation, createMessage, deleteMessage, getConversation, leaveConversation, listConversations (+43 more)
+Cohesion: 0.06
+Nodes (53): Messages Module Barrel (messagesRouter), Messages Router, createConversation, createMessage, deleteMessage, getConversation, leaveConversation, listConversations (+45 more)
 
 ### Community 15 - "Connections Frontend"
-Cohesion: 0.06
-Nodes (69): AlumniMentorToggle(), AlumniMentorToggleProps, ActiveRequests(), AlumniTab, AlumniView(), AlumniViewProps, TABS, Badge() (+61 more)
+Cohesion: 0.08
+Nodes (47): AlumniMentorToggle(), AlumniMentorToggleProps, ActiveRequests(), AlumniTab, AlumniView(), AlumniViewProps, TABS, GiftCardGrid() (+39 more)
 
 ### Community 16 - "Server Core & Middleware"
-Cohesion: 0.11
-Nodes (24): API Server Bootstrap, App Error Helpers, Auth Context, Refresh Token Cookie Helpers, Express Request Context, Notification Socket Events, Notifications Controller, Refresh Cookie Helpers (+16 more)
+Cohesion: 0.17
+Nodes (16): API Server Bootstrap, Badge Activity Count, Badge Award Worker, Email Queue Worker, Group Digest Notifications, Weekly Group Digest Worker, Structured Logger, Mentorship Bull Queue (+8 more)
 
 ### Community 17 - "Search Frontend"
-Cohesion: 0.23
-Nodes (20): Props, SearchPanel(), SectionLabel(), SkeletonRow(), Tab, TABS, useSearchAll(), useSearchEvents() (+12 more)
+Cohesion: 0.06
+Nodes (81): DiscoverySection(), Props, FilterPills(), ROLES, AVATAR_PALETTE, getInitials(), GroupResultCard(), Props (+73 more)
 
 ### Community 18 - "Auth Module"
-Cohesion: 0.07
-Nodes (46): Admin Validation Schemas, authRouter, loginLimiter, otpLimiter, Auth Controller, checkInvitation, login, logout (+38 more)
+Cohesion: 0.09
+Nodes (31): authRouter, loginLimiter, otpLimiter, changePassword, checkInvitation, listSessions, login, logout (+23 more)
 
 ### Community 19 - "Connections Backend"
-Cohesion: 0.13
-Nodes (16): Campus Auth Context, Campus Controller, CourseInput, CourseListQuery, EnrollCourseInput, ShuttleLocationInput, ShuttleRouteInput, Campus Service (+8 more)
+Cohesion: 0.14
+Nodes (15): Campus Auth Context, Campus Controller, CourseInput, CourseListQuery, EnrollCourseInput, ShuttleLocationInput, ShuttleRouteInput, Campus Service (+7 more)
 
 ### Community 20 - "Middleware & Explore API"
-Cohesion: 0.16
-Nodes (22): getUserEducation(), getUserExperience(), formatYearRange(), LockedCard(), Props, formatDateRange(), LockedCard(), ProfileExperience() (+14 more)
+Cohesion: 0.12
+Nodes (32): getMyAnalytics(), ProfileAbout(), Props, ProfileAnalytics(), StatBox(), InfoRow(), ProfileContactInfo(), Props (+24 more)
 
 ### Community 21 - "Live Browser UI (agents)"
 Cohesion: 0.06
@@ -871,20 +893,20 @@ Cohesion: 0.06
 Nodes (44): ACTIONS, annotLastPinClick, annotState, apply(), bufferToBase64(), buildCollapsible(), buildColorModels(), buildRadiiModels() (+36 more)
 
 ### Community 23 - "Socket, Workers & Bull"
-Cohesion: 0.05
-Nodes (66): Badge Queue, Badge Worker, bullQueueOptions, isTls, createKnexConfig(), createPostgresConnection(), createStableMigrationSource(), MigrationExtension (+58 more)
+Cohesion: 0.06
+Nodes (52): Badge Queue, Badge Worker, bullQueueOptions, isTls, createKnexConfig(), createPostgresConnection(), createStableMigrationSource(), MigrationExtension (+44 more)
 
 ### Community 24 - "UI Design Heuristics"
 Cohesion: 0.05
 Nodes (50): 60-30-10 Color Rule, AI Slop Detection, Audit Health Score (5-dimension), Brand vs Product Register, Three Types of Cognitive Load, Color Strategy (Restrained/Committed/Full/Drenched), Core Web Vitals (LCP/FID/CLS), Craft Production Quality Bar (+42 more)
 
 ### Community 25 - "Admin Controller Logic"
-Cohesion: 0.06
-Nodes (47): joinOrRequestGroup, AllowedRole, CreateResourceInput, GroupListQuery, MembersQuery, PaginationQuery, UpdateGroupInput, applyGroupFilters() (+39 more)
+Cohesion: 0.05
+Nodes (49): joinOrRequestGroup, AllowedRole, CreateResourceInput, GroupListQuery, MembersQuery, PaginationQuery, applyGroupFilters(), assertCanAdminGroup() (+41 more)
 
 ### Community 26 - "Admin Invitations & Reports"
-Cohesion: 0.09
-Nodes (37): createInvitation, deleteContentItem, deleteInvitation, deleteUser, getAllowedDomains, getMentorRequests, getStats, listAdminRedemptions (+29 more)
+Cohesion: 0.10
+Nodes (36): createInvitation, deleteContentItem, deleteInvitation, deleteUser, getAllowedDomains, getMentorRequests, getStats, listAdminRedemptions (+28 more)
 
 ### Community 27 - "Jobs Frontend"
 Cohesion: 0.06
@@ -899,36 +921,36 @@ Cohesion: 0.19
 Nodes (17): getAuthContext(), searchAllController, searchEventsController, searchGroupsController, searchJobsController, searchPeopleController, searchPostsController, Search Query Schemas (+9 more)
 
 ### Community 30 - "App Config & Express"
-Cohesion: 0.15
-Nodes (20): ContentSyncSource, asArray(), asString(), decodeEntities(), extractAttachments(), extractLoopItems(), fetchContentItems(), get() (+12 more)
+Cohesion: 0.10
+Nodes (32): ContentSyncSource, asArray(), asString(), decodeEntities(), extractAttachments(), extractDetailItems(), extractLoopItems(), fetchContentItems() (+24 more)
 
 ### Community 31 - "Groups Join-Request Logic"
-Cohesion: 0.22
-Nodes (14): EventSummaryCard(), Props, PeopleSuggestions(), Props, Props, UpcomingEvents(), DiscoveryResult, EventSummary (+6 more)
+Cohesion: 0.35
+Nodes (10): createEducation(), deleteEducation(), updateEducation(), currentYear, EducationModal(), FieldRow(), inputBase, onBlur() (+2 more)
 
 ### Community 32 - "Groups Service Layer"
-Cohesion: 0.15
-Nodes (20): DiscoverySection(), Props, FilterPills(), ROLES, Props, TrendingPosts(), TrendingPost, cardWrapStyle (+12 more)
+Cohesion: 0.08
+Nodes (36): FeedLayout(), CampusToolProps, LeftSidebar(), NavItemProps, FOCUSABLE_SELECTOR, MobileBottomNav(), MoreItem, AVATAR_PALETTE (+28 more)
 
 ### Community 33 - "Auth & Flow Concepts"
-Cohesion: 0.13
-Nodes (15): createLostFound, CreateLostFoundInput, UpdateLostFoundInput, assertCanModify(), assertLostFoundOwner(), AuthContext, CountRow, CourseRow (+7 more)
+Cohesion: 0.08
+Nodes (20): adminRouter, Env, envSchema, parsedEnv, isTls, pingRedis(), redis, contentSyncRouter (+12 more)
 
 ### Community 34 - "Users Backend"
-Cohesion: 0.22
-Nodes (17): COMMUNITY_LINKS, FooterColumnHeader(), FooterLink(), LandingFooter(), LEGAL_LINKS, PLATFORM_LINKS, SOCIAL_LINKS, FacebookIcon() (+9 more)
+Cohesion: 0.04
+Nodes (98): AboutSection(), TEAM, AboutTab(), Props, AdminStatsTab(), Props, StatCard(), StatCardSkeleton() (+90 more)
 
 ### Community 35 - "Groups Controller"
 Cohesion: 0.05
-Nodes (63): Groups Module Barrel (groupsRouter), Groups Router, cancelJoinRequest, createGroup, createStudySession, deleteGroup, deleteResource, deleteStudySession (+55 more)
+Nodes (64): Groups Module Barrel (groupsRouter), Groups Router, cancelJoinRequest, createGroup, createStudySession, deleteGroup, deleteResource, deleteStudySession (+56 more)
 
 ### Community 36 - "Live Server (agents)"
 Cohesion: 0.07
 Nodes (30): acknowledgePendingEvent(), annotRoot, args, child, childArgs, CONTEXT_DIR, createRequestHandler(), { detectScript, sessionPath, livePath } (+22 more)
 
 ### Community 37 - "News Backend"
-Cohesion: 0.13
-Nodes (23): createNews, deleteNews, getNews, listNews, News Controller, updateNews, newsRouter, CreateNewsInput (+15 more)
+Cohesion: 0.11
+Nodes (27): AttachmentRow, getAttachmentsFor(), createNews, deleteNews, getAuthContext(), getNews, listNews, News Controller (+19 more)
 
 ### Community 38 - "Notifications Backend"
 Cohesion: 0.25
@@ -943,8 +965,8 @@ Cohesion: 0.07
 Nodes (27): acknowledgePendingEvent(), annotRoot, args, child, childArgs, CONTEXT_DIR, { detectScript, sessionPath, livePath }, __dirname (+19 more)
 
 ### Community 41 - "Community 41"
-Cohesion: 0.13
-Nodes (6): EducationInput, ExperienceInput, UpdateProfileInput, isConnected(), UsersService, notFound()
+Cohesion: 0.12
+Nodes (26): Auth Context, FEED_RANKING, FEED_SORTS, FeedSort, Refresh Token Cookie Helpers, Refresh Cookie Helpers, ThemePreferenceInput, themePreferenceSchema (+18 more)
 
 ### Community 42 - "Community 42"
 Cohesion: 0.14
@@ -952,15 +974,15 @@ Nodes (40): buildColor(), CANONICAL_SECTIONS, collectBullets(), collectColorValu
 
 ### Community 43 - "Community 43"
 Cohesion: 0.16
-Nodes (15): Feed Page — Desktop 1440px Full Layout, Left Sidebar Navigation, Left Sidebar — Primary Nav Links (Feed, Explore, Jobs, Events, Groups, Messages, Notifications, News, Lost & Found, Mentorship, Shuttle, Connections), Left Sidebar — User Profile Mini-Card (avatar, name, role), Right Sidebar Panel, Right Sidebar — People You May Know / Suggestions Widget, Right Sidebar — Trending / Active Groups Widget, Right Sidebar — Upcoming Events Widget (+7 more)
+Nodes (16): Left Sidebar Navigation, Left Sidebar — User Profile Mini-Card (avatar, name, role), Campus Tools Section in Sidebar (Shuttle Live, xLME, CGPA Calculator), Dark Theme / Warm Futuristic Dark Design System, Sidebar Navigation Links (Home, Explore, Groups, Events, Jobs, News, Messages, Shuttle Tracker, Lost & Found, My Profile, Admin Panel), Right Sidebar Panel, Feed Desktop Screen (1440px), Three-Column Layout Pattern (+8 more)
 
 ### Community 44 - "Community 44"
 Cohesion: 0.09
 Nodes (35): cleanup-deprecated.mjs: remove deprecated impeccable skill files and lock entries, command-metadata.json: impeccable sub-command descriptions and argument hints, concept: carbonize — post-accept CSS cleanup step integrating scoped styles into project CSS, concept: CSP shapes (append-arrays, append-string, middleware, meta-tag), concept: DESIGN.md — Stitch-spec design system document, concept: impeccable sub-commands (craft, teach, live, audit, critique, etc.), concept: impeccable variant wrapper (HTML scaffold with data-impeccable-variants markers), concept: live-server HTTP endpoint for poll/reply protocol (+27 more)
 
 ### Community 45 - "Community 45"
-Cohesion: 0.07
-Nodes (36): OTP Verification Flow, Password Reset Flow, Authenticated User Profile Projection, Invitation Aware Registration Flow, OtpPurpose, Auth Service, AuthDeviceInfo, authMessages (+28 more)
+Cohesion: 0.10
+Nodes (21): LoginInput, OtpPurpose, RegisterInput, AuthDeviceInfo, authMessages, AuthService, enforceOtpResendLimit(), findUserByEmail() (+13 more)
 
 ### Community 46 - "Community 46"
 Cohesion: 0.17
@@ -975,8 +997,8 @@ Cohesion: 0.16
 Nodes (31): buildColor(), CANONICAL_SECTIONS, collectBullets(), collectColorValues(), collectParagraphs(), detectFormat(), extractColors(), extractComponents() (+23 more)
 
 ### Community 49 - "Community 49"
-Cohesion: 0.15
-Nodes (15): getUserFeatured(), FeaturedCard(), LockedCard(), ProfileFeatured(), Props, Profile Featured Migration, profile_featured Table, JobMatch (+7 more)
+Cohesion: 0.09
+Nodes (26): Events Controller, AttendeesQuery, CreateEventInput, PaginationQuery, UpdateEventInput, applyEventFilters(), assertCanMutateEvent(), assertCanViewEvent() (+18 more)
 
 ### Community 50 - "Community 50"
 Cohesion: 0.16
@@ -987,28 +1009,28 @@ Cohesion: 0.15
 Nodes (17): Auto-groups by batch year (alumni graduates, student cohorts), group_join_requests table for private group join flow, group_resources table for file link uploads with view tracking, group_study_sessions + RSVPs with capacity enforcement, Weekly group digest Bull repeatable job (Monday 09:00 BDT), Staff role renamed to faculty across entire stack, System groups (is_system=true) auto-managed by role/dept/batch, Zero-flash theme bootstrap script in index.html (+9 more)
 
 ### Community 52 - "Community 52"
-Cohesion: 0.09
-Nodes (42): DURATIONS, emptyForm(), ensureSessionKeyframes(), formatSessionDate(), FormState, ghostBtnStyle, iconBtnStyle, inputStyle (+34 more)
+Cohesion: 0.19
+Nodes (25): DURATIONS, emptyForm(), ensureSessionKeyframes(), formatSessionDate(), FormState, ghostBtnStyle, iconBtnStyle, inputStyle (+17 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.03
-Nodes (83): Events Module Barrel (eventsRouter), Events Router, Explore Module Barrel (exploreRouter), Explore Router, Async Handler, getAuthContext(), pingRedis(), acceptRequest (+75 more)
+Cohesion: 0.08
+Nodes (26): Async Handler, listMyDrafts, draftsRouter, DraftItem, DraftsService, RawDraft, requireAuth, requireRole() (+18 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.17
-Nodes (21): getMyAnalytics(), BadgesPanel(), Props, ProfileAbout(), Props, ProfileAnalytics(), StatBox(), ProfileEducation() (+13 more)
+Cohesion: 0.19
+Nodes (13): ActiveSession, changePassword(), deactivateAccount(), getActiveSessions(), getNotificationPreferences(), getPrivacyPreferences(), revokeOtherSessions(), revokeSession() (+5 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.09
 Nodes (27): Admin Content Moderation, Optimistic Admin Mutations, Admin Route Guard, Group Detail API Contract, Group Role-Based Tabs, Groups Directory Page, Groups Infinite Query, Guest Route Guard (+19 more)
 
 ### Community 56 - "Community 56"
-Cohesion: 0.06
-Nodes (40): Active Mentorship Request Unique Index, conversations Table, conversations.type Column, Database Migration CLI Script, Database Seed CLI Script, Development Seed Fixture, group_resources Table, group_study_sessions Table (+32 more)
+Cohesion: 0.05
+Nodes (46): Active Mentorship Request Unique Index, connections Table, conversations Table, conversations.type Column, Database Migration CLI Script, Database Seed CLI Script, Development Seed Fixture, follows Table (+38 more)
 
 ### Community 57 - "Community 57"
-Cohesion: 0.14
-Nodes (26): cleanup(), clearScrollY(), clearSession(), copyToClipboard(), desc(), handleClick(), handleKeyDown(), handleMouseMove() (+18 more)
+Cohesion: 0.13
+Nodes (28): cleanup(), clearAnnotations(), clearScrollY(), clearSession(), closeTunePopover(), copyToClipboard(), desc(), handleClick() (+20 more)
 
 ### Community 58 - "Community 58"
 Cohesion: 0.04
@@ -1019,8 +1041,8 @@ Cohesion: 0.05
 Nodes (43): 1. Logo Cover, 1. Monogram + Meaning, 2 × 3 REFERENCE-STYLE LAYOUT, 2. Logo Construction, 2. Product Action, 3. Digital Application, 3. Metaphor Fusion, 4. Brand Essence (+35 more)
 
 ### Community 60 - "Community 60"
-Cohesion: 0.29
-Nodes (7): Alumni Mentor Discovery Card, Alumni Mentor Opt In Controls, Active Incoming Requests Flow, Alumni Mentor Dashboard, Previous Sessions Flow, Optimistic Mentorship Request Status Cache, Realtime New Mentorship Request Event
+Cohesion: 0.10
+Nodes (36): ConnectButton(), DropdownItem(), DropdownItemProps, Props, sizeStyles, ConnectionCard(), Props, roleBadgeVariant() (+28 more)
 
 ### Community 61 - "Community 61"
 Cohesion: 0.09
@@ -1028,7 +1050,7 @@ Nodes (27): Search Floating Panel HTML prototype (dark nav, 500px results panel,
 
 ### Community 62 - "Community 62"
 Cohesion: 0.29
-Nodes (7): adapt, argumentHint, description, animate, argumentHint, description, description
+Nodes (7): animate, argumentHint, description, description, teach, argumentHint, description
 
 ### Community 63 - "Community 63"
 Cohesion: 0.29
@@ -1039,20 +1061,24 @@ Cohesion: 0.13
 Nodes (28): cleanup(), clearAnnotations(), clearScrollY(), clearSession(), closeTunePopover(), copyToClipboard(), desc(), handleClick() (+20 more)
 
 ### Community 65 - "Community 65"
-Cohesion: 0.09
-Nodes (26): CollabTab Component, EventsTab Component, FeedTab Component, Authenticated University Scope, Event and Post Entry Rendering, Feed Poll Cache Update, Feed Socket Events, Group Collaborations Query (+18 more)
+Cohesion: 0.40
+Nodes (6): Post Update API, Profile Posts API Query, Profile Posts Cache, useDeletePost Hook, useProfilePosts Hook, useUpdatePost Hook
 
 ### Community 66 - "Community 66"
 Cohesion: 0.16
 Nodes (25): actionLabel(), barPaletteForTheme(), buildConfigureRow(), buildConfirmedRow(), buildDots(), buildGeneratingRow(), buildParamsPanel(), buildSavingRow() (+17 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.09
-Nodes (30): Async Express Handler, Badge Activity Count, Badge Award Worker, Resend Email Service, Email Result Contract, Email HTML Sanitization, Invitation Email Template, OTP Email Templates (+22 more)
+Cohesion: 0.14
+Nodes (18): Resend Email Service, Email Result Contract, Email HTML Sanitization, Invitation Email Template, OTP Email Templates, Email Templates, Template Email Payload Parser, EmailResult (+10 more)
 
 ### Community 68 - "Community 68"
 Cohesion: 0.13
 Nodes (8): createBulkInvitations, AdminFulfillRedemptionInput, AdminRedemptionListQuery, CreateBulkInvitationsInput, CreateInvitationInput, PaginationQuery, AdminService, toInvitation()
+
+### Community 69 - "Community 69"
+Cohesion: 0.10
+Nodes (37): Comment Reaction API, Comments Query Cache, ReactionBtnProps, ActionBtn(), ActionBtnProps, CommentDrawer(), CommentItem(), CommentItemProps (+29 more)
 
 ### Community 70 - "Community 70"
 Cohesion: 0.16
@@ -1062,49 +1088,45 @@ Nodes (25): actionLabel(), barPaletteForTheme(), buildConfigureRow(), buildConfi
 Cohesion: 0.09
 Nodes (25): Announcement Section Label, Bottom Navigation Bar, Bottom Nav — Alerts/Notifications, Bottom Nav — Explore, Bottom Nav — Home (active, orange), Bottom Nav — Messages, Bottom Nav — Profile (avatar), Create Post Input — 'What's on your mind, Joydip?' (+17 more)
 
-### Community 72 - "Community 72"
-Cohesion: 0.12
-Nodes (25): systemGroupsService (syncUserMembership), UsersService (profile, experience, education, featured, analytics, viewers, connections, suggestions), UserProfileRow interface, UsersService.getCurrentUser, UsersService.getMyAnalytics (profile views + post reach), UsersService.getMyViewers (90-day, connection-gated identity), UsersService.getProgress, UsersService.getPublicProfile (+17 more)
-
 ### Community 73 - "Community 73"
 Cohesion: 0.13
 Nodes (17): AboutTab Component, CreateGroupModal Component, GroupBadges Components, GroupCard Component, GroupHeader Component, InviteMemberModal Component, JoinRequestsTab Component, Group Creation Payload (+9 more)
 
 ### Community 74 - "Community 74"
-Cohesion: 0.12
-Nodes (24): Conversation Participants Table, Conversations Table, Messages Table, Notifications Table, Reports Table, Users Table, conversations DB table, Core User Indexes Migration (+16 more)
+Cohesion: 0.13
+Nodes (22): Conversation Participants Table, Conversations Table, Messages Table, Notifications Table, Reports Table, Users Table, conversations DB table, Core User Indexes Migration (+14 more)
 
 ### Community 75 - "Community 75"
-Cohesion: 0.18
-Nodes (18): User Theme Preference, Auth Login Refresh Logout Me Contract, Explore Discovery Contract, Pinned Group Announcement Contract, Private And Public Group Join Rules, Group Rules Contract, Job Application Workflow, Jobs Marketplace Contract (+10 more)
+Cohesion: 0.19
+Nodes (14): User Theme Preference, Auth Login Refresh Logout Me Contract, Explore Discovery Contract, Job Application Workflow, Jobs Marketplace Contract, Saved Jobs Contract, Direct Message Conversation Contract, Conversation Read Receipt Contract (+6 more)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.08
 Nodes (25): devDependencies, autoprefixer, eslint, @eslint/js, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals, jsdom (+17 more)
 
 ### Community 77 - "Community 77"
-Cohesion: 0.15
-Nodes (17): Axios API Authenticated Tenant Client, Axios Token Refresh Queue, Connections Page Network Requests, Events Page Filtered Infinite List, Feed Page Realtime Infinite Feed, Forgot Password Page Reset Flow, React App Bootstrap, React Query Global Error Policy (+9 more)
+Cohesion: 0.23
+Nodes (12): Axios API Authenticated Tenant Client, Axios Token Refresh Queue, Events Page Filtered Infinite List, Forgot Password Page Reset Flow, RouteTabs Shuttle Route Selection, Shuttle Feature Barrel Exports, Shuttle Route Location Progress Types, Shuttle Progress ETA and Liveness Utilities (+4 more)
 
 ### Community 78 - "Community 78"
 Cohesion: 0.22
-Nodes (15): searchRouter, EventSearchResult, GroupSearchResult, JobSearchResult, paginate(), PeopleFilters, PostSearchResult, PostsFilters (+7 more)
+Nodes (17): COMMUNITY_LINKS, FooterColumnHeader(), FooterLink(), LandingFooter(), LEGAL_LINKS, PLATFORM_LINKS, SOCIAL_LINKS, FacebookIcon() (+9 more)
 
 ### Community 79 - "Community 79"
-Cohesion: 0.10
-Nodes (21): dependencies, @aws-sdk/client-s3, @aws-sdk/s3-request-presigner, bcryptjs, bull, cookie-parser, cors, dotenv (+13 more)
+Cohesion: 0.09
+Nodes (22): dependencies, @aws-sdk/client-s3, @aws-sdk/s3-request-presigner, bcryptjs, bull, cookie-parser, cors, dotenv (+14 more)
 
 ### Community 80 - "Community 80"
-Cohesion: 0.11
-Nodes (21): Admin Bulk Invitation Contract, Admin Single Invitation Contract, Invitation Token Lookup Contract, OTP Verification Contract, Auth Registration Contract, Role Profile Required Fields Contract, Group Join Request Factory, Group Resource Factory (+13 more)
+Cohesion: 0.13
+Nodes (23): Admin Bulk Invitation Contract, Admin Single Invitation Contract, Invitation Token Lookup Contract, OTP Verification Contract, Auth Registration Contract, Role Profile Required Fields Contract, Group Join Request Factory, Group Resource Factory (+15 more)
 
 ### Community 81 - "Community 81"
 Cohesion: 0.10
 Nodes (19): compilerOptions, allowImportingTsExtensions, isolatedModules, jsx, lib, module, moduleDetection, moduleResolution (+11 more)
 
 ### Community 82 - "Community 82"
-Cohesion: 0.13
-Nodes (16): Admin Content Moderation, Admin Content Service, ACTIVE_KINDS, AdminContentService, AuthorJoinRow, CountRow, EventRow, humanKind() (+8 more)
+Cohesion: 0.31
+Nodes (7): Admin Content Moderation, Admin Content Service, AdminContentService, humanKind(), tableFor(), ContentKind, ContentListQuery
 
 ### Community 83 - "Community 83"
 Cohesion: 0.17
@@ -1115,8 +1137,8 @@ Cohesion: 0.08
 Nodes (24): 2a. Mentorship module — new endpoints, 2b. Admin module — new endpoints, Admin Mentorship Dashboard + Feedback System, Affected components, Behavior, code:ts ({ data: { student: FeedbackEntry | null, alumni: FeedbackEnt), code:ts ({), code:ts ({) (+16 more)
 
 ### Community 85 - "Community 85"
-Cohesion: 0.08
-Nodes (56): ChatView(), DateDivider(), dateLabel(), Message, MessageBubble(), MessageSender, MessagesPage, pendingToMessage() (+48 more)
+Cohesion: 0.23
+Nodes (13): Infinite scroll message pagination, Optimistic message sending (pending msgs), Typing indicator (conv:typing socket event), MessageBubble (internal component), ChatView component, MessageInput component, MessagesPopup component, NewConversationModal component (+5 more)
 
 ### Community 86 - "Community 86"
 Cohesion: 0.19
@@ -1131,24 +1153,24 @@ Cohesion: 0.16
 Nodes (20): Core Web Vitals (LCP, INP, CLS), DESIGN.md (visual design system), impeccable polish command, Impeccable skill (frontend design AI), prefers-reduced-motion accessibility requirement, PRODUCT.md (strategic design context), View Transitions API, Animation & Motion Reference (+12 more)
 
 ### Community 89 - "Community 89"
-Cohesion: 0.13
-Nodes (19): Notification List Query Schema, Notification Records, acceptGroupInvite, deleteNotification, listNotifications, markAllRead, markRead, Notifications Router (+11 more)
+Cohesion: 0.10
+Nodes (22): CategoryPreference, ControllableCategory, DEFAULT_NOTIFICATION_PREFERENCES, NOTIFICATION_CATEGORIES, NOTIFICATION_CATEGORY_MAP, NotificationCategory, NotificationPreferences, resolveNotificationCategory() (+14 more)
 
 ### Community 90 - "Community 90"
-Cohesion: 0.16
-Nodes (19): Announcement Post Card (Dev Admin – mid-semester exam schedule notice, Jun 1–8 2026), Central Feed Column, Post Compose Box (What's on your mind, Joydi? with avatar), Feed Filter Tabs (All selected, Posts, News, Events), Inline Poll Widget inside Grace's post (React option with 60% progress bar), Post Action Bar (Like, Comment count, Save button), Post Card – Grace Begum (Student, poll: Which frontend framework do you reach for first?), Post Card – Joydip Datta (Admin badge, Hello! text post, 9h ago) (+11 more)
+Cohesion: 0.15
+Nodes (20): Announcement Post Card (Dev Admin – mid-semester exam schedule notice, Jun 1–8 2026), Central Feed Column, Post Compose Box (What's on your mind, Joydi? with avatar), Feed Filter Tabs (All selected, Posts, News, Events), Inline Poll Widget inside Grace's post (React option with 60% progress bar), Post Action Bar (Like, Comment count, Save button), Post Card – Grace Begum (Student, poll: Which frontend framework do you reach for first?), Post Card – Joydip Datta (Admin badge, Hello! text post, 9h ago) (+12 more)
 
 ### Community 91 - "Community 91"
 Cohesion: 0.14
 Nodes (17): completeCli(), completeThroughServer(), parseArgs(), readServerInfo(), buildPollReplyPayload(), pollCli(), postReply(), readServerInfo() (+9 more)
 
 ### Community 92 - "Community 92"
-Cohesion: 0.18
-Nodes (22): GroupResultCard Search Result Row, GroupResultCard Optimistic Membership Toggle, PeopleResultCard Search Result Row, PostResultCard Post Age Formatter, PostResultCard Search Result Row, Search All Aggregator, Events Search, Groups Search (+14 more)
+Cohesion: 0.20
+Nodes (15): GroupResultCard Search Result Row, GroupResultCard Optimistic Membership Toggle, PeopleResultCard Search Result Row, PostResultCard Post Age Formatter, PostResultCard Search Result Row, Search Feature Public Exports, Search Result Type Contracts, SearchPanel All Tab Aggregator (+7 more)
 
 ### Community 93 - "Community 93"
-Cohesion: 0.10
-Nodes (30): AboutSection(), TEAM, OrangeBtn(), CtaSection(), HeroSection(), ORBITAL_NODES, HowItWorks(), Step (+22 more)
+Cohesion: 0.44
+Nodes (7): CARD_BASE, FeaturesSection(), IconCircle(), IconCircleProps, Tag(), TagProps, Skel()
 
 ### Community 94 - "Community 94"
 Cohesion: 0.10
@@ -1163,7 +1185,7 @@ Cohesion: 0.24
 Nodes (18): acceptCli(), argVal(), deindentContent(), detectCommentSyntax(), expandReplaceRange(), EXTENSIONS, extractCss(), extractInnerByAttr() (+10 more)
 
 ### Community 97 - "Community 97"
-Cohesion: 0.13
+Cohesion: 0.14
 Nodes (18): clearHandled(), cycleVariant(), extractContext(), handleGo(), id8(), isSessionHandled(), loadSession(), pickVariantContent() (+10 more)
 
 ### Community 98 - "Community 98"
@@ -1171,8 +1193,8 @@ Cohesion: 0.18
 Nodes (15): appendOriginToDirective(), buildTagBlock(), commentClose(), commentOpen(), CONFIG_PATH, __dirname, findCspMetaTags(), getAttr() (+7 more)
 
 ### Community 99 - "Community 99"
-Cohesion: 0.08
-Nodes (34): ContentTab(), FeedbackEntry, MentorRequest, MentorRequestList(), MentorshipTab(), MentorSummary, Paginated, useAdminMentorRequests() (+26 more)
+Cohesion: 0.09
+Nodes (33): blurBorder(), CATEGORIES, CreateNewsForm(), EMPTY, fieldStyle, focusBorder(), Label(), NewsCategory (+25 more)
 
 ### Community 100 - "Community 100"
 Cohesion: 0.18
@@ -1191,8 +1213,8 @@ Cohesion: 0.10
 Nodes (21): default, dependencies, zod, devDependencies, typescript, exports, ./types, files (+13 more)
 
 ### Community 104 - "Community 104"
-Cohesion: 0.20
-Nodes (13): AVATAR_PALETTE, getInitials(), PostResultCard(), Props, seedColor(), timeAgo(), PostSearchResult, highlightMatch() (+5 more)
+Cohesion: 0.15
+Nodes (17): validate(), validateBody(), validateRequest(), ValidationSchemas, Notification List Query Schema, acceptGroupInvite, deleteNotification, getAuthContext() (+9 more)
 
 ### Community 105 - "Community 105"
 Cohesion: 0.15
@@ -1203,8 +1225,8 @@ Cohesion: 0.12
 Nodes (15): compilerOptions, esModuleInterop, forceConsistentCasingInFileNames, lib, module, moduleResolution, outDir, paths (+7 more)
 
 ### Community 107 - "Community 107"
-Cohesion: 0.06
-Nodes (47): AttachmentRow, getAttachmentsFor(), createEvent, deleteEvent, deleteRsvp, getEvent, getEventIcal, listAttendees (+39 more)
+Cohesion: 0.09
+Nodes (34): Events Module Barrel (eventsRouter), Events Router, getAuthContext(), createEvent, deleteEvent, deleteRsvp, getAuthContext(), getEvent (+26 more)
 
 ### Community 108 - "Community 108"
 Cohesion: 0.16
@@ -1227,36 +1249,36 @@ Cohesion: 0.12
 Nodes (16): scripts, build, db:migrate, db:migrate:prod, db:reset, db:rollback, db:seed, dev (+8 more)
 
 ### Community 113 - "Community 113"
-Cohesion: 0.12
-Nodes (18): News Table, Courses Table, Lost And Found Table, Shuttle Locations Table, Shuttle Routes Table, User Courses Table, University Allowed Email Domains, Mentorship Requests Table (+10 more)
+Cohesion: 0.11
+Nodes (20): News Table, Courses Table, Lost And Found Table, Shuttle Locations Table, Shuttle Routes Table, User Courses Table, University Allowed Email Domains, Mentorship Requests Table (+12 more)
 
 ### Community 114 - "Community 114"
 Cohesion: 0.20
 Nodes (15): applyParamDefaults(), applyParamValue(), buildCyclingRow(), closedClipPath(), getVisibleVariantEl(), hideParamsPanel(), navBtn(), openTunePopover() (+7 more)
 
 ### Community 115 - "Community 115"
-Cohesion: 0.16
-Nodes (17): AttachmentList(), card, ContentSyncPanel(), inputStyle, label, SOURCES, Paginated, PendingImported (+9 more)
+Cohesion: 0.07
+Nodes (31): AttachmentList(), card, ContentSyncPanel(), inputStyle, label, SOURCES, ContentSyncService, Paginated (+23 more)
 
 ### Community 116 - "Community 116"
-Cohesion: 0.23
-Nodes (11): AboutPanel(), batchLabel(), buildRows(), formatJoined(), Props, ROLE_HEADLINE, Row, InfoRow() (+3 more)
+Cohesion: 0.07
+Nodes (26): 10. Risks & open items, 11. Out of scope (future specs), 1. Goals, 2. Decisions log, 3.1 Gated sections (audience tier each), 3.2 Gate / flag settings, 3.3 Tier evaluation, 3. Privacy model (+18 more)
 
 ### Community 117 - "Community 117"
 Cohesion: 0.21
 Nodes (15): buildTargetNames(), cleanSkillsLock(), cleanup(), DEPRECATED_NAMES, findProjectRoot(), findSkillsDirs(), HARNESS_DIRS, isImpeccableSkill() (+7 more)
 
 ### Community 118 - "Community 118"
-Cohesion: 0.19
-Nodes (16): applyParamDefaults(), applyParamValue(), buildCyclingRow(), closedClipPath(), closeTunePopover(), getVisibleVariantEl(), hideParamsPanel(), navBtn() (+8 more)
+Cohesion: 0.20
+Nodes (15): applyParamDefaults(), applyParamValue(), buildCyclingRow(), closedClipPath(), getVisibleVariantEl(), hideParamsPanel(), navBtn(), openTunePopover() (+7 more)
 
 ### Community 119 - "Community 119"
 Cohesion: 0.16
 Nodes (14): parseArgs(), resumeCli(), applyEvent(), baseSnapshot(), COMPLETED_PHASES, getJournalPath(), getSnapshotPath(), rebuildSnapshotFromJournal() (+6 more)
 
 ### Community 120 - "Community 120"
-Cohesion: 0.13
-Nodes (15): devDependencies, supertest, ts-node-dev, @types/bcryptjs, @types/cookie-parser, @types/cors, @types/express, @types/jsonwebtoken (+7 more)
+Cohesion: 0.12
+Nodes (16): devDependencies, supertest, ts-node-dev, @types/bcryptjs, @types/cookie-parser, @types/cors, @types/express, @types/jsonwebtoken (+8 more)
 
 ### Community 121 - "Community 121"
 Cohesion: 0.11
@@ -1267,16 +1289,16 @@ Cohesion: 0.20
 Nodes (3): handlers, server, MemoryStorage
 
 ### Community 123 - "Community 123"
-Cohesion: 0.26
-Nodes (11): assertConfigured(), delay(), pollRun(), safeParse(), skyvernFetch(), SkyvernRunResponse, skyvernService, SkyvernWorkflowParameters (+3 more)
+Cohesion: 0.11
+Nodes (17): chromeBtn, ImageLightbox(), Props, AttendeeItem, AttendeeRow(), AttendeesPage, AVATAR_PALETTE, avatarColor() (+9 more)
 
 ### Community 124 - "Community 124"
-Cohesion: 0.14
-Nodes (15): Profile Feature Public Exports, FeaturedCard Link and Post Card, ProfileFeatured Featured Items List, ProfileFeatured Connection Visibility Gate, ProfileHeader Connection or Edit Action, ProfileHeader Identity Summary, ProfileHeader Role Badge Logic, ProfileSkills Skill Preview (+7 more)
+Cohesion: 0.18
+Nodes (12): Profile Feature Public Exports, FeaturedCard Link and Post Card, ProfileFeatured Featured Items List, ProfileFeatured Connection Visibility Gate, ProfileSkills Skill Preview, ProfileSkills Connection Visibility Gate, ProfileTabs Legacy Profile Navigation, ProfileViewers Private Viewer Panel (+4 more)
 
 ### Community 125 - "Community 125"
-Cohesion: 0.21
-Nodes (17): ApplicationsList Applications Query, ALL_STATUSES, Applicant, ApplicantProfile, ApplicationRow(), ApplicationsList(), ApplicationsResponse, ApplicationStatus (+9 more)
+Cohesion: 0.08
+Nodes (66): getMyViewers(), ActiveGroups(), Props, AlumniCard(), AlumniCardProps, Avatar(), AvatarProps, Badge() (+58 more)
 
 ### Community 126 - "Community 126"
 Cohesion: 0.15
@@ -1287,8 +1309,8 @@ Cohesion: 0.13
 Nodes (15): dependencies, axios, date-fns, framer-motion, lucide-react, react, react-dom, react-markdown (+7 more)
 
 ### Community 128 - "Community 128"
-Cohesion: 0.30
-Nodes (10): CATEGORIES, EmptyState(), Props, ResourceRow(), ResourcesSkeleton(), ResourcesTab(), useCreateResource(), useDeleteResource() (+2 more)
+Cohesion: 0.16
+Nodes (16): NotificationsSection(), ALL_TIERS, PrivacySection(), rowStyle, TIER_LABEL, Toggle(), ToggleProps, NOTIFICATION_CATEGORY_META (+8 more)
 
 ### Community 129 - "Community 129"
 Cohesion: 0.13
@@ -1307,16 +1329,16 @@ Cohesion: 0.18
 Nodes (14): App UI Mockup — stylised mobile/web chat/feed preview panel on the right side showing conversation threads and an Apply button, Design Theme — Warm Futuristic Dark: deep navy background, UIU orange accent (#FF6B35-ish), indigo interactive, glowing blurred radial gradient center, CTA Button Row — 'Get started free' (orange pill) + 'Watch demo' (ghost/outline pill), Floating UI Card — SWE Intern job card (Pathao · Remote, 'New' tag, 'by alumni') floating mid-hero, Floating UI Card — 'Mentorship accepted' notification card (Mentor · Alumni · 21) lower-center, Footer Strip — partially visible dark footer at the bottom of the viewport, Hero Headline — 'Your campus. One place.' (white + orange two-line display type), Hero Subtext — description of UniConnecT as private social network for universities (+6 more)
 
 ### Community 133 - "Community 133"
-Cohesion: 0.35
-Nodes (10): createEducation(), deleteEducation(), updateEducation(), currentYear, EducationModal(), FieldRow(), inputBase, onBlur() (+2 more)
+Cohesion: 0.12
+Nodes (10): ACTIVE_KINDS, AuthorJoinRow, CountRow, EventRow, JobRow, NewsRow, PIN_KINDS, PostRow (+2 more)
 
 ### Community 134 - "Community 134"
 Cohesion: 0.24
 Nodes (13): cleanupStudent(), fail(), getOtpHash(), getUserId(), http, https, injectOtp(), JOB_DEADLINE (+5 more)
 
 ### Community 135 - "Community 135"
-Cohesion: 0.19
-Nodes (15): Group Members Table, Group Membership Roles, Groups Table, Trigram Search Indexes, Staff To Faculty Role Migration, System Group Role Restriction Fields, Event Group Foreign Key, Admin System Groups (+7 more)
+Cohesion: 0.16
+Nodes (18): Group Members Table, Group Membership Roles, Groups Table, Trigram Search Indexes, Staff To Faculty Role Migration, System Group Role Restriction Fields, Event Group Foreign Key, Admin System Groups (+10 more)
 
 ### Community 136 - "Community 136"
 Cohesion: 0.27
@@ -1339,8 +1361,8 @@ Cohesion: 0.18
 Nodes (11): detectCsp(), INLINE_HEADER_SIGNALS, LAYOUT_EXTS, MONOREPO_HELPER_SIGNALS, NUXT_ROUTE_RULES_SIGNALS, NUXT_SECURITY_SIGNALS, result, SCAN_EXTS (+3 more)
 
 ### Community 141 - "Community 141"
-Cohesion: 0.23
-Nodes (13): beginEditPin(), cancelEditingPin(), clearAnnotations(), finalizeEditingPin(), localCoords(), onAnnotDown(), onAnnotInputKey(), onAnnotMove() (+5 more)
+Cohesion: 0.24
+Nodes (12): beginEditPin(), cancelEditingPin(), finalizeEditingPin(), localCoords(), onAnnotDown(), onAnnotInputKey(), onAnnotMove(), onAnnotUp() (+4 more)
 
 ### Community 142 - "Community 142"
 Cohesion: 0.05
@@ -1364,7 +1386,7 @@ Nodes (40): `043_add_mentorship_capacity.ts`, `044_add_mentorship_request_jobs.t
 
 ### Community 147 - "Community 147"
 Cohesion: 0.20
-Nodes (17): forgotPassword, BackToLogin(), cardStyle, EmailStep(), ErrorBanner(), FieldWrapper(), headingStyle, inputStyle (+9 more)
+Nodes (7): CreateCommentInput, assertPostInUniversity(), commentSelectQuery(), FeedService, getReactionCounts(), syncPostCounters(), toComment()
 
 ### Community 148 - "Community 148"
 Cohesion: 0.21
@@ -1379,8 +1401,8 @@ Cohesion: 0.25
 Nodes (9): __dirname, findHarnessDirs(), generatePinnedSkill(), HARNESS_DIRS, loadCommandMetadata(), pin(), root, unpin() (+1 more)
 
 ### Community 151 - "Community 151"
-Cohesion: 0.35
-Nodes (10): createExperience(), deleteExperience(), updateExperience(), ExperienceModal(), FieldRow(), inputBase, onBlur(), onFocus() (+2 more)
+Cohesion: 0.14
+Nodes (17): AUDIENCE_TIERS, CONNECTION_REQUEST_TIERS, ConnectionRequestTier, DEFAULT_PRIVACY_PREFERENCES, MESSAGE_TIERS, MessageTier, ONLINE_VISIBILITY_TIERS, OnlineVisibilityTier (+9 more)
 
 ### Community 152 - "Community 152"
 Cohesion: 0.36
@@ -1391,24 +1413,20 @@ Cohesion: 0.25
 Nodes (9): __dirname, findHarnessDirs(), generatePinnedSkill(), HARNESS_DIRS, loadCommandMetadata(), pin(), root, unpin() (+1 more)
 
 ### Community 154 - "Community 154"
-Cohesion: 0.20
-Nodes (11): Bull queues: email, notification, badge, group-digest, mentorship, JWT + refresh token auth flow, Socket.io real-time with Redis pub/sub adapter, database migrations: sequential NNN_ prefix, Knex, test setup: supertest, loginAs, x-university-domain header, Bull: Redis-backed job queues, Express: Node.js REST API framework, Knex: SQL query builder for PostgreSQL (+3 more)
+Cohesion: 0.31
+Nodes (12): subscribeToPush(), unsubscribeFromPush(), PushState, usePushSettings(), disablePush(), enablePush(), ensureRegistration(), getExistingSubscription() (+4 more)
 
 ### Community 155 - "Community 155"
-Cohesion: 0.25
-Nodes (11): GSAP ScrollTrigger: scroll-driven animations, OKLCH: perceptually uniform color space for CSS, skills-lock.json registry, brandkit skill: premium brand-kit image generation, full-output-enforcement skill: ban truncation, enforce completeness, gpt-taste skill: Awwwards-level design engineering with GSAP, high-end-visual-design skill: $150k agency-level UI/UX, image-to-code skill: image-first website design to code (+3 more)
+Cohesion: 0.13
+Nodes (24): agent-browser: headed browser tool for AI agents, Agentation MCP server: annotation-agent sync, clip-path animation technique, Framer Motion: spring physics animation library, GSAP ScrollTrigger: scroll-driven animations, OKLCH: perceptually uniform color space for CSS, Phosphor Icons: icon library for React, shadcn/ui: component library (+16 more)
 
 ### Community 156 - "Community 156"
-Cohesion: 0.31
-Nodes (11): createResource, Groups Feature Public Exports, Group Resources, ResourceRow, Groups Domain Contracts, MemberRoleTag Role Badge, MembersTab Group Members List, MembersTab Invite Permission Gate (+3 more)
-
-### Community 157 - "Community 157"
-Cohesion: 0.50
-Nodes (4): Bull Queue Redis Options, Bull Redis Client Factory, Redis Client, Redis Health Ping
+Cohesion: 0.08
+Nodes (25): 10. Out of scope (future specs), 1. Goals, 2. Decisions log, 3.1 Redis keys, 3.2 Connection lifecycle (in `socket/index.ts`), 3.3 Fan-out (`broadcastPresence`), 3.4 TTL-expiry reconciliation, 3. Presence mechanics (+17 more)
 
 ### Community 158 - "Community 158"
-Cohesion: 0.20
-Nodes (8): hooks, PreToolUse, permissions, additionalDirectories, allow, permissions, allow, Graphify Pre-tool-use Hook
+Cohesion: 0.18
+Nodes (9): hooks, PreToolUse, enabledMcpjsonServers, permissions, additionalDirectories, allow, permissions, allow (+1 more)
 
 ### Community 159 - "Community 159"
 Cohesion: 0.18
@@ -1427,8 +1445,8 @@ Cohesion: 0.05
 Nodes (39): code:typescript (async getTrending(universityId: string) {), code:typescript (export const getProgress = asyncHandler(async (req: Request,), code:typescript (import {), code:typescript (usersRouter.get('/me/progress', getProgress)), code:bash (npx pnpm --filter api typecheck), code:bash (git add apps/api/src/modules/users/controller.ts apps/api/sr), code:typescript (interface TrendingData {), code:typescript (const { data: trending, isLoading: loadingTrending } = useQu) (+31 more)
 
 ### Community 163 - "Community 163"
-Cohesion: 0.06
-Nodes (49): db, RunRow, SettingsRow, DiscoveryResult, EventSummary, getActiveGroups(), getDiscovery(), getFeaturedAlumni() (+41 more)
+Cohesion: 0.07
+Nodes (45): db, DiscoveryResult, EventSummary, getActiveGroups(), getDiscovery(), getFeaturedAlumni(), getPeopleSuggestions(), getTagPosts() (+37 more)
 
 ### Community 164 - "Community 164"
 Cohesion: 0.25
@@ -1447,16 +1465,16 @@ Cohesion: 0.22
 Nodes (9): impeccable audit reference (technical quality scan), AI Slop Detection (27-pattern deterministic detector: glassmorphism, gradient text, neon etc.), Audit 5 Dimensions (Accessibility, Performance, Theming, Responsive, Anti-Patterns, 0-4 each), impeccable bolder reference (visual impact amplification), AI Slop Trap for Bold (reject cyan/purple gradients, glassmorphism, neon), Amplification Dimensions (typography scale, color saturation, spatial drama, motion), Brand Slop Test (distinctiveness bar, AI-generated detection), impeccable quieter reference (visual intensity reduction) (+1 more)
 
 ### Community 168 - "Community 168"
-Cohesion: 0.22
-Nodes (9): connections module: bidirectional LinkedIn-style graph, mentorship module: points economy, sessions, Bull lifecycle jobs, API modules: auth, users, feed, jobs, events, groups, messages, notifications, news, campus, upload, admin, mentorship, search, explore, connections, @uniconnect/shared: types, Zod schemas, socket constants, framer-motion package (root devDependency), TypeScript strict mode throughout monorepo, Zod schemas: single source of truth for validation and TS types, packages/shared workspace (+1 more)
+Cohesion: 0.17
+Nodes (15): acceptRequest, declineRequest, getAuthContext(), getMutualConnections, listConnections, listPendingReceived, listPendingSent, removeConnection (+7 more)
 
 ### Community 169 - "Community 169"
-Cohesion: 0.31
-Nodes (9): design system: Warm Futuristic Dark, CSS tokens, no hardcoded hex, React 18: frontend UI library, Tailwind CSS: utility-first styling, TanStack Query: server state management, Vite 5: frontend build tool, Zustand: global state management, apps/web workspace, tech stack: React, Express, Socket.io, PostgreSQL, Redis, Bull (+1 more)
+Cohesion: 0.17
+Nodes (19): CONNECTION_EVENTS, CONTENT_SYNC_EVENTS, PRESENCE_EVENTS, PresenceUpdate, UNIVERSITY_EVENTS, broadcastPresence(), connectedSet(), countKey() (+11 more)
 
 ### Community 170 - "Community 170"
-Cohesion: 0.33
-Nodes (8): Group Join Requests Table, Group Study Session Factory, CreateStudySessionInput, Group Pinned Text And Rules, Group Notification Queue Usage, toStudySession(), createSession, StudySessionsTab Study Session Surface
+Cohesion: 0.09
+Nodes (22): 10. Out of scope (future specs), 1. Goals, 2. Decisions log, 3.1 Base score (viewer-independent, precomputed), 3.2 Viewer-relative affinity (per request), 3.3 Ordering, 3. Ranking model, 4.1 Migration `071_add_feed_ranking_columns.ts` (+14 more)
 
 ### Community 171 - "Community 171"
 Cohesion: 0.31
@@ -1479,12 +1497,12 @@ Cohesion: 0.25
 Nodes (7): After making React code changes:, code:bash (curl --fail --silent --show-error \), code:bash (npx react-doctor@latest --verbose --diff), Command, /doctor — full local triage workflow, For general cleanup or code improvement:, React Doctor
 
 ### Community 176 - "Community 176"
-Cohesion: 0.20
-Nodes (12): Job Apply Mutation, ApplyModal Job Application Modal, Resume Upload Flow, Deadline Chip, Job and JobPoster Contracts, JobCard Listing Card, Job Save Mutation, Create Job Mutation (+4 more)
+Cohesion: 0.22
+Nodes (10): Job Apply Mutation, ApplyModal Job Application Modal, Resume Upload Flow, Deadline Chip, Job and JobPoster Contracts, JobCard Listing Card, Job Save Mutation, Create Job Mutation (+2 more)
 
 ### Community 177 - "Community 177"
-Cohesion: 0.11
-Nodes (19): updateUserPreferences(), GlobalCurtain(), btn, spy, user, ThemeToggleButton(), ThemeToggleButtonProps, App() (+11 more)
+Cohesion: 0.10
+Nodes (23): updateUserPreferences(), AppearanceSection(), OPTIONS, GlobalCurtain(), SectionHeader(), btn, spy, user (+15 more)
 
 ### Community 178 - "Community 178"
 Cohesion: 0.36
@@ -1515,12 +1533,12 @@ Cohesion: 0.36
 Nodes (8): impeccable document reference (DESIGN.md generation), design.json sidecar (.impeccable/design.json schema v2), DESIGN.md Format (Google Stitch, YAML frontmatter + 6 sections), Scan Mode (auto-extract tokens from codebase), Seed Mode (pre-implementation DESIGN.md scaffold), impeccable extract reference (design system extraction), Pattern Extraction (3+ repetitions rule, premature abstraction warning), Design Token Creation (semantic naming, migration path)
 
 ### Community 185 - "Community 185"
-Cohesion: 0.32
-Nodes (8): presigned S3 PUT URL upload flow, Azure App Service B1 backend deployment, Cloudflare R2 object storage, deployment-ins.md deployment guide, GitHub Actions CI/CD workflows, Neon PostgreSQL (free tier), Resend email service, Vercel frontend deployment
+Cohesion: 0.28
+Nodes (9): Azure App Service B1 backend deployment, Cloudflare R2 object storage, deployment-ins.md deployment guide, GitHub Actions CI/CD workflows, Neon PostgreSQL (free tier), Redis Cloud (free tier), Resend email service, Vercel frontend deployment (+1 more)
 
 ### Community 186 - "Community 186"
-Cohesion: 0.10
-Nodes (21): Connection Lifecycle, Connection Notifications, Mutual Connection Intersection, Explore Controller, Discovery Aggregation, Discovery Service, People Suggestion Ranking, Tag Co-occurrence (+13 more)
+Cohesion: 0.40
+Nodes (5): Explore Controller, Discovery Aggregation, Discovery Service, People Suggestion Ranking, Group Content Aggregation
 
 ### Community 187 - "Community 187"
 Cohesion: 0.25
@@ -1567,8 +1585,8 @@ Cohesion: 0.29
 Nodes (7): impeccable harden reference (production resilience), Edge Case Coverage (empty, long text, RTL, CJK, offline, concurrent ops), Internationalization (text expansion budget, RTL logical properties, Intl API), impeccable ux-writing reference, UX Writing: Button Label Patterns (verb+object, outcome-focused), UX Writing: Error Message Formula (what/why/fix), UX Writing: Translation-Friendly Patterns (30% expansion, i18n)
 
 ### Community 198 - "Community 198"
-Cohesion: 0.29
-Nodes (7): clip-path animation technique, Framer Motion: spring physics animation library, Phosphor Icons: icon library for React, shadcn/ui: component library, spring physics animations, design-taste-frontend skill: senior UI/UX engineering directives, emil-design-eng skill: Emil Kowalski UI polish philosophy
+Cohesion: 0.15
+Nodes (20): BadgeProgressItem, BadgeProgressRow(), EventItem, EventMini(), formatDate(), PersonRow(), roleBadgeVariant(), roleLabel() (+12 more)
 
 ### Community 200 - "Community 200"
 Cohesion: 0.06
@@ -1639,8 +1657,8 @@ Cohesion: 0.50
 Nodes (5): Express Request Auth Context, getBearerToken Helper, requireAuth Middleware, requireRole Middleware, verifyAccessToken Function
 
 ### Community 219 - "Community 219"
-Cohesion: 0.40
-Nodes (5): multi-tenancy: university_id isolation in service layer, multi-tenant SaaS university social network, Team Mavericks, United International University (UIU), UniConnecT project overview
+Cohesion: 0.29
+Nodes (7): TanStack Query: server state management, Zustand: global state management, multi-tenant SaaS university social network, Team Mavericks, tech stack: React, Express, Socket.io, PostgreSQL, Redis, Bull, United International University (UIU), UniConnecT project overview
 
 ### Community 220 - "Community 220"
 Cohesion: 0.06
@@ -1665,10 +1683,6 @@ Nodes (4): impeccable-asset-producer agent, Asset Production Cleanup (no redesig
 ### Community 243 - "Community 243"
 Cohesion: 0.06
 Nodes (32): Autoscaling, Branching, Check Status Quo, code:block1 (https://neon.com/docs/llms.txt), code:bash (npx -y neonctl@latest init --agent <agent-name>), code:bash (npx skills add neondatabase/agent-skills --skill neon-postgr), Connection Methods & Drivers, Connection Pooling (+24 more)
-
-### Community 251 - "Community 251"
-Cohesion: 0.50
-Nodes (4): Profile Theme Hydration, Session Rehydration Flow, StrictMode Refresh Guard, AuthLoader Missing Token Test
 
 ### Community 252 - "Community 252"
 Cohesion: 0.50
@@ -1702,14 +1716,6 @@ Nodes (4): LiveBadge Liveness Indicator, LiveTrackerCard ETA and Stop Logic, Liv
 Cohesion: 0.50
 Nodes (4): impeccable spatial-design reference, 4pt Spacing Base (4,8,12,16,24,32,48,64,96px scale), Container Queries (component-level responsive layout), Squint Test (blur-based visual hierarchy validation)
 
-### Community 289 - "Community 289"
-Cohesion: 0.67
-Nodes (3): Notifications Module Barrel (notificationsRouter, notificationsService), Notifications Router, Notifications Service
-
-### Community 290 - "Community 290"
-Cohesion: 0.67
-Nodes (3): Search Module Barrel (searchRouter, search types), Search Router, Search Service Types (UserSearchResult, PostSearchResult, JobSearchResult, EventSearchResult, GroupSearchResult, SearchPagedResult)
-
 ### Community 293 - "Community 293"
 Cohesion: 0.67
 Nodes (3): GET /feed/trending (pinned posts + trending tags last 7 days), Right Sidebar Features Implementation Plan, Right Sidebar Design Spec (Trending on Campus + Your Progress)
@@ -1717,6 +1723,10 @@ Nodes (3): GET /feed/trending (pinned posts + trending tags last 7 days), Right 
 ### Community 295 - "Community 295"
 Cohesion: 1.00
 Nodes (3): Graduation Cap Symbol, Orange Brand Mark, Favicon SVG
+
+### Community 305 - "Community 305"
+Cohesion: 0.10
+Nodes (20): 10. Risks & open items, 11. Out of scope (future specs), 1. Goals, 2. Decisions log, 3. Searchable fields & weights, 4.1 Migration `072_add_search_vectors.ts`, 4. Data model, 5.1 Primary FTS path (+12 more)
 
 ### Community 307 - "Community 307"
 Cohesion: 0.07
@@ -1758,6 +1768,10 @@ Nodes (28): Backend, code:ts (app.use('/api/v1/search', searchRouter)), code:ts 
 Cohesion: 0.07
 Nodes (28): Approach, Architecture, `Avatar` component — upgraded, Avatar display fixes (5 files), `Avatar.test.tsx`, Callsite changes, code:ts (export function usePresignedUpload(folder: string): {), code:ts (interface ImageUploadFieldProps {) (+20 more)
 
+### Community 346 - "Community 346"
+Cohesion: 0.04
+Nodes (80): ContentTab(), forgotPassword, BrandLogo(), BrandLogoProps, MinimalPageFooter(), Invitations Table, connectSocket(), { data } (+72 more)
+
 ### Community 357 - "Community 357"
 Cohesion: 0.22
 Nodes (8): LoginInput, loginSchema, RegisterInput, registerSchema, ResendOtpInput, resendOtpSchema, VerifyOtpInput, verifyOtpSchema
@@ -1783,16 +1797,16 @@ Cohesion: 0.07
 Nodes (26): Anti-Patterns, code:css (/* Hide focus ring for mouse/touch */), code:html (<!-- When modal is open -->), code:javascript (const dialog = document.querySelector('dialog');), code:html (<button popovertarget="menu">Open menu</button>), code:css (.trigger {), code:html (<button popovertarget="menu" class="trigger">Open</button>), code:css (.dropdown {) (+18 more)
 
 ### Community 363 - "Community 363"
-Cohesion: 0.13
-Nodes (20): Auth Flow (Registration+OTP+Login), Feed Flow (Posts+Reactions+Comments), Jobs Flow (Alumni Post+Student Apply), Messaging Flow (Conversation+Messages), Redis OTP Injection, publicUserProfileSchema, ThemePreferenceInput, themePreferenceSchema (+12 more)
+Cohesion: 0.24
+Nodes (11): fetchPresence(), PresenceDot(), PresenceDotProps, PresenceLabel(), relativeTime(), PresenceStatus, usePresence(), usePresenceOf() (+3 more)
 
 ### Community 364 - "Community 364"
 Cohesion: 0.07
 Nodes (26): Action Summary, Anti-Patterns Verdict, Ask the User, Assessment A: LLM Design Review, Assessment B: Automated Detection, code:bash (node .claude/skills/impeccable/scripts/critique-storage.mjs ), code:javascript (document.title = '[LLM] ' + document.title;), code:bash (npx impeccable detect --json [--fast] [target]) (+18 more)
 
 ### Community 365 - "Community 365"
-Cohesion: 0.15
-Nodes (14): AttendeeItem, AttendeeRow(), AttendeesPage, AVATAR_PALETTE, avatarColor(), EventDetail, EventDetailPage(), EventKind (+6 more)
+Cohesion: 0.17
+Nodes (13): OTP Service, OTP Verification Result, Redis OTP Key Schema, Redis OTP Keys, generateOtp(), OtpPurpose, OtpService, OtpVerificationResult (+5 more)
 
 ### Community 366 - "Community 366"
 Cohesion: 0.07
@@ -1807,12 +1821,12 @@ Cohesion: 0.16
 Nodes (22): firstExisting(), getCritiqueDir(), getDesignSidecarCandidates(), getDesignSidecarPath(), getImpeccableDir(), getLegacyLiveConfigPath(), getLegacyLiveServerPath(), getLiveAnnotationsDir() (+14 more)
 
 ### Community 369 - "Community 369"
-Cohesion: 0.17
-Nodes (13): OTP Service, OTP Verification Result, Redis OTP Key Schema, Redis OTP Keys, generateOtp(), OtpPurpose, OtpService, OtpVerificationResult (+5 more)
+Cohesion: 0.19
+Nodes (16): ReactionBtn(), markdownComponents, MenuBtn(), PinnedBar(), PollBlock(), PostCard(), PostCardProps, roleBadgeVariant() (+8 more)
 
 ### Community 370 - "Community 370"
 Cohesion: 0.11
-Nodes (20): updatePost, CreatePostInput, UpdatePostInput, assertCanMutatePost(), assertCanUsePostType(), AuthContext, CommentRow, CountRow (+12 more)
+Nodes (19): updatePost, CreatePostInput, UpdatePostInput, assertCanMutatePost(), assertCanUsePostType(), AuthContext, CommentRow, CountRow (+11 more)
 
 ### Community 374 - "Community 374"
 Cohesion: 0.08
@@ -1851,8 +1865,8 @@ Cohesion: 0.17
 Nodes (12): buildAnnotationsForCapture(), buildPinElement(), captureAndEmit(), captureElementToBlob(), collectFontCssText(), compileShader(), hideShaderOverlay(), inlineFontUrls() (+4 more)
 
 ### Community 383 - "Community 383"
-Cohesion: 0.44
-Nodes (7): CARD_BASE, FeaturesSection(), IconCircle(), IconCircleProps, Tag(), TagProps, Skel()
+Cohesion: 0.22
+Nodes (11): Feed Page — Desktop 1440px Full Layout, Left Sidebar — Primary Nav Links (Feed, Explore, Jobs, Events, Groups, Messages, Notifications, News, Lost & Found, Mentorship, Shuttle, Connections), Right Sidebar Panel, Right Sidebar — People You May Know / Suggestions Widget, Right Sidebar — Trending / Active Groups Widget, Right Sidebar — Upcoming Events Widget, Right Sidebar — Your Progress / Profile Completion Widget, Top Navigation Bar (+3 more)
 
 ### Community 384 - "Community 384"
 Cohesion: 0.09
@@ -1951,12 +1965,12 @@ Cohesion: 0.11
 Nodes (18): API, Approach: Soft-delete via `DELETE /requests/:id`, code:sql (-- up), code:ts (// request_reminder guard (line ~13)), code:ts (// Before), Data Model, Decision: Allow re-requesting after withdrawal, `DELETE /api/v1/mentorship/requests/:id` (+10 more)
 
 ### Community 408 - "Community 408"
-Cohesion: 0.10
-Nodes (19): 1. Data model (new migrations, sequential after `057`), 2. Skyvern workflow (built once via MCP, parameterized per tenant), 3. Backend — new `content-sync` module + queue + worker, 4. API endpoints (admin module, `requireRole('admin')`), 5. Announcement rotation (at publish time), 6. Frontend, 7. Shared (`packages/shared`), Addendum (2026-06-04): WordPress REST primary, Skyvern fallback (+11 more)
+Cohesion: 0.11
+Nodes (18): 1. Data model (new migrations, sequential after `057`), 2. Skyvern workflow (built once via MCP, parameterized per tenant), 3. Backend — new `content-sync` module + queue + worker, 4. API endpoints (admin module, `requireRole('admin')`), 5. Announcement rotation (at publish time), 6. Frontend, 7. Shared (`packages/shared`), Architecture (+10 more)
 
 ### Community 409 - "Community 409"
 Cohesion: 0.11
-Nodes (17): Connections Controller, Connections Module Index, connectionsRouter, Connection Request Contracts, PaginationQuery, Connections Service, assertUserInUniversity(), ConnectionRow (+9 more)
+Nodes (10): PaginationQuery, assertUserInUniversity(), ConnectionRow, ConnectionsService, ConnectionWithProfile, CountRow, getUserName(), MutualConnectionRow (+2 more)
 
 ### Community 410 - "Community 410"
 Cohesion: 0.11
@@ -1983,8 +1997,8 @@ Cohesion: 0.11
 Nodes (17): computedHash, skillPath, source, sourceType, computedHash, skillPath, source, sourceType (+9 more)
 
 ### Community 416 - "Community 416"
-Cohesion: 0.14
-Nodes (14): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+6 more)
+Cohesion: 0.12
+Nodes (16): 10. SECTION RHYTHM RULE, 12. DENSITY & SPACING DISCIPLINE, 14. IMAGE / MEDIA DIRECTION, 16. MULTI-IMAGE CONSISTENCY RULE, 17. CLARITY CHECK, 19. RESPONSE BEHAVIOR, 1. ACTIVE BASELINE CONFIGURATION, 21. FINAL GOAL (+8 more)
 
 ### Community 417 - "Community 417"
 Cohesion: 0.12
@@ -2039,8 +2053,8 @@ Cohesion: 0.12
 Nodes (15): Cleanup, code:bash (node {{scripts_path}}/live.mjs), code:bash (node {{scripts_path}}/live-server.mjs stop), code:block2 (LOOP:), code:bash (node {{scripts_path}}/live-status.mjs), Exit, Handle `accept`, Handle `discard` (+7 more)
 
 ### Community 430 - "Community 430"
-Cohesion: 0.12
-Nodes (16): 1. Read the screenshot (if present), 2. Wrap the element, 3. Load the action's reference, 5. Apply the freeform prompt (if present), 6. Write all variants in a single edit, 7. Parameters (composition-sized, 0–4 per variant), 8. Signal done, Aborting an in-flight session (+8 more)
+Cohesion: 0.15
+Nodes (13): 1. Read the screenshot (if present), 2. Wrap the element, 3. Load the action's reference, 5. Apply the freeform prompt (if present), 7. Parameters (composition-sized, 0–4 per variant), 8. Signal done, Aborting an in-flight session, code:bash (node {{scripts_path}}/live-poll.mjs --reply EVENT_ID error ") (+5 more)
 
 ### Community 431 - "Community 431"
 Cohesion: 0.12
@@ -2087,8 +2101,8 @@ Cohesion: 0.12
 Nodes (16): Animate enter states with @starting-style, Buttons must feel responsive, code:css (/* Interruptible - good for UI */), code:css (.button {), code:css (.toast {), code:jsx (// Legacy pattern (still works everywhere)), code:css (.button {), code:css (/* Bad */) (+8 more)
 
 ### Community 442 - "Community 442"
-Cohesion: 0.18
-Nodes (8): CreateCommentInput, assertPostInUniversity(), Comment Thread Flow, commentSelectQuery(), FeedService, getReactionCounts(), Reaction Notification Flow, Notifications Service
+Cohesion: 0.20
+Nodes (11): Mentorship Request Submission, Mentorship Skeleton Components, Request Status Badge, Alumni Browse Query, Mentorship Request Socket Handlers, My Mentorship Requests Query, Student Mentorship View, Alumni Mentor Contract (+3 more)
 
 ### Community 443 - "Community 443"
 Cohesion: 0.12
@@ -2151,8 +2165,8 @@ Cohesion: 0.13
 Nodes (14): EmptyState (`src/components/EmptyState.tsx`), ErrorBoundary (`src/components/ErrorBoundary.tsx`), Features built, GroupDetailPage (`src/pages/GroupDetailPage.tsx`), GroupsPage (`src/pages/GroupsPage.tsx`), Inline code removed / consolidated, Nav audit, NotFoundPage (`src/pages/NotFoundPage.tsx`) (+6 more)
 
 ### Community 458 - "Community 458"
-Cohesion: 0.13
-Nodes (15): uc-indigo-dot, uc-indigo-l, uc-indigo-xl, colorMeta, canonical, displayName, role, canonical (+7 more)
+Cohesion: 0.14
+Nodes (14): text-tertiary, uc-indigo-dot, uc-indigo-l, colorMeta, canonical, displayName, role, canonical (+6 more)
 
 ### Community 459 - "Community 459"
 Cohesion: 0.14
@@ -2167,8 +2181,8 @@ Cohesion: 0.15
 Nodes (12): Assess Current Typography, code:json ({"id":"scale","kind":"range","min":0.85,"max":1.3,"step":0.0), Establish Hierarchy, Fix Readability, Font Selection, Improve Typography Systematically, Live-mode signature params, Plan Typography Improvements (+4 more)
 
 ### Community 462 - "Community 462"
-Cohesion: 0.70
-Nodes (4): FOCUSABLE_SELECTOR, Props, ShortcutHelp(), SHORTCUTS
+Cohesion: 0.38
+Nodes (6): Feed DOM Post Articles, Feed Keyboard Navigation, focusPostByOffset(), isTypingTarget(), ShortcutHandlers, useFeedShortcuts Hook
 
 ### Community 463 - "Community 463"
 Cohesion: 0.12
@@ -2206,9 +2220,13 @@ Nodes (11): code:text (What should this be built on?), Craft Flow, Gates: do not
 Cohesion: 0.17
 Nodes (11): Assess Current State, Code Simplification, Content Simplification, Document Removed Complexity, Information Architecture, Interaction Simplification, Layout Simplification, Plan Simplification (+3 more)
 
+### Community 472 - "Community 472"
+Cohesion: 0.15
+Nodes (5): ErrorBoundary, Props, RootErrorBoundary, RootState, State
+
 ### Community 473 - "Community 473"
-Cohesion: 0.46
-Nodes (7): createFeatured(), FeaturedModal(), FieldRow(), inputBase, onBlur(), onFocus(), Props
+Cohesion: 0.16
+Nodes (14): getUserFeatured(), FeaturedCard(), LockedCard(), Props, Profile Featured Migration, profile_featured Table, JobMatch, jobMatchSchema (+6 more)
 
 ### Community 474 - "Community 474"
 Cohesion: 0.29
@@ -2275,16 +2293,16 @@ Cohesion: 0.18
 Nodes (11): Admin, code:json (// body), code:json ({), code:json (// body), code:json (// body), `GET /admin/reports`, `GET /admin/stats`, `GET /admin/users` (+3 more)
 
 ### Community 490 - "Community 490"
-Cohesion: 0.18
-Nodes (12): Props, SessionCard(), SessionsSkeleton(), StudySessionsTab(), GroupResource, GroupStats, JoinRequest, PaginatedResponse (+4 more)
+Cohesion: 0.17
+Nodes (15): CATEGORIES, EmptyState(), Props, ResourceRow(), ResourcesSkeleton(), ResourcesTab(), GroupResource, GroupStats (+7 more)
 
 ### Community 491 - "Community 491"
 Cohesion: 0.18
 Nodes (11): surface-page, uc-indigo, canonical, displayName, role, tonalRamp, canonical, displayName (+3 more)
 
 ### Community 492 - "Community 492"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, emil-design-eng
+Cohesion: 0.14
+Nodes (25): createExperience(), deleteExperience(), getUserEducation(), getUserExperience(), updateExperience(), ExperienceModal(), FieldRow(), inputBase (+17 more)
 
 ### Community 493 - "Community 493"
 Cohesion: 0.18
@@ -2347,8 +2365,8 @@ Cohesion: 0.20
 Nodes (9): 1. Group Naming Conventions, 6. Backend — Users Service (`users/service.ts`), 6b. Backend — Admin Service (`admin/service.ts`), 8. Constraints & Invariants, 9. Out of Scope, Auto-Groups: Role & Batch System Groups, code:ts (const needsGroupSync =), Overview (+1 more)
 
 ### Community 508 - "Community 508"
-Cohesion: 0.22
-Nodes (15): Infinite scroll message pagination, Optimistic message sending (pending msgs), Typing indicator (conv:typing socket event), MessageBubble (internal component), ChatView component, ConversationsSidebar component, MessageInput component, MessagesPopup component (+7 more)
+Cohesion: 0.15
+Nodes (13): UpdateLostFoundInput, assertCanModify(), assertLostFoundOwner(), AuthContext, CountRow, CourseRow, LostFoundRow, lostFoundSelectQuery() (+5 more)
 
 ### Community 509 - "Community 509"
 Cohesion: 0.20
@@ -2407,8 +2425,8 @@ Cohesion: 0.22
 Nodes (9): code:js (// Bad: triggers recalc on all children), code:jsx (// NOT hardware accelerated (convenient but drops frames und), code:js (element.animate([{ clipPath: 'inset(0 0 100% 0)' }, { clipPa), CSS animations beat JS under load, CSS variables are inheritable, Framer Motion hardware acceleration caveat, Only animate transform and opacity, Performance Rules (+1 more)
 
 ### Community 523 - "Community 523"
-Cohesion: 0.09
-Nodes (28): Auth Zustand Store, Client Session Lifecycle, University Socket Membership, Avatar Identity Helpers, Search Match Highlighting Utility, Search Highlighting Tests, MSW Handler Registry, MSW Test Server (+20 more)
+Cohesion: 0.12
+Nodes (21): Auth Zustand Store, Client Session Lifecycle, University Socket Membership, Avatar Identity Helpers, MSW Handler Registry, MSW Test Server, Unread Notification Counts Store, Pending Message Retry Flow (+13 more)
 
 ### Community 524 - "Community 524"
 Cohesion: 0.22
@@ -2443,8 +2461,8 @@ Cohesion: 0.25
 Nodes (7): Extract Flow, Step 1: Discover the Design System, Step 2: Identify Patterns, Step 3: Plan Extraction, Step 4: Extract & Enrich, Step 5: Migrate, Step 6: Document
 
 ### Community 532 - "Community 532"
-Cohesion: 0.15
-Nodes (12): CONTENT_SYNC_SOURCES, ContentAttachmentStatus, contentSyncConfigSchema, ContentSyncRunStatus, EVENT_SUB_CATEGORIES, nullableUrl, SkyvernAttachment, skyvernAttachmentSchema (+4 more)
+Cohesion: 0.17
+Nodes (14): App Error Helpers, Async Express Handler, Application Error Contract, Express Request Context, Presign Upload Query Schema, API Response Helpers, Search Controller, Upload Controller (+6 more)
 
 ### Community 533 - "Community 533"
 Cohesion: 0.25
@@ -2523,16 +2541,16 @@ Cohesion: 0.29
 Nodes (7): append-arrays, append-string, code:bash (node {{scripts_path}}/detect-csp.mjs), code:ts (// Dev-only allowance so impeccable live mode can load. Guar), code:ts (// Dev-only allowance so impeccable live mode can load.), Consent prompt template, CSP detection (first-time only)
 
 ### Community 552 - "Community 552"
-Cohesion: 0.67
-Nodes (3): audit, argumentHint, description
+Cohesion: 0.29
+Nodes (6): adapt, argumentHint, description, layout, argumentHint, description
 
 ### Community 553 - "Community 553"
-Cohesion: 0.32
-Nodes (8): Dark Theme / Warm Futuristic Dark Design System, Right Sidebar Panel, Feed Desktop Screen (1440px), Three-Column Layout Pattern, People You May Know Widget (Frank Khan, Grace Begum, Henry Mia), Your Progress Widget (Profile complete 70/100, First post, 10 connections, Get verified), Right Sidebar Panel, Upcoming Events Widget (CP Workshop, Alumni Talk)
+Cohesion: 0.24
+Nodes (10): CollabTab Component, EventsTab Component, FeedTab Component, Event and Post Entry Rendering, Group Collaborations Query, Group Events Query, Group Posts Query, Infinite Scroll Observer (+2 more)
 
 ### Community 554 - "Community 554"
-Cohesion: 0.29
-Nodes (7): FeedbackSection(), FeedbackSectionProps, FeedbackEntry, FeedbackPair, useRequestFeedback(), SubmitFeedbackArgs, useSubmitFeedback()
+Cohesion: 0.06
+Nodes (46): ApplicationsList Applications Query, ALL_STATUSES, Applicant, ApplicantProfile, ApplicationRow(), ApplicationsList(), ApplicationsResponse, ApplicationStatus (+38 more)
 
 ### Community 555 - "Community 555"
 Cohesion: 0.29
@@ -2579,8 +2597,8 @@ Cohesion: 0.29
 Nodes (7): 4. HERO MINIMALISM RULES, Absolute Hero Rules, Graphic Restraint, Headline Rule, Hero Composition Bias, Pre-output check, Typography Execution
 
 ### Community 566 - "Community 566"
-Cohesion: 0.57
-Nodes (6): AVATAR_PALETTE, getInitials(), GroupResultCard(), Props, seedColor(), GroupSearchResult
+Cohesion: 0.24
+Nodes (6): PaginationQuery, PostListQuery, getPollOptionsWithCounts(), getPollVoteCounts(), groupBy(), postSelectQuery()
 
 ### Community 567 - "Community 567"
 Cohesion: 0.29
@@ -2591,8 +2609,8 @@ Cohesion: 0.29
 Nodes (7): code:ts (it('stores department in profile when provided at registrati), code:bash (npx pnpm --filter api test src/__tests__/auth.test.ts), code:ts (export const RegisterSchema = z), code:ts (await trx('profiles').insert({), code:bash (npx pnpm --filter api test src/__tests__/auth.test.ts), code:bash (git add apps/api/src/modules/auth/schema.ts apps/api/src/mod), Task 4: Department field saved at registration
 
 ### Community 569 - "Community 569"
-Cohesion: 0.24
-Nodes (6): PaginationQuery, PostListQuery, getPollOptionsWithCounts(), getPollVoteCounts(), groupBy(), postSelectQuery()
+Cohesion: 0.19
+Nodes (17): createResource, Group Study Session Factory, Groups Feature Public Exports, CreateStudySessionInput, Group Resources, ResourceRow, toStudySession(), Groups Domain Contracts (+9 more)
 
 ### Community 570 - "Community 570"
 Cohesion: 0.29
@@ -2623,8 +2641,8 @@ Cohesion: 0.33
 Nodes (5): Agentation Setup, code:tsx (import { Agentation } from "agentation";), code:tsx (import { Agentation } from "agentation";), Notes, Steps
 
 ### Community 577 - "Community 577"
-Cohesion: 0.33
-Nodes (5): Feed Controller, Feed Router, feedRouter, pollsRouter, Feed Contracts
+Cohesion: 0.18
+Nodes (12): getConfig, getContext(), listPendingImported, listRuns, triggerRun, updateConfig, RunsQuery, RunsQuerySchema (+4 more)
 
 ### Community 578 - "Community 578"
 Cohesion: 0.50
@@ -2687,8 +2705,8 @@ Cohesion: 0.33
 Nodes (6): code:ts (const existing = await db('users')), code:ts (if (input.department !== undefined && input.department !== e), code:ts (const departmentChanged = input.department !== undefined && ), code:bash (npx pnpm --filter api test), code:bash (git add apps/api/src/modules/users/service.ts), Task 6: Extend `users/service.ts` — batch year sync
 
 ### Community 593 - "Community 593"
-Cohesion: 0.13
-Nodes (15): Top Navigation Bar, Top-bar Icon Actions (notifications, profile avatar), UniConnecT Logo / Brand Mark (top-left), Global Search Input (top bar), Notification Count Store, Theme Store, Global Search Bar (People, Jobs, Events), Dark Theme Design (Navy/Dark surfaces, Orange accent) (+7 more)
+Cohesion: 0.33
+Nodes (6): Global Search Bar (People, Jobs, Events), Dark Theme Design (Navy/Dark surfaces, Orange accent), Feed Page Screenshot (Laptop 1280px), Three-Column Page Layout (Left Nav + Feed + Right Sidebar), Top Navigation Bar, Top Nav Action Icons (Chat, Notifications, Avatar)
 
 ### Community 594 - "Community 594"
 Cohesion: 0.40
@@ -2707,8 +2725,8 @@ Cohesion: 0.40
 Nodes (5): craft, argumentHint, description, live, argumentHint
 
 ### Community 598 - "Community 598"
-Cohesion: 0.60
-Nodes (5): AdminStatsTab(), Props, StatCard(), StatCardSkeleton(), useGroupStats()
+Cohesion: 0.30
+Nodes (5): SystemGroupKind, SystemGroupsService, SystemGroupsService, findSystemGroup(), getUserId()
 
 ### Community 599 - "Community 599"
 Cohesion: 0.40
@@ -2775,8 +2793,8 @@ Cohesion: 0.40
 Nodes (5): uc-cyan, canonical, displayName, role, tonalRamp
 
 ### Community 615 - "Community 615"
-Cohesion: 0.40
-Nodes (5): uc-mint, canonical, displayName, role, tonalRamp
+Cohesion: 0.22
+Nodes (10): Explore Module Barrel (exploreRouter), Explore Router, discoveryController, getAuthContext(), tagPostsController, exploreRouter, Tag Posts Query Contract, TagPostsQuery (+2 more)
 
 ### Community 616 - "Community 616"
 Cohesion: 0.40
@@ -2835,8 +2853,8 @@ Cohesion: 0.40
 Nodes (5): computedHash, skillPath, source, sourceType, agentation-self-driving
 
 ### Community 630 - "Community 630"
-Cohesion: 0.04
-Nodes (77): ConnectButton(), DropdownItem(), DropdownItemProps, Props, sizeStyles, ConnectionCard(), Props, roleBadgeVariant() (+69 more)
+Cohesion: 0.06
+Nodes (66): EmptyState(), BadgesPanel(), Props, ChatView(), DateDivider(), dateLabel(), Message, MessageBubble() (+58 more)
 
 ### Community 631 - "Community 631"
 Cohesion: 0.67
@@ -2855,8 +2873,8 @@ Cohesion: 0.40
 Nodes (5): computedHash, skillPath, source, sourceType, imagegen-frontend-mobile
 
 ### Community 635 - "Community 635"
-Cohesion: 0.33
-Nodes (6): Upload Filename Sanitizer, Presigned Upload URL, Public Upload URL Builder, S3 Compatible Upload Client, Build Public URL Specs, Upload Object Key
+Cohesion: 0.29
+Nodes (7): Session CRUD Flow, Session Row, Mentorship Session Contract, Create Session Mutation, Delete Session Mutation, Session Log Query, Update Session Mutation
 
 ### Community 636 - "Community 636"
 Cohesion: 0.40
@@ -2875,8 +2893,8 @@ Cohesion: 0.50
 Nodes (4): `conversation_participants`, `conversations`, `messages`, Messaging
 
 ### Community 640 - "Community 640"
-Cohesion: 0.50
-Nodes (5): agent-browser: headed browser tool for AI agents, Agentation MCP server: annotation-agent sync, agentation skill: visual feedback toolbar for Next.js, agentation-self-driving skill: autonomous design critique via browser, two-session self-driving workflow: critic + fixer agents
+Cohesion: 0.33
+Nodes (6): Upload Filename Sanitizer, Presigned Upload URL, Public Upload URL Builder, S3 Compatible Upload Client, Build Public URL Specs, Upload Object Key
 
 ### Community 641 - "Community 641"
 Cohesion: 0.50
@@ -2975,8 +2993,8 @@ Cohesion: 0.50
 Nodes (4): 2. Data Model, Batch string format, `groups` table — system group discriminator pattern, `profiles` table — user-facing fields (unchanged schema)
 
 ### Community 666 - "Community 666"
-Cohesion: 0.67
-Nodes (3): AboutTab(), Props, useSetRules()
+Cohesion: 0.16
+Nodes (13): Admin Validation Schemas, Campus Module Index, Campus Router, campusRouter, Campus Validation Schemas, Connections Controller, Connections Module Index, Tenant Scoped Database Tables (+5 more)
 
 ### Community 667 - "Community 667"
 Cohesion: 0.50
@@ -3003,16 +3021,16 @@ Cohesion: 0.67
 Nodes (3): distill, argumentHint, description
 
 ### Community 673 - "Community 673"
-Cohesion: 0.67
-Nodes (3): document, argumentHint, description
+Cohesion: 0.31
+Nodes (7): AboutPanel(), batchLabel(), buildRows(), formatJoined(), Props, ROLE_HEADLINE, Row
 
 ### Community 674 - "Community 674"
 Cohesion: 0.67
 Nodes (3): extract, argumentHint, description
 
 ### Community 676 - "Community 676"
-Cohesion: 0.67
-Nodes (3): layout, argumentHint, description
+Cohesion: 0.20
+Nodes (12): AccountSection(), ActiveSessionsPanel(), ChangePasswordForm(), DeactivatePanel(), inputStyle, pillButton, rowStyle, useActiveSessions() (+4 more)
 
 ### Community 677 - "Community 677"
 Cohesion: 0.67
@@ -3027,8 +3045,8 @@ Cohesion: 0.67
 Nodes (3): overdrive, argumentHint, description
 
 ### Community 680 - "Community 680"
-Cohesion: 0.29
-Nodes (6): quieter, argumentHint, description, teach, argumentHint, description
+Cohesion: 0.67
+Nodes (3): quieter, argumentHint, description
 
 ### Community 681 - "Community 681"
 Cohesion: 0.67
@@ -3051,12 +3069,12 @@ Cohesion: 0.67
 Nodes (3): clarify, argumentHint, description
 
 ### Community 687 - "Community 687"
-Cohesion: 0.67
-Nodes (3): colorize, argumentHint, description
+Cohesion: 0.46
+Nodes (7): createFeatured(), FeaturedModal(), FieldRow(), inputBase, onBlur(), onFocus(), Props
 
 ### Community 688 - "Community 688"
-Cohesion: 0.67
-Nodes (3): critique, argumentHint, description
+Cohesion: 0.40
+Nodes (5): uc-mint, canonical, displayName, role, tonalRamp
 
 ### Community 689 - "Community 689"
 Cohesion: 0.67
@@ -3199,8 +3217,8 @@ Cohesion: 0.67
 Nodes (3): impeccable adapt reference (cross-context adaptation), Adaptation as Context Rethink (not pixel scaling), Mobile Adaptation Strategy (single column, touch targets 44px, bottom nav)
 
 ### Community 726 - "Community 726"
-Cohesion: 0.67
-Nodes (4): group_members Table, Group Membership Lifecycle, groups Table, Role Based System Groups
+Cohesion: 0.40
+Nodes (4): Feed Controller, Feed Router, feedRouter, pollsRouter
 
 ### Community 727 - "Community 727"
 Cohesion: 0.67
@@ -3211,28 +3229,80 @@ Cohesion: 0.67
 Nodes (3): Email domain guard for invitation creation, university_audit_logs table for config change audit trail, Allowed Email Domains Feature Design
 
 ### Community 739 - "Community 739"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, full-output-enforcement
+Cohesion: 0.23
+Nodes (7): getAuthContext(), subscribe, unsubscribe, PushSubscribeInput, pushSubscribeSchema, PushUnsubscribeInput, pushUnsubscribeSchema
 
 ### Community 740 - "Community 740"
-Cohesion: 0.40
-Nodes (5): computedHash, skillPath, source, sourceType, impeccable
-
-### Community 741 - "Community 741"
-Cohesion: 0.50
-Nodes (4): text-tertiary, canonical, displayName, role
-
-### Community 742 - "Community 742"
-Cohesion: 0.40
-Nodes (5): Conversation Lifecycle, conversation_participants Table, conversations Table, Direct Message Policy, Read Receipts
+Cohesion: 0.39
+Nodes (7): Props, SessionCard(), SessionsSkeleton(), StudySessionsTab(), useCreateStudySession(), useRsvpStudySession(), useStudySessions()
 
 ### Community 746 - "Community 746"
-Cohesion: 0.50
-Nodes (4): Debugging Animations, Frame-by-frame inspection, Slow motion testing, Test on real devices
+Cohesion: 0.70
+Nodes (4): FOCUSABLE_SELECTOR, Props, ShortcutHelp(), SHORTCUTS
 
 ### Community 747 - "Community 747"
 Cohesion: 0.67
 Nodes (3): layout, argumentHint, description
+
+### Community 750 - "Community 750"
+Cohesion: 0.40
+Nodes (5): computedHash, skillPath, source, sourceType, design-taste-frontend
+
+### Community 751 - "Community 751"
+Cohesion: 0.67
+Nodes (4): group_members Table, Group Membership Lifecycle, groups Table, Role Based System Groups
+
+### Community 752 - "Community 752"
+Cohesion: 0.40
+Nodes (5): computedHash, skillPath, source, sourceType, full-output-enforcement
+
+### Community 753 - "Community 753"
+Cohesion: 0.29
+Nodes (7): Alumni Mentor Discovery Card, Alumni Mentor Opt In Controls, Active Incoming Requests Flow, Alumni Mentor Dashboard, Previous Sessions Flow, Optimistic Mentorship Request Status Cache, Realtime New Mentorship Request Event
+
+### Community 754 - "Community 754"
+Cohesion: 0.40
+Nodes (6): Auth Flow (Registration+OTP+Login), Feed Flow (Posts+Reactions+Comments), Jobs Flow (Alumni Post+Student Apply), Messaging Flow (Conversation+Messages), Redis OTP Injection, scripts/smoke-test.js
+
+### Community 756 - "Community 756"
+Cohesion: 0.70
+Nodes (4): formatDate(), ProfileActivity(), Props, truncateContent()
+
+### Community 757 - "Community 757"
+Cohesion: 0.40
+Nodes (5): uc-indigo-xl, canonical, displayName, role, tonalRamp
+
+### Community 758 - "Community 758"
+Cohesion: 0.40
+Nodes (5): computedHash, skillPath, source, sourceType, impeccable
+
+### Community 759 - "Community 759"
+Cohesion: 0.50
+Nodes (4): Debugging Animations, Frame-by-frame inspection, Slow motion testing, Test on real devices
+
+### Community 760 - "Community 760"
+Cohesion: 0.67
+Nodes (3): 6. Write all variants in a single edit, code:html (<!-- Variants: insert below this line -->), code:tsx (<style data-impeccable-css="SESSION_ID">{`)
+
+### Community 761 - "Community 761"
+Cohesion: 0.67
+Nodes (3): audit, argumentHint, description
+
+### Community 765 - "Community 765"
+Cohesion: 0.67
+Nodes (3): critique, argumentHint, description
+
+### Community 766 - "Community 766"
+Cohesion: 0.67
+Nodes (3): document, argumentHint, description
+
+### Community 767 - "Community 767"
+Cohesion: 0.67
+Nodes (3): colorize, argumentHint, description
+
+### Community 768 - "Community 768"
+Cohesion: 0.67
+Nodes (3): Optimistic Post Save State, Post Save API, useSavePost Hook
 
 ## Ambiguous Edges - Review These
 - `NotificationsService Invite Creation` → `Group Invite Flow`  [AMBIGUOUS]
@@ -3243,9 +3313,9 @@ Nodes (3): layout, argumentHint, description
   apps/web/src/pages/ForgotPasswordPage.tsx · relation: rationale_for
 
 ## Knowledge Gaps
-- **4222 isolated node(s):** `npx`, `@azure/mcp`, `1. Goals`, `2. Decisions log`, `3. Notification categories & type mapping` (+4217 more)
+- **4325 isolated node(s):** `api`, `items`, `firstUnpinned`, `api`, `api` (+4320 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **59 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **69 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -3256,11 +3326,11 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `Axios Token Refresh Queue` and `Forgot Password Page Reset Flow`?**
   _Edge tagged AMBIGUOUS (relation: rationale_for) - confidence is low._
-- **Why does `db` connect `Community 163` to `Jobs Backend Module`, `Events Backend Module`, `Feed Backend Module`, `Community 134`, `Mentorship Backend`, `Integration Test Suite`, `Messages Backend`, `Socket, Workers & Bull`, `Community 409`, `Admin Controller Logic`, `Auth & Flow Concepts`, `News Backend`, `Community 41`, `Community 45`, `Community 53`, `Community 442`, `Community 78`, `Community 82`, `Community 85`, `Community 89`, `Community 107`, `Community 369`, `Community 370`, `Community 121`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `api` connect `Feed UI & Admin Components` to `Groups Frontend`, `Landing & Shared UI`, `Admin Module`, `Community 398`, `Connections Frontend`, `Search Frontend`, `Community 147`, `Middleware & Explore API`, `Groups Join-Request Logic`, `Community 554`, `Community 46`, `Community 47`, `Community 50`, `Community 52`, `Community 566`, `Community 54`, `Community 78`, `Community 85`, `Community 99`, `Community 490`, `Community 365`, `Community 115`, `Community 630`, `Community 125`?**
-  _High betweenness centrality (0.018) - this node is a cross-community bridge._
-- **Why does `Conversation` connect `Community 85` to `Feed UI & Admin Components`, `Community 163`, `Groups Frontend`, `Landing & Shared UI`, `Community 74`, `Messages Backend`, `Community 630`, `Community 508`?**
-  _High betweenness centrality (0.013) - this node is a cross-community bridge._
-- **What connects `npx`, `@azure/mcp`, `1. Goals` to the rest of the system?**
-  _4230 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `db` connect `Community 163` to `Jobs Backend Module`, `Feed Backend Module`, `Groups Frontend`, `Community 133`, `Community 134`, `Mentorship Backend`, `Integration Test Suite`, `Messages Backend`, `Search Frontend`, `Community 147`, `Socket, Workers & Bull`, `Community 409`, `Admin Controller Logic`, `Auth & Flow Concepts`, `News Backend`, `Community 169`, `Community 45`, `Community 49`, `Community 53`, `Community 598`, `Community 89`, `Community 365`, `Community 370`, `Community 630`, `Community 121`, `Community 508`?**
+  _High betweenness centrality (0.024) - this node is a cross-community bridge._
+- **Why does `s` connect `Screenshot Utility (agents)` to `Community 177`, `Screenshot Utility (claude)`?**
+  _High betweenness centrality (0.020) - this node is a cross-community bridge._
+- **Why does `api` connect `Community 69` to `Feed UI & Admin Components`, `Landing & Shared UI`, `Admin Module`, `Community 398`, `Connections Frontend`, `Search Frontend`, `Middleware & Explore API`, `Groups Service Layer`, `Users Backend`, `Community 554`, `Community 46`, `Community 47`, `Community 50`, `Community 52`, `Community 54`, `Community 60`, `Community 198`, `Community 346`, `Community 99`, `Community 490`, `Community 363`, `Community 492`, `Community 369`, `Community 115`, `Community 756`, `Community 630`, `Community 123`, `Community 125`?**
+  _High betweenness centrality (0.020) - this node is a cross-community bridge._
+- **What connects `api`, `items`, `firstUnpinned` to the rest of the system?**
+  _4328 weakly-connected nodes found - possible documentation gaps or missing edges._
