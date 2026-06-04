@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { api } from '@/lib/axios'
 import { EmptyState } from '@/components/EmptyState'
 import { OrangeBtn } from '@/components/Button'
+import { ShareMenu } from '@/components/ShareMenu'
 import { useAuthStore } from '@/stores/authStore'
 import { CreateNewsForm } from '@/features/news/components/CreateNewsForm'
 
@@ -126,9 +127,15 @@ export default function NewsPage() {
                 <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                   {item.body.slice(0, 160)}{item.body.length > 160 ? '…' : ''}
                 </p>
-                <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  {format(parseISO(item.publishedAt ?? item.createdAt), 'MMM d, yyyy')} · {item.author.fullName ?? 'UniConnecT'}
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    {format(parseISO(item.publishedAt ?? item.createdAt), 'MMM d, yyyy')} · {item.author.fullName ?? 'UniConnecT'}
+                  </p>
+                  {/* The card is a Link; stop the share control from triggering navigation. */}
+                  <span onClick={(e) => { e.preventDefault(); e.stopPropagation() }} style={{ display: 'inline-flex' }}>
+                    <ShareMenu entityType="news" entityId={item.id} title={item.title} />
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

@@ -13,6 +13,8 @@ export interface DraftItem {
   excerpt: string | null
   createdAt: Date
   updatedAt: Date
+  /** Posts only: a future publish time means this draft is scheduled, not a plain draft. */
+  publishAt: Date | null
 }
 
 interface RawDraft {
@@ -21,6 +23,7 @@ interface RawDraft {
   excerpt: string | null
   created_at: Date
   updated_at: Date
+  publish_at?: Date | null
 }
 
 export class DraftsService {
@@ -34,6 +37,7 @@ export class DraftsService {
           db.raw('content as excerpt'),
           'created_at',
           'updated_at',
+          'publish_at',
         ),
       db('jobs')
         // The jobs table has no updated_at column, so fall back to created_at for ordering.
@@ -77,5 +81,6 @@ function toItem(kind: DraftItem['kind'], row: RawDraft): DraftItem {
     excerpt: row.excerpt?.trim() || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    publishAt: row.publish_at ?? null,
   }
 }

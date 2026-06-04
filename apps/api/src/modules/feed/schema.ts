@@ -23,6 +23,8 @@ export const CreatePostSchema = z.object({
   group_id: z.string().uuid().nullable().optional(),
   /** false → save as a private draft (author-only, not broadcast to the feed). */
   is_published: z.boolean().default(true),
+  /** Future ISO timestamp → schedule the post; it stays unpublished until then. */
+  publish_at: z.string().datetime({ offset: true }).nullable().optional(),
   poll: z
     .object({
       question: z.string().trim().min(1).max(500),
@@ -40,6 +42,10 @@ export const UpdatePostSchema = z
     group_id: z.string().uuid().nullable().optional(),
     is_pinned: z.boolean().optional(),
     is_published: z.boolean().optional(),
+    /** Set a future time to (re)schedule; null to cancel scheduling (back to draft). */
+    publish_at: z.string().datetime({ offset: true }).nullable().optional(),
+    /** Set a future time to auto-archive; null to clear the auto-expiry. */
+    expires_at: z.string().datetime({ offset: true }).nullable().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',

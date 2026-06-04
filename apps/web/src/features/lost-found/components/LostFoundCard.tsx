@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CheckCircle2, MapPin, Phone } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { ShareMenu } from '@/components/ShareMenu'
 import { getInitials, relativeTime, seedColor } from '../constants'
 import { useResolveItem } from '../hooks/useResolveItem'
 import type { LostFoundItem } from '../types'
@@ -58,7 +59,10 @@ export function LostFoundCard({ item, currentUserId }: LostFoundCardProps) {
             </p>
           </div>
         </div>
-        <TypeBadge type={item.type} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <TypeBadge type={item.type} />
+          <ShareMenu entityType="lost-found" entityId={item.id} title={item.itemName} />
+        </div>
       </div>
 
       {/* Item name + description */}

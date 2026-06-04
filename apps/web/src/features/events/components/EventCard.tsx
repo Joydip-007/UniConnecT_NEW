@@ -5,6 +5,7 @@ import { format, parseISO, isPast } from 'date-fns'
 import { MapPin } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { queryClient } from '@/lib/queryClient'
+import { ShareMenu } from '@/components/ShareMenu'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -375,6 +376,8 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
           <div style={{ flex: 1, minWidth: 0 }}>
             <FaceStack attendees={event.previewAttendees} total={localCounts.going} />
           </div>
+
+          <ShareMenu entityType="event" entityId={event.id} title={event.title} />
 
           {/* RSVP buttons */}
           {!ended ? (

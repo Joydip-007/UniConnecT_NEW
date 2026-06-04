@@ -1,12 +1,17 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { PATHS } from './paths'
 
 export default function ProtectedRoute() {
   const accessToken = useAuthStore((s) => s.accessToken)
   const user = useAuthStore((s) => s.user)
+  const location = useLocation()
 
-  if (!accessToken) return <Navigate to={PATHS.LOGIN} replace />
+  if (!accessToken) {
+    // Preserve the deep link so login can return the visitor to it (e.g. a shared post).
+    const redirect = `${location.pathname}${location.search}${location.hash}`
+    return <Navigate to={PATHS.LOGIN} replace state={{ redirect }} />
+  }
 
   if (user && !user.isVerified) {
     return (

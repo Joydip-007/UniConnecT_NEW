@@ -214,11 +214,12 @@ export async function searchPosts(
   page: number,
   limit: number,
 ): Promise<SearchPagedResult<PostSearchResult>> {
-  const countQuery = db('posts as po').where('po.university_id', universityId)
+  const countQuery = db('posts as po').where('po.university_id', universityId).whereNull('po.archived_at')
   const rowQuery = db('posts as po')
     .join('users as u', 'u.id', 'po.author_id')
     .join('profiles as p', 'p.user_id', 'u.id')
     .where('po.university_id', universityId)
+    .whereNull('po.archived_at')
 
   if (filters.q) {
     applyTextSearch(countQuery, 'po.search_vector', 'po.content', filters.q)

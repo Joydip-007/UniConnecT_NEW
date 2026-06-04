@@ -11,6 +11,13 @@ export const CONTENT_SYNC_EVENTS = {
   RUN_COMPLETED: 'content_sync:run_completed',
 } as const
 
+export const POST_LIFECYCLE_EVENTS = {
+  /** A scheduled post went live (also emitted as the normal feed:post:new). */
+  PUBLISHED: 'post:published',
+  /** A post was archived (manually or via expiry) — open feeds should drop it. */
+  ARCHIVED: 'post:archived',
+} as const
+
 export const PRESENCE_EVENTS = {
   /** Server → client: a user's online status changed. */
   UPDATE: 'presence:update',

@@ -1,7 +1,13 @@
 import { useNavigate } from 'react-router-dom'
-import { FileText } from 'lucide-react'
+import { Archive, Clock, FileText } from 'lucide-react'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { useMyDrafts, usePublishDraft, type DraftItem, type DraftKind } from '@/features/drafts'
+import { useArchivedPosts } from '@/features/feed/hooks/useArchivedPosts'
+import { useUnarchivePost } from '@/features/feed/hooks/useArchivePost'
+
+function isScheduled(item: DraftItem): boolean {
+  return Boolean(item.publishAt) && new Date(item.publishAt as string).getTime() > Date.now()
+}
 
 const KIND_LABEL: Record<DraftKind, string> = {
   post: 'Post',
@@ -25,8 +31,10 @@ function detailPath(item: DraftItem): string | null {
       return `/news/${item.id}`
     case 'event':
       return `/events/${item.id}`
+    case 'post':
+      return `/feed/${item.id}` // permalink shows the author their draft/scheduled post
     default:
-      return null // posts have no standalone page
+      return null
   }
 }
 
@@ -34,7 +42,10 @@ export default function DraftsPage() {
   const navigate = useNavigate()
   const { data, isLoading, isError } = useMyDrafts()
   const publish = usePublishDraft()
+  const archived = useArchivedPosts()
+  const unarchive = useUnarchivePost()
   const items = data?.items ?? []
+  const archivedItems = archived.data?.items ?? []
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px' }}>
@@ -109,9 +120,22 @@ export default function DraftsPage() {
                   >
                     {KIND_LABEL[item.kind]}
                   </span>
-                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    Updated {new Date(item.updatedAt).toLocaleDateString()}
-                  </span>
+                  {isScheduled(item) ? (
+                    <span
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 11, fontWeight: 500, color: 'var(--uc-indigo-xl)', background: 'var(--uc-indigo-bg)',
+                        borderRadius: 'var(--r-pill)', padding: '2px 10px',
+                      }}
+                    >
+                      <Clock size={11} strokeWidth={1.5} />
+                      Scheduled · {new Date(item.publishAt as string).toLocaleString()}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                      Updated {new Date(item.updatedAt).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
 
                 <p
@@ -161,6 +185,51 @@ export default function DraftsPage() {
             )
           })}
         </div>
+      )}
+
+      {archivedItems.length > 0 && (
+        <section style={{ marginTop: 32 }}>
+          <h2
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              margin: '0 0 4px', fontSize: 16, fontWeight: 500, color: 'var(--text-primary)',
+            }}
+          >
+            <Archive size={16} strokeWidth={1.5} /> Archived
+          </h2>
+          <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
+            Hidden from your feed. Restore one to make it public again.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {archivedItems.map((post) => (
+              <div
+                key={post.id}
+                style={{
+                  background: 'var(--surface-card)',
+                  border: '0.5px solid var(--border-default)',
+                  borderRadius: 'var(--r-lg)',
+                  padding: 16,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0, fontSize: 14, fontWeight: 400, color: 'var(--text-primary)',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {post.content || '(no text)'}
+                </p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <GhostBtn onClick={() => unarchive.mutate(post.id)} disabled={unarchive.isPending}>
+                    Restore
+                  </GhostBtn>
+                  <GhostBtn onClick={() => navigate(`/feed/${post.id}`)}>Open</GhostBtn>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )

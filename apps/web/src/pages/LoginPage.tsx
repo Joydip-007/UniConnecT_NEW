@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import { ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/axios'
@@ -19,7 +19,9 @@ interface LoginResponse {
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const redirectTo = (location.state as { redirect?: string } | null)?.redirect ?? PATHS.FEED
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +37,7 @@ export default function LoginPage() {
     try {
       const { data } = await api.post<LoginResponse>('/auth/login', { email, password })
       setAuth(data.data.user, data.data.accessToken)
-      navigate(PATHS.FEED, { replace: true })
+      navigate(redirectTo, { replace: true })
     } catch (err) {
       if (isAxiosError(err)) {
         const status = err.response?.status

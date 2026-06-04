@@ -3,6 +3,7 @@ import type { PublicUserProfile, UserRole } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn } from '@/components/Button'
+import { ShareMenu } from '@/components/ShareMenu'
 import { ConnectButton } from '@/features/connections'
 import { PresenceLabel, usePresence } from '@/features/presence'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
@@ -82,7 +83,8 @@ export function ProfileHeader({
           <Avatar src={user.profile.avatarUrl} initials={getInitials(fullName)} color={avatarColor} size={96} />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 10 }}>
+          <ShareMenu entityType="profile" entityId={user.id} title={fullName} />
           {isOwnProfile ? (
             <GhostBtn onClick={onEdit}>Edit profile</GhostBtn>
           ) : (

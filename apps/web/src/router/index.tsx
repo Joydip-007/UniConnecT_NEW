@@ -41,6 +41,7 @@ export const router = createBrowserRouter([
         element: <FeedLayout />,
         children: [
           { path: PATHS.FEED, element: page(() => import('@/pages/FeedPage')) },
+          { path: PATHS.POST_DETAIL, element: page(() => import('@/pages/PostDetailPage')) },
 
           { path: PATHS.JOBS, element: page(() => import('@/pages/JobsPage')) },
           { path: PATHS.JOB_DETAIL, element: page(() => import('@/pages/JobDetailPage')) },

@@ -9,6 +9,11 @@ export interface UpdatePostInput {
   media_urls?: string[]
   type?: 'post' | 'announcement' | 'lost_found' | 'event_promo'
   is_pinned?: boolean
+  is_published?: boolean
+  /** Future ISO time to (re)schedule, or null to cancel scheduling. */
+  publish_at?: string | null
+  /** Future ISO time to auto-archive, or null to clear the auto-expiry. */
+  expires_at?: string | null
 }
 
 export function useUpdatePost() {

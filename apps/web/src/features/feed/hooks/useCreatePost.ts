@@ -11,6 +11,8 @@ export interface CreatePostInput {
   group_id?: string | null
   /** false → save as a private draft; it must NOT be inserted into the live feed. */
   is_published?: boolean
+  /** Future ISO time → schedule the post; it stays out of the feed until then. */
+  publish_at?: string
 }
 
 export function useCreatePost() {

@@ -7,6 +7,7 @@ export const PATHS = {
   FORGOT_PASSWORD: '/forgot-password',
 
   FEED: '/feed',
+  POST_DETAIL: '/feed/:id',
 
   JOBS: '/jobs',
   JOB_DETAIL: '/jobs/:id',

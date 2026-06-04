@@ -8,9 +8,11 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { useMutation } from '@tanstack/react-query'
 import {
+  Archive,
   Bookmark,
   MessageCircle,
   MoreVertical,
+  Share2,
   ThumbsUp,
   Trash2,
   Pencil,
@@ -20,11 +22,13 @@ import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { ReactionBtn } from '@/components/Button'
+import { ShareMenu } from '@/components/ShareMenu'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
 import { useSavePost } from '@/features/feed/hooks/useSavePost'
 import { useDeletePost } from '@/features/feed/hooks/useDeletePost'
+import { useArchivePost } from '@/features/feed/hooks/useArchivePost'
 import { api } from '@/lib/axios'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -164,9 +168,10 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
 interface ThreeDotMenuProps {
   onEdit: () => void
   onDelete: () => void
+  onArchive: () => void
 }
 
-function ThreeDotMenu({ onEdit, onDelete }: ThreeDotMenuProps) {
+function ThreeDotMenu({ onEdit, onDelete, onArchive }: ThreeDotMenuProps) {
   const [open, setOpen] = useState(false)
 
   function handleDelete() {
@@ -174,6 +179,11 @@ function ThreeDotMenu({ onEdit, onDelete }: ThreeDotMenuProps) {
     if (window.confirm('Delete this post? This cannot be undone.')) {
       onDelete()
     }
+  }
+
+  function handleArchive() {
+    setOpen(false)
+    onArchive()
   }
 
   return (
@@ -222,6 +232,7 @@ function ThreeDotMenu({ onEdit, onDelete }: ThreeDotMenuProps) {
               }}
             >
               <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={() => { setOpen(false); onEdit() }} />
+              <MenuBtn icon={<Archive size={13} strokeWidth={1.5} />} label="Archive" onClick={handleArchive} />
               <MenuBtn icon={<Trash2 size={13} strokeWidth={1.5} />} label="Delete" onClick={handleDelete} danger />
             </motion.div>
           </>
@@ -297,6 +308,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const reactionMutation = useUpsertReaction(post.id)
   const saveMutation = useSavePost(post.id)
   const deleteMutation = useDeletePost()
+  const archiveMutation = useArchivePost()
 
   function handleLike() {
     const wasLiked = localLike
@@ -380,6 +392,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             <ThreeDotMenu
               onEdit={() => onEditPost(post)}
               onDelete={() => deleteMutation.mutate(post.id)}
+              onArchive={() => archiveMutation.mutate(post.id)}
             />
           )}
         </div>
@@ -463,6 +476,15 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               </span>
             )}
           </ReactionBtn>
+
+          <ShareMenu entityType="post" entityId={post.id} title={`${post.author.fullName} on UniConnecT`}>
+            {({ open, toggle }) => (
+              <ReactionBtn active={open} onClick={toggle}>
+                <Share2 size={15} strokeWidth={1.5} />
+                Share
+              </ReactionBtn>
+            )}
+          </ShareMenu>
 
           <ReactionBtn
             active={localSaved}

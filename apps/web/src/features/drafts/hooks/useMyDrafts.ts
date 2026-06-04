@@ -10,6 +10,8 @@ export interface DraftItem {
   excerpt: string | null
   createdAt: string
   updatedAt: string
+  /** Posts only: a future publish time means this is scheduled, not a plain draft. */
+  publishAt: string | null
 }
 
 export interface MyDrafts {

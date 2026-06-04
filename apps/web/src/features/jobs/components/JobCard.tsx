@@ -6,6 +6,7 @@ import { Bookmark, CheckCircle2, Clock, MapPin, Users } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, MintBtn } from '@/components/Button'
+import { ShareMenu } from '@/components/ShareMenu'
 import { queryClient } from '@/lib/queryClient'
 import { ApplyModal } from './ApplyModal'
 
@@ -281,7 +282,8 @@ export function JobCard({ job, queryKey }: { job: Job; queryKey: unknown[] }) {
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+            <ShareMenu entityType="job" entityId={job.id} title={job.title} />
             <GhostBtn onClick={handleSave} style={{ fontSize: 12, padding: '5px 12px' }}>
               <Bookmark
                 size={13}

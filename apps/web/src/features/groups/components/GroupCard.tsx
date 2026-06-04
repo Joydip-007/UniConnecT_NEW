@@ -6,6 +6,7 @@ import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { ShareMenu } from '@/components/ShareMenu'
 import { AllowedRoleBadge, OfficialBadge, TypeBadge } from './GroupBadges'
 import type { Group } from '../types'
 
@@ -107,25 +108,28 @@ export function GroupCard({ group }: { group: Group }) {
           </span>
         </div>
 
-        {group.isSystem ? (
-          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>Auto-managed</span>
-        ) : group.isMember ? (
-          <GhostBtn
-            onClick={() => toggleMutation.mutate()}
-            disabled={toggleMutation.isPending}
-            style={{ padding: '5px 14px', fontSize: 12 }}
-          >
-            {toggleMutation.isPending ? 'Leaving…' : 'Leave'}
-          </GhostBtn>
-        ) : (
-          <PrimaryBtn
-            onClick={() => toggleMutation.mutate()}
-            disabled={toggleMutation.isPending}
-            style={{ padding: '5px 14px', fontSize: 12 }}
-          >
-            {toggleMutation.isPending ? 'Joining…' : 'Join'}
-          </PrimaryBtn>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <ShareMenu entityType="group" entityId={group.id} title={group.name} />
+          {group.isSystem ? (
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>Auto-managed</span>
+          ) : group.isMember ? (
+            <GhostBtn
+              onClick={() => toggleMutation.mutate()}
+              disabled={toggleMutation.isPending}
+              style={{ padding: '5px 14px', fontSize: 12 }}
+            >
+              {toggleMutation.isPending ? 'Leaving…' : 'Leave'}
+            </GhostBtn>
+          ) : (
+            <PrimaryBtn
+              onClick={() => toggleMutation.mutate()}
+              disabled={toggleMutation.isPending}
+              style={{ padding: '5px 14px', fontSize: 12 }}
+            >
+              {toggleMutation.isPending ? 'Joining…' : 'Join'}
+            </PrimaryBtn>
+          )}
+        </div>
       </div>
     </div>
   )

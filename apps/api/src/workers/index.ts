@@ -6,6 +6,7 @@ import './mentorship.worker'
 import './content-sync.worker'
 import './push.worker'
 import './feed-ranking.worker'
+import './post-lifecycle.worker'
 import { logger } from '../utils/logger'
 
 logger.info('UniConnecT workers started')

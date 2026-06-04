@@ -35,6 +35,10 @@ export interface FeedPost {
   mediaUrls: string[]
   author: FeedPostAuthor
   isPinned: boolean
+  isPublished: boolean
+  publishAt: string | null
+  archivedAt: string | null
+  expiresAt: string | null
   viewCount: number
   reactionCounts: { like: number; love: number; insightful: number; celebrate: number }
   myReaction: 'like' | 'love' | 'insightful' | 'celebrate' | null

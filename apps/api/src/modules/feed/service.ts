@@ -1,11 +1,12 @@
 import type { Knex } from 'knex'
-import { FEED_RANKING, type UserRole } from '@uniconnect/shared'
+import { FEED_RANKING, POST_LIFECYCLE_EVENTS, type UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { getIo } from '../../socket'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
 import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput } from './schema'
 import { notificationsService } from '../notifications/service'
+import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
 type ReactionType = 'like' | 'love' | 'insightful' | 'celebrate'
@@ -36,6 +37,9 @@ interface PostRow {
   group_id: string | null
   is_pinned: boolean
   is_published: boolean
+  publish_at: Date | null
+  archived_at: Date | null
+  expires_at: Date | null
   view_count: number
   created_at: Date
   updated_at: Date
@@ -96,7 +100,11 @@ export class FeedService {
     const isTop = query.sort === 'top'
 
     // Drafts (is_published = false) never appear in the public feed — only in the author's Drafts view.
-    const countQuery = db('posts').where('posts.university_id', universityId).andWhere('posts.is_published', true)
+    // Archived posts (archived_at set) are likewise hidden from every public list.
+    const countQuery = db('posts')
+      .where('posts.university_id', universityId)
+      .andWhere('posts.is_published', true)
+      .whereNull('posts.archived_at')
     if (query.type) countQuery.andWhere('posts.type', query.type)
     if (query.authorId) countQuery.andWhere('posts.author_id', query.authorId)
     // "Top" only ranks the recent window, so the count must match.
@@ -111,6 +119,7 @@ export class FeedService {
     const rowsQuery = postSelectQuery(db, userId, universityId)
       .where('posts.university_id', universityId)
       .andWhere('posts.is_published', true)
+      .whereNull('posts.archived_at')
       .modify((builder) => {
         if (query.type) builder.andWhere('posts.type', query.type)
         if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
@@ -165,11 +174,13 @@ export class FeedService {
   async listGroupPosts(universityId: string, userId: string, groupId: string, query: PaginationQuery) {
     const [{ count }] = await db('posts')
       .where({ university_id: universityId, group_id: groupId, is_published: true })
+      .whereNull('archived_at')
       .count<CountRow[]>({ count: '*' })
     const total = Number(count)
 
     const rows = (await postSelectQuery(db, userId)
       .where({ 'posts.university_id': universityId, 'posts.group_id': groupId, 'posts.is_published': true })
+      .whereNull('posts.archived_at')
       .orderBy('posts.is_pinned', 'desc')
       .orderBy('posts.created_at', 'desc')
       .limit(query.limit)
@@ -182,6 +193,12 @@ export class FeedService {
   async createPost(context: AuthContext, input: CreatePostInput) {
     assertCanUsePostType(context.role, input.type)
 
+    // A future publish_at schedules the post: it stays unpublished until a lifecycle
+    // job flips it live. A past/absent publish_at means publish immediately.
+    const publishAt = input.publish_at ? new Date(input.publish_at) : null
+    const isScheduled = publishAt !== null && publishAt.getTime() > Date.now()
+    const isPublished = isScheduled ? false : (input.is_published ?? true)
+
     const postId = await db.transaction(async (trx) => {
       const [post] = await trx('posts')
         .insert({
@@ -191,7 +208,8 @@ export class FeedService {
           content: input.content,
           media_urls: input.media_urls,
           group_id: input.group_id ?? null,
-          is_published: input.is_published ?? true,
+          is_published: isPublished,
+          publish_at: isScheduled ? publishAt : null,
         })
         .returning<{ id: string }[]>('id')
 
@@ -239,8 +257,13 @@ export class FeedService {
       return post.id
     })
 
+    // A scheduled post gets a delayed publish job (the cron is the safety net).
+    if (isScheduled && publishAt) {
+      await schedulePostJob('publish', postId, context.universityId, publishAt)
+    }
+
     const post = await this.getPost(context.universityId, context.userId, postId, { incrementView: false })
-    // Drafts are not broadcast to the feed — only published posts reach other users.
+    // Drafts and scheduled posts are not broadcast to the feed — only published posts reach other users.
     if (post.isPublished) {
       const io = getIo()
       io.to(`uni:${context.universityId}`).emit('post:created', post)
@@ -260,8 +283,9 @@ export class FeedService {
       .first<PostRow>()
 
     if (!row) throw notFound('Post not found', 'POST_NOT_FOUND')
-    // A draft post is visible only to its author.
-    if (!row.is_published && row.author_id !== userId) throw notFound('Post not found', 'POST_NOT_FOUND')
+    // Draft, scheduled (unpublished) and archived posts are visible only to their author.
+    const isAuthorOnly = !row.is_published || row.archived_at !== null
+    if (isAuthorOnly && row.author_id !== userId) throw notFound('Post not found', 'POST_NOT_FOUND')
 
     if (options.incrementView !== false) {
       void db('posts')
@@ -279,6 +303,10 @@ export class FeedService {
     assertCanMutatePost(context, post.author_id)
     if (input.type) assertCanUsePostType(context.role, input.type)
 
+    // publish_at / expires_at arrive as ISO strings (set) or null (clear).
+    const publishAt = input.publish_at !== undefined ? (input.publish_at ? new Date(input.publish_at) : null) : undefined
+    const expiresAt = input.expires_at !== undefined ? (input.expires_at ? new Date(input.expires_at) : null) : undefined
+
     await db('posts')
       .where({ id: postId, university_id: context.universityId })
       .update({
@@ -289,11 +317,30 @@ export class FeedService {
           group_id: input.group_id,
           is_pinned: input.is_pinned,
           is_published: input.is_published,
+          publish_at: publishAt,
+          expires_at: expiresAt,
         }),
         updated_at: db.fn.now(),
       })
 
-    // Publishing a draft for the first time broadcasts it to the feed.
+    // Reschedule / cancel the delayed publish job to match the new publish_at.
+    if (publishAt !== undefined) {
+      if (publishAt && publishAt.getTime() > Date.now() && input.is_published !== true) {
+        await schedulePostJob('publish', postId, context.universityId, publishAt)
+      } else {
+        await cancelPostJob('publish', postId)
+      }
+    }
+    // Reschedule / cancel the delayed expire job to match the new expires_at.
+    if (expiresAt !== undefined) {
+      if (expiresAt && expiresAt.getTime() > Date.now()) {
+        await schedulePostJob('expire', postId, context.universityId, expiresAt)
+      } else {
+        await cancelPostJob('expire', postId)
+      }
+    }
+
+    // Publishing a draft/scheduled post for the first time broadcasts it to the feed.
     const publishingNow = input.is_published === true && !post.is_published
 
     // Re-sync hashtags when content is being updated
@@ -320,11 +367,55 @@ export class FeedService {
 
     const updated = await this.getPost(context.universityId, context.userId, postId, { incrementView: false })
     if (publishingNow) {
+      // A pending publish job is now redundant — drop it so it can't double-fire.
+      await cancelPostJob('publish', postId)
       const io = getIo()
       io.to(`uni:${context.universityId}`).emit('post:created', updated)
       io.to(`uni:${context.universityId}`).emit('feed:post:new', { post: updated })
     }
     return updated
+  }
+
+  // ── Archival ────────────────────────────────────────────────────────────────
+
+  async archivePost(context: AuthContext, postId: string) {
+    const post = await assertPostInUniversity(postId, context.universityId)
+    assertCanMutatePost(context, post.author_id)
+    await archivePostById(postId, context.universityId)
+    return this.getPost(context.universityId, context.userId, postId, { incrementView: false })
+  }
+
+  async unarchivePost(context: AuthContext, postId: string) {
+    const post = await assertPostInUniversity(postId, context.universityId)
+    assertCanMutatePost(context, post.author_id)
+    await db('posts')
+      .where({ id: postId, university_id: context.universityId })
+      .update({ archived_at: null, updated_at: db.fn.now() })
+    // Clearing a passed expiry would let the cron re-archive immediately, so drop it too.
+    await db('posts')
+      .where({ id: postId, university_id: context.universityId })
+      .whereRaw('expires_at IS NOT NULL AND expires_at <= now()')
+      .update({ expires_at: null })
+    await cancelPostJob('expire', postId)
+    return this.getPost(context.universityId, context.userId, postId, { incrementView: false })
+  }
+
+  async listArchived(universityId: string, userId: string, query: PaginationQuery) {
+    const [{ count }] = await db('posts')
+      .where({ university_id: universityId, author_id: userId })
+      .whereNotNull('archived_at')
+      .count<CountRow[]>({ count: '*' })
+    const total = Number(count)
+
+    const rows = (await postSelectQuery(db, userId)
+      .where({ 'posts.university_id': universityId, 'posts.author_id': userId })
+      .whereNotNull('posts.archived_at')
+      .orderBy('posts.archived_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)) as PostRow[]
+
+    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId)
+    return { items: posts, total, page: query.page, limit: query.limit }
   }
 
   async deletePost(context: AuthContext, postId: string) {
@@ -683,6 +774,64 @@ export class FeedService {
 
 export const feedService = new FeedService()
 
+// ── Lifecycle actions (idempotent; called by the delayed jobs AND the cron) ─────
+
+/**
+ * Emit a socket event, tolerating the worker process where the io instance may be
+ * absent. In production workers run in-process so this succeeds; in a standalone
+ * worker the persisted DB state is the source of truth and the emit is best-effort.
+ */
+function safeEmit(room: string, event: string, payload: unknown) {
+  try {
+    getIo().to(room).emit(event, payload)
+  } catch {
+    logger.warn('Post lifecycle socket emit skipped (io unavailable)', { event })
+  }
+}
+
+/** Flip a scheduled post live. No-op if it was already published or removed. */
+export async function publishScheduledPost(postId: string): Promise<void> {
+  const updated = await db('posts')
+    .where({ id: postId, is_published: false })
+    .whereNotNull('publish_at')
+    .whereNull('archived_at')
+    .update({ is_published: true, publish_at: null, updated_at: db.fn.now() })
+
+  if (updated === 0) {
+    logger.info('Scheduled publish skipped — post no longer pending', { postId })
+    return
+  }
+
+  const row = await db('posts')
+    .select<{ university_id: string; author_id: string }[]>('university_id', 'author_id')
+    .where({ id: postId })
+    .first()
+  if (!row) return
+
+  const post = await feedService.getPost(row.university_id, row.author_id, postId, { incrementView: false })
+  safeEmit(`uni:${row.university_id}`, 'post:created', post)
+  safeEmit(`uni:${row.university_id}`, 'feed:post:new', { post })
+  safeEmit(`uni:${row.university_id}`, POST_LIFECYCLE_EVENTS.PUBLISHED, { postId })
+}
+
+/** Archive a post. No-op if it was already archived. */
+export async function archivePostById(postId: string, universityId?: string): Promise<void> {
+  const query = db('posts').where({ id: postId }).whereNull('archived_at')
+  if (universityId) query.andWhere({ university_id: universityId })
+  const updated = await query.update({ archived_at: db.fn.now(), expires_at: null, updated_at: db.fn.now() })
+
+  if (updated === 0) {
+    logger.info('Archive skipped — post already archived or missing', { postId })
+    return
+  }
+
+  // The manual path cancels its own job; clear the expire job here for the cron path too.
+  await cancelPostJob('expire', postId)
+
+  const row = await db('posts').select<{ university_id: string }[]>('university_id').where({ id: postId }).first()
+  if (row) safeEmit(`uni:${row.university_id}`, POST_LIFECYCLE_EVENTS.ARCHIVED, { postId })
+}
+
 function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
   return knex('posts')
     .join('users', 'users.id', 'posts.author_id')
@@ -700,6 +849,9 @@ function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
       'posts.group_id',
       'posts.is_pinned',
       'posts.is_published',
+      'posts.publish_at',
+      'posts.archived_at',
+      'posts.expires_at',
       'posts.view_count',
       'posts.created_at',
       'posts.updated_at',
@@ -880,6 +1032,9 @@ function toPost(row: PostRow) {
     groupId: row.group_id,
     isPinned: row.is_pinned,
     isPublished: row.is_published,
+    publishAt: row.publish_at,
+    archivedAt: row.archived_at,
+    expiresAt: row.expires_at,
     viewCount: row.view_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

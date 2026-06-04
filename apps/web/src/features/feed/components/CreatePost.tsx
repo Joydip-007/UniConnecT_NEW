@@ -54,6 +54,9 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
   ])
   const [pollExpiresAt, setPollExpiresAt] = useState('')
 
+  // Scheduling: a future local datetime publishes the post later (posts only).
+  const [scheduleAt, setScheduleAt] = useState('')
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const createPost = useCreatePost()
   const updatePost = useUpdatePost()
@@ -150,6 +153,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
       { id: '2', text: '' },
     ])
     setPollExpiresAt('')
+    setScheduleAt('')
   }
 
   function toggleTab(tab: TabMode) {
@@ -265,12 +269,16 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
         },
       })
     } else {
+      // A future schedule time keeps the post unpublished until it fires.
+      const publishAt = scheduleAt ? new Date(scheduleAt) : null
+      const isScheduled = publishAt !== null && publishAt.getTime() > Date.now()
       await createPost.mutateAsync({
         type: postType,
         content: text.trim(),
         media_urls: mediaUrls,
         poll: pollData,
-        is_published: !asDraft,
+        is_published: isScheduled ? false : !asDraft,
+        publish_at: isScheduled ? publishAt.toISOString() : undefined,
       })
     }
     handleClose()
@@ -712,6 +720,38 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
               )}
             </div>
 
+            {/* Schedule (posts only, not while editing) */}
+            {!isEditMode && (
+              <div style={{ padding: '0 16px 10px' }}>
+                <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  Schedule for later (optional)
+                  <input
+                    type="datetime-local"
+                    value={scheduleAt}
+                    onChange={(e) => setScheduleAt(e.target.value)}
+                    style={{
+                      background: 'var(--surface-raised)',
+                      border: '0.5px solid var(--border-default)',
+                      borderRadius: 'var(--r-sm)',
+                      padding: '6px 10px',
+                      fontSize: 13,
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+                  {scheduleAt && (
+                    <button
+                      type="button"
+                      onClick={() => setScheduleAt('')}
+                      className="row-hover-bg"
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 'var(--r-sm)' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </label>
+              </div>
+            )}
+
             {/* Footer */}
             <div
               style={{
@@ -759,10 +799,14 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                   {isSubmitting
                     ? isEditMode
                       ? 'Saving…'
-                      : 'Posting…'
+                      : scheduleAt
+                        ? 'Scheduling…'
+                        : 'Posting…'
                     : isEditMode
                       ? 'Save'
-                      : 'Post'}
+                      : scheduleAt
+                        ? 'Schedule'
+                        : 'Post'}
                 </PrimaryBtn>
               </div>
             </div>

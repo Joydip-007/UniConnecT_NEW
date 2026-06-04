@@ -5,6 +5,7 @@ import { validate, validateRequest } from '../../middleware/validate'
 import {
   addCommentReaction,
   addReaction,
+  archivePost,
   createComment,
   createPost,
   deleteComment,
@@ -12,10 +13,12 @@ import {
   getComments,
   getPost,
   getTrending,
+  listArchived,
   listPosts,
   removeCommentReaction,
   removeReaction,
   savePost,
+  unarchivePost,
   unsavePost,
   updatePost,
   votePoll,
@@ -38,9 +41,13 @@ feedRouter.use(requireAuth, resolveUniversity)
 feedRouter.get('/', validateRequest({ query: PostListQuerySchema }), listPosts)
 feedRouter.post('/', validate(CreatePostSchema), createPost)
 feedRouter.get('/trending', getTrending)
+// Static paths must precede '/:postId' so they aren't captured as a post id.
+feedRouter.get('/archived', validateRequest({ query: PaginationQuerySchema }), listArchived)
 feedRouter.get('/:postId', getPost)
 feedRouter.patch('/:postId', validate(UpdatePostSchema), updatePost)
 feedRouter.delete('/:postId', deletePost)
+feedRouter.post('/:postId/archive', archivePost)
+feedRouter.post('/:postId/unarchive', unarchivePost)
 feedRouter.post('/:postId/reactions', validate(ReactionSchema), addReaction)
 feedRouter.delete('/:postId/reactions', removeReaction)
 feedRouter.get('/:postId/comments', validateRequest({ query: PaginationQuerySchema }), getComments)

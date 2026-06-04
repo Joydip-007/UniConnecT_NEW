@@ -89,6 +89,7 @@ async function getTrendingPosts(universityId: string, requesterId: string): Prom
     .join('profiles as pr', 'pr.user_id', 'u.id')
     .where('p.university_id', universityId)
     .whereNot('p.author_id', requesterId)
+    .whereNull('p.archived_at')
     .where('p.created_at', '>', db.raw("NOW() - INTERVAL '48 hours'"))
     .select(
       'p.id',
@@ -265,6 +266,7 @@ async function getActiveGroups(universityId: string, requesterId: string): Promi
         COALESCE((
           SELECT COUNT(*)::int FROM posts
           WHERE group_id = g.id
+          AND archived_at IS NULL
           AND created_at > NOW() - INTERVAL '7 days'
         ), 0) AS recent_post_count
       `),
@@ -429,6 +431,7 @@ export async function getTagPosts(
     .join('post_tags as pt', 'pt.post_id', 'p.id')
     .join('tags as t', 't.id', 'pt.tag_id')
     .where('p.university_id', universityId)
+    .whereNull('p.archived_at')
     .whereRaw('LOWER(t.name) = ?', [normalizedTag])
     .count<[{ count: string }]>('p.id as count')
 
@@ -438,6 +441,7 @@ export async function getTagPosts(
     .join('users as u', 'u.id', 'p.author_id')
     .join('profiles as pr', 'pr.user_id', 'u.id')
     .where('p.university_id', universityId)
+    .whereNull('p.archived_at')
     .whereRaw('LOWER(t.name) = ?', [normalizedTag])
     .select(
       'p.id',

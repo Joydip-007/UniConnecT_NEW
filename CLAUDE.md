@@ -87,13 +87,19 @@ Presigned S3 PUT URL flow — client calls `POST /api/upload/presign`, uploads d
 
 ### Background jobs
 
-Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Five queues: `email`, `notification`, `badge`, `group-digest` (weekly group digest cron), `mentorship` (48 h alumni reminder + 7 d request auto-expiry). Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue.
+Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Eight queues: `email`, `notification`, `badge`, `group-digest` (weekly group digest cron), `mentorship` (48 h alumni reminder + 7 d request auto-expiry), `push` (Web Push fan-out), `content-sync` (admin-triggered external content import), `feed-ranking` (cron that recomputes `posts.hot_score`). Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue. In production, workers run in-process with the API server.
+
+### Full-text search & feed ranking
+
+`search` uses Postgres **stored, generated `search_vector` columns** (migration `070`) on `profiles`, `posts`, `jobs`, `events`, `groups`, each with a GIN index. Weighting: A = name/title, B = secondary fields, C = long-form body; names use the `simple` dictionary, prose uses `english`. The pg_trgm indexes (migration `024`) remain as a fuzzy fallback.
+
+The "Top" feed sorts on denormalised ranking columns on `posts` (migration `071`): `reaction_count`, `comment_count`, and a precomputed HN-style `hot_score` (index `idx_posts_hot_score`). Counters are maintained transactionally on reaction/comment writes; the `feed-ranking` Bull cron periodically recomputes `hot_score` so the feed sorts by index instead of correlated subqueries.
 
 ### Backend module structure
 
 All feature modules live under `apps/api/src/modules/`. Each module follows the same shape: `router.ts` (route declarations only), `controller.ts` (request/response handling), `service.ts` (all business logic + DB access), `schema.ts` (Zod schemas), `index.ts` (barrel).
 
-Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`, `explore`, `connections`.
+Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`, `explore`, `connections`, `presence`, `push`, `drafts`, `content-sync`.
 
 The `admin` module (`/api/v1/admin`) requires `faculty` or `admin` role (stats endpoint requires `admin` only) and exposes: stats, user list + role/status management, invitations (create/list/delete/bulk), content reports (list/resolve), and allowed email domains management. Admin actions are recorded in `university_audit_log`.
 
@@ -115,6 +121,19 @@ The `users` module owns the full profile sub-API in addition to user lookup. Ext
 - **Suggestions**: `GET /users/suggestions` — people the current user might know
 
 **Profile view side-effect:** `GET /users/:userId` (`getUser`) silently upserts a row in `profile_views` (no separate endpoint needed). The `profiles` table has new optional columns: `location`, `website_url`, `github_url`, `portfolio_url`, `is_open_to_msg` (boolean).
+
+**Settings, account & privacy** also live on the `users`/`notifications` routers, all backed by the single `user_settings` table (one row per user, two JSONB columns `notification_preferences` + `privacy_preferences`; missing keys deep-merge onto `DEFAULT_*` constants in `users/privacy.service.ts`):
+- **Account**: `PATCH /users/me/preferences` (theme/locale), `POST /users/me/deactivate` (sets `users.deactivated_at`)
+- **Privacy**: `GET /users/me/privacy`, `PUT /users/me/privacy` — controls profile/presence/message visibility tiers, enforced server-side via `loadPrivacy()` in `users/privacy.service.ts`
+- **Notification prefs**: `GET /notifications/preferences`, `PUT /notifications/preferences`
+
+The `presence` module (`/api/v1/presence`) tracks online status in **Redis** (not Postgres): a per-user socket-count key (`presence:count:{userId}`, TTL-refreshed by socket heartbeats) and a per-university online set (`presence:online:{universityId}`). The socket lifecycle calls `registerConnect`/`registerDisconnect` (0→1 and 1→0 transitions emit `PRESENCE_EVENTS`); on full disconnect it persists `users.last_seen`. Visibility respects each user's privacy tier (`OnlineVisibilityTier`). Routes: `GET /presence?userIds=…`, `GET /presence/online` (online connections). TTLs come from `PRESENCE_TTL_SECONDS` in `src/config/redis.ts`.
+
+The `push` module (`/api/v1/push`) handles Web Push (VAPID) subscriptions: `POST /push/subscribe`, `DELETE /push/subscribe`, stored in `push_subscriptions`. Delivery is enqueued on the `push` Bull queue and sent by the `push` worker — never inline.
+
+The `drafts` module (`/api/v1/me/drafts`) exposes a single `GET /` that returns the current user's own unpublished drafts unified across posts, jobs, news, and events (each of those tables gained `is_published` / publish columns in migration `064`). Drafts are author-only.
+
+The `content-sync` module (`/api/v1/admin/content-sync`, **admin role only**) imports external university news/notices/events via the WordPress REST API with a Skyvern browser-automation fallback. Routes: `GET/PATCH /config`, `POST /run` (enqueues on the `content-sync` queue), `GET /pending` (imported-but-unpublished items for review), `GET /runs` (run history, `content_sync_runs`). Imported rows carry `imported_*` columns (migration `060`) and attachments live in `content_attachments` (`061`). Emits `CONTENT_SYNC_EVENTS`.
 
 ---
 
@@ -172,19 +191,20 @@ Cross-cutting services not owned by any module: `token.service.ts`, `email.servi
 | `src/hooks/` | Truly shared hooks: `useAuth`, `useSocket` |
 | `src/lib/` | Singleton instances: axios, queryClient, socket |
 | `src/pages/` | Route-level components — thin orchestrators, no business logic |
-| `src/stores/` | Zustand stores: `authStore`, `notificationsStore`, `themeStore`, `socketStore` |
+| `src/stores/` | Zustand stores: `authStore`, `notificationsStore`, `themeStore`, `socketStore`, `presenceStore`, `pendingMsgsStore` |
 | `src/styles/` | `tokens.css` (CSS vars), `index.css` (Tailwind entry + token import) |
 | `src/router/` | `index.tsx` (router), `paths.ts` (PATHS constants), `ProtectedRoute`, `AdminRoute`, `GuestRoute` |
 
 **Implemented feature bundles** (each at `src/features/{domain}/` with `components/`, `hooks/`, `index.ts`):
-`feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `mentorship`, `explore`, `search`, `landing`, `connections`, `profile`
+`feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `mentorship`, `explore`, `search`, `landing`, `connections`, `profile`, `settings`, `drafts`, `content-sync`, `presence`, `lost-found`, `shuttle`
 
 Notable feature internals:
 - `src/features/connections/` — `ConnectButton`, `ConnectionRequestModal`, `PendingRequestCard`, `ConnectionCard`; hooks `useConnectionAction`, `useMyConnections`, `usePendingReceived`, `usePendingSent`, `useMutualConnections`
+- `src/features/settings/` — `AccountSection`, `AppearanceSection`, `NotificationsSection`, `PrivacySection`, `Toggle`; hooks `useAccountSettings`, `useNotificationPreferences`, `usePrivacyPreferences`, `usePushSettings`
 - `src/features/profile/` — `ProfileHeader`, `ProfileAbout`, `ProfileExperience`, `ProfileEducation`, `ProfileSkills`, `ProfileFeatured`, `ProfileContactInfo`, `ProfileActivity`, `ProfileAnalytics`, `ProfileViewers`, `ResumeExportButton`, plus editing modals (`ExperienceModal`, `EducationModal`, `FeaturedModal`, `EditProfileModal`)
 
 **All implemented page routes** (`src/router/paths.ts` + lazy pages in `src/pages/`):
-`/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/admin`
+`/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/settings`, `/drafts`, `/admin`
 
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
@@ -201,7 +221,7 @@ Exports TypeScript types, Zod schemas, and socket event name constants consumed 
 
 - `src/types/` — interfaces (`UserProfile`, `JobApplication`, …)
 - `src/schemas/` — Zod schemas, one file per domain (e.g. `src/schemas/jobs.ts`)
-- `src/constants/socket.ts` — Socket.io event name constants: `UNIVERSITY_EVENTS`, `CONNECTION_EVENTS` (`REQUEST_RECEIVED`, `ACCEPTED`)
+- `src/constants/socket.ts` — Socket.io event name constants: `UNIVERSITY_EVENTS`, `CONNECTION_EVENTS` (`REQUEST_RECEIVED`, `ACCEPTED`), `CONTENT_SYNC_EVENTS`, `PRESENCE_EVENTS`
 
 Zod schemas are the **single source of truth** for validation and TS types. Use `z.infer<typeof schema>` — never duplicate types manually. Schema naming: `camelCase` + `Schema` suffix (e.g. `createJobSchema`).
 
@@ -260,8 +280,8 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 - Always index FK columns used in WHERE, and `(university_id, created_at DESC)` on high-volume tables.
 - Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
 - Redis keys: `{prefix}:{university_id}:{id}`. Never hardcode TTL values — centralise them (see `src/config/redis.ts` for the client; OTP TTL lives in env `OTP_EXPIRES_MINUTES`).
-- DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Connections (`connections`), Profile sections (`profile_experiences`, `profile_education`, `profile_featured`, `profile_views`), Audit (`university_audit_log`).
-- Latest migration: `057_create_profile_views`. The `follows` table no longer exists (dropped in `052_drop_follows`).
+- DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Connections (`connections`), Profile sections (`profile_experiences`, `profile_education`, `profile_featured`, `profile_views`), Settings (`user_settings`, `push_subscriptions`), Content sync (`content_sync_runs`, `content_attachments`), Audit (`university_audit_log`).
+- Latest migration: `071_add_feed_ranking_columns`. The `follows` table no longer exists (dropped in `052_drop_follows`). Recent additions: `user_settings` (`065`, notification + privacy JSONB), `push_subscriptions` (`066`), `users.deactivated_at` (`067`), `users.last_seen` (`069`), generated `search_vector` columns (`070`), and `posts` feed-ranking columns (`071`).
 
 ---
 
