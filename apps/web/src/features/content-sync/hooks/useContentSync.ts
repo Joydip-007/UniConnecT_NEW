@@ -69,6 +69,26 @@ export function usePublishImported() {
   })
 }
 
+/** Publishes every supplied imported draft in one action (bulk review approval). */
+export function usePublishAllImported() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (items: Array<{ kind: 'news' | 'event'; id: string }>) =>
+      Promise.all(
+        items.map((it) =>
+          it.kind === 'news'
+            ? api.patch(`/news/${it.id}`, { is_published: true })
+            : api.patch(`/events/${it.id}/publish`),
+        ),
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
+      void qc.invalidateQueries({ queryKey: ['news'] })
+      void qc.invalidateQueries({ queryKey: ['events'] })
+    },
+  })
+}
+
 export function useSyncRuns() {
   return useQuery<ContentSyncRun[]>({
     queryKey: ['content-sync', 'runs'],

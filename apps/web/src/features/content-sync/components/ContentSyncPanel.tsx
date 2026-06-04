@@ -7,6 +7,7 @@ import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import {
   useContentSyncConfig,
   usePendingImported,
+  usePublishAllImported,
   usePublishImported,
   useSyncRuns,
   useTriggerSync,
@@ -47,9 +48,11 @@ export function ContentSyncPanel() {
   const { data: runs } = useSyncRuns()
   const { data: pending } = usePendingImported()
   const publishImported = usePublishImported()
+  const publishAll = usePublishAllImported()
   const updateConfig = useUpdateContentSyncConfig()
   const triggerSync = useTriggerSync()
 
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [draft, setDraft] = useState({ newsUrl: '', noticeUrl: '', eventUrl: '', enabled: false })
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -156,49 +159,99 @@ export function ContentSyncPanel() {
           ...(pending?.events ?? []).map((e) => ({ kind: 'event' as const, id: e.id, title: e.title, meta: 'event' })),
         ]
         if (pendingItems.length === 0) return null
+
+        const keyOf = (i: { kind: 'news' | 'event'; id: string }) => `${i.kind}-${i.id}`
+        const selectedItems = pendingItems.filter((i) => selectedKeys.has(keyOf(i)))
+        const allSelected = selectedItems.length === pendingItems.length
+
+        function toggle(k: string) {
+          setSelectedKeys((prev) => {
+            const next = new Set(prev)
+            if (next.has(k)) next.delete(k)
+            else next.add(k)
+            return next
+          })
+        }
+        function toggleAll() {
+          setSelectedKeys(allSelected ? new Set() : new Set(pendingItems.map(keyOf)))
+        }
+
         return (
           <div style={card}>
-            <div>
-              <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Pending review</h3>
-              <p style={{ ...label, marginTop: 4 }}>
-                Imported drafts awaiting publish. Publishing a notice also makes it the featured announcement.
-              </p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Pending review</h3>
+                <p style={{ ...label, marginTop: 4 }}>
+                  Imported drafts awaiting publish. Tick the ones you want, then publish in bulk — or review each first.
+                </p>
+              </div>
+              <PrimaryBtn
+                onClick={() =>
+                  publishAll.mutate(
+                    selectedItems.map((i) => ({ kind: i.kind, id: i.id })),
+                    { onSuccess: () => setSelectedKeys(new Set()) },
+                  )
+                }
+                disabled={publishAll.isPending || selectedItems.length === 0}
+              >
+                {publishAll.isPending ? 'Publishing…' : `Publish selected (${selectedItems.length})`}
+              </PrimaryBtn>
             </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                style={{ width: 14, height: 14, accentColor: 'var(--uc-indigo)', cursor: 'pointer' }}
+              />
+              Select all ({pendingItems.length})
+            </label>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {pendingItems.map((item) => (
-                <div
-                  key={`${item.kind}-${item.id}`}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 12px',
-                    background: 'var(--surface-page)',
-                    borderRadius: 'var(--r-md)',
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.title}
-                    </p>
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.meta}</span>
+              {pendingItems.map((item) => {
+                const k = keyOf(item)
+                return (
+                  <div
+                    key={k}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 12px',
+                      background: 'var(--surface-page)',
+                      borderRadius: 'var(--r-md)',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedKeys.has(k)}
+                      onChange={() => toggle(k)}
+                      aria-label={`Select ${item.title}`}
+                      style={{ width: 14, height: 14, accentColor: 'var(--uc-indigo)', cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.title}
+                      </p>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.meta}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      <GhostBtn
+                        onClick={() => navigate(item.kind === 'news' ? `/news/${item.id}` : `/events/${item.id}`)}
+                      >
+                        Review
+                      </GhostBtn>
+                      <PrimaryBtn
+                        onClick={() => publishImported.mutate({ kind: item.kind, id: item.id })}
+                        disabled={publishImported.isPending}
+                      >
+                        Publish
+                      </PrimaryBtn>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <GhostBtn
-                      onClick={() => navigate(item.kind === 'news' ? `/news/${item.id}` : `/events/${item.id}`)}
-                    >
-                      Review
-                    </GhostBtn>
-                    <PrimaryBtn
-                      onClick={() => publishImported.mutate({ kind: item.kind, id: item.id })}
-                      disabled={publishImported.isPending}
-                    >
-                      Publish
-                    </PrimaryBtn>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )

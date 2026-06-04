@@ -32,7 +32,7 @@ function detailPath(item: DraftItem): string | null {
 
 export default function DraftsPage() {
   const navigate = useNavigate()
-  const { data, isLoading } = useMyDrafts()
+  const { data, isLoading, isError } = useMyDrafts()
   const publish = usePublishDraft()
   const items = data?.items ?? []
 
@@ -47,6 +47,23 @@ export default function DraftsPage() {
 
       {isLoading ? (
         <p style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Loading…</p>
+      ) : isError ? (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 10,
+            padding: '48px 16px',
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-lg)',
+            color: 'var(--text-tertiary)',
+          }}
+        >
+          <FileText size={24} strokeWidth={1.5} />
+          <p style={{ margin: 0, fontSize: 14 }}>Could not load your drafts. Please try again.</p>
+        </div>
       ) : items.length === 0 ? (
         <div
           style={{
