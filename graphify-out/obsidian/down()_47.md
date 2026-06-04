@@ -1,0 +1,18 @@
+---
+source_file: "api/src/database/migrations/005_create_invitations.ts"
+type: "code"
+community: "Community 244"
+location: "L17"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Community_244
+---
+
+# down()
+
+## Connections
+- [[005_create_invitations.ts]] - `contains` [EXTRACTED]
+- [[005_create_invitations.ts_1]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Community_244

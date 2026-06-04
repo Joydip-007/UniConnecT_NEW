@@ -1,0 +1,18 @@
+---
+source_file: "api/src/database/migrations/028_events_group_id_fk.ts"
+type: "code"
+community: "Community 233"
+location: "L14"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Community_233
+---
+
+# down()
+
+## Connections
+- [[028_events_group_id_fk.ts]] - `contains` [EXTRACTED]
+- [[028_events_group_id_fk.ts_1]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Community_233

@@ -1,0 +1,18 @@
+---
+source_file: ".impeccable/critique/shots/feed-auth-desktop-1440.png"
+type: "image"
+community: "Community 90"
+tags:
+  - graphify/image
+  - graphify/EXTRACTED
+  - community/Community_90
+---
+
+# Post Action Bar (Like, Comment count, Save button)
+
+## Connections
+- [[Announcement Post Card (Dev Admin – mid-semester exam schedule notice, Jun 1–8 2026)]] - `references` [EXTRACTED]
+- [[Post Card – Joydip Datta (Admin badge, Hello! text post, 9h ago)]] - `implements` [EXTRACTED]
+- [[User Post Card (Joydip Datta - Hello!)]] - `references` [EXTRACTED]
+
+#graphify/image #graphify/EXTRACTED #community/Community_90

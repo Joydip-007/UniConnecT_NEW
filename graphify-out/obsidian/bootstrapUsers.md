@@ -1,0 +1,18 @@
+---
+source_file: "api/src/database/migrations/036_bootstrap_uiu_tenant.ts"
+type: "code"
+community: "Community 213"
+location: "L10"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Community_213
+---
+
+# bootstrapUsers
+
+## Connections
+- [[036_bootstrap_uiu_tenant.ts]] - `contains` [EXTRACTED]
+- [[036_bootstrap_uiu_tenant.ts_1]] - `contains` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Community_213

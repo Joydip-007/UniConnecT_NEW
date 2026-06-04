@@ -1,0 +1,23 @@
+---
+source_file: ".claude/skills/impeccable/scripts/modern-screenshot.umd.js"
+type: "code"
+community: "Screenshot Utility (claude)"
+location: "L1"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Screenshot_Utility_claude
+---
+
+# Ye()
+
+## Connections
+- [[be()_1]] - `calls` [EXTRACTED]
+- [[ht()_1]] - `calls` [EXTRACTED]
+- [[me()_1]] - `calls` [EXTRACTED]
+- [[modern-screenshot.umd.js_1]] - `contains` [EXTRACTED]
+- [[pt()_1]] - `calls` [EXTRACTED]
+- [[ut()_1]] - `calls` [EXTRACTED]
+- [[wt()_1]] - `calls` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Screenshot_Utility_claude

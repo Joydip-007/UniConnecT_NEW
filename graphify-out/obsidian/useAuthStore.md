@@ -1,0 +1,85 @@
+---
+source_file: "web/src/stores/authStore.ts"
+type: "code"
+community: "Admin Module"
+location: "L18"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Admin_Module
+---
+
+# useAuthStore
+
+## Connections
+- [[ActiveRequests()]] - `calls` [EXTRACTED]
+- [[Admin Router]] - `imports` [EXTRACTED]
+- [[AdminPage()]] - `imports` [EXTRACTED]
+- [[AlumniView()]] - `imports` [EXTRACTED]
+- [[AuthLoader()]] - `calls` [EXTRACTED]
+- [[AuthLoader.tsx_1]] - `imports` [EXTRACTED]
+- [[AuthLoader.tsx]] - `imports` [EXTRACTED]
+- [[ChatView()]] - `imports` [EXTRACTED]
+- [[CommentDrawer()]] - `imports` [EXTRACTED]
+- [[CommentItem()]] - `calls` [EXTRACTED]
+- [[Create Event Form]] - `imports` [EXTRACTED]
+- [[CreateGroupModal()]] - `imports` [EXTRACTED]
+- [[CreatePost()]] - `calls` [EXTRACTED]
+- [[CreatePost.tsx]] - `imports` [EXTRACTED]
+- [[CreatePost.tsx_1]] - `imports` [EXTRACTED]
+- [[EditProfileModal()]] - `imports` [EXTRACTED]
+- [[EventsPage()]] - `imports` [EXTRACTED]
+- [[FeedLayout()]] - `calls` [EXTRACTED]
+- [[FeedLayout.tsx_1]] - `imports` [EXTRACTED]
+- [[FeedLayout.tsx]] - `imports` [EXTRACTED]
+- [[FeedPage()]] - `calls` [EXTRACTED]
+- [[FeedPage.tsx_1]] - `imports` [EXTRACTED]
+- [[FeedPage.tsx]] - `imports` [EXTRACTED]
+- [[GroupDetailPage.tsx_1]] - `imports` [EXTRACTED]
+- [[GroupDetailPage.tsx]] - `calls` [EXTRACTED]
+- [[GuestRoute()]] - `imports` [EXTRACTED]
+- [[Job Detail Page]] - `imports` [EXTRACTED]
+- [[JobsPage]] - `calls` [EXTRACTED]
+- [[JobsPage.tsx_1]] - `imports` [EXTRACTED]
+- [[JobsPage.tsx]] - `imports` [EXTRACTED]
+- [[LeftSidebar()]] - `calls` [EXTRACTED]
+- [[LeftSidebar.tsx_1]] - `imports` [EXTRACTED]
+- [[LeftSidebar.tsx]] - `imports` [EXTRACTED]
+- [[LoginPage()]] - `imports` [EXTRACTED]
+- [[LostFoundPage.tsx_1]] - `imports` [EXTRACTED]
+- [[LostFoundPage.tsx]] - `calls` [EXTRACTED]
+- [[MentorshipPage.tsx_1]] - `imports` [EXTRACTED]
+- [[MentorshipPage.tsx]] - `calls` [EXTRACTED]
+- [[MessageInput()]] - `calls` [EXTRACTED]
+- [[MessageInput.tsx]] - `imports` [EXTRACTED]
+- [[MessageInput.tsx_1]] - `imports` [EXTRACTED]
+- [[MobileBottomNav.tsx_1]] - `imports` [EXTRACTED]
+- [[MobileBottomNav.tsx]] - `calls` [EXTRACTED]
+- [[NewsPage()]] - `calls` [EXTRACTED]
+- [[NewsPage.tsx_1]] - `imports` [EXTRACTED]
+- [[NewsPage.tsx]] - `imports` [EXTRACTED]
+- [[OtpPage()]] - `calls` [EXTRACTED]
+- [[OtpPage.tsx_1]] - `imports` [EXTRACTED]
+- [[OtpPage.tsx]] - `imports` [EXTRACTED]
+- [[PostCard()]] - `imports` [EXTRACTED]
+- [[Profile Page]] - `imports` [EXTRACTED]
+- [[ProtectedRoute.tsx_1]] - `imports` [EXTRACTED]
+- [[ProtectedRoute.tsx]] - `calls` [EXTRACTED]
+- [[StudentView()]] - `imports` [EXTRACTED]
+- [[TopNav()]] - `calls` [EXTRACTED]
+- [[TopNav.tsx_1]] - `imports` [EXTRACTED]
+- [[TopNav.tsx]] - `imports` [EXTRACTED]
+- [[UsersTab()]] - `calls` [EXTRACTED]
+- [[authStore.ts]] - `contains` [EXTRACTED]
+- [[authStore.ts_1]] - `contains` [EXTRACTED]
+- [[axios.ts_1]] - `imports` [EXTRACTED]
+- [[axios.ts]] - `imports` [EXTRACTED]
+- [[socket.ts_2]] - `imports` [EXTRACTED]
+- [[socket.ts]] - `imports` [EXTRACTED]
+- [[useConversationSocket hook]] - `imports` [EXTRACTED]
+- [[useMentorshipOptIn()]] - `imports` [EXTRACTED]
+- [[usePosts()]] - `calls` [EXTRACTED]
+- [[usePosts.ts]] - `imports` [EXTRACTED]
+- [[usePosts.ts_1]] - `imports` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Admin_Module

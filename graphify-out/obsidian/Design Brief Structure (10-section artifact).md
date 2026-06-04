@@ -1,0 +1,20 @@
+---
+source_file: "/Users/joydipdatta/UniConnecT_NEW/.agents/skills/impeccable/reference/shape.md"
+type: "concept"
+community: "Community 195"
+location: "line 123"
+tags:
+  - graphify/concept
+  - graphify/EXTRACTED
+  - community/Community_195
+---
+
+# Design Brief Structure (10-section artifact)
+
+## Connections
+- [[Craft User Gates (shape → direction → palette → mock approval before code)]] - `references` [EXTRACTED]
+- [[Discovery Interview (Phase 1 before any design decisions)]] - `implements` [EXTRACTED]
+- [[Visual Direction Probe (Phase 1.5, image generation gated)]] - `implements` [INFERRED]
+- [[impeccable shape reference (design brief)]] - `implements` [EXTRACTED]
+
+#graphify/concept #graphify/EXTRACTED #community/Community_195

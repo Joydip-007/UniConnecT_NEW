@@ -1,0 +1,1 @@
+{"nodes": [{"id": "detect-csp.mjs", "label": "detect-csp.mjs: Content-Security-Policy detection via filesystem scan", "file_type": "code", "source_file": ".claude/skills/impeccable/scripts/detect-csp.mjs", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

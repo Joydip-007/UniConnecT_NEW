@@ -1,0 +1,19 @@
+---
+source_file: "apps/api/src/modules/upload/index.ts"
+type: "code"
+community: "Middleware & Explore API"
+location: "L1"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Middleware__Explore_API
+---
+
+# index.ts
+
+## Connections
+- [[Upload Router]] - `re_exports` [EXTRACTED]
+- [[app.ts_1]] - `imports_from` [EXTRACTED]
+- [[router.ts_29]] - `re_exports` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Middleware__Explore_API

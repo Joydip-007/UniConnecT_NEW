@@ -1,0 +1,71 @@
+---
+source_file: "web/src/components/Button.tsx"
+type: "code"
+community: "Landing & Shared UI"
+location: "L1"
+tags:
+  - graphify/code
+  - graphify/EXTRACTED
+  - community/Landing__Shared_UI
+---
+
+# Button.tsx
+
+## Connections
+- [[AdminPage()]] - `imports_from` [EXTRACTED]
+- [[AlumniCard()]] - `imports_from` [EXTRACTED]
+- [[ApplyModal()]] - `imports_from` [EXTRACTED]
+- [[BaseProps]] - `contains` [EXTRACTED]
+- [[ContentTab.tsx]] - `imports_from` [EXTRACTED]
+- [[ContextualBtn()]] - `contains` [EXTRACTED]
+- [[ContextualBtnProps]] - `contains` [EXTRACTED]
+- [[Create Event Form]] - `imports_from` [EXTRACTED]
+- [[CreateGroupModal()]] - `imports_from` [EXTRACTED]
+- [[CreateNewsForm()]] - `imports_from` [EXTRACTED]
+- [[CreatePost.tsx]] - `imports_from` [EXTRACTED]
+- [[CtaSection()]] - `imports_from` [EXTRACTED]
+- [[EditProfileModal()]] - `imports_from` [EXTRACTED]
+- [[EducationModal()]] - `imports_from` [EXTRACTED]
+- [[EmptyState()_2]] - `imports_from` [EXTRACTED]
+- [[ErrorBoundary.tsx]] - `imports_from` [EXTRACTED]
+- [[EventDetailPage.tsx]] - `imports_from` [EXTRACTED]
+- [[EventsPage()]] - `imports_from` [EXTRACTED]
+- [[ExperienceModal()]] - `imports_from` [EXTRACTED]
+- [[FeaturedModal()]] - `imports_from` [EXTRACTED]
+- [[GhostBtn()]] - `contains` [EXTRACTED]
+- [[GroupCard()]] - `imports_from` [EXTRACTED]
+- [[GroupDetailPage.tsx]] - `imports_from` [EXTRACTED]
+- [[GroupHeader()]] - `imports_from` [EXTRACTED]
+- [[GroupsPage()]] - `imports_from` [EXTRACTED]
+- [[HeroSection.tsx]] - `imports_from` [EXTRACTED]
+- [[IncomingRequestCard()]] - `imports_from` [EXTRACTED]
+- [[InviteMemberModal()]] - `imports_from` [EXTRACTED]
+- [[Job Detail Page]] - `imports_from` [EXTRACTED]
+- [[JobCard.tsx]] - `imports_from` [EXTRACTED]
+- [[JobsPage.tsx]] - `imports_from` [EXTRACTED]
+- [[LandingNav()]] - `imports_from` [EXTRACTED]
+- [[LoginPage()]] - `imports_from` [EXTRACTED]
+- [[LostFoundPage.tsx]] - `imports_from` [EXTRACTED]
+- [[MembersTab.tsx]] - `imports_from` [EXTRACTED]
+- [[MintBtn()]] - `contains` [EXTRACTED]
+- [[NewsPage.tsx]] - `imports_from` [EXTRACTED]
+- [[NotFoundPage.tsx]] - `imports_from` [EXTRACTED]
+- [[NotificationsPage.tsx]] - `imports_from` [EXTRACTED]
+- [[OrangeBtn()]] - `contains` [EXTRACTED]
+- [[OtpPage.tsx]] - `imports_from` [EXTRACTED]
+- [[PostCard()]] - `imports_from` [EXTRACTED]
+- [[PostItemModal()]] - `imports_from` [EXTRACTED]
+- [[PostJobForm.tsx]] - `imports_from` [EXTRACTED]
+- [[PricingSection()]] - `imports_from` [EXTRACTED]
+- [[PrimaryBtn()]] - `contains` [EXTRACTED]
+- [[ProfileHeader()]] - `imports_from` [EXTRACTED]
+- [[ReactionBtn()]] - `contains` [EXTRACTED]
+- [[ReactionBtnProps]] - `contains` [EXTRACTED]
+- [[Redemption Modal]] - `imports_from` [EXTRACTED]
+- [[RegisterPage.tsx]] - `imports_from` [EXTRACTED]
+- [[Request Modal]] - `imports_from` [EXTRACTED]
+- [[ResumeExportButton()]] - `imports_from` [EXTRACTED]
+- [[UniversitiesSection()]] - `imports_from` [EXTRACTED]
+- [[forgotPassword]] - `imports_from` [EXTRACTED]
+
+#graphify/code #graphify/EXTRACTED #community/Landing__Shared_UI
