@@ -9,11 +9,28 @@ import { queryClient } from '@/lib/queryClient'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface Props {
-  onClose: () => void
+type EventTypeOption = 'general' | 'career_fair' | 'seminar' | 'workshop' | 'alumni_meetup' | 'club'
+
+export interface EventEditInitial {
+  id: string
+  title: string
+  type: EventTypeOption
+  description: string
+  isOnline: boolean
+  location: string
+  onlineLink: string
+  startsAt: string // ISO
+  endsAt: string | null // ISO
+  capacity: number | null
+  coverUrl: string | null
+  isPublished: boolean
 }
 
-type EventTypeOption = 'general' | 'career_fair' | 'seminar' | 'workshop' | 'alumni_meetup' | 'club'
+interface Props {
+  onClose: () => void
+  /** When provided, the form edits this existing event (PATCH) instead of creating one. */
+  initial?: EventEditInitial
+}
 
 interface EventForm {
   title: string
@@ -94,14 +111,37 @@ const EMPTY: EventForm = {
   isPublished: true,
 }
 
-export function CreateEventForm({ onClose }: Props) {
+/** ISO timestamp → "YYYY-MM-DDTHH:mm" in local time for a datetime-local input. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+export function CreateEventForm({ onClose, initial }: Props) {
+  const isEdit = Boolean(initial)
   const role = useAuthStore((s) => s.user?.role)
   const overlayRef   = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [form, setForm]                 = useState<EventForm>(EMPTY)
-  const [coverPreview, setCoverPreview] = useState<string | null>(null)
-  const [coverUrl, setCoverUrl]         = useState<string | null>(null)
+  const [form, setForm]                 = useState<EventForm>(() =>
+    initial
+      ? {
+          title: initial.title,
+          type: initial.type,
+          description: initial.description,
+          isOnline: initial.isOnline,
+          location: initial.location,
+          onlineLink: initial.onlineLink,
+          startsAt: toLocalInput(initial.startsAt),
+          endsAt: initial.endsAt ? toLocalInput(initial.endsAt) : '',
+          capacity: initial.capacity != null ? String(initial.capacity) : '',
+          isPublished: initial.isPublished,
+        }
+      : EMPTY,
+  )
+  const [coverPreview, setCoverPreview] = useState<string | null>(initial?.coverUrl ?? null)
+  const [coverUrl, setCoverUrl]         = useState<string | null>(initial?.coverUrl ?? null)
   const [dateErr, setDateErr]           = useState<string | null>(null)
   const { upload: uploadCover, uploading: coverUploading, error: uploadErr, reset: resetUploadErr } = usePresignedUpload('events')
 
@@ -130,9 +170,9 @@ export function CreateEventForm({ onClose }: Props) {
     resetUploadErr()
   }
 
-  const createMutation = useMutation({
-    mutationFn: () =>
-      api.post('/events', {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const content = {
         title: form.title.trim(),
         type: form.type || undefined,
         description: form.description.trim(),
@@ -142,12 +182,19 @@ export function CreateEventForm({ onClose }: Props) {
           : { location: form.location.trim() }),
         startsAt: new Date(form.startsAt).toISOString(),
         endsAt: new Date(form.endsAt).toISOString(),
-        ...(form.capacity && { capacity: parseInt(form.capacity, 10) }),
-        ...(coverUrl && { coverUrl }),
-        isPublished: form.isPublished,
-      }),
+        capacity: form.capacity ? parseInt(form.capacity, 10) : null,
+        coverUrl: coverUrl ?? null,
+      }
+      // Events publish via a dedicated PATCH /events/:id/publish route, so the update
+      // payload intentionally omits isPublished (UpdateEventSchema rejects it).
+      return initial
+        ? api.patch(`/events/${initial.id}`, content)
+        : api.post('/events', { ...content, isPublished: form.isPublished })
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] })
+      if (initial) queryClient.invalidateQueries({ queryKey: ['events', 'detail', initial.id] })
+      queryClient.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
       onClose()
     },
   })
@@ -158,7 +205,7 @@ export function CreateEventForm({ onClose }: Props) {
       setDateErr('End time must be after start time.')
       return
     }
-    createMutation.mutate()
+    saveMutation.mutate()
   }
 
   const locationValid = form.isOnline ? !!form.onlineLink.trim() : !!form.location.trim()
@@ -240,7 +287,7 @@ export function CreateEventForm({ onClose }: Props) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Create event
+            {isEdit ? 'Edit event' : 'Create event'}
           </h2>
           <button
             type="button"
@@ -562,35 +609,37 @@ export function CreateEventForm({ onClose }: Props) {
             </span>
           </div>
 
-          {/* Publish toggle */}
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              cursor: 'pointer',
-              padding: '10px 12px',
-              background: 'var(--surface-raised)',
-              border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--r-md)',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={form.isPublished}
-              onChange={(e) => set('isPublished', e.target.checked)}
-              style={{ width: 14, height: 14, accentColor: 'var(--uc-indigo)', cursor: 'pointer' }}
-            />
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}>
-              Publish immediately
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-              {form.isPublished ? 'Visible to all members' : 'Save as draft'}
-            </span>
-          </label>
+          {/* Publish toggle — create only; editing publishes via the detail page's Publish button */}
+          {!isEdit && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                cursor: 'pointer',
+                padding: '10px 12px',
+                background: 'var(--surface-raised)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-md)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form.isPublished}
+                onChange={(e) => set('isPublished', e.target.checked)}
+                style={{ width: 14, height: 14, accentColor: 'var(--uc-indigo)', cursor: 'pointer' }}
+              />
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}>
+                Publish immediately
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                {form.isPublished ? 'Visible to all members' : 'Save as draft'}
+              </span>
+            </label>
+          )}
 
           {/* Server error */}
-          {createMutation.isError && (
+          {saveMutation.isError && (
             <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--uc-red)' }}>
               Something went wrong. Please try again.
             </p>
@@ -611,9 +660,15 @@ export function CreateEventForm({ onClose }: Props) {
             </GhostBtn>
             <OrangeBtn
               type="submit"
-              disabled={!isValid || coverUploading || createMutation.isPending}
+              disabled={!isValid || coverUploading || saveMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating…' : (form.isPublished ? 'Create & publish' : 'Save draft')}
+              {saveMutation.isPending
+                ? 'Saving…'
+                : isEdit
+                  ? 'Save changes'
+                  : form.isPublished
+                    ? 'Create & publish'
+                    : 'Save draft'}
             </OrangeBtn>
           </div>
         </form>

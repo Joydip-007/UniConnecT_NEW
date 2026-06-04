@@ -8,8 +8,19 @@ import { queryClient } from '@/lib/queryClient'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface NewsEditInitial {
+  id: string
+  title: string
+  body: string
+  category: string
+  coverUrl: string | null
+  isPublished: boolean
+}
+
 interface Props {
   onClose: () => void
+  /** When provided, the form edits this existing article (PATCH) instead of creating one. */
+  initial?: NewsEditInitial
 }
 
 interface NewsForm {
@@ -72,32 +83,47 @@ const EMPTY: NewsForm = {
 
 // ── CreateNewsForm ─────────────────────────────────────────────────────────────
 
-export function CreateNewsForm({ onClose }: Props) {
+export function CreateNewsForm({ onClose, initial }: Props) {
+  const isEdit = Boolean(initial)
   const overlayRef = useRef<HTMLDivElement>(null)
-  const [form, setForm] = useState<NewsForm>(EMPTY)
+  const [form, setForm] = useState<NewsForm>(() =>
+    initial
+      ? {
+          title: initial.title,
+          body: initial.body,
+          category: initial.category,
+          coverUrl: initial.coverUrl,
+          isPublished: initial.isPublished,
+        }
+      : EMPTY,
+  )
 
   function set<K extends keyof NewsForm>(field: K, value: NewsForm[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const createMutation = useMutation({
-    mutationFn: () =>
-      api.post('/news', {
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const payload = {
         title: form.title.trim(),
         body: form.body.trim(),
         category: form.category,
-        ...(form.coverUrl && { cover_url: form.coverUrl }),
+        cover_url: form.coverUrl,
         is_published: form.isPublished,
-      }),
+      }
+      return initial ? api.patch(`/news/${initial.id}`, payload) : api.post('/news', payload)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['news'] })
+      if (initial) queryClient.invalidateQueries({ queryKey: ['news', 'detail', initial.id] })
+      queryClient.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
       onClose()
     },
   })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    createMutation.mutate()
+    saveMutation.mutate()
   }
 
   const isValid = !!form.title.trim() && !!form.body.trim() && !!form.category
@@ -134,7 +160,7 @@ export function CreateNewsForm({ onClose }: Props) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Write news article
+            {isEdit ? 'Edit news article' : 'Write news article'}
           </h2>
           <button
             type="button"
@@ -252,7 +278,7 @@ export function CreateNewsForm({ onClose }: Props) {
           </label>
 
           {/* Server error */}
-          {createMutation.isError && (
+          {saveMutation.isError && (
             <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--uc-red)' }}>
               Something went wrong. Please try again.
             </p>
@@ -273,9 +299,15 @@ export function CreateNewsForm({ onClose }: Props) {
             </GhostBtn>
             <OrangeBtn
               type="submit"
-              disabled={!isValid || createMutation.isPending}
+              disabled={!isValid || saveMutation.isPending}
             >
-              {createMutation.isPending ? 'Posting…' : (form.isPublished ? 'Publish article' : 'Save draft')}
+              {saveMutation.isPending
+                ? 'Saving…'
+                : isEdit
+                  ? 'Save changes'
+                  : form.isPublished
+                    ? 'Publish article'
+                    : 'Save draft'}
             </OrangeBtn>
           </div>
         </form>

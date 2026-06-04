@@ -12,12 +12,16 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  Pencil,
 } from 'lucide-react'
 import type { ContentAttachment } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { queryClient } from '@/lib/queryClient'
+import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
-import { GhostBtn } from '@/components/Button'
+import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { ImageLightbox } from '@/components/ImageLightbox'
+import { CreateEventForm } from '@/features/events/components/CreateEventForm'
 import { AttachmentList } from '@/features/content-sync'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,6 +41,7 @@ interface EventDetail {
   startsAt: string
   endsAt: string | null
   capacity: number | null
+  isPublished: boolean
   organizer: { id: string; fullName: string; avatarUrl: string | null }
   rsvpCounts: { going: number; maybe: number; not_going: number }
   myRsvp: RsvpStatus
@@ -316,15 +321,27 @@ function RsvpButton({
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
 
   const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(null)
   const [localCounts, setLocalCounts] = useState<EventDetail['rsvpCounts'] | null>(null)
   const [attendeePage, setAttendeePage] = useState(1)
+  const [editing, setEditing] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   const eventQuery = useQuery<EventDetail>({
     queryKey: ['events', 'detail', id],
     queryFn: () => api.get<{ data: EventDetail }>(`/events/${id}`).then((r) => r.data.data),
     enabled: !!id,
+  })
+
+  const publishMutation = useMutation({
+    mutationFn: () => api.patch(`/events/${id}/publish`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['events'] })
+      void queryClient.invalidateQueries({ queryKey: ['events', 'detail', id] })
+      void queryClient.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
+    },
   })
 
   // Sync local RSVP state once event data arrives
@@ -423,6 +440,9 @@ export default function EventDetailPage() {
     event.capacity !== null && counts.going >= event.capacity && rsvp !== 'going'
   const { date, time } = formatDateRange(event.startsAt, event.endsAt)
 
+  // Organizer can edit their own event; admins can edit/publish any event.
+  const canEdit = Boolean(user && (user.id === event.organizer.id || user.role === 'admin'))
+
   const attendees = attendeesQuery.data
   const totalPages = attendees ? Math.ceil(attendees.total / ATTENDEES_LIMIT) : 1
 
@@ -466,12 +486,21 @@ export default function EventDetailPage() {
 
       {/* ── Hero cover ──────────────────────────────────────────────────── */}
       <div
+        role={event.coverUrl ? 'button' : undefined}
+        tabIndex={event.coverUrl ? 0 : undefined}
+        onClick={event.coverUrl ? () => setLightboxOpen(true) : undefined}
+        onKeyDown={
+          event.coverUrl
+            ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLightboxOpen(true) } }
+            : undefined
+        }
         style={{
           height: 240,
           borderRadius: 'var(--r-lg)',
           border: `0.5px solid ${meta.bdr}`,
           overflow: 'hidden',
           position: 'relative',
+          cursor: event.coverUrl ? 'zoom-in' : undefined,
           ...coverStyle,
         }}
       >
@@ -525,6 +554,35 @@ export default function EventDetailPage() {
           </span>
         )}
       </div>
+
+      {/* ── Editor toolbar — organizer or admin ──────────────────────────── */}
+      {canEdit && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {!event.isPublished && (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                color: 'var(--uc-orange-l)',
+                background: 'var(--uc-orange-bg)',
+                borderRadius: 'var(--r-pill)',
+                padding: '2px 10px',
+              }}
+            >
+              Draft
+            </span>
+          )}
+          <GhostBtn onClick={() => setEditing(true)}>
+            <Pencil size={13} style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }} />
+            Edit
+          </GhostBtn>
+          {!event.isPublished && (
+            <OrangeBtn onClick={() => publishMutation.mutate()} disabled={publishMutation.isPending}>
+              {publishMutation.isPending ? 'Publishing…' : 'Publish'}
+            </OrangeBtn>
+          )}
+        </div>
+      )}
 
       {/* ── Title + meta card ────────────────────────────────────────────── */}
       <div
@@ -911,6 +969,30 @@ export default function EventDetailPage() {
           </div>
         )}
       </div>
+
+      {editing && (
+        <CreateEventForm
+          onClose={() => setEditing(false)}
+          initial={{
+            id: event.id,
+            title: event.title,
+            type: event.type,
+            description: event.description,
+            isOnline: event.isOnline,
+            location: event.location,
+            onlineLink: event.onlineLink ?? '',
+            startsAt: event.startsAt,
+            endsAt: event.endsAt,
+            capacity: event.capacity,
+            coverUrl: event.coverUrl,
+            isPublished: event.isPublished,
+          }}
+        />
+      )}
+
+      {lightboxOpen && event.coverUrl && (
+        <ImageLightbox images={[event.coverUrl]} onClose={() => setLightboxOpen(false)} />
+      )}
     </div>
   )
 }

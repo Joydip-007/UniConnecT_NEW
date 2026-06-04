@@ -56,10 +56,12 @@ export function usePendingImported() {
 export function usePublishImported() {
   const qc = useQueryClient()
   return useMutation({
+    // News publishes via its update endpoint; events have a dedicated publish route.
     mutationFn: ({ kind, id }: { kind: 'news' | 'event'; id: string }) =>
-      api
-        .patch(kind === 'news' ? `/news/${id}` : `/events/${id}`, { is_published: true })
-        .then((r) => r.data),
+      (kind === 'news'
+        ? api.patch(`/news/${id}`, { is_published: true })
+        : api.patch(`/events/${id}/publish`)
+      ).then((r) => r.data),
     onSuccess: (_data, { kind }) => {
       void qc.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
       void qc.invalidateQueries({ queryKey: [kind === 'news' ? 'news' : 'events'] })

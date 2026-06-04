@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { ReactionBtn } from '@/components/Button'
+import { ImageLightbox } from '@/components/ImageLightbox'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
 import { useSavePost } from '@/features/feed/hooks/useSavePost'
@@ -291,6 +292,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const [localLike, setLocalLike] = useState(post.myReaction === 'like')
   const [localLikeCount, setLocalLikeCount] = useState(post.reactionCounts.like)
   const [localSaved, setLocalSaved] = useState(post.isSaved)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const reactionMutation = useUpsertReaction(post.id)
   const saveMutation = useSavePost(post.id)
@@ -418,7 +420,11 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
                 src={url}
                 alt={`Photo ${i + 1}`}
                 loading="lazy"
-                style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover' }}
+                role="button"
+                tabIndex={0}
+                onClick={() => setLightboxIndex(i)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLightboxIndex(i) } }}
+                style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', cursor: 'zoom-in' }}
               />
             ))}
           </div>
@@ -469,6 +475,14 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
           </ReactionBtn>
         </div>
       </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={post.mediaUrls}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </article>
   )
 }

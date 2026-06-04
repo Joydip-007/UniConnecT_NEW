@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import { formatDistanceToNow } from 'date-fns'
 import { RefreshCw, Check, AlertTriangle } from 'lucide-react'
@@ -41,6 +42,7 @@ const SOURCES = [
 ] as const
 
 export function ContentSyncPanel() {
+  const navigate = useNavigate()
   const { data: config, isLoading } = useContentSyncConfig()
   const { data: runs } = useSyncRuns()
   const { data: pending } = usePendingImported()
@@ -182,12 +184,19 @@ export function ContentSyncPanel() {
                     </p>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.meta}</span>
                   </div>
-                  <PrimaryBtn
-                    onClick={() => publishImported.mutate({ kind: item.kind, id: item.id })}
-                    disabled={publishImported.isPending}
-                  >
-                    Publish
-                  </PrimaryBtn>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <GhostBtn
+                      onClick={() => navigate(item.kind === 'news' ? `/news/${item.id}` : `/events/${item.id}`)}
+                    >
+                      Review
+                    </GhostBtn>
+                    <PrimaryBtn
+                      onClick={() => publishImported.mutate({ kind: item.kind, id: item.id })}
+                      disabled={publishImported.isPending}
+                    >
+                      Publish
+                    </PrimaryBtn>
+                  </div>
                 </div>
               ))}
             </div>
