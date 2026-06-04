@@ -290,7 +290,7 @@
     "semantic_hash": "0e5530725eddb1980fc01f0b4b4b5d32"
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/index.ts": {
-    "mtime": 1780588862.3334923,
+    "mtime": 1780589461.1192322,
     "ast_hash": "6d9a812d2a64ebc66f1a135b92b38860",
     "semantic_hash": ""
   },
@@ -310,7 +310,7 @@
     "semantic_hash": "fec885044cf867d08f5c351696d13f19"
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/constants/socket.ts": {
-    "mtime": 1780588184.0860927,
+    "mtime": 1780589461.1188638,
     "ast_hash": "21e0be91a42911d1ce4fc562470cb110",
     "semantic_hash": ""
   },
@@ -480,7 +480,7 @@
     "semantic_hash": "bce875058fec46885892712fa5ba1790"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/messages/components/ConversationsSidebar.tsx": {
-    "mtime": 1780588508.5212789,
+    "mtime": 1780589461.0365121,
     "ast_hash": "5cdc3fccdbf2e8ed75d9115f895fa1cc",
     "semantic_hash": ""
   },
@@ -910,7 +910,7 @@
     "semantic_hash": "35d445f3da39d1e593183a65d457e16d"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/profile/components/ProfileHeader.tsx": {
-    "mtime": 1780588538.0471637,
+    "mtime": 1780589461.0404706,
     "ast_hash": "44d9420941a21952acc67dbadeb68b37",
     "semantic_hash": ""
   },
@@ -1055,7 +1055,7 @@
     "semantic_hash": "f5794d85ae0b4489b963126fbe90000d"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/usePosts.ts": {
-    "mtime": 1780589086.0898838,
+    "mtime": 1780589461.0361252,
     "ast_hash": "fadf292c02e233b59fc8b82eecddb871",
     "semantic_hash": ""
   },
@@ -1340,7 +1340,7 @@
     "semantic_hash": "a41046eac702b6059be55bbf4d0f8f46"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/components/FeedLayout.tsx": {
-    "mtime": 1780588445.2640421,
+    "mtime": 1780589461.0358105,
     "ast_hash": "9f7e86059f6236e88aea1a638c9637c6",
     "semantic_hash": ""
   },
@@ -1590,7 +1590,7 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/FeedPage.tsx": {
-    "mtime": 1780589126.936473,
+    "mtime": 1780589461.0436893,
     "ast_hash": "f71d4dc24ea0a353bda48196c9f48de4",
     "semantic_hash": ""
   },
@@ -1615,7 +1615,7 @@
     "semantic_hash": "d4b7e4cc65536802e27361d3a834b16e"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/router/index.tsx": {
-    "mtime": 1780588028.601151,
+    "mtime": 1780589461.04466,
     "ast_hash": "905eb72d257fc73065862cbcd0a28e2c",
     "semantic_hash": ""
   },
@@ -1660,7 +1660,7 @@
     "semantic_hash": "be65931665e84512db240a60f58b64f4"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/app.ts": {
-    "mtime": 1780588311.4126542,
+    "mtime": 1780589461.0252428,
     "ast_hash": "c3d00e294cd026ab311feb4bc17ed8f0",
     "semantic_hash": ""
   },
@@ -2000,7 +2000,7 @@
     "semantic_hash": "46fef7eaadc169bebd3e90070d710698"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/config/redis.ts": {
-    "mtime": 1780588229.8489554,
+    "mtime": 1780589461.0255773,
     "ast_hash": "2a3489c919fb12a00fdc3afd6ba01a23",
     "semantic_hash": ""
   },
@@ -2200,7 +2200,7 @@
     "semantic_hash": "c329269c939dd77407daeed563a1f746"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/workers/index.ts": {
-    "mtime": 1780589047.56652,
+    "mtime": 1780589461.035505,
     "ast_hash": "ceb10f42a548f36592c535b865c927af",
     "semantic_hash": ""
   },
@@ -2225,7 +2225,7 @@
     "semantic_hash": "1a6bfc1c10bdaf1c186929fbf671f529"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/messages/service.ts": {
-    "mtime": 1780587904.7704985,
+    "mtime": 1780589461.0294194,
     "ast_hash": "6f0abf875d43a1ccd083c7b981810e5b",
     "semantic_hash": ""
   },
@@ -2385,7 +2385,7 @@
     "semantic_hash": "fe63d4265d4eee73b9c4af76786edde4"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/search/service.ts": {
-    "mtime": 1780588759.8457074,
+    "mtime": 1780589461.031856,
     "ast_hash": "424208069792bafc7fa4f2ee915cb63e",
     "semantic_hash": ""
   },
@@ -2410,7 +2410,7 @@
     "semantic_hash": "ba99aa165ec252383055a1552dd87668"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/connections/service.ts": {
-    "mtime": 1780587872.6560924,
+    "mtime": 1780589461.0276155,
     "ast_hash": "09db204e9c2a94385ad2861b07abe2e4",
     "semantic_hash": ""
   },
@@ -2440,7 +2440,7 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/feed/schema.ts": {
-    "mtime": 1780588883.319428,
+    "mtime": 1780589461.0281887,
     "ast_hash": "0bab99c5e33f6ea3600d284a70b8df9e",
     "semantic_hash": ""
   },
@@ -2460,7 +2460,7 @@
     "semantic_hash": "2085fc7b48268bc8acfb3f6957c8f824"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/feed/service.ts": {
-    "mtime": 1780589025.439911,
+    "mtime": 1780589461.0286887,
     "ast_hash": "2b78e9039ce591187f0f30a4fed7a827",
     "semantic_hash": ""
   },
@@ -2470,7 +2470,7 @@
     "semantic_hash": "aca2fc65371f2233c4785cb683da9316"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/users/router.ts": {
-    "mtime": 1780587853.3809354,
+    "mtime": 1780589461.0332382,
     "ast_hash": "5aed462121e2dc065536949ed881cc94",
     "semantic_hash": ""
   },
@@ -2480,12 +2480,12 @@
     "semantic_hash": "5d02dff4787eb352a82dba2f16bfc8ac"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/users/controller.ts": {
-    "mtime": 1780587840.9991057,
+    "mtime": 1780589461.032198,
     "ast_hash": "bc1a0b8770876dd921aefe8f5df86c38",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/users/service.ts": {
-    "mtime": 1780587462.749848,
+    "mtime": 1780589461.0341504,
     "ast_hash": "376d51bcfb59cabaa7e9f905d56942d5",
     "semantic_hash": ""
   },
@@ -2630,7 +2630,7 @@
     "semantic_hash": "7d5b3c8adc5d33a42682772f2876a858"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/socket/index.ts": {
-    "mtime": 1780588353.3029294,
+    "mtime": 1780589461.0349293,
     "ast_hash": "cc1f6c4011abd15aace6e722d1276fdb",
     "semantic_hash": ""
   },
@@ -2665,8 +2665,8 @@
     "semantic_hash": "62c05a2bf20bf036a0b2633478663e64"
   },
   "/Users/joydipdatta/UniConnecT_NEW/CLAUDE.md": {
-    "mtime": 1780114986.5586941,
-    "ast_hash": "cbfb4b327313ebb5aa653cf57a2e5336",
+    "mtime": 1780589864.0497308,
+    "ast_hash": "d36ad8f5344ba2d9b5d8b608dc5634d3",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/pnpm-workspace.yaml": {
@@ -3520,7 +3520,7 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/screenshots/feed.png": {
-    "mtime": 1780589246.0977778,
+    "mtime": 1780589461.1218197,
     "ast_hash": "946622446cc715febec2099a5856144f",
     "semantic_hash": ""
   },
@@ -3800,7 +3800,7 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/settings/index.ts": {
-    "mtime": 1780588042.993857,
+    "mtime": 1780589461.0425417,
     "ast_hash": "0745817667e31ebcdb513fcaf977b47c",
     "semantic_hash": ""
   },
@@ -3845,7 +3845,7 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/lib/api/settings.ts": {
-    "mtime": 1780587957.3809109,
+    "mtime": 1780589461.0430973,
     "ast_hash": "d326e431ab66afaf29694e368842c5f2",
     "semantic_hash": ""
   },
@@ -3905,153 +3905,158 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/docs/superpowers/specs/2026-06-04-feed-ranking-design.md": {
-    "mtime": 1780587008.821205,
+    "mtime": 1780589461.0454638,
     "ast_hash": "180d92fa1fa1b2246c51b781b1bd6e5b",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/docs/superpowers/specs/2026-06-04-online-presence-design.md": {
-    "mtime": 1780586956.0027895,
+    "mtime": 1780589461.0468783,
     "ast_hash": "dbb8efc1e99c9c35bc863c2a7a788ceb",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/docs/superpowers/specs/2026-06-04-profile-privacy-controls-design.md": {
-    "mtime": 1780586894.4562976,
+    "mtime": 1780589461.047161,
     "ast_hash": "ec636c21e74d183a2e8d4d5310d5051b",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/docs/superpowers/specs/2026-06-04-fulltext-search-design.md": {
-    "mtime": 1780587061.547882,
+    "mtime": 1780589461.046585,
     "ast_hash": "920012a450d1c2571025a48ad189f2a9",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/constants/privacy.ts": {
-    "mtime": 1780587296.3218036,
+    "mtime": 1780589461.1182113,
     "ast_hash": "670eddfb8aee8bf41f1cc9e8b1fea308",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/constants/feed-ranking.ts": {
-    "mtime": 1780588856.4193432,
+    "mtime": 1780589461.1178849,
     "ast_hash": "ddcab2bad6457978827ca001b54a78d9",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/schemas/privacy.ts": {
-    "mtime": 1780587303.308547,
+    "mtime": 1780589461.119605,
     "ast_hash": "7b3b7e7034ca29e04f1adb3957cc0c2e",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/schemas/presence.ts": {
-    "mtime": 1780588209.103556,
+    "mtime": 1780589461.1194355,
     "ast_hash": "6aa15dd15a247f8f8f2fcdfdbe8c28ca",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/settings/components/PrivacySection.tsx": {
-    "mtime": 1780588019.3700569,
+    "mtime": 1780589461.041545,
     "ast_hash": "8b0d51dca304fa2e32e5206e41205dbb",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/settings/hooks/usePrivacyPreferences.ts": {
-    "mtime": 1780587963.9549043,
+    "mtime": 1780589461.0419016,
     "ast_hash": "dfb06d4515bdede7449d42a6e670eb88",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/presence/index.ts": {
-    "mtime": 1780588426.8722136,
+    "mtime": 1780589461.03988,
     "ast_hash": "585b29d1936532fd84388628dcbb5c75",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/presence/components/PresenceDot.tsx": {
-    "mtime": 1780588482.2021697,
+    "mtime": 1780589461.036886,
     "ast_hash": "b6adde959737bb9e4fa5d79aef1f607e",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/presence/hooks/usePresence.ts": {
-    "mtime": 1780588405.6115615,
+    "mtime": 1780589461.038947,
     "ast_hash": "432b36e74bd821e81a4f04e9a5250f55",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/presence/hooks/usePresenceHeartbeat.ts": {
-    "mtime": 1780588412.2063272,
+    "mtime": 1780589461.0395622,
     "ast_hash": "bfcd6e9d1dbf57f038c90d391b2cc376",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/stores/presenceStore.ts": {
-    "mtime": 1780588390.048684,
+    "mtime": 1780589461.0449364,
     "ast_hash": "4c306d1fda8e2ad97434bfba1156d6e2",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/lib/api/presence.ts": {
-    "mtime": 1780588394.167545,
+    "mtime": 1780589461.0427477,
     "ast_hash": "07d8a0311da4399070562c7132891c67",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/070_add_search_vectors.ts": {
-    "mtime": 1780588785.2046638,
+    "mtime": 1780589461.026814,
     "ast_hash": "37d230c558729d3a3e93405e95e7d4ca",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/069_add_last_seen_to_users.ts": {
-    "mtime": 1780588174.5110435,
+    "mtime": 1780589461.0265443,
     "ast_hash": "6dba616d0c09d71123a63cdbb6061fdc",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/068_add_privacy_preferences.ts": {
-    "mtime": 1780587331.8930016,
+    "mtime": 1780589461.0262434,
     "ast_hash": "c2dd89c2295e05b198fab118d06bac68",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/071_add_feed_ranking_columns.ts": {
-    "mtime": 1780588849.322415,
+    "mtime": 1780589461.027198,
     "ast_hash": "579f29a682537c3f46d4539dd1f4176b",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/__tests__/presence.test.ts": {
-    "mtime": 1780588565.3906465,
+    "mtime": 1780589461.0246153,
     "ast_hash": "db0f601ff1ea6442077b6d7c5d06c437",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/__tests__/privacy.test.ts": {
-    "mtime": 1780588095.4840178,
+    "mtime": 1780589461.0248961,
     "ast_hash": "87113cdcc0b7184848b33616bb0dba4d",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/queues/feed-ranking.queue.ts": {
-    "mtime": 1780589031.7663352,
+    "mtime": 1780589461.0345085,
     "ast_hash": "98908d0a024f7efb1a1e691a3c884b4e",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/workers/feed-ranking.worker.ts": {
-    "mtime": 1780589043.4625409,
+    "mtime": 1780589461.0351882,
     "ast_hash": "8882a3a37e21d95285a5b9707379785e",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/presence/router.ts": {
-    "mtime": 1780588295.7861679,
+    "mtime": 1780589461.0309176,
     "ast_hash": "cf564405134eea06ca1f39750311f2f7",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/presence/index.ts": {
-    "mtime": 1780588299.122192,
+    "mtime": 1780589461.0306008,
     "ast_hash": "22582d6f6d038bf85a32d31cb5fd27b6",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/presence/controller.ts": {
-    "mtime": 1780588291.0857682,
+    "mtime": 1780589461.0301034,
     "ast_hash": "0b2890a9bb69d9fc807db6aefe4c7f6d",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/presence/service.ts": {
-    "mtime": 1780588353.296772,
+    "mtime": 1780589461.031467,
     "ast_hash": "2687f924c20ccde0c2f62e497e1e4e40",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/users/privacy.service.ts": {
-    "mtime": 1780587396.2646768,
+    "mtime": 1780589461.03262,
     "ast_hash": "06de016d3d635d8f6f3b637e99f74220",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/__tests__/feed-ranking.test.ts": {
-    "mtime": 1780589277.5241184,
+    "mtime": 1780589461.024333,
     "ast_hash": "f1e0fc46971d0e8aa0af03d31216ad5f",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/docs/superpowers/specs/2026-06-05-share-and-post-lifecycle-design.md": {
+    "mtime": 1780604736.9383783,
+    "ast_hash": "1db622163489941c406b1b430068dc5f",
     "semantic_hash": ""
   }
 }
