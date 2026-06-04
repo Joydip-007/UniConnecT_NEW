@@ -3,7 +3,8 @@ import { CONNECTION_EVENTS } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { notificationQueue } from '../../queues/notification.queue'
 import { getIo } from '../../socket'
-import { badRequest, conflict, notFound } from '../../utils/errors'
+import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
+import { loadPrivacy } from '../users/privacy.service'
 import type { PaginationQuery } from './schema'
 
 interface CountRow {
@@ -50,6 +51,12 @@ export class ConnectionsService {
     }
 
     await assertUserInUniversity(targetUserId, universityId)
+
+    // Privacy: respect the target's "who can send connection requests" gate.
+    const targetPrivacy = await loadPrivacy(targetUserId)
+    if (targetPrivacy.connection_requests === 'only_me') {
+      throw forbidden('This user is not accepting connection requests', 'CONNECTION_REQUESTS_DISABLED')
+    }
 
     // Check for any existing relationship in either direction, scoped to university
     const existing = await db('connections')

@@ -2,6 +2,8 @@ import { api } from '@/lib/axios'
 import type {
   NotificationPreferencesInput,
   NotificationPreferencesResponse,
+  PrivacyPreferencesInput,
+  PrivacyPreferencesResponse,
   PushSubscribeInput,
 } from '@uniconnect/shared'
 
@@ -17,6 +19,18 @@ export async function updateNotificationPreferences(input: NotificationPreferenc
     '/notifications/preferences',
     input,
   )
+  return data.data
+}
+
+// ── Privacy preferences ─────────────────────────────────────────────────────
+
+export async function getPrivacyPreferences() {
+  const { data } = await api.get<{ data: PrivacyPreferencesResponse }>('/users/me/privacy')
+  return data.data
+}
+
+export async function updatePrivacyPreferences(input: PrivacyPreferencesInput) {
+  const { data } = await api.put<{ data: PrivacyPreferencesResponse }>('/users/me/privacy', input)
   return data.data
 }
 

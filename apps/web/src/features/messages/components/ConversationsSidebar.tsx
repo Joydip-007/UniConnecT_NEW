@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { MessageCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
+import { PresenceDot, usePresence } from '@/features/presence'
 import { api } from '@/lib/axios'
 import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
 import { EmptyState } from '@/components/EmptyState'
@@ -60,7 +61,12 @@ function SidebarRow({
         transition: 'background 150ms',
       }}
     >
-      <div style={{ flexShrink: 0 }}><Avatar initials={avatarInitials} color={avatarColor} size={38} /></div>
+      <div style={{ flexShrink: 0, position: 'relative' }}>
+        <Avatar initials={avatarInitials} color={avatarColor} size={38} />
+        {(conversation.type === 'direct' || isMentorship) && (
+          <PresenceDot userId={conversation.otherParticipant?.id} overlay />
+        )}
+      </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -183,6 +189,13 @@ export function ConversationsSidebar({ activeConvId, onNewClick }: Conversations
         : [],
     [data],
   )
+
+  // Seed presence for all direct/mentorship counterparts in one batch.
+  const presenceIds = useMemo(
+    () => sorted.map((c) => c.otherParticipant?.id).filter((id): id is string => Boolean(id)),
+    [sorted],
+  )
+  usePresence(presenceIds)
 
   return (
     <>

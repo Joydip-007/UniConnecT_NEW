@@ -4,6 +4,7 @@ import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn } from '@/components/Button'
 import { ConnectButton } from '@/features/connections'
+import { PresenceLabel, usePresence } from '@/features/presence'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 interface Props {
@@ -31,6 +32,7 @@ export function ProfileHeader({
   onEdit,
 }: Props) {
   const fullName = user.profile.fullName
+  usePresence(isOwnProfile ? [] : [user.id])
   const avatarColor = seedColor(user.id)
   const showOpenToWork = user.profile.isOpenToWork && (user.role === 'student' || user.role === 'alumni')
 
@@ -141,6 +143,8 @@ export function ProfileHeader({
               {user.profile.headline}
             </p>
           )}
+
+          {!isOwnProfile && <PresenceLabel userId={user.id} />}
 
           {user.profile.location && (
             <p

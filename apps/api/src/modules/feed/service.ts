@@ -1,5 +1,5 @@
 import type { Knex } from 'knex'
-import type { UserRole } from '@uniconnect/shared'
+import { FEED_RANKING, type UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { getIo } from '../../socket'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
@@ -93,16 +93,22 @@ interface SavedPostRow {
 
 export class FeedService {
   async listPosts(universityId: string, userId: string, query: PostListQuery) {
+    const isTop = query.sort === 'top'
+
     // Drafts (is_published = false) never appear in the public feed — only in the author's Drafts view.
     const countQuery = db('posts').where('posts.university_id', universityId).andWhere('posts.is_published', true)
     if (query.type) countQuery.andWhere('posts.type', query.type)
     if (query.authorId) countQuery.andWhere('posts.author_id', query.authorId)
+    // "Top" only ranks the recent window, so the count must match.
+    if (isTop) {
+      countQuery.andWhereRaw(`posts.created_at > now() - interval '${FEED_RANKING.WINDOW_DAYS} days'`)
+    }
 
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
     const offset = (query.page - 1) * query.limit
 
-    const rows = (await postSelectQuery(db, userId, universityId)
+    const rowsQuery = postSelectQuery(db, userId, universityId)
       .where('posts.university_id', universityId)
       .andWhere('posts.is_published', true)
       .modify((builder) => {
@@ -110,7 +116,44 @@ export class FeedService {
         if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
       })
       .orderBy('posts.is_pinned', 'desc')
-      .orderByRaw('is_connected DESC NULLS LAST')
+
+    if (isTop) {
+      rowsQuery.andWhereRaw(`posts.created_at > now() - interval '${FEED_RANKING.WINDOW_DAYS} days'`)
+      // base hot_score (precomputed) + viewer-relative affinity bonuses
+      const viewer = await db('profiles')
+        .where({ user_id: userId })
+        .select<{ department: string | null; batch_year: string | null }[]>('department', 'batch_year')
+        .first()
+      rowsQuery.orderByRaw(
+        `(
+          posts.hot_score
+          + (CASE WHEN EXISTS (
+                SELECT 1 FROM connections c
+                WHERE c.status = 'accepted' AND c.university_id = ?
+                  AND ((c.requester_id = ? AND c.addressee_id = posts.author_id)
+                    OR (c.addressee_id = ? AND c.requester_id = posts.author_id))
+              ) THEN ? ELSE 0 END)
+          + (CASE WHEN ?::text IS NOT NULL AND profiles.department = ? THEN ? ELSE 0 END)
+          + (CASE WHEN ?::text IS NOT NULL AND profiles.batch_year = ? THEN ? ELSE 0 END)
+        ) DESC`,
+        [
+          universityId,
+          userId,
+          userId,
+          FEED_RANKING.CONNECTION_BONUS,
+          viewer?.department ?? null,
+          viewer?.department ?? null,
+          FEED_RANKING.DEPARTMENT_BONUS,
+          viewer?.batch_year ?? null,
+          viewer?.batch_year ?? null,
+          FEED_RANKING.BATCH_BONUS,
+        ],
+      )
+    } else {
+      rowsQuery.orderByRaw('is_connected DESC NULLS LAST')
+    }
+
+    const rows = (await rowsQuery
       .orderBy('posts.created_at', 'desc')
       .limit(query.limit)
       .offset(offset)) as PostRow[]
@@ -318,6 +361,8 @@ export class FeedService {
         created_at: db.fn.now(),
       })
 
+    await syncPostCounters(postId)
+
     const reactionCounts = await getReactionCounts(postId, 'post')
     const payload = { postId, userId: context.userId, reactionType, reactionCounts }
     const io = getIo()
@@ -356,6 +401,8 @@ export class FeedService {
         target_type: 'post',
       })
       .delete()
+
+    await syncPostCounters(postId)
 
     const reactionCounts = await getReactionCounts(postId, 'post')
     const payload = { postId, userId: context.userId, reactionType: null, reactionCounts }
@@ -426,6 +473,8 @@ export class FeedService {
       return comment.id
     })
 
+    await syncPostCounters(postId)
+
     const row = await commentSelectQuery(db, context.userId).where('comments.id', commentId).first<CommentRow>()
     if (!row) throw notFound('Comment not found', 'COMMENT_NOT_FOUND')
 
@@ -467,6 +516,7 @@ export class FeedService {
     }
     await db('reactions').where({ target_id: commentId, target_type: 'comment' }).delete()
     await db('comments').where({ id: commentId }).delete()
+    await syncPostCounters(postId)
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit('feed:comment:deleted', { postId, commentId })
     return { deleted: true }
@@ -759,6 +809,21 @@ function assertCanUsePostType(role: UserRole, type: PostType) {
   if (type !== 'announcement') return
   if (role === 'faculty' || role === 'admin') return
   throw forbidden('Only faculty and admins can create announcements', 'ANNOUNCEMENT_FORBIDDEN')
+}
+
+/**
+ * Recompute the denormalised engagement counters for a post from source tables.
+ * Drift-free (handles reaction-type changes / merges) at the cost of one UPDATE.
+ * The cron-refreshed hot_score consumes these; counts are not re-scored inline.
+ */
+async function syncPostCounters(postId: string) {
+  await db.raw(
+    `UPDATE posts SET
+       reaction_count = (SELECT COUNT(*) FROM reactions WHERE target_id = ? AND target_type = 'post'),
+       comment_count  = (SELECT COUNT(*) FROM comments WHERE post_id = ?)
+     WHERE id = ?`,
+    [postId, postId, postId],
+  )
 }
 
 async function getReactionCounts(targetId: string, targetType: 'post' | 'comment') {

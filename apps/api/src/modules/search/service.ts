@@ -1,3 +1,4 @@
+import type { Knex } from 'knex'
 import { db } from '../../config/db'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -63,6 +64,53 @@ function paginate<T>(items: T[], total: number, page: number, limit: number): Se
   return { items, total, page, hasMore: page * limit < total }
 }
 
+// ── Full-text search helpers ─────────────────────────────────────────────────
+// Primary match is Postgres FTS (websearch_to_tsquery + ts_rank_cd) on a stored,
+// generated `search_vector` column. A pg_trgm similarity OR-clause catches typos
+// FTS alone misses, and ranks below exact matches. Queries shorter than 2 chars
+// fall back to a plain trigram-backed ILIKE (FTS has poor signal there).
+
+const MIN_FTS_LEN = 2
+
+/** AND a text-search predicate onto a query (FTS ∪ trigram fuzzy). */
+function applyTextSearch(
+  builder: Knex.QueryBuilder,
+  vectorCol: string,
+  fuzzyCol: string,
+  q: string,
+) {
+  const trimmed = q.trim()
+  if (trimmed.length < MIN_FTS_LEN) {
+    builder.whereRaw(`${fuzzyCol} ILIKE ?`, [`%${trimmed}%`])
+    return
+  }
+  builder.where(function () {
+    this.whereRaw(`${vectorCol} @@ websearch_to_tsquery('english', ?)`, [trimmed]).orWhereRaw(
+      `${fuzzyCol} % ?`,
+      [trimmed],
+    )
+  })
+}
+
+/** Order by FTS relevance, then trigram similarity (exact FTS hits first). */
+function applyTextOrder(
+  builder: Knex.QueryBuilder,
+  vectorCol: string,
+  fuzzyCol: string,
+  q: string,
+  fallbackOrder: string,
+) {
+  const trimmed = q.trim()
+  if (trimmed.length < MIN_FTS_LEN) {
+    builder.orderByRaw(fallbackOrder)
+    return
+  }
+  builder.orderByRaw(
+    `ts_rank_cd(${vectorCol}, websearch_to_tsquery('english', ?)) DESC, similarity(${fuzzyCol}, ?) DESC`,
+    [trimmed, trimmed],
+  )
+}
+
 // ── People ───────────────────────────────────────────────────────────────────
 
 export interface PeopleFilters {
@@ -83,15 +131,22 @@ export async function searchPeople(
     .join('users as u', 'u.id', 'p.user_id')
     .where('u.university_id', universityId)
     .where('u.is_active', true)
+    // Privacy: exclude users who opted out of discovery.
+    .whereNotExists(function () {
+      this.select(db.raw('1'))
+        .from('user_settings')
+        .whereRaw('user_settings.user_id = u.id')
+        .whereRaw("user_settings.privacy_preferences->>'discoverable' = 'false'")
+    })
 
-  if (filters.q) baseQuery.whereRaw('p.full_name ILIKE ?', [`%${filters.q}%`])
+  if (filters.q) applyTextSearch(baseQuery, 'p.search_vector', 'p.full_name', filters.q)
   if (filters.role) baseQuery.where('u.role', filters.role)
   if (filters.department) baseQuery.whereRaw('p.department ILIKE ?', [`%${filters.department}%`])
   if (filters.batch) baseQuery.where('p.batch_year', filters.batch)
 
   const [{ count }] = await baseQuery.clone().count<[{ count: string }]>('u.id as count')
 
-  const rows = await baseQuery
+  const rowsQuery = baseQuery
     .clone()
     .leftJoin('connections as c', function () {
       this.on(function () {
@@ -122,10 +177,14 @@ export async function searchPeople(
     )
     .limit(limit)
     .offset((page - 1) * limit)
-    .orderByRaw(
-      filters.q ? 'p.full_name ILIKE ? DESC, p.full_name ASC' : 'p.full_name ASC',
-      filters.q ? [`${filters.q}%`] : [],
-    )
+
+  if (filters.q) {
+    applyTextOrder(rowsQuery, 'p.search_vector', 'p.full_name', filters.q, 'p.full_name ASC')
+  } else {
+    rowsQuery.orderByRaw('p.full_name ASC')
+  }
+
+  const rows = await rowsQuery
 
   const items: UserSearchResult[] = rows.map((r) => ({
     id: r.id,
@@ -162,9 +221,8 @@ export async function searchPosts(
     .where('po.university_id', universityId)
 
   if (filters.q) {
-    const pattern = `%${filters.q}%`
-    countQuery.whereRaw('po.content ILIKE ?', [pattern])
-    rowQuery.whereRaw('po.content ILIKE ?', [pattern])
+    applyTextSearch(countQuery, 'po.search_vector', 'po.content', filters.q)
+    applyTextSearch(rowQuery, 'po.search_vector', 'po.content', filters.q)
   }
 
   if (filters.tag) {
@@ -181,7 +239,7 @@ export async function searchPosts(
 
   const [{ count }] = await countQuery.count<[{ count: string }]>('po.id as count')
 
-  const rows = await rowQuery
+  rowQuery
     .select(
       'po.id',
       'po.content',
@@ -192,7 +250,14 @@ export async function searchPosts(
     )
     .limit(limit)
     .offset((page - 1) * limit)
-    .orderBy('po.created_at', 'desc')
+
+  if (filters.q) {
+    applyTextOrder(rowQuery, 'po.search_vector', 'po.content', filters.q, 'po.created_at DESC')
+  } else {
+    rowQuery.orderBy('po.created_at', 'desc')
+  }
+
+  const rows = await rowQuery
 
   const postIds = rows.map((r) => r.id)
 
@@ -236,26 +301,20 @@ export async function searchJobs(
   page: number,
   limit: number,
 ): Promise<SearchPagedResult<JobSearchResult>> {
-  const pattern = `%${q}%`
+  const countQuery = db('jobs').where('university_id', universityId).where('is_active', true)
+  const rowQuery = db('jobs').where('university_id', universityId).where('is_active', true)
+  applyTextSearch(countQuery, 'search_vector', 'title', q)
+  applyTextSearch(rowQuery, 'search_vector', 'title', q)
 
-  const [{ count }] = await db('jobs')
-    .where('university_id', universityId)
-    .where('is_active', true)
-    .where(function () {
-      this.whereRaw('title ILIKE ?', [pattern]).orWhereRaw('company ILIKE ?', [pattern])
-    })
-    .count<[{ count: string }]>('id as count')
+  const [{ count }] = await countQuery.count<[{ count: string }]>('id as count')
 
-  const rows = await db('jobs')
-    .where('university_id', universityId)
-    .where('is_active', true)
-    .where(function () {
-      this.whereRaw('title ILIKE ?', [pattern]).orWhereRaw('company ILIKE ?', [pattern])
-    })
+  rowQuery
     .select('id', 'title', 'company', 'type', 'location', 'deadline')
     .limit(limit)
     .offset((page - 1) * limit)
-    .orderBy('created_at', 'desc')
+  applyTextOrder(rowQuery, 'search_vector', 'title', q, 'created_at DESC')
+
+  const rows = await rowQuery
 
   const items: JobSearchResult[] = rows.map((r) => ({
     id: r.id,
@@ -278,21 +337,19 @@ export async function searchEvents(
   limit: number,
   requesterId: string,
 ): Promise<SearchPagedResult<EventSearchResult>> {
-  const pattern = `%${q}%`
+  const countQuery = db('events').where('university_id', universityId).where('is_published', true)
+  applyTextSearch(countQuery, 'search_vector', 'title', q)
+  const [{ count }] = await countQuery.count<[{ count: string }]>('id as count')
 
-  const [{ count }] = await db('events')
-    .where('university_id', universityId)
-    .where('is_published', true)
-    .whereRaw('title ILIKE ?', [pattern])
-    .count<[{ count: string }]>('id as count')
-
-  const rows = await db('events as e')
+  const rowQuery = db('events as e')
     .leftJoin('event_rsvps as r', function () {
       this.on('r.event_id', 'e.id').andOn('r.user_id', db.raw('?', [requesterId]))
     })
     .where('e.university_id', universityId)
     .where('e.is_published', true)
-    .whereRaw('e.title ILIKE ?', [pattern])
+  applyTextSearch(rowQuery, 'e.search_vector', 'e.title', q)
+
+  rowQuery
     .select(
       'e.id',
       'e.title',
@@ -303,7 +360,9 @@ export async function searchEvents(
     )
     .limit(limit)
     .offset((page - 1) * limit)
-    .orderBy('e.starts_at', 'asc')
+  applyTextOrder(rowQuery, 'e.search_vector', 'e.title', q, 'e.starts_at ASC')
+
+  const rows = await rowQuery
 
   const items: EventSearchResult[] = rows.map((r) => ({
     id: r.id,
@@ -326,19 +385,18 @@ export async function searchGroups(
   limit: number,
   requesterId: string,
 ): Promise<SearchPagedResult<GroupSearchResult>> {
-  const pattern = `%${q}%`
+  const countQuery = db('groups').where('university_id', universityId)
+  applyTextSearch(countQuery, 'search_vector', 'name', q)
+  const [{ count }] = await countQuery.count<[{ count: string }]>('id as count')
 
-  const [{ count }] = await db('groups')
-    .where('university_id', universityId)
-    .whereRaw('name ILIKE ?', [pattern])
-    .count<[{ count: string }]>('id as count')
-
-  const rows = await db('groups as g')
+  const rowQuery = db('groups as g')
     .leftJoin('group_members as gm', function () {
       this.on('gm.group_id', 'g.id').andOn('gm.user_id', db.raw('?', [requesterId]))
     })
     .where('g.university_id', universityId)
-    .whereRaw('g.name ILIKE ?', [pattern])
+  applyTextSearch(rowQuery, 'g.search_vector', 'g.name', q)
+
+  rowQuery
     .select(
       'g.id',
       'g.name',
@@ -350,6 +408,8 @@ export async function searchGroups(
     .limit(limit)
     .offset((page - 1) * limit)
     .orderBy('g.member_count', 'desc')
+
+  const rows = await rowQuery
 
   const items: GroupSearchResult[] = rows.map((r) => ({
     id: r.id,

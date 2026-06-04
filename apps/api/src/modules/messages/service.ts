@@ -116,18 +116,34 @@ export class MessagesService {
 
     await assertUsersInUniversity([input.participantId], context.universityId)
 
-    // Direct conversations require a connection (unless admin, mentorship, or open_to_msg)
+    // Direct conversations are gated by the target's `messages` privacy tier.
+    // Backward-compat: when the tier was never explicitly set, derive it from the
+    // legacy `is_open_to_msg` boolean (true → everyone, false → connections).
     if (!input.is_group) {
       const isAdmin = context.role === 'admin'
       if (!isAdmin) {
-        // Check if target has open_to_msg
-        const targetProfile = await db('profiles')
-          .where({ user_id: input.participantId })
-          .select('is_open_to_msg')
-          .first<{ is_open_to_msg: boolean }>()
+        const [targetProfile, settingsRow] = await Promise.all([
+          db('profiles')
+            .where({ user_id: input.participantId })
+            .select('is_open_to_msg')
+            .first<{ is_open_to_msg: boolean }>(),
+          db('user_settings')
+            .where({ user_id: input.participantId })
+            .select<{ privacy_preferences: { messages?: 'everyone' | 'connections' | 'only_me' } | null }[]>(
+              'privacy_preferences',
+            )
+            .first(),
+        ])
 
-        if (!targetProfile?.is_open_to_msg) {
-          // Check connection
+        const tier =
+          settingsRow?.privacy_preferences?.messages ??
+          (targetProfile?.is_open_to_msg ? 'everyone' : 'connections')
+
+        if (tier === 'only_me') {
+          throw forbidden('This user is not accepting messages', 'MESSAGES_DISABLED')
+        }
+
+        if (tier === 'connections') {
           const connection = await db('connections')
             .where(function () {
               this.where({ requester_id: context.userId, addressee_id: input.participantId }).orWhere({

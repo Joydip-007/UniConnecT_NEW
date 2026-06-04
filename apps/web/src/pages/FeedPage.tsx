@@ -64,6 +64,7 @@ export default function FeedPage() {
   const rawFilter = searchParams.get('type') as FeedFilter | null
   const filter: FeedFilter =
     rawFilter !== null && TABS.some((t) => t.value === rawFilter) ? rawFilter : 'all'
+  const sort: 'recent' | 'top' = searchParams.get('sort') === 'top' ? 'top' : 'recent'
 
   const universityId = useAuthStore((s) => s.user?.universityId)
   useFeedSocket(universityId)
@@ -73,7 +74,7 @@ export default function FeedPage() {
   const [editPost, setEditPost] = useState<FeedPost | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = usePosts(filter)
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = usePosts(filter, sort)
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -94,8 +95,19 @@ export default function FeedPage() {
   const allCaughtUp = !isLoading && !hasNextPage && posts.length > 0
   const openPost = posts.find((p) => p.id === openPostId) ?? null
 
+  function buildParams(nextFilter: FeedFilter, nextSort: 'recent' | 'top') {
+    const params: Record<string, string> = {}
+    if (nextFilter !== 'all') params.type = nextFilter
+    if (nextSort !== 'recent') params.sort = nextSort
+    return params
+  }
+
   function setFilter(value: FeedFilter) {
-    setSearchParams(value === 'all' ? {} : { type: value }, { replace: true })
+    setSearchParams(buildParams(value, sort), { replace: true })
+  }
+
+  function setSort(value: 'recent' | 'top') {
+    setSearchParams(buildParams(filter, value), { replace: true })
   }
 
   useFeedShortcuts({
@@ -154,6 +166,37 @@ export default function FeedPage() {
           )
         })}
       </nav>
+
+      {/* Sort toggle */}
+      <div
+        role="group"
+        aria-label="Feed sort"
+        style={{ display: 'flex', gap: 4, alignSelf: 'flex-start', paddingLeft: 2 }}
+      >
+        {(['recent', 'top'] as const).map((value) => {
+          const active = sort === value
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setSort(value)}
+              style={{
+                padding: '4px 12px',
+                fontSize: 12,
+                fontWeight: active ? 500 : 400,
+                borderRadius: 'var(--r-pill)',
+                border: '0.5px solid var(--border-default)',
+                cursor: 'pointer',
+                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                color: active ? 'var(--uc-indigo-l)' : 'var(--text-tertiary)',
+              }}
+            >
+              {value === 'recent' ? 'Recent' : 'Top'}
+            </button>
+          )
+        })}
+      </div>
 
       {/* Initial loading */}
       {isLoading && (

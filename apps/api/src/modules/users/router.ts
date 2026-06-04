@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { privacyPreferencesSchema } from '@uniconnect/shared'
 import { requireAuth } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
@@ -12,6 +13,7 @@ import {
   deleteFeatured,
   getMe,
   getMyAnalytics,
+  getMyPrivacy,
   getMyViewers,
   getProgress,
   getSuggestions,
@@ -26,6 +28,7 @@ import {
   updateExperience,
   updateMe,
   updateMyPreferences,
+  updateMyPrivacy,
 } from './controller'
 import {
   EducationSchema,
@@ -46,6 +49,8 @@ usersRouter.get('/me', getMe)
 usersRouter.patch('/me', validate(UpdateProfileSchema), updateMe)
 usersRouter.patch('/me/preferences', validate(UpdatePreferencesSchema), updateMyPreferences)
 usersRouter.post('/me/deactivate', deactivateMe)
+usersRouter.get('/me/privacy', getMyPrivacy)
+usersRouter.put('/me/privacy', validate(privacyPreferencesSchema), updateMyPrivacy)
 usersRouter.get('/me/progress', getProgress)
 usersRouter.get('/suggestions', getSuggestions)
 usersRouter.get('/', validateRequest({ query: UserListQuerySchema }), listUsers)

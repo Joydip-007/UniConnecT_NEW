@@ -2,7 +2,9 @@ import type { Request, Response } from 'express'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
+import type { PrivacyPreferencesInput } from '@uniconnect/shared'
 import { usersService } from './service'
+import { loadPrivacy, updatePrivacy } from './privacy.service'
 import type {
   EducationInput,
   ExperienceInput,
@@ -42,6 +44,19 @@ export const updateMyPreferences = asyncHandler(async (req: Request, res: Respon
 export const deactivateMe = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await usersService.deactivateAccount(context.userId, context.universityId))
+})
+
+export const getMyPrivacy = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await loadPrivacy(context.userId))
+})
+
+export const updateMyPrivacy = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await updatePrivacy(context.userId, context.universityId, req.body as PrivacyPreferencesInput),
+  )
 })
 
 export const getUser = asyncHandler(async (req: Request, res: Response) => {

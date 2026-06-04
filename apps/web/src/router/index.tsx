@@ -90,7 +90,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'privacy',
-                element: page(() => import('@/features/settings/components/PrivacyPlaceholder')),
+                element: page(() => import('@/features/settings/components/PrivacySection')),
               },
             ],
           },

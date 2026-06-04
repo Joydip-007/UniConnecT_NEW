@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { FEED_SORTS } from '@uniconnect/shared'
 
 export const PostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'news', 'event_promo'])
 export const CreatePostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'event_promo'])
@@ -12,6 +13,7 @@ export const PaginationQuerySchema = z.object({
 export const PostListQuerySchema = PaginationQuerySchema.extend({
   type: PostTypeSchema.optional(),
   authorId: z.string().uuid().optional(),
+  sort: z.enum(FEED_SORTS).default('recent'),
 })
 
 export const CreatePostSchema = z.object({

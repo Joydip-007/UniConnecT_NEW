@@ -13,6 +13,12 @@ export const redis = new Redis(env.REDIS_URL, {
   ...(isTls && { tls: {} }),
 })
 
+/**
+ * Presence key TTL (seconds). The client heartbeats at ~half this interval so a
+ * crashed client's online state expires within one TTL window.
+ */
+export const PRESENCE_TTL_SECONDS = 60
+
 export async function pingRedis() {
   if (redis.status === 'wait') {
     await redis.connect()

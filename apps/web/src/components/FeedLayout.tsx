@@ -6,11 +6,13 @@ import { MobileBottomNav } from '@/components/MobileBottomNav'
 import { useAuthStore } from '@/stores/authStore'
 import { useSocketStore } from '@/stores/socketStore'
 import { useNotificationsSocket } from '@/features/notifications'
+import { usePresenceHeartbeat } from '@/features/presence'
 
 export function FeedLayout() {
   const userId = useAuthStore((s) => s.user?.id)
   const { connected, hasConnected } = useSocketStore()
   useNotificationsSocket(userId)
+  usePresenceHeartbeat(Boolean(userId))
 
   return (
     <div style={{ background: 'var(--surface-page)', minHeight: '100dvh' }}>

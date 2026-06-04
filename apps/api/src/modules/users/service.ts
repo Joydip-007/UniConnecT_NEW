@@ -4,6 +4,12 @@ import { db } from '../../config/db'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
 import { tokenService } from '../../services/token.service'
 import { systemGroupsService } from '../groups/system-groups.service'
+import {
+  buildSectionVisibility,
+  canViewSection,
+  evaluateTier,
+  loadPrivacy,
+} from './privacy.service'
 import type {
   EducationInput,
   ExperienceInput,
@@ -218,15 +224,22 @@ export class UsersService {
     const isConnected = connectionStatus === 'connected' || !!mentorshipRow
     const isOwnProfile = currentUserId === targetUserId
 
+    // Privacy: gate contact info by the target's `contact_info` tier, and return a
+    // per-section visibility map so the client can render private states gracefully.
+    const prefs = await loadPrivacy(targetUserId)
+    const facts = { isOwner: isOwnProfile, isConnected }
+    const canSeeContact = evaluateTier(prefs.sections.contact_info, facts)
+
     return {
       ...toUserProfile(user, {
-        includePhone: isOwnProfile || isConnected,
-        includeContactInfo: isOwnProfile || isConnected,
+        includePhone: canSeeContact,
+        includeContactInfo: canSeeContact,
       }),
       stats: { connections, pendingReceived, posts },
       connectionStatus,
       connectionId,
       mutualConnections: mutualCount,
+      visibility: buildSectionVisibility(prefs, facts),
     }
   }
 
@@ -270,6 +283,7 @@ export class UsersService {
       .where('users.is_active', true)
       .whereNot('users.id', currentUserId)
       .modify((builder) => {
+        excludeNonDiscoverable(builder)
         if (currentUser.department) {
           builder.where('profiles.department', currentUser.department)
         }
@@ -365,10 +379,10 @@ export class UsersService {
     const target = await db('users').where({ id: targetUserId, university_id: universityId }).first()
     if (!target) throw notFound('User not found')
 
-    // Connection-gated: return [] if not own profile and not connected
+    // Privacy-gated by the `experience` tier.
     if (currentUserId !== targetUserId) {
-      const connected = await isConnected(currentUserId, targetUserId, universityId)
-      if (!connected) return []
+      const allowed = await canViewSection(currentUserId, targetUserId, 'experience', universityId)
+      if (!allowed) return []
     }
     return db('profile_experiences')
       .where({ user_id: targetUserId })
@@ -421,10 +435,10 @@ export class UsersService {
     const target = await db('users').where({ id: targetUserId, university_id: universityId }).first()
     if (!target) throw notFound('User not found')
 
-    // Connection-gated: return [] if not own profile and not connected
+    // Privacy-gated by the `education` tier.
     if (currentUserId !== targetUserId) {
-      const connected = await isConnected(currentUserId, targetUserId, universityId)
-      if (!connected) return []
+      const allowed = await canViewSection(currentUserId, targetUserId, 'education', universityId)
+      if (!allowed) return []
     }
     return db('profile_education')
       .where({ user_id: targetUserId })
@@ -639,10 +653,10 @@ export class UsersService {
     const target = await db('users').where({ id: targetUserId, university_id: universityId }).first()
     if (!target) throw notFound('User not found')
 
-    // Only visible to own profile or connections of that user
+    // Privacy-gated by the `connections_list` tier.
     if (currentUserId !== targetUserId) {
-      const connected = await isConnected(currentUserId, targetUserId, universityId)
-      if (!connected) {
+      const allowed = await canViewSection(currentUserId, targetUserId, 'connections_list', universityId)
+      if (!allowed) {
         // Return count only, not the list
         const total = await countUserConnections(targetUserId, universityId)
         return { items: [], total, page: 1, limit: query.limit, listHidden: true }
@@ -723,10 +737,21 @@ function getUserProfileQuery() {
 
 function applyUserFilters(query: Knex.QueryBuilder, filters: Partial<UserListQuery>) {
   query.where('users.is_active', true) // hide deactivated accounts from discovery
+  excludeNonDiscoverable(query)
   if (filters.role) query.where('users.role', filters.role)
   if (filters.department) query.where('profiles.department', filters.department)
   if (filters.batch_year) query.where('profiles.batch_year', filters.batch_year)
   if (filters.search) query.whereILike('profiles.full_name', `%${filters.search}%`)
+}
+
+/** Exclude users who set privacy `discoverable = false` (default true when absent). */
+function excludeNonDiscoverable(query: Knex.QueryBuilder) {
+  query.whereNotExists(function () {
+    this.select(db.raw('1'))
+      .from('user_settings')
+      .whereRaw('user_settings.user_id = users.id')
+      .whereRaw("user_settings.privacy_preferences->>'discoverable' = 'false'")
+  })
 }
 
 async function assertUserInUniversity(userId: string, universityId: string) {

@@ -2,8 +2,15 @@ import type { Server as HttpServer } from 'node:http'
 import { createAdapter } from '@socket.io/redis-adapter'
 import type Redis from 'ioredis'
 import { Server } from 'socket.io'
+import { PRESENCE_EVENTS } from '@uniconnect/shared'
 import { db } from '../config/db'
 import { env } from '../config/env'
+import {
+  broadcastPresence,
+  refreshHeartbeat,
+  registerConnect,
+  registerDisconnect,
+} from '../modules/presence'
 import { tokenService } from '../services/token.service'
 import { AppError } from '../utils/errors'
 import { logger } from '../utils/logger'
@@ -52,6 +59,25 @@ export function setupSocket(httpServer: HttpServer, redisClient: Redis) {
     const user = socket.data.user as { userId: string; universityId: string }
     socket.join(`uni:${user.universityId}`)
     socket.join(`user:${user.userId}`)
+
+    // Presence: count this socket; broadcast online on the 0→1 transition.
+    void registerConnect(user.userId, user.universityId)
+      .then((becameOnline) => {
+        if (becameOnline) void broadcastPresence(user.userId, user.universityId, 'online', null)
+      })
+      .catch((error) => logger.warn('presence connect failed', { error }))
+
+    socket.on(PRESENCE_EVENTS.PING, () => {
+      void refreshHeartbeat(user.userId).catch(() => {})
+    })
+
+    socket.on('disconnect', () => {
+      void registerDisconnect(user.userId, user.universityId)
+        .then((lastSeenAt) => {
+          if (lastSeenAt) void broadcastPresence(user.userId, user.universityId, 'offline', lastSeenAt)
+        })
+        .catch((error) => logger.warn('presence disconnect failed', { error }))
+    })
 
     socket.on('typing:start', (payload: unknown) => {
       const convId = getConversationId(payload)
