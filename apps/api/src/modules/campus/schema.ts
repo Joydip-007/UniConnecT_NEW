@@ -66,6 +66,10 @@ export const ShuttleRouteSchema = z
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     stops: z.array(z.record(z.string(), z.unknown())).default([]),
     schedule: z.record(z.string(), z.unknown()).default({}),
+    est_duration_min: z.number().int().positive().nullable().optional(),
+    estDurationMin: z.number().int().positive().nullable().optional(),
+    cycle_minutes: z.number().int().positive().nullable().optional(),
+    cycleMinutes: z.number().int().positive().nullable().optional(),
     is_active: z.boolean().default(true),
     isActive: z.boolean().optional(),
   })
@@ -74,6 +78,8 @@ export const ShuttleRouteSchema = z
     color: value.color,
     stops: value.stops,
     schedule: value.schedule,
+    est_duration_min: value.est_duration_min ?? value.estDurationMin ?? null,
+    cycle_minutes: value.cycle_minutes ?? value.cycleMinutes ?? null,
     is_active: value.is_active ?? value.isActive ?? true,
   }))
 

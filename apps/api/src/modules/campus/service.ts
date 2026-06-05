@@ -47,6 +47,8 @@ interface ShuttleRouteRow {
   color: string
   stops: unknown
   schedule: unknown
+  est_duration_min: number | null
+  cycle_minutes: number | null
   is_active: boolean
   created_at: Date
   updated_at: Date
@@ -180,6 +182,8 @@ export class CampusService {
         color: input.color,
         stops: JSON.stringify(input.stops),
         schedule: JSON.stringify(input.schedule),
+        est_duration_min: input.est_duration_min,
+        cycle_minutes: input.cycle_minutes,
         is_active: input.is_active,
       })
       .returning<{ id: string }[]>('id')
@@ -196,6 +200,8 @@ export class CampusService {
         color: input.color,
         stops: JSON.stringify(input.stops),
         schedule: JSON.stringify(input.schedule),
+        est_duration_min: input.est_duration_min,
+        cycle_minutes: input.cycle_minutes,
         is_active: input.is_active,
         updated_at: db.fn.now(),
       })
@@ -433,6 +439,8 @@ function toShuttleRoute(row: ShuttleRouteRow) {
     color: row.color,
     stops: row.stops,
     schedule: row.schedule,
+    estDurationMin: row.est_duration_min,
+    cycleMinutes: row.cycle_minutes,
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

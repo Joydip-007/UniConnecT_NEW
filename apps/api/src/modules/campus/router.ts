@@ -44,7 +44,7 @@ campusRouter.get('/shuttle/routes', listShuttleRoutes)
 campusRouter.post('/shuttle/routes', requireRole('faculty', 'admin'), validate(ShuttleRouteSchema), createShuttleRoute)
 campusRouter.patch('/shuttle/routes/:routeId', requireRole('faculty', 'admin'), validate(ShuttleRouteSchema), updateShuttleRoute)
 campusRouter.get('/shuttle/locations', listShuttleLocations)
-campusRouter.post('/shuttle/locations', requireRole('faculty', 'admin'), validate(ShuttleLocationSchema), createShuttleLocation)
+campusRouter.post('/shuttle/locations', requireRole('driver', 'admin'), validate(ShuttleLocationSchema), createShuttleLocation)
 
 campusRouter.get('/courses', validateRequest({ query: CourseListQuerySchema }), listCourses)
 campusRouter.post('/courses', requireRole('faculty', 'admin'), validate(CourseSchema), createCourse)

@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'alumni' | 'faculty' | 'admin'
+export type UserRole = 'student' | 'alumni' | 'faculty' | 'admin' | 'driver'
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 

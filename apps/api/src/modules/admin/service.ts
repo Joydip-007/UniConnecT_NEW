@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import bcrypt from 'bcryptjs'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, notFound } from '../../utils/errors'
@@ -10,6 +11,7 @@ import type {
   AdminFulfillRedemptionInput,
   AdminRedemptionListQuery,
   CreateBulkInvitationsInput,
+  CreateDriverInput,
   CreateInvitationInput,
   PaginationQuery,
   ResolveReportInput,
@@ -201,6 +203,46 @@ export class AdminService {
     await systemGroupsService.removeUserFromSystemGroups(userId, universityId, user.role, user.department, user.batch_year)
 
     return { userId, deleted: true }
+  }
+
+  // Drivers are transport staff who broadcast GPS. Admin creates them directly
+  // (no invitation, no OTP, no allowed-domain check) as a least-privilege
+  // `driver` account. The account is pre-verified so they can log in immediately.
+  async createDriver(universityId: string, actorId: string, input: CreateDriverInput) {
+    const email = input.email.trim().toLowerCase()
+
+    const existing = await db('users')
+      .where({ email, university_id: universityId, is_deleted: false })
+      .first<{ id: string }>('id')
+    if (existing) throw badRequest('An account already exists for this email', 'CONFLICT')
+
+    const passwordHash = await bcrypt.hash(input.password, 12)
+
+    const created = await db.transaction(async (trx) => {
+      const [user] = await trx('users')
+        .insert({
+          university_id: universityId,
+          email,
+          password_hash: passwordHash,
+          role: 'driver',
+          is_verified: true,
+          is_active: true,
+        })
+        .returning<{ id: string; email: string; role: UserRole }[]>(['id', 'email', 'role'])
+
+      await trx('profiles').insert({ user_id: user.id, full_name: input.full_name })
+
+      return user
+    })
+
+    await db('university_audit_logs').insert({
+      university_id: universityId,
+      actor_id: actorId,
+      action: 'driver.created',
+      payload: JSON.stringify({ driverId: created.id, email }),
+    })
+
+    return { id: created.id, email: created.email, role: created.role, fullName: input.full_name }
   }
 
   async updateUserStatus(universityId: string, userId: string, input: UpdateUserStatusInput) {

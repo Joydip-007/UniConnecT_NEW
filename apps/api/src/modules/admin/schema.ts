@@ -23,6 +23,12 @@ export const CreateInvitationSchema = z.object({
   expires_in_days: z.number().int().min(1).max(30).default(7),
 })
 
+export const CreateDriverSchema = z.object({
+  full_name: z.string().trim().min(1).max(255),
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
+})
+
 export const UpdateAllowedDomainsSchema = z.object({
   allowed_email_domains: z
     .array(z.string().trim().min(1).toLowerCase())
@@ -73,6 +79,7 @@ export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>
 export type ResolveReportInput = z.infer<typeof ResolveReportSchema>
 export type CreateInvitationInput = z.infer<typeof CreateInvitationSchema>
+export type CreateDriverInput = z.infer<typeof CreateDriverSchema>
 export type UpdateAllowedDomainsInput = z.infer<typeof UpdateAllowedDomainsSchema>
 export type CreateBulkInvitationsInput = z.infer<typeof CreateBulkInvitationsSchema>
 export type ContentKind = z.infer<typeof ContentKindSchema>

@@ -5,6 +5,7 @@ import { validate, validateRequest } from '../../middleware/validate'
 import { AppError } from '../../utils/errors'
 import {
   createBulkInvitations,
+  createDriver,
   createInvitation,
   deleteContentItem,
   deleteInvitation,
@@ -33,6 +34,7 @@ import {
   ContentKindSchema,
   ContentListQuerySchema,
   CreateBulkInvitationsSchema,
+  CreateDriverSchema,
   CreateInvitationSchema,
   PaginationQuerySchema,
   ResolveReportSchema,
@@ -62,6 +64,7 @@ adminRouter.get('/users', validateRequest({ query: PaginationQuerySchema }), lis
 adminRouter.patch('/users/:userId/role', requireRole('admin'), validate(UpdateUserRoleSchema), updateUserRole)
 adminRouter.patch('/users/:userId/status', requireRole('admin'), validate(UpdateUserStatusSchema), updateUserStatus)
 adminRouter.delete('/users/:userId', requireRole('admin'), deleteUser)
+adminRouter.post('/users/driver', requireRole('admin'), validate(CreateDriverSchema), createDriver)
 
 adminRouter.get('/reports', validateRequest({ query: PaginationQuerySchema }), listReports)
 adminRouter.patch('/reports/:reportId', validate(ResolveReportSchema), resolveReport)

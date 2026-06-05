@@ -290,14 +290,14 @@
     "semantic_hash": "0e5530725eddb1980fc01f0b4b4b5d32"
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/index.ts": {
-    "mtime": 1780589461.1192322,
-    "ast_hash": "6d9a812d2a64ebc66f1a135b92b38860",
+    "mtime": 1780605056.6655931,
+    "ast_hash": "038d7b41d606220aa85be4d78faad302",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/types/feed.ts": {
-    "mtime": 1779014422.026697,
-    "ast_hash": "d529f2455c1f76dd2cb1c558cd178a1b",
-    "semantic_hash": "d529f2455c1f76dd2cb1c558cd178a1b"
+    "mtime": 1780605043.7241638,
+    "ast_hash": "e943d819e679d64b7f5b3924083b7fcc",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/types/index.ts": {
     "mtime": 1779210886.351947,
@@ -310,8 +310,8 @@
     "semantic_hash": "fec885044cf867d08f5c351696d13f19"
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/constants/socket.ts": {
-    "mtime": 1780589461.1188638,
-    "ast_hash": "21e0be91a42911d1ce4fc562470cb110",
+    "mtime": 1780605021.9071593,
+    "ast_hash": "2ccaecb29ba76e3335cf2675ab96551f",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/schemas/connections.ts": {
@@ -600,9 +600,9 @@
     "semantic_hash": "3ef104ce593cf8bf51fa8eed5a20ca68"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/groups/components/GroupCard.tsx": {
-    "mtime": 1779647835.2563186,
-    "ast_hash": "a4171766dd8547076215f9222b861c9d",
-    "semantic_hash": "a4171766dd8547076215f9222b861c9d"
+    "mtime": 1780605930.3197806,
+    "ast_hash": "461c93b9445bcffdd1eab623ad4ae98b",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/groups/hooks/useGroupExtended.ts": {
     "mtime": 1779492299.938957,
@@ -860,9 +860,9 @@
     "semantic_hash": "7180fb3055d6cfa8a898de577f005589"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/lost-found/components/LostFoundCard.tsx": {
-    "mtime": 1779647823.4567719,
-    "ast_hash": "2738d1b8cd4a92c5aff74ed06b373920",
-    "semantic_hash": "2738d1b8cd4a92c5aff74ed06b373920"
+    "mtime": 1780605964.3657928,
+    "ast_hash": "b684356d2a9c548cef8504762b1baed8",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/lost-found/hooks/useLostFoundList.ts": {
     "mtime": 1779210886.3383954,
@@ -910,8 +910,8 @@
     "semantic_hash": "35d445f3da39d1e593183a65d457e16d"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/profile/components/ProfileHeader.tsx": {
-    "mtime": 1780589461.0404706,
-    "ast_hash": "44d9420941a21952acc67dbadeb68b37",
+    "mtime": 1780605994.4067693,
+    "ast_hash": "a31b1ebb0db086eec2d0d13da1e5ee1c",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/profile/components/ProfileTabs.tsx": {
@@ -980,14 +980,14 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/components/PostCard.tsx": {
-    "mtime": 1780549563.0481138,
-    "ast_hash": "93217a387ad2a4f2908785f4cd1064d0",
+    "mtime": 1780605545.8909614,
+    "ast_hash": "14001db88c149e07d66ffe20c76d3818",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/components/PostCard.test.tsx": {
-    "mtime": 1779210886.3331654,
-    "ast_hash": "0356070933da7870f6d6d6b1e65a8394",
-    "semantic_hash": "0356070933da7870f6d6d6b1e65a8394"
+    "mtime": 1780606051.842465,
+    "ast_hash": "7821b70ab48f521ec71b2e636df63203",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/components/CommentDrawer.tsx": {
     "mtime": 1779210886.3328323,
@@ -1000,8 +1000,8 @@
     "semantic_hash": "825b78e2197ed279080ebe04ae1b14a1"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/components/CreatePost.tsx": {
-    "mtime": 1780526107.15765,
-    "ast_hash": "0ef635de3ab39bd9731d707a1a540424",
+    "mtime": 1780605733.4892726,
+    "ast_hash": "710f951264514c0d4c0f9f42a0e1946b",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/useCreateComment.ts": {
@@ -1020,9 +1020,9 @@
     "semantic_hash": "503aa41f53aaf733f627a71c205ed8ae"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/useUpdatePost.ts": {
-    "mtime": 1779014422.0128756,
-    "ast_hash": "fbf68a5e8a6f76b72a8e88b00c3f5a49",
-    "semantic_hash": "fbf68a5e8a6f76b72a8e88b00c3f5a49"
+    "mtime": 1780605460.642019,
+    "ast_hash": "c45a488d4f79dfba81c95d23cc3fd79d",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/useDeletePost.ts": {
     "mtime": 1779014422.0094545,
@@ -1030,8 +1030,8 @@
     "semantic_hash": "cc2472a306b6b34e17d4c1a58c1fb031"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/useCreatePost.ts": {
-    "mtime": 1780526082.9039497,
-    "ast_hash": "bde26fea7dfcabd7bb193224628fa257",
+    "mtime": 1780605712.411325,
+    "ast_hash": "7052f76c5a557a5115ed6484fc6a07b8",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/useFeedShortcuts.ts": {
@@ -1200,9 +1200,9 @@
     "semantic_hash": "91fd7b8c945f82fae7dd7ffd2c5aae70"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/jobs/components/JobCard.tsx": {
-    "mtime": 1779014719.4641345,
-    "ast_hash": "e3489da2aa234f8172b171942884c90a",
-    "semantic_hash": "e3489da2aa234f8172b171942884c90a"
+    "mtime": 1780605872.9512937,
+    "ast_hash": "405a2071932e1c080473a6d996817eff",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/jobs/components/PostJobForm.tsx": {
     "mtime": 1780526382.1138878,
@@ -1225,9 +1225,9 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/events/components/EventCard.tsx": {
-    "mtime": 1779454729.7165275,
-    "ast_hash": "669ae0f718a8b38155199aaa2a714409",
-    "semantic_hash": "669ae0f718a8b38155199aaa2a714409"
+    "mtime": 1780605898.9665685,
+    "ast_hash": "14824e45e3b273308e74bcac75b5471b",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/notifications/index.ts": {
     "mtime": 1778645988.7575164,
@@ -1480,9 +1480,9 @@
     "semantic_hash": "5770b64daa3f3aece08a1249f0c7417d"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/LoginPage.tsx": {
-    "mtime": 1780083628.624913,
-    "ast_hash": "28e0b6f6568b2fa9d9f6f80f9fc8b390",
-    "semantic_hash": "28e0b6f6568b2fa9d9f6f80f9fc8b390"
+    "mtime": 1780605582.4592779,
+    "ast_hash": "a9658c05650639dd3e9b808f1028bbaf",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/ForgotPasswordPage.tsx": {
     "mtime": 1779210886.3457248,
@@ -1585,8 +1585,8 @@
     "semantic_hash": "4d02745e0bfb7ab3c6b191575ba2cc85"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/NewsPage.tsx": {
-    "mtime": 1780516946.6586416,
-    "ast_hash": "7fd1ba03e3e7adaafd9d581898548bf3",
+    "mtime": 1780606031.8135357,
+    "ast_hash": "dcf7ff4c9a5ca2922b75c041d5cefea4",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/FeedPage.tsx": {
@@ -1615,14 +1615,14 @@
     "semantic_hash": "d4b7e4cc65536802e27361d3a834b16e"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/router/index.tsx": {
-    "mtime": 1780589461.04466,
-    "ast_hash": "905eb72d257fc73065862cbcd0a28e2c",
+    "mtime": 1780605650.7004278,
+    "ast_hash": "49cced89f66058098fb412c2f9d15368",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/router/ProtectedRoute.tsx": {
-    "mtime": 1779014409.1288884,
-    "ast_hash": "6fa58e1a13ea831910ce4592938693ed",
-    "semantic_hash": "6fa58e1a13ea831910ce4592938693ed"
+    "mtime": 1780605571.006847,
+    "ast_hash": "079656abd66cfbaac78cd2a41a0f8ab8",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/router/AdminRoute.tsx": {
     "mtime": 1779014409.128193,
@@ -1630,8 +1630,8 @@
     "semantic_hash": "0c09d164f2fc018a206987934f2eb5db"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/router/paths.ts": {
-    "mtime": 1780566650.286069,
-    "ast_hash": "ba6fb7e605237f9794e487330c2264c8",
+    "mtime": 1780605628.9537933,
+    "ast_hash": "f190fc8f2ece9965a18ef8eb08ea1bbc",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/package.json": {
@@ -2200,8 +2200,8 @@
     "semantic_hash": "c329269c939dd77407daeed563a1f746"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/workers/index.ts": {
-    "mtime": 1780589461.035505,
-    "ast_hash": "ceb10f42a548f36592c535b865c927af",
+    "mtime": 1780605284.877675,
+    "ast_hash": "38eb8f0a1c08f79618193c851b5fa29d",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/messages/schema.ts": {
@@ -2360,9 +2360,9 @@
     "semantic_hash": "b062e1a0944d5b15757f05ddec476cf5"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/explore/service.ts": {
-    "mtime": 1779723313.215372,
-    "ast_hash": "2b2504791bf7d3e2cced9f54d392892b",
-    "semantic_hash": "2b2504791bf7d3e2cced9f54d392892b"
+    "mtime": 1780605316.5884576,
+    "ast_hash": "b12acda92b4731febfed43ed0d6e3f94",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/search/schema.ts": {
     "mtime": 1779536713.999575,
@@ -2385,8 +2385,8 @@
     "semantic_hash": "fe63d4265d4eee73b9c4af76786edde4"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/search/service.ts": {
-    "mtime": 1780589461.031856,
-    "ast_hash": "424208069792bafc7fa4f2ee915cb63e",
+    "mtime": 1780605321.5831785,
+    "ast_hash": "d1b18dc0d1c2f3299d411f282d936acc",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/connections/schema.ts": {
@@ -2440,14 +2440,14 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/feed/schema.ts": {
-    "mtime": 1780589461.0281887,
-    "ast_hash": "0bab99c5e33f6ea3600d284a70b8df9e",
+    "mtime": 1780605207.6152852,
+    "ast_hash": "d3d5571eae54027b667132eb568899f8",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/feed/router.ts": {
-    "mtime": 1779014421.9970338,
-    "ast_hash": "761078ddce869e746495949fa473d388",
-    "semantic_hash": "761078ddce869e746495949fa473d388"
+    "mtime": 1780605245.9035995,
+    "ast_hash": "1df360a377cc8d8ae72b7065ab42becd",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/feed/index.ts": {
     "mtime": 1779014408.6586866,
@@ -2455,13 +2455,13 @@
     "semantic_hash": "750248ac0639445baeacb87b428304b5"
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/feed/controller.ts": {
-    "mtime": 1779014421.9967735,
-    "ast_hash": "2085fc7b48268bc8acfb3f6957c8f824",
-    "semantic_hash": "2085fc7b48268bc8acfb3f6957c8f824"
+    "mtime": 1780605225.1888907,
+    "ast_hash": "1c6d5e05595cdef74cfcbbc1747906ac",
+    "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/feed/service.ts": {
-    "mtime": 1780589461.0286887,
-    "ast_hash": "2b78e9039ce591187f0f30a4fed7a827",
+    "mtime": 1780605187.318376,
+    "ast_hash": "3782806e9dc9c934bc1b11d3ef3ab16c",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/users/schema.ts": {
@@ -3730,13 +3730,13 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/drafts/hooks/useMyDrafts.ts": {
-    "mtime": 1780526123.4731052,
-    "ast_hash": "277cf5b7ddbe434a8b57f927d2fb0420",
+    "mtime": 1780605754.441111,
+    "ast_hash": "aa2e8b488567cddb7ddbd6a34b7636cd",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/DraftsPage.tsx": {
-    "mtime": 1780551163.711574,
-    "ast_hash": "8d5a9589d78b2491de16d2a48118124f",
+    "mtime": 1780605812.56422,
+    "ast_hash": "493ea140d64b3185e8eb2f449a37eeaa",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/064_add_draft_publish_columns.ts": {
@@ -3760,8 +3760,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/modules/drafts/service.ts": {
-    "mtime": 1780551128.8250308,
-    "ast_hash": "09995648f937769d4e26afcd34be0c5d",
+    "mtime": 1780605349.2270348,
+    "ast_hash": "581b7224c8ba613260eeee04aa1e82b2",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/components/ImageLightbox.tsx": {
@@ -3770,7 +3770,7 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/docs/superpowers/specs/2026-06-04-notifications-bundle-design.md": {
-    "mtime": 1780565663.8953376,
+    "mtime": 1780619688.5327716,
     "ast_hash": "9bf51c40500a752ff88c23944f4f92a2",
     "semantic_hash": ""
   },
@@ -3985,8 +3985,8 @@
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/070_add_search_vectors.ts": {
-    "mtime": 1780589461.026814,
-    "ast_hash": "37d230c558729d3a3e93405e95e7d4ca",
+    "mtime": 1780608932.1930969,
+    "ast_hash": "8afd080dd5487de4d8a682c4ef9a6617",
     "semantic_hash": ""
   },
   "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/069_add_last_seen_to_users.ts": {
@@ -4057,6 +4057,71 @@
   "/Users/joydipdatta/UniConnecT_NEW/docs/superpowers/specs/2026-06-05-share-and-post-lifecycle-design.md": {
     "mtime": 1780604736.9383783,
     "ast_hash": "1db622163489941c406b1b430068dc5f",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/packages/shared/src/types/share.ts": {
+    "mtime": 1780605030.156952,
+    "ast_hash": "49aa3f23c5c23313fef30f3179a5ed5e",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/useArchivedPosts.ts": {
+    "mtime": 1780605486.4592805,
+    "ast_hash": "1fd37dd805c172608374338cca766821",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/usePost.ts": {
+    "mtime": 1780605478.9563131,
+    "ast_hash": "742e3d30f7d0f02ba705f1550786b623",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/feed/hooks/useArchivePost.ts": {
+    "mtime": 1780605472.1480792,
+    "ast_hash": "5244b8a7e38c80c0578b2d992fe28860",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/share/index.ts": {
+    "mtime": 1780605415.4100494,
+    "ast_hash": "e3c06ea603967b89c2d5a9d7e9059ea3",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/share/sharePaths.ts": {
+    "mtime": 1780605384.1773891,
+    "ast_hash": "8585baa1fc7e73dd91e57cb421ffc354",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/features/share/hooks/useShareLink.ts": {
+    "mtime": 1780605394.03313,
+    "ast_hash": "cb158a6597d2a517b225710c15511301",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/components/ShareMenu.tsx": {
+    "mtime": 1780621344.5850668,
+    "ast_hash": "2dd0559018fd4d03bbb1497f8586d295",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/web/src/pages/PostDetailPage.tsx": {
+    "mtime": 1780605612.1592414,
+    "ast_hash": "5b881ce1681f1b453cce4664af58ebf9",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/database/migrations/072_add_post_lifecycle.ts": {
+    "mtime": 1780605008.1942883,
+    "ast_hash": "538eb423a036f84fe0e111f5314021ed",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/queues/post-lifecycle.queue.ts": {
+    "mtime": 1780605267.086556,
+    "ast_hash": "9cde5dc58f40c1f7c4ad9cac6eefea35",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/apps/api/src/workers/post-lifecycle.worker.ts": {
+    "mtime": 1780605274.720847,
+    "ast_hash": "7b28a69a1bd0b4c040526b5b6581deff",
+    "semantic_hash": ""
+  },
+  "/Users/joydipdatta/UniConnecT_NEW/docs/UIU_Shuttle_Services.md": {
+    "mtime": 1780619653.3524902,
+    "ast_hash": "5ed475ce6e1df29dba214885d47f8cbf",
     "semantic_hash": ""
   }
 }

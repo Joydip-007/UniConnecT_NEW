@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { ThemePreference } from '../types/user'
 
-export const userRoleSchema = z.enum(['student', 'alumni', 'faculty', 'admin'])
+export const userRoleSchema = z.enum(['student', 'alumni', 'faculty', 'admin', 'driver'])
 
 export const userProfileFieldsSchema = z.object({
   fullName: z.string(),

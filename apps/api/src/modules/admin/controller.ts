@@ -10,6 +10,7 @@ import type {
   ContentKind,
   ContentListQuery,
   CreateBulkInvitationsInput,
+  CreateDriverInput,
   CreateInvitationInput,
   PaginationQuery,
   ResolveReportInput,
@@ -74,6 +75,11 @@ export const createInvitation = asyncHandler(async (req: Request, res: Response)
     ),
     201,
   )
+})
+
+export const createDriver = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  sendSuccess(res, await adminService.createDriver(universityId, userId, req.body as CreateDriverInput), 201)
 })
 
 export const createBulkInvitations = asyncHandler(async (req: Request, res: Response) => {
