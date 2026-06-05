@@ -59,6 +59,14 @@ export default function NotificationsPage() {
 
   const notifications = data?.items ?? []
 
+  // Clicking a row opens its deep link (single post, group, connections, …) and
+  // marks it read. Action buttons inside the row stopPropagation so they don't navigate.
+  function handleRowClick(notification: Notification) {
+    if (!notification.refUrl) return
+    if (!notification.isRead) markRead.mutate(notification.id)
+    navigate(notification.refUrl)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -87,6 +95,7 @@ export default function NotificationsPage() {
             return (
               <div
                 key={notification.id}
+                onClick={() => handleRowClick(notification)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -94,6 +103,7 @@ export default function NotificationsPage() {
                   padding: 14,
                   borderBottom: '0.5px solid var(--border-default)',
                   background: notification.isRead ? 'transparent' : 'var(--uc-indigo-bg)',
+                  cursor: notification.refUrl ? 'pointer' : 'default',
                 }}
               >
                 <Icon size={16} strokeWidth={1.5} color="var(--uc-indigo-l)" />
@@ -116,14 +126,20 @@ export default function NotificationsPage() {
                 {isGroupInvite && !notification.isRead ? (
                   <div style={{ display: 'flex', gap: 6 }}>
                     <GhostBtn
-                      onClick={() => dismiss.mutate(notification.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        dismiss.mutate(notification.id)
+                      }}
                       disabled={dismiss.isPending || acceptInvite.isPending}
                       style={{ padding: '5px 12px', fontSize: 12 }}
                     >
                       Decline
                     </GhostBtn>
                     <PrimaryBtn
-                      onClick={() => acceptInvite.mutate(notification.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        acceptInvite.mutate(notification.id)
+                      }}
                       disabled={acceptInvite.isPending}
                       style={{ padding: '5px 14px', fontSize: 12 }}
                     >
@@ -144,7 +160,10 @@ export default function NotificationsPage() {
                   </span>
                 ) : !notification.isRead ? (
                   <GhostBtn
-                    onClick={() => markRead.mutate(notification.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      markRead.mutate(notification.id)
+                    }}
                     disabled={markRead.isPending}
                     style={{ padding: '5px 12px', fontSize: 12 }}
                   >

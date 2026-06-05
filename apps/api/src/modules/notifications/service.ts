@@ -276,16 +276,18 @@ function notificationSelectQuery() {
 
 function toNotification(row: NotificationRow) {
   let refUrl: string | null = null
-  if (row.type === 'group_invite') {
-    refUrl = '/notifications'
-  } else if (row.reference_type === 'group' && row.reference_id) {
+  if (row.reference_type === 'group' && row.reference_id) {
+    // Group invites + group activity both carry the group id → open the group page.
     refUrl = `/groups/${row.reference_id}`
   } else if (row.reference_type === 'event' && row.reference_id) {
     refUrl = `/events/${row.reference_id}`
   } else if (row.reference_type === 'job' && row.reference_id) {
     refUrl = `/jobs/${row.reference_id}`
   } else if (row.reference_type === 'post' && row.reference_id) {
-    refUrl = `/feed`
+    // Deep-link to the single-post page (same as a shared post link), not the whole feed.
+    refUrl = `/feed/${row.reference_id}`
+  } else if (row.reference_type === 'connection') {
+    refUrl = '/connections'
   }
 
   return {
