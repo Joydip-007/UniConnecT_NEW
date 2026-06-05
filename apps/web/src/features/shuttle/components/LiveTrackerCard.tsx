@@ -10,6 +10,7 @@ interface LiveTrackerCardProps {
   currentLocation: LiveLocation | null
   derived: ProgressResult
   atFinalStop: boolean
+  source?: 'live' | 'estimated'
 }
 
 export function LiveTrackerCard({
@@ -17,20 +18,24 @@ export function LiveTrackerCard({
   currentLocation,
   derived,
   atFinalStop,
+  source = 'live',
 }: LiveTrackerCardProps) {
   const nextStop = route.stops[derived.nextStopIdx] ?? null
+  const isEstimated = source === 'estimated'
 
   const etaText = !currentLocation
     ? '—'
-    : atFinalStop
-      ? 'At final stop'
-      : currentLocation.speedKmh === 0
-        ? 'Stopped'
-        : derived.etaMinutes !== null
-          ? `~${derived.etaMinutes} min`
-          : '—'
+    : isEstimated
+      ? 'Estimated'
+      : atFinalStop
+        ? 'At final stop'
+        : currentLocation.speedKmh === 0
+          ? 'Stopped'
+          : derived.etaMinutes !== null
+            ? `~${derived.etaMinutes} min`
+            : '—'
 
-  const speedText = currentLocation ? `${Math.round(currentLocation.speedKmh)} km/h` : '—'
+  const speedText = !currentLocation || isEstimated ? '—' : `${Math.round(currentLocation.speedKmh)} km/h`
 
   return (
     <div
@@ -68,7 +73,24 @@ export function LiveTrackerCard({
             </p>
           )}
         </div>
-        <LiveBadge updatedAt={currentLocation?.updatedAt ?? null} />
+        {isEstimated ? (
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: 11,
+              fontWeight: 500,
+              color: 'var(--uc-orange-l)',
+              background: 'var(--uc-orange-bg)',
+              border: '0.5px solid var(--uc-orange-bdr)',
+              borderRadius: 'var(--r-pill)',
+              padding: '3px 9px',
+            }}
+          >
+            Estimated
+          </span>
+        ) : (
+          <LiveBadge updatedAt={currentLocation?.updatedAt ?? null} />
+        )}
       </div>
 
       {!currentLocation && (
@@ -125,7 +147,7 @@ export function LiveTrackerCard({
             textAlign: 'right',
           }}
         >
-          Updated {relativeTime(currentLocation.updatedAt)}
+          {isEstimated ? 'Estimated from schedule' : `Updated ${relativeTime(currentLocation.updatedAt)}`}
         </p>
       )}
     </div>

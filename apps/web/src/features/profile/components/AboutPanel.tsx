@@ -16,6 +16,7 @@ const ROLE_HEADLINE: Record<UserRole, string> = {
   alumni: 'About this alumnus',
   faculty: 'About this faculty member',
   admin: 'About this admin',
+  driver: 'About this driver',
 }
 
 function formatJoined(value: string | Date | null | undefined): string | null {

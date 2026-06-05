@@ -33,6 +33,7 @@ export const PATHS = {
   MENTORSHIP: '/mentorship',
 
   SHUTTLE: '/shuttle',
+  SHUTTLE_DRIVE: '/shuttle/drive',
 
   EXPLORE: '/explore',
   TAG: '/explore/tag/:tag',

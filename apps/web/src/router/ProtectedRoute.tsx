@@ -23,5 +23,10 @@ export default function ProtectedRoute() {
     )
   }
 
+  // Drivers are a service account, not a member — they only ever see the broadcast shell.
+  if (user?.role === 'driver') {
+    return <Navigate to={PATHS.SHUTTLE_DRIVE} replace />
+  }
+
   return <Outlet />
 }

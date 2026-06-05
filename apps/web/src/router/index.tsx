@@ -2,6 +2,7 @@ import { lazy, Suspense, type ComponentType } from 'react'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
 import AdminRoute from './AdminRoute'
+import DriverRoute from './DriverRoute'
 import GuestRoute from './GuestRoute'
 import { FeedLayout } from '@/components/FeedLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -108,6 +109,13 @@ export const router = createBrowserRouter([
     element: <AdminRoute />,
     children: [
       { path: PATHS.ADMIN, element: page(() => import('@/pages/AdminPage')) },
+    ],
+  },
+
+  {
+    element: <DriverRoute />,
+    children: [
+      { path: PATHS.SHUTTLE_DRIVE, element: page(() => import('@/pages/ShuttleDrivePage')) },
     ],
   },
 

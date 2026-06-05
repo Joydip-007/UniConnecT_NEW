@@ -6,10 +6,27 @@ export interface ShuttleStop {
   lng: number
 }
 
+/**
+ * Loose shape of the `schedule` jsonb on a route. The API stores it as an open
+ * object, so every field is optional and the estimator degrades gracefully when
+ * data is missing (returns no position → the bus is simply hidden).
+ */
+export interface ShuttleSchedule {
+  type?: 'fixed' | 'continuous'
+  departures?: { outbound?: string[]; inbound?: string[] }
+  outbound?: string[]
+  inbound?: string[]
+  operatingHours?: { start?: string; end?: string }
+}
+
 export interface ShuttleRoute {
   id: string
   name: string
+  color: string
   stops: ShuttleStop[]
+  schedule?: ShuttleSchedule
+  estDurationMin?: number | null
+  cycleMinutes?: number | null
   isActive: boolean
   frequency?: string
   operatingHours?: string
@@ -29,4 +46,15 @@ export interface ProgressResult {
   nearestStopIdx: number
   nextStopIdx: number
   etaMinutes: number | null
+}
+
+/** A bus position merged from a real beacon (live) or schedule estimate. */
+export interface BusState {
+  routeId: string
+  lat: number
+  lng: number
+  headingDeg: number
+  speedKmh: number | null
+  source: 'live' | 'estimated'
+  updatedAt: string | null
 }

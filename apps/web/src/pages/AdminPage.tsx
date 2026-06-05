@@ -840,6 +840,103 @@ function UsersTab() {
   )
 }
 
+// ── Add driver panel (staff: driver sub-type) ───────────────────────────────────
+// Drivers are transport staff who broadcast GPS. Unlike faculty (who self-register
+// via invite + OTP), admin creates driver accounts directly — no invitation, no
+// OTP, no allowed-domain check.
+
+function AddDriverPanel() {
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: () => api.post('/admin/users/driver', { full_name: fullName, email, password }),
+    onSuccess: () => {
+      const who = email
+      setFullName('')
+      setEmail('')
+      setPassword('')
+      setMsg(`Driver account created for ${who}`)
+      setTimeout(() => setMsg(null), 5000)
+    },
+  })
+
+  const inputStyle: React.CSSProperties = {
+    fontSize: 13,
+    fontWeight: 400,
+    color: 'var(--text-primary)',
+    background: 'var(--surface-raised)',
+    border: '0.5px solid var(--border-default)',
+    borderRadius: 'var(--r-md)',
+    padding: '9px 12px',
+    width: '100%',
+  }
+
+  const valid = fullName.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 8
+
+  return (
+    <div
+      style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}
+    >
+      <div>
+        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Add driver</span>
+        <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+          Creates a transport driver account directly. They sign in with these credentials to broadcast their shuttle's
+          location — no app access.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <input style={inputStyle} placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+        <input style={inputStyle} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          style={inputStyle}
+          placeholder="Temporary password (min 8 chars)"
+          type="text"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </div>
+
+      {mutation.isError && (
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--danger, #e5484d)' }}>
+          Could not create driver. The email may already be in use.
+        </span>
+      )}
+      {msg && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-orange-l)' }}>{msg}</span>}
+
+      <button
+        type="button"
+        disabled={!valid || mutation.isPending}
+        onClick={() => mutation.mutate()}
+        style={{
+          alignSelf: 'flex-start',
+          padding: '9px 18px',
+          fontSize: 13,
+          fontWeight: 500,
+          color: '#fff',
+          background: valid ? 'var(--uc-orange)' : 'var(--surface-raised)',
+          border: 'none',
+          borderRadius: 'var(--r-pill)',
+          cursor: valid && !mutation.isPending ? 'pointer' : 'not-allowed',
+        }}
+      >
+        {mutation.isPending ? 'Creating…' : 'Create driver'}
+      </button>
+    </div>
+  )
+}
+
 // ── Invitations tab ───────────────────────────────────────────────────────────
 
 function InvitationsTab() {
@@ -919,6 +1016,9 @@ function InvitationsTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── Add driver (staff) ── */}
+      <AddDriverPanel />
+
       {/* ── Send panel ── */}
       <div style={{
         background: 'var(--surface-card)',
