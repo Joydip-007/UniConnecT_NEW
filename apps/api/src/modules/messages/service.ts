@@ -1,6 +1,6 @@
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
-import { notificationQueue } from '../../queues/notification.queue'
+import { enqueuePush } from '../push/service'
 import { getIo } from '../../socket'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
 import type {
@@ -313,8 +313,7 @@ export class MessagesService {
     io.to(`conv:${convId}`).emit('conv:message:new', { conversationId: convId, message: mapped })
     io.to(`conv:${convId}`).emit('conversation:updated', { convId, lastMessage })
 
-    const participantIds = await getConversationParticipantIds(convId)
-    await enqueueMessageNotifications(context, convId, participantIds.filter((userId) => userId !== context.userId), mapped)
+    await enqueueMessagePush(context, convId, mapped)
 
     return mapped
   }
@@ -570,11 +569,6 @@ async function getParticipantsForConversations(conversationIds: string[]) {
   return participantMap
 }
 
-async function getConversationParticipantIds(convId: string) {
-  const rows = await db('conversation_participants').select<{ user_id: string }[]>('user_id').where({ conversation_id: convId })
-  return rows.map((row) => row.user_id)
-}
-
 async function getMessageById(messageId: string) {
   return messageSelectQuery().where('messages.id', messageId).first<MessageRow>()
 }
@@ -586,27 +580,35 @@ async function getMessageOwner(convId: string, messageId: string) {
     .first()
 }
 
-async function enqueueMessageNotifications(
+// Messages never create a bell notification — they surface in the messages popup
+// (via the socket events above) plus a Web Push. Push the other participants who
+// haven't muted the conversation; the deep link opens the conversation.
+async function enqueueMessagePush(
   context: AuthContext,
   convId: string,
-  userIds: string[],
   message: ReturnType<typeof toMessage>,
 ) {
-  await Promise.all(
-    userIds.map((userId) =>
-      notificationQueue.add({
-        universityId: context.universityId,
-        userId,
-        type: 'message:new',
-        payload: {
-          convId,
-          messageId: message.id,
-          senderId: context.userId,
-          preview: message.content,
-        },
-      }),
-    ),
-  )
+  const rows = await db('conversation_participants')
+    .where({ conversation_id: convId, is_muted: false })
+    .whereNot({ user_id: context.userId })
+    .select<{ user_id: string }[]>('user_id')
+  if (rows.length === 0) return
+
+  const body = messagePreview(message)
+  for (const { user_id: userId } of rows) {
+    enqueuePush(userId, {
+      title: message.sender.fullName,
+      body,
+      url: `/messages/${convId}`,
+    })
+  }
+}
+
+function messagePreview(message: ReturnType<typeof toMessage>): string {
+  const text = message.content?.trim()
+  if (text) return text.length > 140 ? `${text.slice(0, 140)}…` : text
+  if (message.mediaUrls.length > 0) return 'Sent an attachment'
+  return 'Sent you a message'
 }
 
 function toConversation(row: ConversationRow, participants: ReturnType<typeof toParticipant>[], currentUserId: string) {
