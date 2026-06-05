@@ -47,6 +47,10 @@
   --text-secondary:   rgba(238, 242, 255, 0.58);
   --text-tertiary:    rgba(238, 242, 255, 0.28);
 
+  /* Foreground for filled saturated buttons. Theme-STABLE — never inverts,
+     so labels stay legible on indigo/orange/mint fills in both themes. */
+  --on-accent:        #EEF2FF;
+
   /* ── Borders ──────────────────────────────────────── */
   --border-default:   rgba(255, 255, 255, 0.07);
   --border-hover:     rgba(255, 255, 255, 0.13);
@@ -78,14 +82,17 @@
   --surface-hover:    #EDE7DA;
 
   /* ── Brand — darkened for AA contrast on white ─────── */
+  /* In light mode the -l/-xl steps invert intent: tints (--*-bg) are PALE,
+     so accent TEXT on them must step DARKER, not lighter. These are the
+     legible-on-pale-tint tones (nav-active text, badges, filter pills). */
   --uc-indigo:        #4747C2;
-  --uc-indigo-l:      #5B5BD6;
-  --uc-indigo-xl:     #7C7CF0;
+  --uc-indigo-l:      #4242BD;
+  --uc-indigo-xl:     #3A3AA8;
   --uc-indigo-bg:     rgba(71, 71, 194, 0.08);
   --uc-indigo-bdr:    rgba(71, 71, 194, 0.22);
 
   --uc-orange:        #D44A1F;
-  --uc-orange-l:      #F05A28;
+  --uc-orange-l:      #A8391A;
   --uc-orange-bg:     rgba(212, 74, 31, 0.10);
   --uc-orange-bdr:    rgba(212, 74, 31, 0.28);
 
@@ -94,9 +101,11 @@
   --uc-cyan:          #0891B2;
   --uc-cyan-bg:       rgba(8, 145, 178, 0.08);
   --uc-cyan-bdr:      rgba(8, 145, 178, 0.25);
-  --uc-mint:          #059669;
-  --uc-mint-bg:       rgba(5, 150, 105, 0.08);
-  --uc-mint-bdr:      rgba(5, 150, 105, 0.25);
+  /* Deeper green: legible as text on --uc-mint-bg AND clears AA as a
+     filled-button background under white --on-accent (mid-tone #059669 did neither). */
+  --uc-mint:          #047857;
+  --uc-mint-bg:       rgba(4, 120, 87, 0.10);
+  --uc-mint-bdr:      rgba(4, 120, 87, 0.25);
   --uc-red:           #BE123C;
   --uc-red-bg:        rgba(190, 18, 60, 0.08);
   --uc-red-bdr:       rgba(190, 18, 60, 0.22);
@@ -111,6 +120,10 @@
   --text-primary:     #1A1F2E;
   --text-secondary:   rgba(26, 31, 46, 0.62);
   --text-tertiary:    rgba(26, 31, 46, 0.36);
+
+  /* Stays light in light mode too — filled buttons keep saturated fills,
+     so their label must NOT flip to dark navy (would drop to ~2.3:1). */
+  --on-accent:        #EEF2FF;
 
   --border-default:   rgba(0, 0, 0, 0.08);
   --border-hover:     rgba(0, 0, 0, 0.14);

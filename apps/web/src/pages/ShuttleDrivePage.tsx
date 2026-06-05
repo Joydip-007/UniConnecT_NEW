@@ -10,8 +10,8 @@ const STATUS_COPY: Record<string, { label: string; color: string }> = {
   idle: { label: 'Not broadcasting', color: 'var(--text-tertiary)' },
   locating: { label: 'Getting your location…', color: 'var(--uc-indigo)' },
   broadcasting: { label: 'Broadcasting live', color: 'var(--uc-orange-l)' },
-  denied: { label: 'Location permission denied', color: 'var(--danger, #e5484d)' },
-  error: { label: 'Something went wrong', color: 'var(--danger, #e5484d)' },
+  denied: { label: 'Location permission denied', color: 'var(--uc-red)' },
+  error: { label: 'Something went wrong', color: 'var(--uc-red)' },
 }
 
 export default function ShuttleDrivePage() {

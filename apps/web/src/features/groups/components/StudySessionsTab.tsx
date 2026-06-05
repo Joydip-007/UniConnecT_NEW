@@ -190,7 +190,7 @@ function CreateSessionForm({ onSubmit, onCancel, isPending }: {
       <input placeholder="Capacity (optional)" type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} style={inputStyle} />
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" onClick={onCancel} style={{ padding: '6px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>
-        <button type="submit" disabled={isPending} style={{ padding: '6px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--uc-indigo)', color: 'var(--uc-indigo-xl)', cursor: isPending ? 'not-allowed' : 'pointer', opacity: isPending ? 0.7 : 1 }}>
+        <button type="submit" disabled={isPending} style={{ padding: '6px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--uc-indigo)', color: 'var(--on-accent)', cursor: isPending ? 'not-allowed' : 'pointer', opacity: isPending ? 0.7 : 1 }}>
           {isPending ? 'Creating…' : 'Create'}
         </button>
       </div>

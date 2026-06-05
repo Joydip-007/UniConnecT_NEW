@@ -10,11 +10,31 @@ const STORAGE_KEY = 'uc.theme'
 const CURTAIN_MS = 550
 const API_DEBOUNCE_MS = 300
 
-/** Destination --surface-page values, kept in sync with tokens.css. */
-const PAGE_COLOR: Record<ResolvedTheme, string> = {
-  light: '#FAF7F2',
-  dark:  '#060D1A',
+/**
+ * Destination --surface-page per theme, read straight from tokens.css so the
+ * curtain can never drift from the stylesheet. Probed once: briefly toggle the
+ * root data-theme, read the computed value, restore. Synchronous (no paint
+ * between toggle and restore, so no flash). The literals are a defensive
+ * fallback only — used if the stylesheet hasn't applied yet (e.g. SSR/HMR).
+ */
+function resolvePageColors(): Record<ResolvedTheme, string> {
+  const fallback: Record<ResolvedTheme, string> = { light: '#FAF7F2', dark: '#060D1A' }
+  if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return fallback
+  const root = document.documentElement
+  const prev = root.getAttribute('data-theme')
+  const read = (theme: ResolvedTheme): string => {
+    root.setAttribute('data-theme', theme)
+    return getComputedStyle(root).getPropertyValue('--surface-page').trim() || fallback[theme]
+  }
+  try {
+    return { dark: read('dark'), light: read('light') }
+  } finally {
+    if (prev) root.setAttribute('data-theme', prev)
+    else root.removeAttribute('data-theme')
+  }
 }
+
+const PAGE_COLOR = resolvePageColors()
 
 function readBootstrap(): { mode: ThemeMode; resolved: ResolvedTheme } {
   if (typeof document === 'undefined') return { mode: 'system', resolved: 'dark' }

@@ -36,6 +36,10 @@ colors:
   text-primary:     "#EEF2FF"
   text-secondary:   "#EEF2FF94"
   text-tertiary:    "#EEF2FF47"
+  # ── On-accent — theme-STABLE label on saturated button fills ────
+  # Never inverts: stays light in light mode so labels on indigo/orange/mint
+  # fills keep AA contrast. (text-primary flips to dark navy in light mode.)
+  on-accent:        "#EEF2FF"
   # ── Borders (hairlines) ────────────────────────────────────────
   border-default:   "#FFFFFF12"
   border-hover:     "#FFFFFF21"
@@ -97,17 +101,17 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.uc-indigo}"
-    textColor: "{colors.text-primary}"
+    textColor: "{colors.on-accent}"
     rounded: "{rounded.pill}"
     padding: "9px 20px"
   button-orange:
     backgroundColor: "{colors.uc-orange}"
-    textColor: "{colors.text-primary}"
+    textColor: "{colors.on-accent}"
     rounded: "{rounded.pill}"
     padding: "9px 20px"
   button-mint:
     backgroundColor: "{colors.uc-mint}"
-    textColor: "{colors.text-primary}"
+    textColor: "{colors.on-accent}"
     rounded: "{rounded.pill}"
     padding: "9px 20px"
   button-ghost:
@@ -171,7 +175,7 @@ This system explicitly rejects the consumer-social aesthetic ("Facebook with a U
 Density is product-density: information-dense at small sizes, mobile-first, designed to survive mid-tier Android on slow campus 4G. Hairline 0.5px borders carry structure; pill radii (`999px`) carry interaction; sentence case carries voice. The system has two interactive accents (orange and indigo) with strictly assigned roles, six surface tints (page → card → raised → hover, plus two semantic), one body face (Inter), one display face (Fraunces). Variety happens through hierarchy and rhythm, never through new shapes.
 
 **Key Characteristics:**
-- Dark-surface only. Surface stacking, never shadows, for depth.
+- Dark-first (Warm Futuristic Dark), with a Warm Neutral Light counterpart. Surface stacking, never shadows, for depth in both themes.
 - Two-accent palette. Orange = self; indigo = peer/system. The roles are not interchangeable.
 - 0.5px hairlines everywhere. 1px borders are reserved for badge counters and avatar gaps.
 - Pill (`999px`) for every button. Card radius is `16px`. No sharp corners.
@@ -181,7 +185,7 @@ Density is product-density: information-dense at small sizes, mobile-first, desi
 
 ## 2. Colors: The After-Hours Palette
 
-A dark-mode-only palette anchored to UIU's institutional orange. Surfaces stack from near-black (page) up through three slate tints; the lightest is reserved for hover. Two interactive accents (orange and indigo) carry meaning, not decoration.
+A dark-first palette anchored to UIU's institutional orange, with a Warm Neutral Light counterpart defined under `[data-theme='light']`. Surfaces stack from near-black (page) up through three slate tints; the lightest is reserved for hover. Two interactive accents (orange and indigo) carry meaning, not decoration. Every token is redefined per theme in `tokens.css`; see The Theme-Token Rule below for how the accent steps and button labels behave in light mode.
 
 ### Primary
 - **UIU Cinder Orange** (`#F05A28` / `oklch(67% 0.18 35)`): The brand identity. Reserved for things that are *yours*: your active filter tab, your saved-post bookmark, your progress milestones, your avatar ring on the profile mini-card. Surfaces this color does NOT touch: peer suggestions, others' content, system navigation. Rarity is the point — overdose dilutes the signal.
@@ -223,6 +227,10 @@ A dark-mode-only palette anchored to UIU's institutional orange. Surfaces stack 
 **The 28%-Alpha Floor.** Any text that the user is expected to *read* must use `--text-primary` or `--text-secondary`. The 28%-alpha `--text-tertiary` is for scannable metadata only (timestamps, eyebrows, "Done" labels), never for explanatory copy.
 
 **The Hairline Rule.** Structural borders are `0.5px`, color `--border-default`. The only exceptions are: the 1.5px avatar-cover gap, the 2.5px avatar-ring on the profile mini-card (which is a coloured background, not a border), and the 1.5px white border around mobile-nav badge dots. There is no `1px solid` in this system.
+
+**The Theme-Token Rule.** Every colour token is redefined per theme in `tokens.css`; components reference `var(--token)` only, never a literal. Two consequences are easy to get wrong:
+- A label on a *saturated fill* (filled buttons, indigo-fill action buttons) uses `--on-accent`, which is theme-stable. `--text-primary` is **not** stable — near-white in dark mode, dark navy in light mode — so a filled button bound to it goes illegible (≈2.3:1 on indigo) after a theme switch.
+- The `-l` / `-xl` accent steps **invert intent** between themes. In dark mode they step *lighter* (light accent text on a dark `--*-bg` tint); in light mode the tints are pale, so they step *darker* for legibility. Read them as "the legible accent-text tone for this theme", not "a fixed lighter shade". The same holds for semantic states: use `--uc-mint` / `--uc-red`, never an undefined `--success` / `--danger`.
 
 ## 3. Typography
 
@@ -283,9 +291,9 @@ Pair them: a button can have `className="press-feedback row-hover-bg"` to compos
 ### Buttons
 
 - **Shape:** Pill (`border-radius: 999px`) for every button. There is no rectangular button.
-- **Primary (`PrimaryBtn`):** `--uc-indigo` background, `--text-primary` text, `padding: 9px 20px`, `font-size: 13px`, `font-weight: 500`. Used for system-driven primary actions: Sign in, Post, Send invite. Hover: opacity 90%. Press: `scale(0.97)`.
-- **Orange (`OrangeBtn`):** Same shape and size; `--uc-orange` background. Used when the action is *yours and consequential* — primary post-submit on first-post coachmark, "Confirm" on a profile-completion modal. Strictly rarer than indigo; orange-as-CTA is for self-anchored moments only.
-- **Mint (`MintBtn`):** Same shape; `--uc-mint` background. Used only for success confirmations (a verification flow's final step).
+- **Primary (`PrimaryBtn`):** `--uc-indigo` background, `--on-accent` text (theme-stable — never `--text-primary`, which flips to dark navy and fails contrast on the fill in light mode), `padding: 9px 20px`, `font-size: 13px`, `font-weight: 500`. Used for system-driven primary actions: Sign in, Post, Send invite. Hover: opacity 90%. Press: `scale(0.97)`. Inline indigo-fill action buttons (group tabs) follow the same `--on-accent` rule.
+- **Orange (`OrangeBtn`):** Same shape, size, and `--on-accent` text; `--uc-orange` background. Used when the action is *yours and consequential* — primary post-submit on first-post coachmark, "Confirm" on a profile-completion modal. Strictly rarer than indigo; orange-as-CTA is for self-anchored moments only.
+- **Mint (`MintBtn`):** Same shape and `--on-accent` text; `--uc-mint` background. `--uc-mint` is deepened in light mode so the white label clears AA. Used only for success confirmations (a verification flow's final step).
 - **Ghost (`GhostBtn`):** Transparent background, `0.5px solid var(--border-hover)` border, `--text-secondary` text. Used for secondary actions paired with a primary: Cancel, Discard, Skip.
 - **Contextual (`ContextualBtn`):** `--surface-raised` background, `0.5px solid var(--border-default)` border, `--text-secondary` text. Used for inline tool-attaches inside the CreatePost expanded form (Photo / Poll mode toggles).
 - **Reaction (`ReactionBtn`):** No background, no border; padding `6px 10px`, `--r-sm` radius (`8px`). On hover background steps to `--surface-raised`. Active state takes either `--uc-indigo` (Like — peer reaction) or `--uc-orange-l` (Save — self action) via the `activeTone` prop. The split is intentional; do not collapse the two.
