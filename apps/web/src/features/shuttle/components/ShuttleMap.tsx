@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
@@ -72,7 +72,7 @@ export function ShuttleMap({
           const showBus = bus && isFocused && (!liveOnly || bus.source === 'live')
 
           return (
-            <div key={route.id}>
+            <Fragment key={route.id}>
               <Polyline
                 positions={positions}
                 pathOptions={{
@@ -94,7 +94,7 @@ export function ShuttleMap({
                   </CircleMarker>
                 ))}
               {showBus && <BusMarker route={route} bus={bus} />}
-            </div>
+            </Fragment>
           )
         })}
 
