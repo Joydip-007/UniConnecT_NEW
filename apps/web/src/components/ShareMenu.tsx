@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link2, Share2, Send } from 'lucide-react'
 import type { ShareEntityType } from '@uniconnect/shared'
@@ -22,11 +23,44 @@ export function ShareMenu({ entityType, entityId, title, children }: ShareMenuPr
   const [open, setOpen] = useState(false)
   const { copy, nativeShare, canNativeShare } = useShareLink(entityType, entityId, title)
 
+  const anchorRef = useRef<HTMLDivElement>(null)
+  // Fixed-viewport coordinates for the portalled popover, so no ancestor's
+  // `overflow: hidden` (e.g. the rounded post card) can clip it.
+  const [pos, setPos] = useState<{ top: number; right: number; up: boolean } | null>(null)
+
+  // Rows: Copy link (always) + Share via… (when supported) + Send in a message.
+  const rowCount = canNativeShare ? 3 : 2
+  const estHeight = rowCount * 35 + 8
+
+  const place = useCallback(() => {
+    const el = anchorRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const up = r.bottom + estHeight + 8 > window.innerHeight && r.top - estHeight - 8 > 0
+    setPos({
+      top: up ? r.top - estHeight - 4 : r.bottom + 4,
+      right: window.innerWidth - r.right,
+      up,
+    })
+  }, [estHeight])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    place()
+    const onScroll = () => place()
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [open, place])
+
   const toggle = () => setOpen((o) => !o)
   const close = () => setOpen(false)
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={anchorRef} style={{ position: 'relative', display: 'inline-flex' }}>
       {children ? (
         children({ open, toggle })
       ) : (
@@ -52,39 +86,41 @@ export function ShareMenu({ entityType, entityId, title, children }: ShareMenuPr
         </button>
       )}
 
-      <AnimatePresence>
-        {open && (
-          <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={close} />
-            <motion.div
-              role="menu"
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ type: 'tween', duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                zIndex: 50,
-                background: 'var(--surface-raised)',
-                border: '0.5px solid var(--border-hover)',
-                borderRadius: 'var(--r-md)',
-                padding: 4,
-                minWidth: 180,
-                marginTop: 4,
-                transformOrigin: 'top right',
-              }}
-            >
-              <Row icon={<Link2 size={13} strokeWidth={1.5} />} label="Copy link" onClick={() => { close(); void copy() }} />
-              {canNativeShare && (
-                <Row icon={<Share2 size={13} strokeWidth={1.5} />} label="Share via…" onClick={() => { close(); void nativeShare() }} />
-              )}
-              <Row icon={<Send size={13} strokeWidth={1.5} />} label="Send in a message" disabled />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {open && pos && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 1099 }} onClick={close} />
+              <motion.div
+                role="menu"
+                initial={{ opacity: 0, scale: 0.96, y: pos.up ? 4 : -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: pos.up ? 4 : -4 }}
+                transition={{ type: 'tween', duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
+                style={{
+                  position: 'fixed',
+                  top: pos.top,
+                  right: pos.right,
+                  zIndex: 1100,
+                  background: 'var(--surface-raised)',
+                  border: '0.5px solid var(--border-hover)',
+                  borderRadius: 'var(--r-md)',
+                  padding: 4,
+                  minWidth: 180,
+                  transformOrigin: pos.up ? 'bottom right' : 'top right',
+                }}
+              >
+                <Row icon={<Link2 size={13} strokeWidth={1.5} />} label="Copy link" onClick={() => { close(); void copy() }} />
+                {canNativeShare && (
+                  <Row icon={<Share2 size={13} strokeWidth={1.5} />} label="Share via…" onClick={() => { close(); void nativeShare() }} />
+                )}
+                <Row icon={<Send size={13} strokeWidth={1.5} />} label="Send in a message" disabled />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   )
 }
