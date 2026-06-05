@@ -909,7 +909,7 @@ function AddDriverPanel() {
       </div>
 
       {mutation.isError && (
-        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--danger, #e5484d)' }}>
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-red)' }}>
           Could not create driver. The email may already be in use.
         </span>
       )}

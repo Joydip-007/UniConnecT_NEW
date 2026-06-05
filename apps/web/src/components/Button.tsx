@@ -13,7 +13,7 @@ export function PrimaryBtn({ className = '', ...props }: BaseProps) {
   return (
     <button
       {...props}
-      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-indigo)] text-[var(--text-primary)] border-none ${className}`}
+      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-indigo)] text-[var(--on-accent)] border-none ${className}`}
     />
   );
 }
@@ -22,7 +22,7 @@ export function OrangeBtn({ className = '', ...props }: BaseProps) {
   return (
     <button
       {...props}
-      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-orange)] text-[var(--text-primary)] border-none ${className}`}
+      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-orange)] text-[var(--on-accent)] border-none ${className}`}
     />
   );
 }
@@ -31,7 +31,7 @@ export function MintBtn({ className = '', ...props }: BaseProps) {
   return (
     <button
       {...props}
-      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-mint)] text-[var(--text-primary)] border-none ${className}`}
+      className={`${base} rounded-[var(--r-pill)] px-5 py-[9px] bg-[var(--uc-mint)] text-[var(--on-accent)] border-none ${className}`}
     />
   );
 }

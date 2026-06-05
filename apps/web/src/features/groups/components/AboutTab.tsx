@@ -41,7 +41,7 @@ export function AboutTab({ groupId, rulesMd, canEdit }: Props) {
               <button type="button"
                 disabled={setRulesMutation.isPending}
                 onClick={() => setRulesMutation.mutate(draft, { onSuccess: () => setEditing(false) })}
-                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 400, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--uc-indigo)', color: 'var(--uc-indigo-xl)', cursor: setRulesMutation.isPending ? 'not-allowed' : 'pointer', opacity: setRulesMutation.isPending ? 0.7 : 1 }}>
+                style={{ padding: '5px 12px', fontSize: 12, fontWeight: 400, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--uc-indigo)', color: 'var(--on-accent)', cursor: setRulesMutation.isPending ? 'not-allowed' : 'pointer', opacity: setRulesMutation.isPending ? 0.7 : 1 }}>
                 {setRulesMutation.isPending ? 'Saving…' : 'Save'}
               </button>
             </div>

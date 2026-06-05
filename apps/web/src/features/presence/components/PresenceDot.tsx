@@ -24,7 +24,7 @@ export function PresenceDot({ userId, size = 10, overlay = false }: PresenceDotP
         width: size,
         height: size,
         borderRadius: '50%',
-        background: 'var(--uc-success, #34d399)',
+        background: 'var(--uc-mint)',
         border: '2px solid var(--surface-card)',
         ...(overlay
           ? { position: 'absolute', right: 0, bottom: 0 }

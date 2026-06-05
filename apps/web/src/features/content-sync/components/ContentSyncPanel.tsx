@@ -141,12 +141,12 @@ export function ContentSyncPanel() {
             {isRunning ? 'Syncing…' : 'Sync now'}
           </GhostBtn>
           {savedMsg && (
-            <span style={{ fontSize: 13, color: 'var(--success, #16a34a)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 13, color: 'var(--uc-mint)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <Check size={14} /> {savedMsg}
             </span>
           )}
           {error && (
-            <span style={{ fontSize: 13, color: 'var(--danger, #dc2626)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 13, color: 'var(--uc-red)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
               <AlertTriangle size={14} /> {error}
             </span>
           )}
@@ -300,8 +300,8 @@ export function ContentSyncPanel() {
 }
 
 function statusColor(status: string): string {
-  if (status === 'success') return 'var(--success, #16a34a)'
-  if (status === 'failed') return 'var(--danger, #dc2626)'
+  if (status === 'success') return 'var(--uc-mint)'
+  if (status === 'failed') return 'var(--uc-red)'
   return 'var(--text-secondary)'
 }
 

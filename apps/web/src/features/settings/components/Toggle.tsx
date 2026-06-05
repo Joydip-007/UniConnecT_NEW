@@ -38,7 +38,7 @@ export function Toggle({ checked, onChange, disabled, label }: ToggleProps) {
           width: 18,
           height: 18,
           borderRadius: '50%',
-          background: checked ? 'var(--uc-indigo-l)' : 'var(--text-tertiary)',
+          background: checked ? 'var(--on-accent)' : 'var(--text-tertiary)',
           transition: 'left 0.15s ease',
         }}
       />
