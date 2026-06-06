@@ -52,7 +52,7 @@ export function PersonSuggestionCard({ person }: Props) {
           )}
         </div>
       </Link>
-      <div style={{ width: '100%' }}>
+      <div style={{ width: '100%', marginTop: 'auto' }}>
         <ConnectButton
           targetUserId={person.id}
           targetName={person.fullName}

@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import type { SearchPagedResult, GroupSearchResult } from '../types'
 
-export function useSearchGroups(q: string, limit = 20) {
+export function useSearchGroups(q: string, limit = 20, options: { enabled?: boolean } = {}) {
   return useInfiniteQuery<SearchPagedResult<GroupSearchResult>>({
     queryKey: ['search', 'groups', { q }],
     queryFn: ({ pageParam }) =>
@@ -13,7 +13,7 @@ export function useSearchGroups(q: string, limit = 20) {
         .then((r) => r.data.data),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
-    enabled: q.length >= 2,
+    enabled: q.length >= 2 && (options.enabled ?? true),
     staleTime: 30_000,
   })
 }

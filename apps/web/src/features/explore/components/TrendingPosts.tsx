@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import type { TrendingPost } from '../types'
 
@@ -15,8 +16,9 @@ export function TrendingPosts({ posts }: Props) {
   return (
     <>
       {posts.map((post) => (
-        <div
+        <Link
           key={post.id}
+          to={`/feed/${post.id}`}
           style={{
             flexShrink: 0,
             width: 220,
@@ -25,6 +27,8 @@ export function TrendingPosts({ posts }: Props) {
             border: '0.5px solid var(--border-default)',
             borderRadius: 'var(--r-lg)',
             padding: '12px 14px',
+            textDecoration: 'none',
+            display: 'block',
           }}
         >
           <p
@@ -45,10 +49,10 @@ export function TrendingPosts({ posts }: Props) {
             {post.authorName} ·{' '}
             {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
             {post.reactionCount} reactions · {post.commentCount} comments
           </div>
-        </div>
+        </Link>
       ))}
     </>
   )
