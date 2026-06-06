@@ -329,7 +329,10 @@ select:focus-visible {
   }
 }
 
-@media (max-width: 768px) {
+/* 767px (not 768) so the left rail collapses on exactly the same breakpoint
+   the mobile bottom nav appears at — otherwise a 768px-wide viewport loses the
+   left rail before the bottom nav exists, leaving no primary navigation. */
+@media (max-width: 767px) {
   .feed-layout-grid {
     grid-template-columns: 1fr;
     padding: 12px 12px 0;
@@ -337,6 +340,54 @@ select:focus-visible {
   }
   .feed-layout-left {
     display: none;
+  }
+}
+
+/* ── Mobile form controls — prevent iOS Safari focus-zoom ─────────────
+   Any input under 16px makes iOS zoom the viewport on focus and never zoom
+   back, shifting the whole layout. The app styles most fields inline at
+   12–14px, so this needs `!important` to win over the inline font-size.
+   16px is the minimum that suppresses the zoom (see DESIGN mobile-first). */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Mobile create-post composer — full-screen sheet ─────────────────
+   The desktop modal is vertically centred at max-height: 90vh, which leaves
+   the textarea behind the on-screen keyboard on phones. On mobile it becomes a
+   full-screen composer sized to the dynamic viewport: the field sits under the
+   header, the body scrolls, the footer stays pinned. Pairs with the
+   `interactive-widget=resizes-content` viewport hint (index.html) so the footer
+   lifts above the keyboard on Android. Enters as a bottom sheet, not a scale. */
+@media (max-width: 767px) {
+  .create-post-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+  .create-post-panel {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+  .create-post-panel.modal-panel-enter {
+    animation-name: sheet-in;
+    transform-origin: bottom center;
+  }
+  /* 360px can't fit photo + poll + Save-as-draft + Cancel + Post on one row,
+     so the actions drop to their own right-aligned row under the tools. */
+  .composer-footer {
+    flex-wrap: wrap;
+  }
+  .composer-footer-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 

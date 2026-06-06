@@ -367,6 +367,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
       {/* Modal */}
       {open && (
         <div
+          className="create-post-overlay"
           style={{
             position: 'fixed',
             inset: 0,
@@ -383,9 +384,9 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
             onClick={handleClose}
           />
 
-          {/* Modal panel */}
+          {/* Modal panel — full-screen composer on mobile (see .create-post-panel in index.css) */}
           <div
-            className={instantOpen ? undefined : 'modal-panel-enter'}
+            className={`create-post-panel${instantOpen ? '' : ' modal-panel-enter'}`}
             style={{
               position: 'relative',
               width: '100%',
@@ -754,6 +755,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
 
             {/* Footer */}
             <div
+              className="composer-footer"
               style={{
                 padding: '10px 16px',
                 borderTop: '0.5px solid var(--border-default)',
@@ -786,7 +788,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                 </TabBtn>
               </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="composer-footer-actions" style={{ display: 'flex', gap: 8 }}>
                 {!isEditMode && (
                   <GhostBtn onClick={() => handleSubmit(true)} disabled={!canSubmit()}>
                     Save as draft

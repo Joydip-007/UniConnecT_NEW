@@ -372,7 +372,7 @@ export function EditProfileModal({ onClose }: Props) {
         style={{
           width: '100%',
           maxWidth: 480,
-          maxHeight: 'calc(100vh - 48px)',
+          maxHeight: 'calc(100dvh - 48px)',
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-strong)',
           borderRadius: 'var(--r-xl)',

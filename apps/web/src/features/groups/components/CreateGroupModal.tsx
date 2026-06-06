@@ -98,7 +98,7 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
           borderRadius: 'var(--r-lg)',
           width: '100%',
           maxWidth: 480,
-          maxHeight: '90vh',
+          maxHeight: '90dvh',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',

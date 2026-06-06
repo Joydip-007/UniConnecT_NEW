@@ -5,7 +5,7 @@ type BaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  'inline-flex items-center justify-center gap-[7px] text-[13px] font-medium cursor-pointer transition-[opacity,transform] duration-150 ease-out ' +
+  'inline-flex items-center justify-center whitespace-nowrap gap-[7px] text-[13px] font-medium cursor-pointer transition-[opacity,transform] duration-150 ease-out ' +
   'hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ' +
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--uc-indigo-xl)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-page)]';
 
