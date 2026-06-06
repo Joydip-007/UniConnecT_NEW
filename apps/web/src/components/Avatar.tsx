@@ -31,7 +31,10 @@ export function Avatar({ initials, color, size = 40, online = false, src }: Avat
         justifyContent: 'center',
         fontSize: size * 0.34,
         fontWeight: 500,
-        color: 'var(--text-primary)',
+        // Initials sit on a saturated fallback fill (AVATAR_COLORS), so the label
+        // must use the theme-stable --on-accent — never --text-primary, which flips
+        // to dark navy in light mode and drops to ~1.5:1 on the navy slot.
+        color: 'var(--on-accent)',
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
