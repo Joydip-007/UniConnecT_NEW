@@ -35,6 +35,9 @@ export const router = createBrowserRouter([
   // Accessible to both authenticated (unverified) and unauthenticated users
   { path: PATHS.VERIFY_OTP, element: page(() => import('@/pages/OtpPage')) },
 
+  // Public marketing page — viewable signed in or out
+  { path: PATHS.ABOUT, element: page(() => import('@/pages/AboutPage')) },
+
   {
     element: <ProtectedRoute />,
     children: [

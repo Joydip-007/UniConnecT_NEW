@@ -6,6 +6,8 @@ export const PATHS = {
   VERIFY_OTP: '/verify-otp',
   FORGOT_PASSWORD: '/forgot-password',
 
+  ABOUT: '/about',
+
   FEED: '/feed',
   POST_DETAIL: '/feed/:id',
 

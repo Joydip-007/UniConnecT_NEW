@@ -47,16 +47,20 @@ export default function ShuttlePage() {
   const selectedRoute = routes.find((r) => r.id === selectedRouteId) ?? null
   const selectedBus = selectedRouteId ? (busStates[selectedRouteId] ?? null) : null
 
-  const currentLocation: LiveLocation | null = selectedBus
-    ? {
-        routeId: selectedBus.routeId,
-        lat: selectedBus.lat,
-        lng: selectedBus.lng,
-        speedKmh: selectedBus.speedKmh ?? 0,
-        headingDeg: selectedBus.headingDeg,
-        updatedAt: selectedBus.updatedAt ?? '',
-      }
-    : null
+  const currentLocation = useMemo<LiveLocation | null>(
+    () =>
+      selectedBus
+        ? {
+            routeId: selectedBus.routeId,
+            lat: selectedBus.lat,
+            lng: selectedBus.lng,
+            speedKmh: selectedBus.speedKmh ?? 0,
+            headingDeg: selectedBus.headingDeg,
+            updatedAt: selectedBus.updatedAt ?? '',
+          }
+        : null,
+    [selectedBus],
+  )
 
   const derived = useMemo((): ProgressResult => {
     if (!selectedRoute || selectedRoute.stops.length === 0 || !currentLocation) {

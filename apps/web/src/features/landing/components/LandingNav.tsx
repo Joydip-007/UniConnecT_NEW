@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: 'Features',     href: '#features' },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Universities', href: '#universities' },
-  { label: 'About',        href: '#about' },
+  { label: 'About',        href: PATHS.ABOUT },
   { label: 'Pricing',      href: '#pricing' },
 ]
 
@@ -31,9 +31,13 @@ export function LandingNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  /* Smooth-scroll to in-page anchors; honor prefers-reduced-motion. */
+  /* In-page anchors smooth-scroll; route links navigate. Honor prefers-reduced-motion. */
   function handleLinkClick(href: string) {
     setMenuOpen(false)
+    if (!href.startsWith('#')) {
+      navigate(href)
+      return
+    }
     const target = document.querySelector(href)
     if (!target) return
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches

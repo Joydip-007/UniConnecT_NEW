@@ -6,7 +6,6 @@ import { StatsSection } from '@/features/landing/components/StatsSection'
 import { FeaturesSection } from '@/features/landing/components/FeaturesSection'
 import { HowItWorks } from '@/features/landing/components/HowItWorks'
 import { UniversitiesSection } from '@/features/landing/components/UniversitiesSection'
-import { AboutSection } from '@/features/landing/components/AboutSection'
 import { TestimonialsSection } from '@/features/landing/components/TestimonialsSection'
 import { PricingSection } from '@/features/landing/components/PricingSection'
 import { CtaSection } from '@/features/landing/components/CtaSection'
@@ -31,7 +30,6 @@ export default function LandingPage() {
         <FeaturesSection />
         <HowItWorks />
         <UniversitiesSection />
-        <AboutSection />
         <TestimonialsSection />
         <PricingSection />
         <CtaSection />
