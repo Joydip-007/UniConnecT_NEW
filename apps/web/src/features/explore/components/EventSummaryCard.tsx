@@ -73,7 +73,7 @@ export function EventSummaryCard({ event }: Props) {
             borderRadius: 'var(--r-pill)',
             border: '0.5px solid var(--border-default)',
             background: isGoing ? 'var(--surface-raised)' : 'var(--uc-indigo)',
-            color: 'var(--text-primary)',
+            color: isGoing ? 'var(--text-primary)' : 'var(--on-accent)',
             fontSize: 11,
             fontWeight: 500,
             cursor: isPending ? 'default' : 'pointer',

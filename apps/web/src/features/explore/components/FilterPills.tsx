@@ -22,7 +22,7 @@ export function FilterPills() {
       borderRadius: 'var(--r-pill)',
       border: '0.5px solid var(--border-default)',
       background: active ? 'var(--uc-indigo)' : 'var(--surface-raised)',
-      color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+      color: active ? 'var(--on-accent)' : 'var(--text-secondary)',
       fontSize: 12,
       fontWeight: 500,
       cursor: 'pointer',

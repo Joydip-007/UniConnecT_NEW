@@ -8,6 +8,8 @@ import { PeopleSuggestions } from '@/features/explore/components/PeopleSuggestio
 import { ActiveGroups } from '@/features/explore/components/ActiveGroups'
 import { UpcomingEvents } from '@/features/explore/components/UpcomingEvents'
 import { FeaturedAlumni } from '@/features/explore/components/FeaturedAlumni'
+import { JobResultCard } from '@/features/explore/components/JobResultCard'
+import { EventResultCard } from '@/features/explore/components/EventResultCard'
 import { FilterPills } from '@/features/explore/components/FilterPills'
 import {
   useSearchAll,
@@ -56,7 +58,10 @@ const tabBarStyle: React.CSSProperties = {
 
 function tabStyle(active: boolean): React.CSSProperties {
   return {
-    padding: '10px 14px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 44,
+    padding: '0 14px',
     fontSize: 13,
     fontWeight: 500,
     color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
@@ -78,8 +83,11 @@ const sectionHeaderStyle: React.CSSProperties = {
 }
 
 const loadMoreStyle: React.CSSProperties = {
-  display: 'block',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   width: '100%',
+  minHeight: 44,
   marginTop: 12,
   padding: '10px',
   fontSize: 13,
@@ -129,7 +137,7 @@ function SkeletonRow() {
 function EmptyState({ icon, title, message }: { icon: React.ReactNode; title: string; message?: string }) {
   return (
     <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-secondary)' }}>
-      <div style={{ marginBottom: 12, color: 'var(--text-tertiary)' }}>{icon}</div>
+      <div aria-hidden="true" style={{ marginBottom: 12, color: 'var(--text-tertiary)' }}>{icon}</div>
       <div style={{ fontWeight: 500, fontSize: 15, color: 'var(--text-primary)', marginBottom: 6 }}>{title}</div>
       {message && <div style={{ fontSize: 13 }}>{message}</div>}
     </div>
@@ -224,32 +232,37 @@ export default function ExplorePage() {
   const { data: discovery, isLoading: discoveryLoading } = useDiscovery()
 
   // ── Search queries ──────────────────────────────────────────────────────────
-  const { data: allData, isLoading: allLoading, isError: allError } = useSearchAll(q, 5)
+  // Each query is gated to its active tab so a search fires one request, not six.
+  // The "All" tab's combined endpoint feeds the previews; switching tabs lazily
+  // fetches that category (and React Query caches it for repeat visits).
+  const { data: allData, isLoading: allLoading, isError: allError } = useSearchAll(q, 5, {
+    enabled: tab === 'all',
+  })
 
   const {
     data: peopleData, isLoading: peopleLoading, isError: peopleError,
     fetchNextPage: fetchMorePeople, hasNextPage: hasMorePeople, isFetchingNextPage: fetchingMorePeople,
-  } = useSearchPeople({ q: q || undefined, role, department, batch })
+  } = useSearchPeople({ q: q || undefined, role, department, batch }, 20, { enabled: tab === 'people' })
 
   const {
     data: postsData, isLoading: postsLoading, isError: postsError,
     fetchNextPage: fetchMorePosts, hasNextPage: hasMorePosts, isFetchingNextPage: fetchingMorePosts,
-  } = useSearchPosts({ q: q || undefined })
+  } = useSearchPosts({ q: q || undefined }, 20, { enabled: tab === 'posts' })
 
   const {
     data: jobsData, isLoading: jobsLoading, isError: jobsError,
     fetchNextPage: fetchMoreJobs, hasNextPage: hasMoreJobs, isFetchingNextPage: fetchingMoreJobs,
-  } = useSearchJobs(q)
+  } = useSearchJobs(q, 20, { enabled: tab === 'jobs' })
 
   const {
     data: eventsData, isLoading: eventsLoading, isError: eventsError,
     fetchNextPage: fetchMoreEvents, hasNextPage: hasMoreEvents, isFetchingNextPage: fetchingMoreEvents,
-  } = useSearchEvents(q)
+  } = useSearchEvents(q, 20, { enabled: tab === 'events' })
 
   const {
     data: groupsData, isLoading: groupsLoading, isError: groupsError,
     fetchNextPage: fetchMoreGroups, hasNextPage: hasMoreGroups, isFetchingNextPage: fetchingMoreGroups,
-  } = useSearchGroups(q)
+  } = useSearchGroups(q, 20, { enabled: tab === 'groups' })
 
   const activeTabLoading =
     tab === 'all' ? allLoading :
@@ -291,28 +304,14 @@ export default function ExplorePage() {
         {allData.jobs.length > 0 && (
           <>
             <h2 style={sectionHeaderStyle}>Jobs</h2>
-            <div style={cardWrapStyle}>
-              {allData.jobs.map((j) => (
-                <div key={j.id} style={{ padding: '10px 14px', borderBottom: '0.5px solid var(--border-default)', fontSize: 14 }}>
-                  <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{j.title}</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>{j.company} · {j.location} · {j.type}</div>
-                </div>
-              ))}
-            </div>
+            <div style={cardWrapStyle}>{allData.jobs.map((j) => <JobResultCard key={j.id} job={j} />)}</div>
             <button style={loadMoreStyle} onClick={() => setTab('jobs')}>See all job results</button>
           </>
         )}
         {allData.events.length > 0 && (
           <>
             <h2 style={sectionHeaderStyle}>Events</h2>
-            <div style={cardWrapStyle}>
-              {allData.events.map((ev) => (
-                <div key={ev.id} style={{ padding: '10px 14px', borderBottom: '0.5px solid var(--border-default)', fontSize: 14 }}>
-                  <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{ev.title}</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>{ev.location}</div>
-                </div>
-              ))}
-            </div>
+            <div style={cardWrapStyle}>{allData.events.map((ev) => <EventResultCard key={ev.id} event={ev} />)}</div>
             <button style={loadMoreStyle} onClick={() => setTab('events')}>See all event results</button>
           </>
         )}
@@ -368,15 +367,7 @@ export default function ExplorePage() {
     if (items.length === 0) return <EmptyState icon={<Search size={40} />} title={`No jobs found for "${q}"`} />
     return (
       <>
-        <div style={cardWrapStyle}>
-          {items.map((j) => (
-            <div key={j.id} style={{ padding: '10px 14px', borderBottom: '0.5px solid var(--border-default)', fontSize: 14 }}>
-              <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{j.title}</div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>{j.company} · {j.location} · {j.type}</div>
-              {j.deadline && <div style={{ color: 'var(--text-tertiary)', fontSize: 11, marginTop: 2 }}>Deadline: {new Date(j.deadline).toLocaleDateString()}</div>}
-            </div>
-          ))}
-        </div>
+        <div style={cardWrapStyle}>{items.map((j) => <JobResultCard key={j.id} job={j} />)}</div>
         {hasMoreJobs && (
           <button style={loadMoreStyle} onClick={() => fetchMoreJobs()} disabled={fetchingMoreJobs}>
             {fetchingMoreJobs ? 'Loading…' : 'Load more'}
@@ -393,14 +384,7 @@ export default function ExplorePage() {
     if (items.length === 0) return <EmptyState icon={<Search size={40} />} title={`No events found for "${q}"`} />
     return (
       <>
-        <div style={cardWrapStyle}>
-          {items.map((ev) => (
-            <div key={ev.id} style={{ padding: '10px 14px', borderBottom: '0.5px solid var(--border-default)', fontSize: 14 }}>
-              <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{ev.title}</div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>{ev.location} · {new Date(ev.startsAt).toLocaleDateString()}</div>
-            </div>
-          ))}
-        </div>
+        <div style={cardWrapStyle}>{items.map((ev) => <EventResultCard key={ev.id} event={ev} />)}</div>
         {hasMoreEvents && (
           <button style={loadMoreStyle} onClick={() => fetchMoreEvents()} disabled={fetchingMoreEvents}>
             {fetchingMoreEvents ? 'Loading…' : 'Load more'}
@@ -439,7 +423,9 @@ export default function ExplorePage() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div style={containerStyle}>
+    <main style={containerStyle}>
+      <h1 style={srOnlyStyle}>Explore</h1>
+
       {/* Screen reader loading announcements */}
       <div role="status" aria-live="polite" style={srOnlyStyle}>
         {isContentLoading ? 'Loading content…' : ''}
@@ -489,13 +475,13 @@ export default function ExplorePage() {
           {discoveryLoading && <DiscoverySkeleton />}
           {discovery && (
             <>
-              <DiscoverySection label="Trending" seeAllTo={`${PATHS.EXPLORE}?view=search&tab=posts`}>
+              <DiscoverySection label="Trending" seeAllTo={PATHS.FEED}>
                 <TrendingPosts posts={discovery.trendingPosts} />
               </DiscoverySection>
 
               <DiscoverySection
                 label="People you may know"
-                seeAllTo={`${PATHS.EXPLORE}?view=search&tab=people`}
+                seeAllTo={PATHS.CONNECTIONS}
               >
                 <PeopleSuggestions people={discovery.peopleSuggestions} />
               </DiscoverySection>
@@ -561,6 +547,6 @@ export default function ExplorePage() {
           </div>
         </>
       )}
-    </div>
+    </main>
   )
 }
