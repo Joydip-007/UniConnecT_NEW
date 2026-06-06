@@ -99,10 +99,11 @@ function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () =
 
 // ── ProfilePage ────────────────────────────────────────────────────────────────
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const authUser = useAuthStore((s) => s.user)
-  const isOwnProfile = authUser?.id === id
   const qc = useQueryClient()
 
   // Tab navigation
@@ -121,7 +122,9 @@ export default function ProfilePage() {
   const { data: user, isLoading, isError, error, refetch } = useQuery<PublicUserProfile>({
     queryKey: ['user', id],
     queryFn: async () => {
-      const r = await api.get<{ data: unknown }>(`/users/${id}`)
+      // The route param is a handle: a UUID (existing links) or a username (vanity URL).
+      const path = id && UUID_RE.test(id) ? `/users/${id}` : `/users/by-username/${id}`
+      const r = await api.get<{ data: unknown }>(path)
       const parsed = publicUserProfileSchema.safeParse(r.data.data)
       if (!parsed.success) throw new Error('Unexpected response shape from the server')
       return parsed.data
@@ -130,11 +133,13 @@ export default function ProfilePage() {
     retry: 1,
   })
 
+  const isOwnProfile = !!user && authUser?.id === user.id
+
   // Delete featured item mutation — passed as onDelete to ProfileFeatured
   const deleteFeatured = useMutation({
     mutationFn: (entryId: string) => api.delete(`/users/me/featured/${entryId}`),
     onSuccess: () => {
-      if (id) qc.invalidateQueries({ queryKey: ['profile', 'featured', id] })
+      if (user) qc.invalidateQueries({ queryKey: ['profile', 'featured', user.id] })
     },
   })
 

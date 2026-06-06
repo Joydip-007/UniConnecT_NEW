@@ -53,6 +53,7 @@ beforeAll(async () => {
     const [row] = await db('users')
       .insert({
         university_id: TEST_UNIVERSITY_ID,
+        username: key, // 'admin' | 'faculty' | 'alumni' | 'student'
         email: cred.email,
         password_hash: hash,
         role: cred.role,

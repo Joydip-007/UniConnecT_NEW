@@ -3,6 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import type { PrivacyPreferencesInput } from '@uniconnect/shared'
+import { RESERVED_USERNAMES, normalizeUsername, usernameSchema } from '@uniconnect/shared'
 import { usersService } from './service'
 import { loadPrivacy, updatePrivacy } from './privacy.service'
 import type {
@@ -57,6 +58,29 @@ export const updateMyPrivacy = asyncHandler(async (req: Request, res: Response) 
     res,
     await updatePrivacy(context.userId, context.universityId, req.body as PrivacyPreferencesInput),
   )
+})
+
+export const getUserByUsername = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await usersService.getPublicProfileByUsername(context.userId, getUsernameParam(req), context.universityId),
+  )
+})
+
+export const checkUsernameAvailable = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const raw = String((req.query as { username?: unknown }).username ?? '')
+  const parsed = usernameSchema.safeParse(raw)
+  if (!parsed.success) {
+    const reserved = RESERVED_USERNAMES.includes(
+      normalizeUsername(raw) as (typeof RESERVED_USERNAMES)[number],
+    )
+    sendSuccess(res, { available: false, reason: reserved ? 'reserved' : 'invalid' })
+    return
+  }
+  const available = await usersService.isUsernameAvailable(context.userId, context.universityId, parsed.data)
+  sendSuccess(res, { available, reason: available ? undefined : 'taken' })
 })
 
 export const getUser = asyncHandler(async (req: Request, res: Response) => {
@@ -201,6 +225,11 @@ function getAuthContext(req: Request) {
 
 function getUserIdParam(req: Request) {
   const value = req.params.userId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getUsernameParam(req: Request) {
+  const value = req.params.username
   return Array.isArray(value) ? value[0] : value
 }
 

@@ -16,8 +16,10 @@ import {
   getMyPrivacy,
   getMyViewers,
   getProgress,
+  checkUsernameAvailable,
   getSuggestions,
   getUser,
+  getUserByUsername,
   getUserConnections,
   getUserEducation,
   getUserExperience,
@@ -38,6 +40,7 @@ import {
   ReorderFeaturedSchema,
   UpdatePreferencesSchema,
   UpdateProfileSchema,
+  UsernameAvailableQuerySchema,
   UserListQuerySchema,
 } from './schema'
 
@@ -53,6 +56,12 @@ usersRouter.get('/me/privacy', getMyPrivacy)
 usersRouter.put('/me/privacy', validate(privacyPreferencesSchema), updateMyPrivacy)
 usersRouter.get('/me/progress', getProgress)
 usersRouter.get('/suggestions', getSuggestions)
+usersRouter.get(
+  '/username-available',
+  validateRequest({ query: UsernameAvailableQuerySchema }),
+  checkUsernameAvailable,
+)
+usersRouter.get('/by-username/:username', getUserByUsername)
 usersRouter.get('/', validateRequest({ query: UserListQuerySchema }), listUsers)
 usersRouter.get('/:userId', getUser)
 
