@@ -12,6 +12,7 @@ interface AuthState {
   clearAuth: () => void
   setLoading: (v: boolean) => void
   updateProfile: (partial: Partial<UserProfile>) => void
+  updateUsername: (username: string) => void
   markVerified: () => void
 }
 
@@ -50,6 +51,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           profile: { ...state.user.profile, ...partial },
         },
       }
+    }),
+
+  updateUsername: (username) =>
+    set((state) => {
+      if (!state.user) return state
+      return { user: { ...state.user, username } }
     }),
 
   markVerified: () =>

@@ -84,7 +84,7 @@ export function ProfileHeader({
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, paddingTop: 10 }}>
-          <ShareMenu entityType="profile" entityId={user.id} title={fullName} />
+          <ShareMenu entityType="profile" entityId={user.username} title={fullName} />
           {isOwnProfile ? (
             <GhostBtn onClick={onEdit}>Edit profile</GhostBtn>
           ) : (
@@ -139,6 +139,10 @@ export function ProfileHeader({
               </span>
             )}
           </div>
+
+          <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+            @{user.username}
+          </span>
 
           {user.profile.headline && (
             <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', lineHeight: 1.5 }}>

@@ -1,9 +1,11 @@
 import { z } from 'zod'
+import { usernameSchema } from '@uniconnect/shared'
 
 const optionalString = z.string().trim().nullable().optional()
 
 export const UpdateProfileSchema = z
   .object({
+    username: usernameSchema.optional(),
     fullName: z.string().trim().min(1).optional(),
     bio: optionalString,
     headline: optionalString,
@@ -32,6 +34,10 @@ export const UserListQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
+})
+
+export const UsernameAvailableQuerySchema = z.object({
+  username: z.string().trim().min(1).max(60),
 })
 
 export const PaginationQuerySchema = z.object({

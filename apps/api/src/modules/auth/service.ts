@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
+import { RESERVED_USERNAMES } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { redis } from '../../config/redis'
 import { emailQueue } from '../../queues/email.queue'
@@ -17,6 +18,7 @@ import type { LoginInput, OtpPurpose, RegisterInput } from './schema'
 interface UserRow {
   id: string
   university_id: string
+  username: string
   email: string
   password_hash: string | null
   role: UserRole
@@ -120,9 +122,11 @@ export class AuthService {
     const passwordHash = data.password ? await bcrypt.hash(data.password, 12) : null
 
     const user = await db.transaction(async (trx) => {
+      const username = await generateUniqueUsername(trx, universityId, email)
       const [createdUser] = await trx<UserRow>('users')
         .insert({
           university_id: universityId,
+          username,
           email,
           password_hash: passwordHash,
           role,
@@ -441,6 +445,7 @@ async function findUserWithProfile(userId: string) {
     .select(
       'users.id',
       'users.university_id',
+      'users.username',
       'users.email',
       'users.password_hash',
       'users.role',
@@ -473,6 +478,7 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
     .select(
       'users.id',
       'users.university_id',
+      'users.username',
       'users.email',
       'users.password_hash',
       'users.role',
@@ -502,9 +508,48 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
     .first<UserWithProfileRow>()
 }
 
+/**
+ * Auto-assign a username at registration (users can change it later in settings).
+ * Derives a candidate from the email local-part following the same normalization
+ * as `usernameSchema`, then dedups within the tenant. The `(university_id,
+ * lower(username))` unique index is the final guard against races.
+ */
+async function generateUniqueUsername(
+  trx: Knex.Transaction,
+  universityId: string,
+  email: string,
+): Promise<string> {
+  const normalized = (email.split('@')[0] ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, '')
+    .replace(/[._]{2,}/g, '.')
+    .replace(/^[._]+|[._]+$/g, '')
+    .slice(0, 30)
+    .replace(/[._]+$/g, '')
+  const base =
+    normalized.length >= 3 && !RESERVED_USERNAMES.includes(normalized as (typeof RESERVED_USERNAMES)[number])
+      ? normalized
+      : 'user'
+
+  let candidate = base
+  let n = 1
+  // Bounded loop: the unique index guarantees correctness even under a race.
+  while (
+    await trx('users')
+      .where('university_id', universityId)
+      .whereRaw('lower(username) = ?', [candidate])
+      .first()
+  ) {
+    const suffix = String(n++)
+    candidate = `${base.slice(0, 30 - suffix.length).replace(/[._]+$/g, '')}${suffix}`
+  }
+  return candidate
+}
+
 function toAuthUser(user: UserWithProfileRow) {
   return {
     id: user.id,
+    username: user.username,
     email: user.email,
     role: user.role,
     universityId: user.university_id,

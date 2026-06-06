@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Monitor } from 'lucide-react'
+import { AxiosError } from 'axios'
+import { Check, Monitor } from 'lucide-react'
+import { normalizeUsername, usernameSchema } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { PATHS } from '@/router/paths'
 import {
@@ -11,6 +13,7 @@ import {
   useRevokeOtherSessions,
   useRevokeSession,
 } from '../hooks/useAccountSettings'
+import { useUpdateUsername, useUsernameAvailability } from '../hooks/useUsername'
 import { SectionHeader } from './NotificationsSection'
 
 const rowStyle: React.CSSProperties = {
@@ -83,6 +86,7 @@ export default function AccountSection() {
         </div>
       </div>
 
+      <UsernamePanel />
       <ChangePasswordForm />
       <ActiveSessionsPanel />
 
@@ -92,6 +96,100 @@ export default function AccountSection() {
           navigate(PATHS.LOGIN)
         }}
       />
+    </div>
+  )
+}
+
+function UsernamePanel() {
+  const current = useAuthStore((s) => s.user?.username ?? '')
+  const [value, setValue] = useState(current)
+  const [debounced, setDebounced] = useState(current)
+  const updateUsername = useUpdateUsername()
+
+  // Keep local state in sync if the stored username changes elsewhere.
+  useEffect(() => {
+    setValue(current)
+    setDebounced(current)
+  }, [current])
+
+  // Debounce the value feeding the availability check.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(normalizeUsername(value)), 350)
+    return () => clearTimeout(t)
+  }, [value])
+
+  const parsed = usernameSchema.safeParse(value)
+  const normalized = parsed.success ? parsed.data : normalizeUsername(value)
+  const changed = normalized !== current
+  const formatError = !parsed.success ? parsed.error.issues[0]?.message ?? 'Invalid username' : null
+
+  const checkEnabled = changed && parsed.success && debounced === normalized
+  const { data: availability, isFetching } = useUsernameAvailability(normalized, checkEnabled)
+
+  const isTaken = checkEnabled && availability?.available === false
+  const isAvailable = checkEnabled && availability?.available === true
+  const canSave = changed && parsed.success && isAvailable && !updateUsername.isPending
+
+  function save() {
+    if (!canSave) return
+    updateUsername.mutate(normalized, {
+      onSuccess: () => toast.success('Username updated.'),
+      onError: (err) => {
+        const status = err instanceof AxiosError ? err.response?.status : undefined
+        toast.error(status === 409 ? 'That username is already taken.' : 'Could not update username.')
+      },
+    })
+  }
+
+  let status: { text: string; color: string } | null = null
+  if (!changed) status = null
+  else if (formatError) status = { text: formatError, color: 'var(--uc-red)' }
+  else if (isFetching || debounced !== normalized) status = { text: 'Checking…', color: 'var(--text-tertiary)' }
+  else if (isTaken) {
+    const reason = availability?.reason
+    status = {
+      text: reason === 'reserved' ? 'This username is reserved.' : 'That username is taken.',
+      color: 'var(--uc-red)',
+    }
+  } else if (isAvailable) status = { text: 'Available', color: 'var(--uc-green, #2e9e5b)' }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>
+        Username
+      </h3>
+      <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 12, lineHeight: 1.5, maxWidth: 460 }}>
+        Your public profile link is uniconnectt.me/profile/<span style={{ color: 'var(--text-secondary)' }}>{normalized || 'username'}</span>
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 360 }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <span style={{ position: 'absolute', left: 12, color: 'var(--text-tertiary)', fontSize: 14 }}>@</span>
+          <input
+            style={{ ...inputStyle, paddingLeft: 26 }}
+            type="text"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            aria-label="Username"
+          />
+          {isAvailable && (
+            <span style={{ position: 'absolute', right: 12, color: 'var(--uc-green, #2e9e5b)', lineHeight: 0 }}>
+              <Check size={16} strokeWidth={2} />
+            </span>
+          )}
+        </div>
+        {status && <span style={{ fontSize: 12, color: status.color }}>{status.text}</span>}
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave}
+          style={{ ...pillButton, alignSelf: 'flex-start', opacity: canSave ? 1 : 0.6 }}
+        >
+          {updateUsername.isPending ? 'Saving…' : 'Save username'}
+        </button>
+      </div>
     </div>
   )
 }

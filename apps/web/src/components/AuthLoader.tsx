@@ -14,6 +14,7 @@ interface MeResponse {
 
 const DEV_MOCK_USER: User = {
   id: 'dev-00000000-0000-0000-0000-000000000001',
+  username: 'devuser',
   email: 'dev@uiu.ac.bd',
   role: 'student',
   universityId: 'dev-00000000-0000-0000-0000-000000000002',

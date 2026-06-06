@@ -1,7 +1,8 @@
 import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
+import { normalizeUsername } from '@uniconnect/shared'
 import { db } from '../../config/db'
-import { badRequest, forbidden, notFound } from '../../utils/errors'
+import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { tokenService } from '../../services/token.service'
 import { systemGroupsService } from '../groups/system-groups.service'
 import {
@@ -22,6 +23,7 @@ import type {
 
 interface UserProfileRow {
   id: string
+  username: string
   university_id: string
   email: string
   role: UserRole
@@ -79,6 +81,19 @@ export class UsersService {
       )
       .first()
     if (!existing) throw notFound('User not found')
+
+    // Username lives on `users` (carries university_id for the tenant-scoped
+    // unique index), so it's written separately from the profile fields below.
+    // The DB index is the race-safe guard — translate its violation to a 409.
+    if (input.username !== undefined) {
+      const username = normalizeUsername(input.username)
+      try {
+        await db('users').where({ id: userId, university_id: universityId }).update({ username })
+      } catch (err) {
+        if (isUniqueViolation(err)) throw conflict('Username already taken', 'USERNAME_TAKEN')
+        throw err
+      }
+    }
 
     const update: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.fullName !== undefined) update.full_name = input.fullName
@@ -241,6 +256,32 @@ export class UsersService {
       mutualConnections: mutualCount,
       visibility: buildSectionVisibility(prefs, facts),
     }
+  }
+
+  /** Resolve a username (tenant-scoped) to the same payload as getPublicProfile. */
+  async getPublicProfileByUsername(currentUserId: string, username: string, universityId: string) {
+    const row = await db('users')
+      .where('users.university_id', universityId)
+      .whereRaw('lower(users.username) = ?', [normalizeUsername(username)])
+      .select<{ id: string }>('users.id')
+      .first()
+    if (!row) throw notFound('User not found')
+    return this.getPublicProfile(currentUserId, row.id, universityId)
+  }
+
+  /**
+   * Availability for the settings form. Format/reserved checks happen in the
+   * controller via usernameSchema; this only answers the uniqueness question,
+   * treating the caller's own current username as available.
+   */
+  async isUsernameAvailable(userId: string, universityId: string, username: string) {
+    const normalized = normalizeUsername(username)
+    const existing = await db('users')
+      .where('university_id', universityId)
+      .whereRaw('lower(username) = ?', [normalized])
+      .select<{ id: string }>('id')
+      .first()
+    return !existing || existing.id === userId
   }
 
   async listUsers(universityId: string, query: UserListQuery) {
@@ -705,6 +746,7 @@ function getUserProfileQuery() {
     .join('profiles', 'profiles.user_id', 'users.id')
     .select(
       'users.id',
+      'users.username',
       'users.university_id',
       'users.email',
       'users.role',
@@ -754,6 +796,11 @@ function excludeNonDiscoverable(query: Knex.QueryBuilder) {
   })
 }
 
+/** Postgres unique-violation (SQLSTATE 23505), surfaced through Knex's error. */
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23505'
+}
+
 async function assertUserInUniversity(userId: string, universityId: string) {
   const user = await db('users').where({ id: userId, university_id: universityId }).first()
   if (!user) throw notFound('User not found')
@@ -765,6 +812,7 @@ void assertUserInUniversity
 function toUserProfile(row: UserProfileRow, options: { includePhone: boolean; includeContactInfo: boolean }) {
   return {
     id: row.id,
+    username: row.username,
     email: row.email,
     role: row.role,
     universityId: row.university_id,

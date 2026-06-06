@@ -157,10 +157,18 @@ export async function seed(knex: Knex) {
   ]
 
   for (const u of userRows) {
+    const username = u.email
+      .split('@')[0]!
+      .toLowerCase()
+      .replace(/[^a-z0-9._]/g, '')
+      .replace(/[._]{2,}/g, '.')
+      .replace(/^[._]+|[._]+$/g, '')
+      .slice(0, 30)
     await knex('users')
       .insert({
         id: u.id,
         university_id: UNI,
+        username,
         email: u.email,
         password_hash: hash,
         role: u.role,
