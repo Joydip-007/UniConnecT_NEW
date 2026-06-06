@@ -8,6 +8,13 @@ import RootErrorBoundary from '@/components/ErrorBoundary'
 import './styles/index.css'
 import App from './App'
 
+// DEV-only: when running the design-verification flow (?dev-auth=1) without a
+// backend, stub the read endpoints so data pages render real UI for screenshots.
+if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev-auth') === '1') {
+  const { installDevMocks } = await import('@/lib/devMocks')
+  installDevMocks()
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <RootErrorBoundary>
