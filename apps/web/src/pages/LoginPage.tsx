@@ -6,6 +6,7 @@ import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
+import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
 import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import type { User } from '@uniconnect/shared/types'
@@ -172,8 +173,7 @@ export default function LoginPage() {
                   Forgot password?
                 </Link>
               </div>
-              <input
-                type="password"
+              <PasswordInput
                 autoComplete="current-password"
                 required
                 value={password}

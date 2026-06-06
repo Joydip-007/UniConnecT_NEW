@@ -5,6 +5,7 @@ import { AxiosError } from 'axios'
 import { Check, Monitor } from 'lucide-react'
 import { normalizeUsername, usernameSchema } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
+import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
 import {
   useActiveSessions,
@@ -230,25 +231,22 @@ function ChangePasswordForm() {
         Change password
       </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 360 }}>
-        <input
+        <PasswordInput
           style={inputStyle}
-          type="password"
           autoComplete="current-password"
           placeholder="Current password"
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
         />
-        <input
+        <PasswordInput
           style={inputStyle}
-          type="password"
           autoComplete="new-password"
           placeholder="New password"
           value={next}
           onChange={(e) => setNext(e.target.value)}
         />
-        <input
+        <PasswordInput
           style={inputStyle}
-          type="password"
           autoComplete="new-password"
           placeholder="Confirm new password"
           value={confirm}

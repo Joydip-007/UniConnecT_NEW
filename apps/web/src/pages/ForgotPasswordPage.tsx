@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
+import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
 import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 
@@ -361,8 +362,7 @@ function PasswordStep({
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <FieldWrapper label="New password" error={fieldErrors.password}>
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             autoFocus
             required
@@ -374,8 +374,7 @@ function PasswordStep({
         </FieldWrapper>
 
         <FieldWrapper label="Confirm password" error={fieldErrors.confirm}>
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             required
             value={confirm}

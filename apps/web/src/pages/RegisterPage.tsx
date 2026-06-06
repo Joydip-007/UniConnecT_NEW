@@ -6,6 +6,7 @@ import { isAxiosError } from 'axios'
 import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
+import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
 import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import type { User, UserRole } from '@uniconnect/shared/types'
@@ -262,8 +263,7 @@ export default function RegisterPage() {
           </Field>
 
           <Field label="Password" error={fieldErrors.password}>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               required
               value={password}
@@ -274,8 +274,7 @@ export default function RegisterPage() {
           </Field>
 
           <Field label="Confirm password" error={fieldErrors.confirmPassword}>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               required
               value={confirmPassword}
