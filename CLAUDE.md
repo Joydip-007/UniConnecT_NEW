@@ -206,7 +206,7 @@ Notable feature internals:
 - `src/features/profile/` — `ProfileHeader`, `ProfileAbout`, `ProfileExperience`, `ProfileEducation`, `ProfileSkills`, `ProfileFeatured`, `ProfileContactInfo`, `ProfileActivity`, `ProfileAnalytics`, `ProfileViewers`, `ResumeExportButton`, plus editing modals (`ExperienceModal`, `EducationModal`, `FeaturedModal`, `EditProfileModal`)
 
 **All implemented page routes** (`src/router/paths.ts` + lazy pages in `src/pages/`):
-`/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/feed/:id` (post detail), `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/shuttle/drive` (driver GPS broadcast view), `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/settings` (+ sub-routes `/settings/notifications`, `/settings/appearance`, `/settings/account`, `/settings/privacy`), `/drafts`, `/admin`
+`/about`, `/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/feed/:id` (post detail), `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/shuttle/drive` (driver GPS broadcast view), `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/settings` (+ sub-routes `/settings/notifications`, `/settings/appearance`, `/settings/account`, `/settings/privacy`), `/drafts`, `/admin`
 
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
@@ -237,7 +237,7 @@ Strict mode on everywhere. No `any` — use `unknown` + narrowing or a specific 
 
 ## Design system (non-negotiable)
 
-CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/styles/index.css`. Default theme: **Warm Futuristic Dark** — navy surfaces, UIU orange identity, indigo interactive. A **Warm Neutral Light** theme is also defined under `[data-theme='light']` in the same file (toggled via `theme_preference` on the `users` table and stored in `uiStore`). Full token reference is in `docs/DESIGN.md`.
+CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/styles/index.css`. Default theme: **Warm Futuristic Dark** — navy surfaces, UIU orange identity, indigo interactive. A **Warm Neutral Light** theme is also defined under `[data-theme='light']` in the same file (toggled via `theme_preference` on the `users` table and stored in `themeStore`). Full token reference is in `docs/DESIGN.md`.
 
 | Rule | Detail |
 |------|--------|
@@ -283,8 +283,8 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 - Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
 - Redis keys: `{prefix}:{university_id}:{id}`. Never hardcode TTL values — centralise them (see `src/config/redis.ts` for the client; OTP TTL lives in env `OTP_EXPIRES_MINUTES`).
 - DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Connections (`connections`), Profile sections (`profile_experiences`, `profile_education`, `profile_featured`, `profile_views`), Settings (`user_settings`, `push_subscriptions`), Content sync (`content_sync_runs`, `content_attachments`), Audit (`university_audit_log`).
-- Latest migration: `074_seed_uiu_shuttle_routes`. The `follows` table no longer exists (dropped in `052_drop_follows`). Recent additions: `user_settings` (`065`, notification + privacy JSONB), `push_subscriptions` (`066`), `users.deactivated_at` (`067`), `users.last_seen` (`069`), generated `search_vector` columns (`070`), `posts` feed-ranking columns (`071`), `posts` lifecycle columns (`072_add_post_lifecycle` — `publish_at`/`archived_at`/`expires_at`, with a reconciliation cron that flips scheduled→published and published→archived; derived states draft/scheduled/published/archived are computed, not an enum), per-university-unique `users.username` (`072_add_username_to_users`), and the `driver` role + shuttle estimation params (`073`).
-- **Migration number collision:** there are two `072_` files (`072_add_post_lifecycle`, `072_add_username_to_users`). Avoid re-using a prefix when adding the next migration — start from `075_`.
+- Latest migration: `076_add_news_source_published_at` (`news.source_published_at` — original WordPress publish date, used to pick the single featured/latest notice). Migration `075_add_content_sync_entries_per_source` adds `university_settings.content_sync_entries_per_source` (newest items fetched per source per run, default 5). The `follows` table no longer exists (dropped in `052_drop_follows`). Recent additions: `user_settings` (`065`, notification + privacy JSONB), `push_subscriptions` (`066`), `users.deactivated_at` (`067`), `users.last_seen` (`069`), generated `search_vector` columns (`070`), `posts` feed-ranking columns (`071`), `posts` lifecycle columns (`072_add_post_lifecycle` — `publish_at`/`archived_at`/`expires_at`, with a reconciliation cron that flips scheduled→published and published→archived; derived states draft/scheduled/published/archived are computed, not an enum), per-university-unique `users.username` (`072_add_username_to_users`), and the `driver` role + shuttle estimation params (`073`).
+- **Migration number collision:** there are two `072_` files (`072_add_post_lifecycle`, `072_add_username_to_users`). Avoid re-using a prefix when adding the next migration — start from `077_`.
 
 ---
 
