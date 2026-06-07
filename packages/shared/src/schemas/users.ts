@@ -91,6 +91,8 @@ export const publicUserProfileSchema = z.object({
   connectionStatus: z.enum(['none', 'pending_sent', 'pending_received', 'connected']),
   connectionId: z.string().uuid().nullable(),
   mutualConnections: z.number().int().nonnegative(),
+  /** True when the viewer has muted this user's posts (false on own profile). */
+  isMutedByViewer: z.boolean().optional(),
   stats: z.object({
     connections: z.number().int().nonnegative(),
     pendingReceived: z.number().int().nonnegative(),

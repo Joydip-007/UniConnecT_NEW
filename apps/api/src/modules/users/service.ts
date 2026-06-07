@@ -11,6 +11,7 @@ import {
   evaluateTier,
   loadPrivacy,
 } from './privacy.service'
+import { moderationService } from '../moderation/service'
 import type {
   EducationInput,
   ExperienceInput,
@@ -180,6 +181,11 @@ export class UsersService {
     // Deactivated accounts are hidden from everyone except their owner.
     if (!user.is_active && currentUserId !== targetUserId) throw notFound('User not found')
 
+    // Moderation: a block in either direction hides the profile entirely (and skips the view record).
+    if (currentUserId !== targetUserId && (await moderationService.isBlockedBetween(currentUserId, targetUserId))) {
+      throw notFound('User not found')
+    }
+
     // Upsert profile view (fire-and-forget, don't await)
     if (currentUserId !== targetUserId) {
       void db('profile_views').insert({
@@ -239,6 +245,11 @@ export class UsersService {
     const isConnected = connectionStatus === 'connected' || !!mentorshipRow
     const isOwnProfile = currentUserId === targetUserId
 
+    // Whether the viewer has muted this user's posts (drives the profile action menu).
+    const isMutedByViewer = isOwnProfile
+      ? false
+      : Boolean(await db('user_mutes').where({ muter_id: currentUserId, muted_id: targetUserId }).first('id'))
+
     // Privacy: gate contact info by the target's `contact_info` tier, and return a
     // per-section visibility map so the client can render private states gracefully.
     const prefs = await loadPrivacy(targetUserId)
@@ -254,6 +265,7 @@ export class UsersService {
       connectionStatus,
       connectionId,
       mutualConnections: mutualCount,
+      isMutedByViewer,
       visibility: buildSectionVisibility(prefs, facts),
     }
   }

@@ -10,6 +10,7 @@ import { useMutation } from '@tanstack/react-query'
 import {
   Archive,
   Bookmark,
+  Flag,
   MessageCircle,
   MoreVertical,
   Share2,
@@ -25,6 +26,7 @@ import { ReactionBtn } from '@/components/Button'
 import { ShareMenu } from '@/components/ShareMenu'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { AttachmentList } from '@/features/content-sync'
+import { ReportModal } from '@/features/moderation'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
 import { useSavePost } from '@/features/feed/hooks/useSavePost'
@@ -167,12 +169,14 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
 // ── ThreeDotMenu ──────────────────────────────────────────────────────────────
 
 interface ThreeDotMenuProps {
+  canEdit: boolean
   onEdit: () => void
   onDelete: () => void
   onArchive: () => void
+  onReport: () => void
 }
 
-function ThreeDotMenu({ onEdit, onDelete, onArchive }: ThreeDotMenuProps) {
+function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport }: ThreeDotMenuProps) {
   const [open, setOpen] = useState(false)
 
   function handleDelete() {
@@ -232,9 +236,15 @@ function ThreeDotMenu({ onEdit, onDelete, onArchive }: ThreeDotMenuProps) {
                 transformOrigin: 'top right',
               }}
             >
-              <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={() => { setOpen(false); onEdit() }} />
-              <MenuBtn icon={<Archive size={13} strokeWidth={1.5} />} label="Archive" onClick={handleArchive} />
-              <MenuBtn icon={<Trash2 size={13} strokeWidth={1.5} />} label="Delete" onClick={handleDelete} danger />
+              {canEdit ? (
+                <>
+                  <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={() => { setOpen(false); onEdit() }} />
+                  <MenuBtn icon={<Archive size={13} strokeWidth={1.5} />} label="Archive" onClick={handleArchive} />
+                  <MenuBtn icon={<Trash2 size={13} strokeWidth={1.5} />} label="Delete" onClick={handleDelete} danger />
+                </>
+              ) : (
+                <MenuBtn icon={<Flag size={13} strokeWidth={1.5} />} label="Report" onClick={() => { setOpen(false); onReport() }} danger />
+              )}
             </motion.div>
           </>
         )}
@@ -305,6 +315,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const [localLikeCount, setLocalLikeCount] = useState(post.reactionCounts.like)
   const [localSaved, setLocalSaved] = useState(post.isSaved)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const reactionMutation = useUpsertReaction(post.id)
   const saveMutation = useSavePost(post.id)
@@ -389,11 +400,13 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
             </p>
           </div>
-          {canEdit && (
+          {user && (
             <ThreeDotMenu
+              canEdit={!!canEdit}
               onEdit={() => onEditPost(post)}
               onDelete={() => deleteMutation.mutate(post.id)}
               onArchive={() => archiveMutation.mutate(post.id)}
+              onReport={() => setReportOpen(true)}
             />
           )}
         </div>
@@ -509,6 +522,14 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
           onClose={() => setLightboxIndex(null)}
         />
       )}
+
+      <ReportModal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="post"
+        targetId={post.id}
+        targetLabel="this post"
+      />
     </article>
   )
 }

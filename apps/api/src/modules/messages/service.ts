@@ -3,6 +3,7 @@ import { db } from '../../config/db'
 import { enqueuePush } from '../push/service'
 import { getIo } from '../../socket'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
+import { moderationService } from '../moderation/service'
 import type {
   CreateConversationInput,
   CreateMessageInput,
@@ -115,6 +116,11 @@ export class MessagesService {
     }
 
     await assertUsersInUniversity([input.participantId], context.universityId)
+
+    // Moderation: a block in either direction blocks direct messaging.
+    if (await moderationService.isBlockedBetween(context.userId, input.participantId)) {
+      throw forbidden('You cannot message this user', 'USER_BLOCKED')
+    }
 
     // Direct conversations are gated by the target's `messages` privacy tier.
     // Backward-compat: when the tier was never explicitly set, derive it from the
@@ -251,11 +257,18 @@ export class MessagesService {
 
     // Re-check connection for direct conversations (handles post-disconnect edge case)
     if (!conversation.is_group && conversation.type === 'direct') {
-      if (context.role !== 'admin') {
-        const otherParticipants = (await getParticipantsForConversations([convId]))
-          .get(convId)
-          ?.filter((p) => p.userId !== context.userId) ?? []
+      const otherParticipants = (await getParticipantsForConversations([convId]))
+        .get(convId)
+        ?.filter((p) => p.userId !== context.userId) ?? []
 
+      // Moderation: a block in either direction stops messaging (applies to all roles).
+      for (const other of otherParticipants) {
+        if (await moderationService.isBlockedBetween(context.userId, other.userId)) {
+          throw forbidden('You cannot message this user', 'USER_BLOCKED')
+        }
+      }
+
+      if (context.role !== 'admin') {
         for (const other of otherParticipants) {
           const targetProfile = await db('profiles')
             .where({ user_id: other.userId })

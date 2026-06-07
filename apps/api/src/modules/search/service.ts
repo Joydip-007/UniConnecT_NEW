@@ -138,6 +138,15 @@ export async function searchPeople(
         .whereRaw('user_settings.user_id = u.id')
         .whereRaw("user_settings.privacy_preferences->>'discoverable' = 'false'")
     })
+    // Moderation: hide anyone blocked in either direction relative to the requester.
+    .whereNotExists(function () {
+      this.select(db.raw('1'))
+        .from('user_blocks as ub')
+        .whereRaw(
+          '(ub.blocker_id = ? AND ub.blocked_id = u.id) OR (ub.blocked_id = ? AND ub.blocker_id = u.id)',
+          [requesterId, requesterId],
+        )
+    })
 
   if (filters.q) applyTextSearch(baseQuery, 'p.search_vector', 'p.full_name', filters.q)
   if (filters.role) baseQuery.where('u.role', filters.role)

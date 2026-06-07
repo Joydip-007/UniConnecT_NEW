@@ -5,6 +5,7 @@ import { Badge } from '@/components/Badge'
 import { GhostBtn } from '@/components/Button'
 import { ShareMenu } from '@/components/ShareMenu'
 import { ConnectButton } from '@/features/connections'
+import { UserActionsMenu } from '@/features/moderation'
 import { PresenceLabel, usePresence } from '@/features/presence'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
@@ -88,13 +89,16 @@ export function ProfileHeader({
           {isOwnProfile ? (
             <GhostBtn onClick={onEdit}>Edit profile</GhostBtn>
           ) : (
-            <ConnectButton
-              targetUserId={user.id}
-              targetName={fullName}
-              connectionStatus={user.connectionStatus}
-              connectionId={user.connectionId}
-              size="md"
-            />
+            <>
+              <ConnectButton
+                targetUserId={user.id}
+                targetName={fullName}
+                connectionStatus={user.connectionStatus}
+                connectionId={user.connectionId}
+                size="md"
+              />
+              <UserActionsMenu userId={user.id} userName={fullName} isMuted={user.isMutedByViewer ?? false} />
+            </>
           )}
         </div>
 

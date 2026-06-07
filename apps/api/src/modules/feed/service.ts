@@ -6,6 +6,7 @@ import { badRequest, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
 import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput } from './schema'
 import { notificationsService } from '../notifications/service'
+import { moderationService } from '../moderation/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
 import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
 
@@ -100,12 +101,16 @@ export class FeedService {
   async listPosts(universityId: string, userId: string, query: PostListQuery) {
     const isTop = query.sort === 'top'
 
+    // Moderation: never surface posts from blocked (either direction) or muted authors.
+    const hiddenAuthorIds = await moderationService.getHiddenAuthorIds(userId)
+
     // Drafts (is_published = false) never appear in the public feed — only in the author's Drafts view.
     // Archived posts (archived_at set) are likewise hidden from every public list.
     const countQuery = db('posts')
       .where('posts.university_id', universityId)
       .andWhere('posts.is_published', true)
       .whereNull('posts.archived_at')
+    if (hiddenAuthorIds.length) countQuery.whereNotIn('posts.author_id', hiddenAuthorIds)
     if (query.type) countQuery.andWhere('posts.type', query.type)
     if (query.authorId) countQuery.andWhere('posts.author_id', query.authorId)
     // "Top" only ranks the recent window, so the count must match.
@@ -122,6 +127,7 @@ export class FeedService {
       .andWhere('posts.is_published', true)
       .whereNull('posts.archived_at')
       .modify((builder) => {
+        if (hiddenAuthorIds.length) builder.whereNotIn('posts.author_id', hiddenAuthorIds)
         if (query.type) builder.andWhere('posts.type', query.type)
         if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
       })
