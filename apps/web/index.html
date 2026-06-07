@@ -9,28 +9,8 @@
     <meta name="description" content="The private social network for universities — connecting students, alumni, and faculty in one place. Free for UIU students." />
     <meta property="og:title" content="UniConnecT — Your campus. One place." />
     <meta property="og:description" content="The private social network for universities — connecting students, alumni, and faculty in one place. Free for UIU students." />
-    <script>
-      (function () {
-        try {
-          var stored = localStorage.getItem('uc.theme')
-          var mode =
-            stored === 'light' || stored === 'dark' || stored === 'system'
-              ? stored
-              : 'system'
-          var resolved =
-            mode === 'system'
-              ? window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light'
-              : mode
-          document.documentElement.setAttribute('data-theme', resolved)
-          document.documentElement.setAttribute('data-theme-mode', mode)
-        } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'dark')
-          document.documentElement.setAttribute('data-theme-mode', 'system')
-        }
-      })()
-    </script>
+    <!-- Render-blocking, external (not inline) so a strict CSP allows it; resolves theme before paint. -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
