@@ -8,18 +8,35 @@
 1. **Feature:** Users have no way to attach files (documents/images) to notices (news),
    events, jobs, or feed posts. Only the content-sync importer can attach files to
    news/events, and only via automated capture.
-2. **Production bug (related):** Notices that should carry attachments show none.
-   Diagnosis: the production `content_attachments` table is **empty** — the content-sync
-   parser never extracts attachment URLs from notice content, so nothing is ever
-   enqueued/persisted. This is an upstream parsing gap (tracked separately). The feature
-   below is the immediate remedy: admins can manually attach the file to a notice.
+2. **Production bug (in scope):** Notices that should carry attachments show none —
+   the production `content_attachments` table is **empty**.
+
+   **Root cause (confirmed with live data, 2026-06-07):** the extraction code is correct
+   (verified end-to-end: regex → `skyvernAttachmentSchema {url, fileName}` → worker →
+   `content_attachments`). The real causes are:
+   - **Coverage:** prod has 6 successful runs / 10 imported notices, but the
+     attachment-bearing notices (UIU scholarship `.pdf`, mid-term schedule `.xlsx`, dated
+     April) sit at source positions 14–17, **beyond the newest-5 fetch window**
+     (`entriesPerSource` default 5). The newest notices are text-only, so no attachments
+     were ever imported.
+   - **Idempotency:** attachments are only captured at *first import*. A known/imported
+     source URL is skipped wholesale on later runs
+     (`if (knownSourceUrls.includes(...)) continue`), so attachments added/edited after
+     import never heal.
+
+   Two remedies, both in scope: (a) the manual-upload feature lets admins attach a file
+   directly; (b) the **auto-capture fix** below makes capture idempotent and adds a
+   one-time backfill so historical PDF notices import with their attachments.
 
 ## Scope
 
-- **In scope:** user-uploaded attachments (documents + images) on **news (notices),
-  events, jobs, posts** via the existing presigned-upload flow.
-- **Out of scope:** fixing the content-sync parser's attachment extraction (separate
-  follow-up); changing the posts image gallery (`media_urls`) behaviour.
+- **In scope:**
+  1. User-uploaded attachments (documents + images) on **news (notices), events, jobs,
+     posts** via the existing presigned-upload flow.
+  2. **Content-sync auto-capture fix** — idempotent re-capture + one-time backfill so
+     imported notices/events pick up their source attachments.
+- **Out of scope:** changing the posts image gallery (`media_urls`) behaviour; verifying
+  the attachment-download → R2 path (assumed working; issues surface on first backfill).
 
 ## Decisions (locked with user)
 
@@ -121,6 +138,48 @@ Composer/edit wiring:
 - **Posts:** existing `media_urls` image gallery stays untouched; attachments render as a
   separate row of file chips.
 
+## Content-sync auto-capture fix
+
+Goal: imported notices/events reliably acquire their source attachments — both for new
+items and for already-imported ones — and historical PDF notices get backfilled.
+
+### 1. Idempotent capture
+
+- `enqueueAttachments` (worker) becomes **idempotent**: before inserting each attachment,
+  skip any where a row already exists for `(entity_type, entity_id, source_url)`. Only
+  newly-inserted rows get an `attachment-download` job enqueued. Safe to call repeatedly.
+- `runSync` no longer `continue`s past known source URLs wholesale. Flow per fetched item:
+  - **New** (`sourceUrl` not known) → insert entity + `enqueueAttachments` (as today).
+  - **Known** (already imported) → look up its existing `(entityType, entityId)` and call
+    `enqueueAttachments` so any source attachments missing from `content_attachments` are
+    captured. No entity re-insert, no duplicate `items_new` count.
+- New loader `loadImportedEntitiesBySourceUrl(universityId)` → `Map<sourceUrl,
+  {entityType, entityId}>` (covers imported news + events). `loadKnownSourceUrls` can be
+  derived from its keys.
+
+### 2. One-time backfill (admin-triggered)
+
+- `POST /admin/content-sync/run` body gains `{ backfill?: boolean }` (Zod
+  `runContentSyncSchema`). When `backfill` is true, the run fetches a **larger window**
+  (`BACKFILL_PER_SOURCE = 50`) for that run only — stored `entriesPerSource` config is
+  untouched.
+- Plumbing: the `sync-run` Bull job gains optional `entriesPerSource?: number`;
+  `fetchContentItems` accepts a `perSourceOverride` option that takes precedence over
+  `config.entriesPerSource`.
+- Effect: historical attachment-bearing notices (positions > 5) import as new items and
+  capture their attachments; known items heal via the idempotent path above.
+- Frontend: the content-sync admin panel's run control gets a **"Backfill attachments"**
+  option (checkbox or secondary button) that sets `backfill: true`.
+
+### 3. Testing
+
+- `enqueueAttachments` idempotency: second call with the same item inserts no duplicate
+  rows and enqueues no new download jobs.
+- `runSync` known-item path: a known item whose source gained an attachment gets a new
+  `content_attachments` row; an item whose attachments already exist gets none; `items_new`
+  is not incremented for known items.
+- `fetchContentItems` honours `perSourceOverride`.
+
 ## Error handling
 
 - Over-limit count or disallowed type → `badRequest()` from the service helper; client
@@ -144,6 +203,7 @@ Frontend (`@testing-library/react` + MSW):
 
 ## Follow-ups (not in this spec)
 
-- Fix content-sync parser to extract attachment URLs from notice/event content so
-  auto-capture repopulates `content_attachments`.
+- Widen `extractAttachments` to also resolve WordPress "attachment page" links
+  (`?attachment_id=`) and relative URLs (UIU uses direct absolute file URLs, so not needed
+  now).
 - Optional: attachment-count badge on feed/job/event list cards.
