@@ -116,13 +116,17 @@ export class NewsService {
 
   async updateNews(context: AuthContext, newsId: string, input: UpdateNewsInput) {
     const existing = await db('news')
-      .select<{ id: string; author_id: string; is_published: boolean; title: string; category: string }[]>(
-        'id',
-        'author_id',
-        'is_published',
-        'title',
-        'category',
-      )
+      .select<
+        {
+          id: string
+          author_id: string
+          is_published: boolean
+          title: string
+          category: string
+          is_imported: boolean
+          source_published_at: Date | null
+        }[]
+      >('id', 'author_id', 'is_published', 'title', 'category', 'is_imported', 'source_published_at')
       .where({ id: newsId, university_id: context.universityId })
       .first()
 
@@ -133,6 +137,13 @@ export class NewsService {
 
     const publishingNow = input.is_published === true && !existing.is_published
     const effectiveCategory = input.category ?? existing.category
+    // Imported items publish at their original source date (so a backdated notice
+    // lands at its real position in the feed); native posts publish at "now".
+    const publishedAtValue = publishingNow
+      ? existing.is_imported && existing.source_published_at
+        ? existing.source_published_at
+        : db.fn.now()
+      : undefined
     await db('news')
       .where({ id: newsId, university_id: context.universityId })
       .update({
@@ -144,7 +155,7 @@ export class NewsService {
           category: input.category,
           is_published: input.is_published,
           is_pinned: input.is_pinned,
-          published_at: publishingNow ? db.fn.now() : undefined,
+          published_at: publishedAtValue,
         }),
         updated_at: db.fn.now(),
       })

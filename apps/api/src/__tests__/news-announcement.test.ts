@@ -65,4 +65,14 @@ describe('notice announcement', () => {
     expect(announced).toHaveLength(1)
     expect(announced[0]!.title).toBe(`${TITLE_PREFIX} Newest`) // latest by source date, not publish order
   })
+
+  it('publishes an imported notice at its original source date, not at "now"', async () => {
+    const id = await makeNotice('Backdated', '2025-09-15T00:00:00Z')
+
+    const res = await publish(id)
+    expect(res.status).toBe(200)
+
+    const row = await db('news').where({ id }).first<{ published_at: Date }>('published_at')
+    expect(new Date(row!.published_at).toISOString()).toBe('2025-09-15T00:00:00.000Z')
+  })
 })
