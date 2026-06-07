@@ -594,7 +594,13 @@ export class UsersService {
       db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d7).count<CountRow[]>('*'),
       db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d30).count<CountRow[]>('*'),
       db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d90).count<CountRow[]>('*'),
-      db('reactions').join('posts', 'posts.id', 'reactions.post_id').where('posts.author_id', userId).andWhere('posts.university_id', universityId).count<CountRow[]>('*'),
+      db('reactions')
+        // reactions are polymorphic (target_type/target_id), not a direct post_id FK.
+        .join('posts', 'posts.id', 'reactions.target_id')
+        .where('reactions.target_type', 'post')
+        .andWhere('posts.author_id', userId)
+        .andWhere('posts.university_id', universityId)
+        .count<CountRow[]>('*'),
       db('comments').join('posts', 'posts.id', 'comments.post_id').where('posts.author_id', userId).andWhere('posts.university_id', universityId).count<CountRow[]>('*'),
     ])
 
