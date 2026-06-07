@@ -13,6 +13,13 @@ const PER_PAGE = 5
 const MAX_BODY_CHARS = 20000
 const DOC_EXT = /\.(pdf|docx?|xlsx?|pptx?|zip|csv|txt)(\?|#|$)/i
 
+// WordPress-probe resilience knobs. A transient upstream blip (5xx, network
+// reset, slow origin) must NOT escalate a known-WordPress tenant into the
+// 10-min-per-source Skyvern browser fallback — it just retries the cheap path.
+const DEFAULT_HTTP_TIMEOUT_MS = 10000
+const DEFAULT_HTTP_RETRIES = 2
+const DEFAULT_RETRY_DELAY_MS = 500
+
 type RawItem = Record<string, unknown>
 type Grouped = Record<ContentSyncSource, RawItem[]>
 
@@ -21,10 +28,39 @@ interface SourceSpec {
   url: string | null
 }
 
+export interface FetchContentOptions {
+  /** Per-request abort timeout for the WordPress probe (ms). */
+  timeoutMs?: number
+  /** Extra attempts after the first, for transient failures. */
+  retries?: number
+  /** Delay between transient retries (ms). */
+  retryDelayMs?: number
+}
+
+/**
+ * Outcome of probing a source via the WordPress REST API:
+ * - `items`         → WordPress answered; use these (may be empty).
+ * - `not-wordpress` → definitively not a WP REST endpoint (404 / non-array / bad URL);
+ *                     eligible for the Skyvern browser fallback.
+ * - `transient`     → WordPress *should* work but the request failed (5xx / network /
+ *                     timeout). Do NOT escalate to Skyvern — skip this source this run.
+ */
+type ProbeResult =
+  | { kind: 'items'; items: RawItem[] }
+  | { kind: 'not-wordpress' }
+  | { kind: 'transient' }
+
 export async function fetchContentItems(
   config: ContentSyncConfig,
   knownSourceUrls: string[],
+  options: FetchContentOptions = {},
 ): Promise<Grouped> {
+  const opts = {
+    timeoutMs: options.timeoutMs ?? DEFAULT_HTTP_TIMEOUT_MS,
+    retries: options.retries ?? DEFAULT_HTTP_RETRIES,
+    retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
+  }
+
   const specs: SourceSpec[] = [
     { source: 'news', url: config.newsUrl },
     { source: 'notice', url: config.noticeUrl },
@@ -36,12 +72,18 @@ export async function fetchContentItems(
 
   for (const spec of specs) {
     if (!spec.url) continue
-    const items = await tryWordPress(spec)
-    if (items) {
-      grouped[spec.source] = items
-      logger.info('Content source: WordPress REST', { source: spec.source, count: items.length })
-    } else {
+    const result = await probeWordPress(spec, opts)
+    if (result.kind === 'items') {
+      grouped[spec.source] = result.items
+      logger.info('Content source: WordPress REST', { source: spec.source, count: result.items.length })
+    } else if (result.kind === 'not-wordpress') {
       skyvernSources.push(spec)
+    } else {
+      // Transient: the WordPress path is the right one for this site, it just
+      // hiccupped. Skip this source rather than burning a 10-min Skyvern run.
+      logger.warn('WordPress source temporarily unavailable; skipping this run (not escalating to Skyvern)', {
+        source: spec.source,
+      })
     }
   }
 
@@ -72,47 +114,96 @@ export async function fetchContentItems(
 // ---------------------------------------------------------------------------
 
 /**
- * Attempts to fetch a source via the WordPress REST API. Returns null (so the caller
- * falls back to Skyvern) if the site is not WordPress or the post type is unavailable.
+ * Probes a source via the WordPress REST API, retrying transient failures so a
+ * momentary upstream/network blip never escalates a real WordPress tenant into
+ * the expensive Skyvern fallback. Only a *definitive* non-WordPress signal
+ * (`not-wordpress`) makes the caller try Skyvern.
  */
-async function tryWordPress(spec: SourceSpec): Promise<RawItem[] | null> {
-  if (!spec.url) return null
+async function probeWordPress(
+  spec: SourceSpec,
+  opts: { timeoutMs: number; retries: number; retryDelayMs: number },
+): Promise<ProbeResult> {
+  for (let attempt = 0; attempt <= opts.retries; attempt += 1) {
+    const result = await attemptWordPress(spec, opts.timeoutMs)
+    if (result.kind !== 'transient') return result
+    if (attempt < opts.retries) {
+      logger.warn('WordPress REST probe failed transiently; retrying', {
+        source: spec.source,
+        attempt: attempt + 1,
+      })
+      if (opts.retryDelayMs > 0) await delay(opts.retryDelayMs)
+    }
+  }
+  return { kind: 'transient' }
+}
+
+/** A single WordPress REST attempt, bounded by an abort timeout. */
+async function attemptWordPress(spec: SourceSpec, timeoutMs: number): Promise<ProbeResult> {
+  if (!spec.url) return { kind: 'not-wordpress' }
   let parsed: URL
   try {
     parsed = new URL(spec.url)
   } catch {
-    return null
+    return { kind: 'not-wordpress' }
   }
 
   const postType = parsed.pathname.split('/').filter(Boolean).pop()
-  if (!postType) return null
+  if (!postType) return { kind: 'not-wordpress' }
 
   const endpoint =
     `${parsed.origin}/wp-json/wp/v2/${encodeURIComponent(postType)}` +
     `?per_page=${PER_PAGE}&_embed=1&orderby=date&order=desc`
 
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  let res: Response
   try {
-    // A real browser UA + JSON Accept maximizes the chance non-Cloudflare WAFs serve the
-    // REST API (the free path). Sites behind a JS challenge (e.g. BRACU/Cloudflare) still
-    // 403 here and correctly fall through to the Skyvern browser path.
-    const res = await fetch(endpoint, {
+    // A real browser UA + JSON Accept maximizes the chance the origin serves the REST API.
+    res = await fetch(endpoint, {
+      signal: controller.signal,
       headers: {
         'user-agent':
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
         accept: 'application/json',
       },
     })
-    if (!res.ok) return null
-    const data: unknown = await res.json()
-    if (!Array.isArray(data)) return null
-    return data.map((item) => mapWordPressItem(spec.source, item as RawItem)).filter((x): x is RawItem => x !== null)
   } catch (error) {
-    logger.warn('WordPress REST probe failed; will fall back', {
+    // Network error, DNS failure, or our own abort timeout — all transient.
+    logger.warn('WordPress REST probe errored; treating as transient', {
       source: spec.source,
       error: error instanceof Error ? error.message : String(error),
     })
-    return null
+    return { kind: 'transient' }
+  } finally {
+    clearTimeout(timer)
   }
+
+  // 404 → the post type / wp-json route does not exist here: genuinely not WordPress.
+  if (res.status === 404) return { kind: 'not-wordpress' }
+  // Other non-2xx (5xx, 429, 403, …) → the site likely IS WordPress but is briefly
+  // unhappy. Transient, so we retry rather than escalate to Skyvern.
+  if (!res.ok) {
+    logger.warn('WordPress REST probe returned a transient status', { source: spec.source, status: res.status })
+    return { kind: 'transient' }
+  }
+
+  let data: unknown
+  try {
+    data = await res.json()
+  } catch {
+    // 200 but not JSON — not a REST endpoint (e.g. an HTML page).
+    return { kind: 'not-wordpress' }
+  }
+  if (!Array.isArray(data)) return { kind: 'not-wordpress' }
+
+  const items = data
+    .map((item) => mapWordPressItem(spec.source, item as RawItem))
+    .filter((x): x is RawItem => x !== null)
+  return { kind: 'items', items }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function mapWordPressItem(source: ContentSyncSource, item: RawItem): RawItem | null {
