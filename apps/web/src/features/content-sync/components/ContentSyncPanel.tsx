@@ -73,28 +73,37 @@ export function ContentSyncPanel() {
   const lastRun = (runs ?? [])[0]
   const hasSource = Boolean(draft.newsUrl || draft.noticeUrl || draft.eventUrl)
 
-  function save() {
-    setError(null)
-    updateConfig.mutate(
-      {
-        newsUrl: draft.newsUrl || null,
-        noticeUrl: draft.noticeUrl || null,
-        eventUrl: draft.eventUrl || null,
-        enabled: draft.enabled,
-        entriesPerSource: Math.min(50, Math.max(1, draft.entriesPerSource || 5)),
-      },
-      {
-        onSuccess: () => {
-          setSavedMsg('Settings saved.')
-          setTimeout(() => setSavedMsg(null), 4000)
-        },
-        onError: (e) => setError(extractError(e, 'Could not save settings.')),
-      },
-    )
+  function configPayload() {
+    return {
+      newsUrl: draft.newsUrl || null,
+      noticeUrl: draft.noticeUrl || null,
+      eventUrl: draft.eventUrl || null,
+      enabled: draft.enabled,
+      entriesPerSource: Math.min(50, Math.max(1, draft.entriesPerSource || 5)),
+    }
   }
 
-  function sync() {
+  function save() {
     setError(null)
+    updateConfig.mutate(configPayload(), {
+      onSuccess: () => {
+        setSavedMsg('Settings saved.')
+        setTimeout(() => setSavedMsg(null), 4000)
+      },
+      onError: (e) => setError(extractError(e, 'Could not save settings.')),
+    })
+  }
+
+  // Persist any unsaved edits (e.g. a changed entry count) before running, so a
+  // sync always uses what's currently in the form — not a stale saved value.
+  async function sync() {
+    setError(null)
+    try {
+      await updateConfig.mutateAsync(configPayload())
+    } catch (e) {
+      setError(extractError(e, 'Could not save settings.'))
+      return
+    }
     triggerSync.mutate(undefined, {
       onError: (e) => setError(extractError(e, 'Could not start sync.')),
     })
@@ -153,7 +162,10 @@ export function ContentSyncPanel() {
           <PrimaryBtn onClick={save} disabled={updateConfig.isPending}>
             {updateConfig.isPending ? 'Saving…' : 'Save settings'}
           </PrimaryBtn>
-          <GhostBtn onClick={sync} disabled={!draft.enabled || !hasSource || isRunning || triggerSync.isPending}>
+          <GhostBtn
+            onClick={() => void sync()}
+            disabled={!draft.enabled || !hasSource || isRunning || triggerSync.isPending || updateConfig.isPending}
+          >
             <RefreshCw size={14} style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }} />
             {isRunning ? 'Syncing…' : 'Sync now'}
           </GhostBtn>
