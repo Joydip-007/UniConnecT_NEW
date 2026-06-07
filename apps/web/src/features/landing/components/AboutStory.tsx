@@ -139,7 +139,7 @@ export function AboutStory() {
   return (
     <div ref={rootRef}>
       {/* 00 — Intro */}
-      <StoryPanel index={0} num="00" label="The story" accent="var(--uc-indigo-l)" bg="var(--surface-page)">
+      <StoryPanel index={0} num="00" label="The story" accent="var(--uc-indigo-l)" bg="color-mix(in srgb, var(--uc-indigo) 6%, var(--surface-page))">
         <h1 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           A campus, online — without the rest of the internet.
         </h1>
@@ -150,7 +150,7 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 01 — Who we are */}
-      <StoryPanel index={1} num="01" label="Who we are" accent="var(--uc-orange-l)" bg="var(--surface-card)">
+      <StoryPanel index={1} num="01" label="Who we are" accent="var(--uc-orange-l)" bg="color-mix(in srgb, var(--uc-orange) 6%, var(--surface-page))">
         <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           Team Mavericks, building at UIU.
         </h2>
@@ -162,7 +162,7 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 02 — Why we built it */}
-      <StoryPanel index={2} num="02" label="Why it exists" accent="var(--uc-cyan)" bg="var(--surface-page)">
+      <StoryPanel index={2} num="02" label="Why it exists" accent="var(--uc-cyan)" bg="color-mix(in srgb, var(--uc-cyan) 6%, var(--surface-page))">
         <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           The campus network keeps disappearing.
         </h2>
@@ -178,7 +178,7 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 03 — What we believe */}
-      <StoryPanel index={3} num="03" label="What we believe" accent="var(--uc-mint)" bg="var(--surface-card)">
+      <StoryPanel index={3} num="03" label="What we believe" accent="var(--uc-mint)" bg="color-mix(in srgb, var(--uc-mint) 6%, var(--surface-page))">
         <h2 className="uc-story-heading" style={{ margin: '0 0 48px', color: 'var(--text-primary)' }}>
           Three things we will not compromise on.
         </h2>
@@ -205,7 +205,7 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 04 — The team */}
-      <StoryPanel index={4} num="04" label="The team" accent="var(--uc-indigo-l)" bg="var(--surface-page)">
+      <StoryPanel index={4} num="04" label="The team" accent="var(--uc-indigo-l)" bg="color-mix(in srgb, var(--uc-indigo) 6%, var(--surface-page))">
         <h2 className="uc-story-heading" style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}>
           Built at UIU, for UIU.
         </h2>
@@ -257,7 +257,7 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 05 — Where we're headed */}
-      <StoryPanel index={5} num="05" label="What's next" accent="var(--uc-orange-l)" bg="var(--uc-orange-bg)">
+      <StoryPanel index={5} num="05" label="What's next" accent="var(--uc-orange-l)" bg="color-mix(in srgb, var(--uc-orange) 12%, var(--surface-page))">
         <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           Every campus deserves its own network.
         </h2>
