@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth'
+import { writeLimiter } from '../../middleware/rateLimiter'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
@@ -19,7 +20,7 @@ export const connectionsRouter = Router()
 
 connectionsRouter.use(requireAuth, resolveUniversity)
 
-connectionsRouter.post('/request/:userId', validate(SendConnectionRequestSchema), sendRequest)
+connectionsRouter.post('/request/:userId', writeLimiter, validate(SendConnectionRequestSchema), sendRequest)
 connectionsRouter.delete('/request/:userId', withdrawRequest)
 connectionsRouter.post('/:connectionId/accept', acceptRequest)
 connectionsRouter.post('/:connectionId/decline', declineRequest)

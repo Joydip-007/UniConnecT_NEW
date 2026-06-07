@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth'
+import { writeLimiter } from '../../middleware/rateLimiter'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
@@ -27,7 +28,7 @@ export const messagesRouter = Router()
 messagesRouter.use(requireAuth, resolveUniversity)
 
 messagesRouter.get('/', listConversations)
-messagesRouter.post('/', validate(CreateConversationSchema), createConversation)
+messagesRouter.post('/', writeLimiter, validate(CreateConversationSchema), createConversation)
 messagesRouter.get('/:convId', getConversation)
 messagesRouter.patch('/:convId', validate(UpdateConversationSchema), updateConversation)
 messagesRouter.delete('/:convId/leave', leaveConversation)
