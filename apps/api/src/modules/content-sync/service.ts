@@ -1,7 +1,10 @@
-import type { ContentSyncConfig, ContentSyncConfigInput } from '@uniconnect/shared'
+import { CONTENT_SYNC_MAX_ENTRIES, type ContentSyncConfig, type ContentSyncConfigInput } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { contentSyncQueue } from '../../queues/content-sync.queue'
 import { badRequest, conflict, notFound } from '../../utils/errors'
+
+/** Per-source fetch window for a one-time backfill run (vs the tenant's normal window). */
+const BACKFILL_PER_SOURCE = CONTENT_SYNC_MAX_ENTRIES
 
 interface SettingsRow {
   content_sync_news_url: string | null
@@ -48,8 +51,13 @@ export class ContentSyncService {
     return this.getConfig(universityId)
   }
 
-  /** Enqueues a sync run. Throws 409 if one is already running, 400 if not enabled/configured. */
-  async triggerRun(universityId: string, triggeredBy: string): Promise<{ runId: string }> {
+  /** Enqueues a sync run. Throws 409 if one is already running, 400 if not enabled/configured.
+   *  `backfill` widens the per-source fetch window for this run only. */
+  async triggerRun(
+    universityId: string,
+    triggeredBy: string,
+    options: { backfill?: boolean } = {},
+  ): Promise<{ runId: string }> {
     const config = await this.getConfig(universityId)
 
     if (!config.enabled) {
@@ -80,6 +88,7 @@ export class ContentSyncService {
       universityId,
       runId: run.id,
       triggeredBy,
+      entriesPerSource: options.backfill ? BACKFILL_PER_SOURCE : undefined,
     })
 
     return { runId: run.id }

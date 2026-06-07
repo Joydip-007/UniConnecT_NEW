@@ -4,7 +4,7 @@ import { db } from '../../config/db'
 import { env } from '../../config/env'
 import { getIo } from '../../socket'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
-import { getAttachmentsFor } from '../content-sync/attachments'
+import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
 import type { AttendeesQuery, CreateEventInput, EventListQuery, PaginationQuery, UpdateEventInput } from './schema'
 
 type EventType = 'general' | 'career_fair' | 'seminar' | 'alumni_meetup' | 'workshop' | 'club'
@@ -112,6 +112,14 @@ export class EventsService {
         .returning<{ id: string }[]>('id')
 
       if (!event) throw badRequest('Event could not be created', 'EVENT_CREATE_FAILED')
+
+      await addUserAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'event',
+        entityId: event.id,
+        uploadedBy: context.userId,
+        attachments: input.attachments ?? [],
+      })
       return event.id
     })
 
@@ -133,23 +141,39 @@ export class EventsService {
     const event = await assertEventInUniversity(eventId, context.universityId)
     assertCanMutateEvent(context, event.organizer_id)
 
-    await db('events')
-      .where({ id: eventId, university_id: context.universityId })
-      .update({
-        ...pickDefined({
-          group_id: input.group_id,
-          title: input.title,
-          description: input.description,
-          location: input.location,
-          is_online: input.is_online,
-          online_link: input.online_link,
-          cover_url: input.cover_url,
-          starts_at: input.starts_at ? new Date(input.starts_at) : undefined,
-          ends_at: input.ends_at ? new Date(input.ends_at) : input.ends_at,
-          capacity: input.capacity,
-          type: input.type,
-        }),
+    await db.transaction(async (trx) => {
+      await trx('events')
+        .where({ id: eventId, university_id: context.universityId })
+        .update({
+          ...pickDefined({
+            group_id: input.group_id,
+            title: input.title,
+            description: input.description,
+            location: input.location,
+            is_online: input.is_online,
+            online_link: input.online_link,
+            cover_url: input.cover_url,
+            starts_at: input.starts_at ? new Date(input.starts_at) : undefined,
+            ends_at: input.ends_at ? new Date(input.ends_at) : input.ends_at,
+            capacity: input.capacity,
+            type: input.type,
+          }),
+        })
+
+      await removeAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'event',
+        entityId: eventId,
+        ids: input.removedAttachmentIds ?? [],
       })
+      await addUserAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'event',
+        entityId: eventId,
+        uploadedBy: context.userId,
+        attachments: input.attachments ?? [],
+      })
+    })
 
     return this.getEvent(context, eventId)
   }

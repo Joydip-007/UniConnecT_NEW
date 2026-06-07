@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { X } from 'lucide-react'
+import type { AttachmentInput } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { AttachmentPicker } from '@/components/AttachmentPicker'
 import { queryClient } from '@/lib/queryClient'
 import type { Job } from './JobCard'
 
@@ -210,6 +212,8 @@ export function PostJobForm({ onClose }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [form, setForm] = useState<JobForm>(EMPTY_FORM)
   const [requirements, setRequirements] = useState<string[]>([])
+  const [attachments, setAttachments] = useState<AttachmentInput[]>([])
+  const [attachmentsUploading, setAttachmentsUploading] = useState(false)
 
   function set(field: keyof JobForm, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -226,6 +230,7 @@ export function PostJobForm({ onClose }: Props) {
           description: form.description,
           requirements,
           isPublished,
+          ...(attachments.length > 0 && { attachments }),
           ...(form.salaryRange.trim() && { salaryRange: form.salaryRange.trim() }),
           ...(form.applicationUrl.trim() && { applicationUrl: form.applicationUrl.trim() }),
           ...(form.deadline && { deadline: new Date(form.deadline).toISOString() }),
@@ -473,6 +478,17 @@ export function PostJobForm({ onClose }: Props) {
             />
           </div>
 
+          {/* Attachments */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Label htmlFor="pjf-attach">Attachments</Label>
+            <AttachmentPicker
+              value={attachments}
+              onChange={setAttachments}
+              onUploadingChange={setAttachmentsUploading}
+              disabled={postMutation.isPending}
+            />
+          </div>
+
           {/* Actions */}
           <div
             style={{
@@ -486,10 +502,10 @@ export function PostJobForm({ onClose }: Props) {
             <GhostBtn type="button" onClick={onClose}>
               Cancel
             </GhostBtn>
-            <GhostBtn type="button" disabled={!isValid || postMutation.isPending} onClick={() => postMutation.mutate(false)}>
+            <GhostBtn type="button" disabled={!isValid || postMutation.isPending || attachmentsUploading} onClick={() => postMutation.mutate(false)}>
               Save as draft
             </GhostBtn>
-            <OrangeBtn type="submit" disabled={!isValid || postMutation.isPending}>
+            <OrangeBtn type="submit" disabled={!isValid || postMutation.isPending || attachmentsUploading}>
               {postMutation.isPending ? 'Posting…' : 'Post job'}
             </OrangeBtn>
           </div>

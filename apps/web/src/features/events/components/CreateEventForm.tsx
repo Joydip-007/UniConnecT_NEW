@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Image, Loader2, MapPin, Monitor, X } from 'lucide-react'
+import type { AttachmentInput, ContentAttachment } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { usePresignedUpload } from '@/hooks/usePresignedUpload'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { AttachmentPicker } from '@/components/AttachmentPicker'
 import { queryClient } from '@/lib/queryClient'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,6 +26,7 @@ export interface EventEditInitial {
   capacity: number | null
   coverUrl: string | null
   isPublished: boolean
+  attachments?: ContentAttachment[]
 }
 
 interface Props {
@@ -143,6 +146,9 @@ export function CreateEventForm({ onClose, initial }: Props) {
   const [coverPreview, setCoverPreview] = useState<string | null>(initial?.coverUrl ?? null)
   const [coverUrl, setCoverUrl]         = useState<string | null>(initial?.coverUrl ?? null)
   const [dateErr, setDateErr]           = useState<string | null>(null)
+  const [attachments, setAttachments]   = useState<AttachmentInput[]>([])
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([])
+  const [attachmentsUploading, setAttachmentsUploading] = useState(false)
   const { upload: uploadCover, uploading: coverUploading, error: uploadErr, reset: resetUploadErr } = usePresignedUpload('events')
 
   function set<K extends keyof EventForm>(field: K, value: EventForm[K]) {
@@ -184,11 +190,15 @@ export function CreateEventForm({ onClose, initial }: Props) {
         endsAt: new Date(form.endsAt).toISOString(),
         capacity: form.capacity ? parseInt(form.capacity, 10) : null,
         coverUrl: coverUrl ?? null,
+        attachments: attachments.length > 0 ? attachments : undefined,
       }
       // Events publish via a dedicated PATCH /events/:id/publish route, so the update
       // payload intentionally omits isPublished (UpdateEventSchema rejects it).
       return initial
-        ? api.patch(`/events/${initial.id}`, content)
+        ? api.patch(`/events/${initial.id}`, {
+            ...content,
+            removedAttachmentIds: removedAttachmentIds.length > 0 ? removedAttachmentIds : undefined,
+          })
         : api.post('/events', { ...content, isPublished: form.isPublished })
     },
     onSuccess: () => {
@@ -549,6 +559,20 @@ export function CreateEventForm({ onClose, initial }: Props) {
             )}
           </div>
 
+          {/* Attachments */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Label htmlFor="cef-attach">Attachments</Label>
+            <AttachmentPicker
+              value={attachments}
+              onChange={setAttachments}
+              existing={initial?.attachments}
+              removedIds={removedAttachmentIds}
+              onRemovedIdsChange={setRemovedAttachmentIds}
+              onUploadingChange={setAttachmentsUploading}
+              disabled={saveMutation.isPending}
+            />
+          </div>
+
           {/* Starts at + Ends at */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -660,7 +684,7 @@ export function CreateEventForm({ onClose, initial }: Props) {
             </GhostBtn>
             <OrangeBtn
               type="submit"
-              disabled={!isValid || coverUploading || saveMutation.isPending}
+              disabled={!isValid || coverUploading || attachmentsUploading || saveMutation.isPending}
             >
               {saveMutation.isPending
                 ? 'Saving…'

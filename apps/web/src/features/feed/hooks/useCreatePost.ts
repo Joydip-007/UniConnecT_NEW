@@ -1,12 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
-import type { FeedPost } from '@uniconnect/shared'
+import type { AttachmentInput, FeedPost } from '@uniconnect/shared'
 import { POSTS_FEED_KEY, type FeedInfiniteData, type FeedPage } from './usePosts'
 
 export interface CreatePostInput {
   type: 'post' | 'announcement' | 'lost_found' | 'event_promo'
   content: string
   media_urls?: string[]
+  attachments?: AttachmentInput[]
   poll?: { question: string; options: string[]; expires_at?: string | null }
   group_id?: string | null
   /** false → save as a private draft; it must NOT be inserted into the live feed. */

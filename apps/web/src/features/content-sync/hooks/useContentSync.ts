@@ -31,8 +31,10 @@ export function useUpdateContentSyncConfig() {
 export function useTriggerSync() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      api.post<{ data: { runId: string } }>('/admin/content-sync/run').then((r) => r.data.data),
+    mutationFn: (options: { backfill?: boolean } = {}) =>
+      api
+        .post<{ data: { runId: string } }>('/admin/content-sync/run', { backfill: options.backfill ?? false })
+        .then((r) => r.data.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['content-sync', 'runs'] })
     },

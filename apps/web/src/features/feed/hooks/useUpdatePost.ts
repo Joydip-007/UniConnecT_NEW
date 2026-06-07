@@ -1,12 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
-import type { FeedPost } from '@uniconnect/shared'
+import type { AttachmentInput, FeedPost } from '@uniconnect/shared'
 import { POSTS_FEED_KEY, type FeedInfiniteData } from './usePosts'
 import { PROFILE_POSTS_KEY, type ProfilePostsPage } from './useProfilePosts'
 
 export interface UpdatePostInput {
   content?: string
   media_urls?: string[]
+  attachments?: AttachmentInput[]
+  removedAttachmentIds?: string[]
   type?: 'post' | 'announcement' | 'lost_found' | 'event_promo'
   is_pinned?: boolean
   is_published?: boolean

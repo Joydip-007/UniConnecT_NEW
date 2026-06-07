@@ -6,6 +6,9 @@ export interface SyncRunJob {
   universityId: string
   runId: string
   triggeredBy: string
+  /** Optional per-source fetch window override for this run (e.g. a backfill). Falls back
+   *  to the tenant's configured `entriesPerSource` when absent. */
+  entriesPerSource?: number
 }
 
 export interface AttachmentDownloadJob {

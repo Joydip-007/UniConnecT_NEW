@@ -1,4 +1,5 @@
 import type { UserRole } from './user'
+import type { ContentAttachment } from '../schemas/content-sync'
 
 export interface FeedPollOption {
   id: string
@@ -48,6 +49,8 @@ export interface FeedPost {
   jobEmbed: null
   eventEmbed: null
   lostFoundEmbed: null
+  /** Present on the post-detail response; absent in feed-list items. */
+  attachments?: ContentAttachment[]
   createdAt: string
 }
 

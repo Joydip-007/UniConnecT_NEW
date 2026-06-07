@@ -986,6 +986,7 @@ export default function EventDetailPage() {
             capacity: event.capacity,
             coverUrl: event.coverUrl,
             isPublished: event.isPublished,
+            attachments: event.attachments,
           }}
         />
       )}

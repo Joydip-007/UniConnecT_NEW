@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { differenceInDays, format, parseISO } from 'date-fns'
 import { Bookmark, CheckCircle2, Clock, MapPin, Users } from 'lucide-react'
+import type { ContentAttachment } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, MintBtn } from '@/components/Button'
@@ -38,6 +39,8 @@ export interface Job {
   myApplication: unknown
   isSaved: boolean
   viewCount: number
+  /** Present on the job-detail response; absent in list items. */
+  attachments?: ContentAttachment[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

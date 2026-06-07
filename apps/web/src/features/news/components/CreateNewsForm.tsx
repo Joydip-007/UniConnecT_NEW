@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { X } from 'lucide-react'
+import type { AttachmentInput, ContentAttachment } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { AttachmentPicker } from '@/components/AttachmentPicker'
 import { ImageUploadField } from '@/components/ImageUploadField'
 import { queryClient } from '@/lib/queryClient'
 
@@ -15,6 +17,7 @@ export interface NewsEditInitial {
   category: string
   coverUrl: string | null
   isPublished: boolean
+  attachments?: ContentAttachment[]
 }
 
 interface Props {
@@ -98,6 +101,10 @@ export function CreateNewsForm({ onClose, initial }: Props) {
       : EMPTY,
   )
 
+  const [attachments, setAttachments] = useState<AttachmentInput[]>([])
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([])
+  const [attachmentsUploading, setAttachmentsUploading] = useState(false)
+
   function set<K extends keyof NewsForm>(field: K, value: NewsForm[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -110,6 +117,8 @@ export function CreateNewsForm({ onClose, initial }: Props) {
         category: form.category,
         cover_url: form.coverUrl,
         is_published: form.isPublished,
+        attachments: attachments.length > 0 ? attachments : undefined,
+        removedAttachmentIds: removedAttachmentIds.length > 0 ? removedAttachmentIds : undefined,
       }
       return initial ? api.patch(`/news/${initial.id}`, payload) : api.post('/news', payload)
     },
@@ -250,6 +259,20 @@ export function CreateNewsForm({ onClose, initial }: Props) {
             aspectRatio="16 / 5"
           />
 
+          {/* Attachments */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Label htmlFor="cnf-attach">Attachments</Label>
+            <AttachmentPicker
+              value={attachments}
+              onChange={setAttachments}
+              existing={initial?.attachments}
+              removedIds={removedAttachmentIds}
+              onRemovedIdsChange={setRemovedAttachmentIds}
+              onUploadingChange={setAttachmentsUploading}
+              disabled={saveMutation.isPending}
+            />
+          </div>
+
           {/* Publish toggle */}
           <label
             style={{
@@ -299,7 +322,7 @@ export function CreateNewsForm({ onClose, initial }: Props) {
             </GhostBtn>
             <OrangeBtn
               type="submit"
-              disabled={!isValid || saveMutation.isPending}
+              disabled={!isValid || saveMutation.isPending || attachmentsUploading}
             >
               {saveMutation.isPending
                 ? 'Saving…'

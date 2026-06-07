@@ -1,5 +1,8 @@
 import { z } from 'zod'
-import { FEED_SORTS } from '@uniconnect/shared'
+import { attachmentInputSchema, FEED_SORTS, MAX_ATTACHMENTS_PER_ENTITY } from '@uniconnect/shared'
+
+const attachmentsField = z.array(attachmentInputSchema).max(MAX_ATTACHMENTS_PER_ENTITY).optional()
+const removedAttachmentIdsField = z.array(z.string().uuid()).optional()
 
 export const PostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'news', 'event_promo'])
 export const CreatePostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'event_promo'])
@@ -19,6 +22,7 @@ export const PostListQuerySchema = PaginationQuerySchema.extend({
 export const CreatePostSchema = z.object({
   content: z.string().trim().min(1),
   media_urls: z.array(z.string().url()).default([]),
+  attachments: attachmentsField,
   type: CreatePostTypeSchema.default('post'),
   group_id: z.string().uuid().nullable().optional(),
   /** false → save as a private draft (author-only, not broadcast to the feed). */
@@ -38,6 +42,8 @@ export const UpdatePostSchema = z
   .object({
     content: z.string().trim().min(1).optional(),
     media_urls: z.array(z.string().url()).optional(),
+    attachments: attachmentsField,
+    removedAttachmentIds: removedAttachmentIdsField,
     type: CreatePostTypeSchema.optional(),
     group_id: z.string().uuid().nullable().optional(),
     is_pinned: z.boolean().optional(),

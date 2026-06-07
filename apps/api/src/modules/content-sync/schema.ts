@@ -8,4 +8,11 @@ export const RunsQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 })
 
+/** Body for POST /run. `backfill` widens the per-source fetch window for this run only,
+ *  so historical attachment-bearing items (beyond the normal window) get imported. */
+export const RunContentSyncSchema = z.object({
+  backfill: z.boolean().default(false),
+})
+
 export type RunsQuery = z.infer<typeof RunsQuerySchema>
+export type RunContentSyncInput = z.infer<typeof RunContentSyncSchema>

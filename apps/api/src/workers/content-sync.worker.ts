@@ -39,9 +39,11 @@ async function runSync(job: Extract<ContentSyncJob, { kind: 'sync-run' }>) {
   try {
     const config = await contentSyncService.getConfig(universityId)
     const botUserId = await contentSyncService.ensureCampusBotUser(universityId)
-    const knownSourceUrls = await loadKnownSourceUrls(universityId)
+    const importedByUrl = await loadImportedEntitiesBySourceUrl(universityId)
 
-    const grouped = await fetchContentItems(config, knownSourceUrls)
+    const grouped = await fetchContentItems(config, [...importedByUrl.keys()], {
+      perSourceOverride: job.entriesPerSource,
+    })
     let itemsFound = 0
     let itemsNew = 0
 
@@ -54,7 +56,13 @@ async function runSync(job: Extract<ContentSyncJob, { kind: 'sync-run' }>) {
         }
         itemsFound += 1
 
-        if (knownSourceUrls.includes(parsed.data.sourceUrl)) continue
+        // Already imported: don't re-insert, but heal any attachments missing from this item
+        // (idempotent). Covers items imported before they had files, or edited upstream later.
+        const known = importedByUrl.get(parsed.data.sourceUrl)
+        if (known) {
+          await enqueueAttachments(universityId, known.entityType, known.entityId, parsed.data)
+          continue
+        }
 
         const inserted =
           source === 'event'
@@ -90,12 +98,28 @@ async function runSync(job: Extract<ContentSyncJob, { kind: 'sync-run' }>) {
   }
 }
 
-async function loadKnownSourceUrls(universityId: string): Promise<string[]> {
+type ImportedEntityRef = { entityType: 'news' | 'event'; entityId: string }
+
+/** Maps each already-imported source URL to its entity, so a re-run can heal missing
+ *  attachments without re-inserting the entity. */
+async function loadImportedEntitiesBySourceUrl(
+  universityId: string,
+): Promise<Map<string, ImportedEntityRef>> {
   const [news, events] = await Promise.all([
-    db('news').where({ university_id: universityId }).whereNotNull('source_url').pluck<string[]>('source_url'),
-    db('events').where({ university_id: universityId }).whereNotNull('source_url').pluck<string[]>('source_url'),
+    db('news')
+      .where({ university_id: universityId })
+      .whereNotNull('source_url')
+      .select<{ id: string; source_url: string }[]>('id', 'source_url'),
+    db('events')
+      .where({ university_id: universityId })
+      .whereNotNull('source_url')
+      .select<{ id: string; source_url: string }[]>('id', 'source_url'),
   ])
-  return [...news, ...events]
+
+  const map = new Map<string, ImportedEntityRef>()
+  for (const row of news) map.set(row.source_url, { entityType: 'news', entityId: row.id })
+  for (const row of events) map.set(row.source_url, { entityType: 'event', entityId: row.id })
+  return map
 }
 
 async function insertImportedNews(
@@ -176,7 +200,18 @@ async function enqueueAttachments(
   entityId: string,
   item: SkyvernItem,
 ) {
+  if (item.attachments.length === 0) return
+
+  // Idempotent: skip attachments already captured for this entity (by source URL) so
+  // re-runs and backfills don't create duplicate rows or re-enqueue downloads.
+  const existing = await db('content_attachments')
+    .where({ entity_type: entityType, entity_id: entityId })
+    .whereNotNull('source_url')
+    .pluck<string[]>('source_url')
+  const seen = new Set(existing)
+
   for (const attachment of item.attachments) {
+    if (seen.has(attachment.url)) continue
     const fileName = attachment.fileName?.trim() || fileNameFromUrl(attachment.url)
     const [row] = await db('content_attachments')
       .insert({
@@ -190,6 +225,7 @@ async function enqueueAttachments(
       .returning<{ id: string }[]>('id')
 
     if (row) {
+      seen.add(attachment.url)
       await contentSyncQueue.add(
         { kind: 'attachment-download', attachmentId: row.id, universityId },
         { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },

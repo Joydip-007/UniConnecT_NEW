@@ -35,6 +35,8 @@ export interface FetchContentOptions {
   retries?: number
   /** Delay between transient retries (ms). */
   retryDelayMs?: number
+  /** Overrides the configured per-source fetch window (e.g. a one-time backfill). */
+  perSourceOverride?: number
 }
 
 /**
@@ -60,8 +62,9 @@ export async function fetchContentItems(
     retries: options.retries ?? DEFAULT_HTTP_RETRIES,
     retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
   }
-  // Newest entries fetched per source on each run (admin-configurable per tenant).
-  const perSource = config.entriesPerSource ?? DEFAULT_PER_SOURCE
+  // Newest entries fetched per source on each run (admin-configurable per tenant; a
+  // backfill run can override with a larger one-time window).
+  const perSource = options.perSourceOverride ?? config.entriesPerSource ?? DEFAULT_PER_SOURCE
 
   const specs: SourceSpec[] = [
     { source: 'news', url: config.newsUrl },

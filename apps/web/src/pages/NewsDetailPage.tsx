@@ -126,6 +126,7 @@ export default function NewsDetailPage() {
             category: data.category,
             coverUrl: data.coverUrl,
             isPublished: data.isPublished,
+            attachments: data.attachments,
           }}
         />
       )}
