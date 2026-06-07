@@ -47,8 +47,15 @@ export class DraftsService {
         .where({ university_id: universityId, author_id: userId, is_published: false })
         .select<RawDraft[]>('id', 'title', db.raw('left(body, 160) as excerpt'), 'created_at', 'updated_at'),
       db('events')
+        // The events table has no updated_at column, so fall back to created_at for ordering.
         .where({ university_id: universityId, organizer_id: userId, is_published: false })
-        .select<RawDraft[]>('id', 'title', db.raw('left(description, 160) as excerpt'), 'created_at', 'updated_at'),
+        .select<RawDraft[]>(
+          'id',
+          'title',
+          db.raw('left(description, 160) as excerpt'),
+          'created_at',
+          db.raw('created_at as updated_at'),
+        ),
     ])
 
     const items: DraftItem[] = [
