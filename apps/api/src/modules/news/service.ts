@@ -85,6 +85,7 @@ export class NewsService {
 
     const news = await this.getNews(context, row.id, { incrementView: false })
     if (input.is_published) {
+      if (input.category === 'notice') await this.refreshLatestAnnouncement(context.universityId)
       getIo().to(`uni:${context.universityId}`).emit('news:published', { news })
     }
     return news
@@ -148,10 +149,10 @@ export class NewsService {
         updated_at: db.fn.now(),
       })
 
-    // A notice becoming published takes over as the single featured announcement,
-    // demoting the previous one to the normal notice list.
+    // Publishing a notice may change which notice is the latest, so recompute the
+    // single featured announcement (always the newest published notice).
     if (publishingNow && effectiveCategory === 'notice') {
-      await this.rotateAnnouncement(context.universityId, newsId)
+      await this.refreshLatestAnnouncement(context.universityId)
     }
 
     const news = await this.getNews({ ...context, role: 'admin' }, newsId, { incrementView: false })
@@ -162,17 +163,34 @@ export class NewsService {
   }
 
   /**
-   * Makes `newsId` the single featured announcement for the university.
-   * Clears the previous one first (in one transaction) so the partial unique
-   * index `(university_id) where is_announcement` is never violated.
+   * Promotes the single featured announcement to the **latest published notice**
+   * (by source article date, falling back to publish/created date).
+   *
+   * A per-university advisory lock serialises concurrent calls so a bulk publish
+   * (many notices at once) can't race on the partial unique index
+   * `(university_id) where is_announcement` — the bug that produced 500s.
+   * Idempotent: safe to call after every notice publish.
    */
-  async rotateAnnouncement(universityId: string, newsId: string) {
+  async refreshLatestAnnouncement(universityId: string) {
     await db.transaction(async (trx) => {
+      await trx.raw('SELECT pg_advisory_xact_lock(hashtext(?))', [`news_announcement:${universityId}`])
+
+      const latest = await trx('news')
+        .where({ university_id: universityId, category: 'notice', is_published: true })
+        .orderByRaw('COALESCE(source_published_at, published_at, created_at) DESC')
+        .first<{ id: string }>('id')
+
+      // Demote any stale announcement, then promote the latest notice.
       await trx('news')
         .where({ university_id: universityId, is_announcement: true })
-        .whereNot('id', newsId)
+        .modify((qb) => {
+          if (latest) qb.whereNot('id', latest.id)
+        })
         .update({ is_announcement: false })
-      await trx('news').where({ id: newsId, university_id: universityId }).update({ is_announcement: true })
+
+      if (latest) {
+        await trx('news').where({ id: latest.id, university_id: universityId }).update({ is_announcement: true })
+      }
     })
   }
 

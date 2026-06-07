@@ -122,6 +122,7 @@ async function insertImportedNews(
         is_imported: true,
         source_url: item.sourceUrl,
         published_at: null,
+        source_published_at: parseSourceDate(item.publishedDate),
       })
       .returning<{ id: string }[]>('id')
 
@@ -313,6 +314,13 @@ async function uniqueNewsSlug(universityId: string, title: string): Promise<stri
 async function slugExists(universityId: string, slug: string): Promise<boolean> {
   const row = await db('news').where({ university_id: universityId, slug }).first<{ id: string }>('id')
   return Boolean(row)
+}
+
+/** Parses the source's publish date (WordPress article date) for ordering; null if absent/invalid. */
+function parseSourceDate(value: string | undefined): Date | null {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 function isUniqueViolation(error: unknown): boolean {
