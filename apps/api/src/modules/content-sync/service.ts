@@ -8,6 +8,7 @@ interface SettingsRow {
   content_sync_notice_url: string | null
   content_sync_event_url: string | null
   content_sync_enabled: boolean
+  content_sync_entries_per_source: number
 }
 
 interface RunRow {
@@ -29,6 +30,7 @@ export class ContentSyncService {
       noticeUrl: row.content_sync_notice_url,
       eventUrl: row.content_sync_event_url,
       enabled: row.content_sync_enabled,
+      entriesPerSource: row.content_sync_entries_per_source,
     }
   }
 
@@ -40,6 +42,7 @@ export class ContentSyncService {
     if (input.noticeUrl !== undefined) patch.content_sync_notice_url = input.noticeUrl
     if (input.eventUrl !== undefined) patch.content_sync_event_url = input.eventUrl
     if (input.enabled !== undefined) patch.content_sync_enabled = input.enabled
+    if (input.entriesPerSource !== undefined) patch.content_sync_entries_per_source = input.entriesPerSource
 
     await db('university_settings').where({ university_id: universityId }).update(patch)
     return this.getConfig(universityId)
@@ -142,6 +145,7 @@ export class ContentSyncService {
         'content_sync_notice_url',
         'content_sync_event_url',
         'content_sync_enabled',
+        'content_sync_entries_per_source',
       )
     if (existing) return existing
 
@@ -155,6 +159,7 @@ export class ContentSyncService {
       content_sync_notice_url: null,
       content_sync_event_url: null,
       content_sync_enabled: false,
+      content_sync_entries_per_source: 5,
     }
   }
 

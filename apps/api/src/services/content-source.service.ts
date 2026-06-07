@@ -9,7 +9,7 @@ import { logger } from '../utils/logger'
  * the worker validates them before touching the DB.
  */
 
-const PER_PAGE = 5
+const DEFAULT_PER_SOURCE = 5
 const MAX_BODY_CHARS = 20000
 const DOC_EXT = /\.(pdf|docx?|xlsx?|pptx?|zip|csv|txt)(\?|#|$)/i
 
@@ -60,6 +60,8 @@ export async function fetchContentItems(
     retries: options.retries ?? DEFAULT_HTTP_RETRIES,
     retryDelayMs: options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS,
   }
+  // Newest entries fetched per source on each run (admin-configurable per tenant).
+  const perSource = config.entriesPerSource ?? DEFAULT_PER_SOURCE
 
   const specs: SourceSpec[] = [
     { source: 'news', url: config.newsUrl },
@@ -72,9 +74,9 @@ export async function fetchContentItems(
 
   for (const spec of specs) {
     if (!spec.url) continue
-    const result = await probeWordPress(spec, opts)
+    const result = await probeWordPress(spec, opts, perSource)
     if (result.kind === 'items') {
-      grouped[spec.source] = result.items
+      grouped[spec.source] = sortByDateDesc(result.items)
       logger.info('Content source: WordPress REST', { source: spec.source, count: result.items.length })
     } else if (result.kind === 'not-wordpress') {
       skyvernSources.push(spec)
@@ -101,7 +103,7 @@ export async function fetchContentItems(
         if (!spec.url) continue
         logger.info('Content source: Skyvern fallback', { source: spec.source })
         const raw = await pollRun(await triggerWorkflow({ listUrl: spec.url, knownSourceUrls }))
-        grouped[spec.source] = extractDetailItems(raw)
+        grouped[spec.source] = sortByDateDesc(extractDetailItems(raw))
       }
     }
   }
@@ -122,9 +124,10 @@ export async function fetchContentItems(
 async function probeWordPress(
   spec: SourceSpec,
   opts: { timeoutMs: number; retries: number; retryDelayMs: number },
+  perSource: number,
 ): Promise<ProbeResult> {
   for (let attempt = 0; attempt <= opts.retries; attempt += 1) {
-    const result = await attemptWordPress(spec, opts.timeoutMs)
+    const result = await attemptWordPress(spec, opts.timeoutMs, perSource)
     if (result.kind !== 'transient') return result
     if (attempt < opts.retries) {
       logger.warn('WordPress REST probe failed transiently; retrying', {
@@ -138,7 +141,7 @@ async function probeWordPress(
 }
 
 /** A single WordPress REST attempt, bounded by an abort timeout. */
-async function attemptWordPress(spec: SourceSpec, timeoutMs: number): Promise<ProbeResult> {
+async function attemptWordPress(spec: SourceSpec, timeoutMs: number, perSource: number): Promise<ProbeResult> {
   if (!spec.url) return { kind: 'not-wordpress' }
   let parsed: URL
   try {
@@ -152,7 +155,7 @@ async function attemptWordPress(spec: SourceSpec, timeoutMs: number): Promise<Pr
 
   const endpoint =
     `${parsed.origin}/wp-json/wp/v2/${encodeURIComponent(postType)}` +
-    `?per_page=${PER_PAGE}&_embed=1&orderby=date&order=desc`
+    `?per_page=${perSource}&_embed=1&orderby=date&order=desc`
 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
@@ -204,6 +207,17 @@ async function attemptWordPress(spec: SourceSpec, timeoutMs: number): Promise<Pr
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Newest-first by published date (events fall back to their start date). Undated items sort last. */
+function sortByDateDesc(items: RawItem[]): RawItem[] {
+  return [...items].sort((a, b) => itemDateMs(b) - itemDateMs(a))
+}
+
+function itemDateMs(item: RawItem): number {
+  const raw = item.publishedDate ?? item.startsAt
+  const ms = typeof raw === 'string' ? Date.parse(raw) : NaN
+  return Number.isNaN(ms) ? 0 : ms
 }
 
 function mapWordPressItem(source: ContentSyncSource, item: RawItem): RawItem | null {

@@ -53,7 +53,7 @@ export function ContentSyncPanel() {
   const triggerSync = useTriggerSync()
 
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
-  const [draft, setDraft] = useState({ newsUrl: '', noticeUrl: '', eventUrl: '', enabled: false })
+  const [draft, setDraft] = useState({ newsUrl: '', noticeUrl: '', eventUrl: '', enabled: false, entriesPerSource: 5 })
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,6 +64,7 @@ export function ContentSyncPanel() {
         noticeUrl: config.noticeUrl ?? '',
         eventUrl: config.eventUrl ?? '',
         enabled: config.enabled,
+        entriesPerSource: config.entriesPerSource,
       })
     }
   }, [config])
@@ -80,6 +81,7 @@ export function ContentSyncPanel() {
         noticeUrl: draft.noticeUrl || null,
         eventUrl: draft.eventUrl || null,
         enabled: draft.enabled,
+        entriesPerSource: Math.min(50, Math.max(1, draft.entriesPerSource || 5)),
       },
       {
         onSuccess: () => {
@@ -122,6 +124,21 @@ export function ContentSyncPanel() {
             />
           </div>
         ))}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={label}>Entries per source</span>
+          <input
+            style={{ ...inputStyle, width: 120 }}
+            type="number"
+            min={1}
+            max={50}
+            value={draft.entriesPerSource}
+            onChange={(e) => setDraft((d) => ({ ...d, entriesPerSource: Number(e.target.value) }))}
+          />
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+            Newest items fetched from each of news, notices and events on every sync.
+          </span>
+        </div>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
           <input

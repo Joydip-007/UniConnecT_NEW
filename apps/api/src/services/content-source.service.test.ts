@@ -14,7 +14,13 @@ vi.mock('./skyvern.service', () => ({ triggerWorkflow, pollRun, isSkyvernConfigu
 import { fetchContentItems } from './content-source.service'
 
 const NEWS_URL = 'https://www.uiu.ac.bd/news/'
-const config: ContentSyncConfig = { newsUrl: NEWS_URL, noticeUrl: null, eventUrl: null, enabled: true }
+const config: ContentSyncConfig = {
+  newsUrl: NEWS_URL,
+  noticeUrl: null,
+  eventUrl: null,
+  enabled: true,
+  entriesPerSource: 5,
+}
 
 // Tiny knobs so tests are fast and deterministic (no real backoff waits).
 const fastOpts = { retries: 2, retryDelayMs: 0, timeoutMs: 50 }
@@ -116,5 +122,45 @@ describe('fetchContentItems — WordPress routing resilience', () => {
     expect(triggerWorkflow).toHaveBeenCalledTimes(1)
     expect(triggerWorkflow).toHaveBeenCalledWith({ listUrl: NEWS_URL, knownSourceUrls: [] })
     expect(fetchMock).toHaveBeenCalledTimes(1) // a definitive 404 is not retried
+  })
+})
+
+describe('fetchContentItems — entry limit & time sort', () => {
+  it('requests the configured number of entries per source from WordPress', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonOk([wpItem()]))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchContentItems({ ...config, entriesPerSource: 10 }, [], fastOpts)
+
+    const calledUrl = String(fetchMock.mock.calls[0]?.[0])
+    expect(calledUrl).toContain('per_page=10')
+    expect(calledUrl).toContain('order=desc') // newest-first enforced
+  })
+
+  it('defaults to 5 entries per source when entriesPerSource is absent', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonOk([wpItem()]))
+    vi.stubGlobal('fetch', fetchMock)
+
+    // A legacy config object without the field — exercises the runtime fallback.
+    const legacyConfig = { newsUrl: NEWS_URL, noticeUrl: null, eventUrl: null, enabled: true } as ContentSyncConfig
+    await fetchContentItems(legacyConfig, [], fastOpts)
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('per_page=5')
+  })
+
+  it('returns WordPress items sorted newest-first by published date', async () => {
+    const older = { ...wpItem('https://www.uiu.ac.bd/news/old/'), date: '2026-01-01T00:00:00' }
+    const newer = { ...wpItem('https://www.uiu.ac.bd/news/new/'), date: '2026-06-01T00:00:00' }
+    const mid = { ...wpItem('https://www.uiu.ac.bd/news/mid/'), date: '2026-03-01T00:00:00' }
+    const fetchMock = vi.fn().mockResolvedValue(jsonOk([older, newer, mid])) // server order is scrambled
+    vi.stubGlobal('fetch', fetchMock)
+
+    const grouped = await fetchContentItems(config, [], fastOpts)
+
+    expect(grouped.news.map((i) => i.sourceUrl)).toEqual([
+      'https://www.uiu.ac.bd/news/new/',
+      'https://www.uiu.ac.bd/news/mid/',
+      'https://www.uiu.ac.bd/news/old/',
+    ])
   })
 })

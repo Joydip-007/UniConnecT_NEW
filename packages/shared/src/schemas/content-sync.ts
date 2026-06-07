@@ -6,12 +6,18 @@ const nullableUrl = z
   .transform((value) => (value ? value : null))
   .optional()
 
+/** Default + bounds for how many newest entries to fetch per source on each run. */
+export const CONTENT_SYNC_DEFAULT_ENTRIES = 5
+export const CONTENT_SYNC_MAX_ENTRIES = 50
+
 /** Per-tenant content-sync configuration, edited from the admin panel (admin-only). */
 export const contentSyncConfigSchema = z.object({
   newsUrl: nullableUrl,
   noticeUrl: nullableUrl,
   eventUrl: nullableUrl,
   enabled: z.boolean().optional(),
+  /** Newest entries fetched per source (news/notice/event) on each run. */
+  entriesPerSource: z.coerce.number().int().min(1).max(CONTENT_SYNC_MAX_ENTRIES).optional(),
 })
 
 export type ContentSyncConfigInput = z.infer<typeof contentSyncConfigSchema>
@@ -21,6 +27,7 @@ export interface ContentSyncConfig {
   noticeUrl: string | null
   eventUrl: string | null
   enabled: boolean
+  entriesPerSource: number
 }
 
 export const CONTENT_SYNC_SOURCES = ['news', 'notice', 'event'] as const
