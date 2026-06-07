@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { BarChart2, Bold, Image, Italic, Link, Sparkles, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import type { FeedPost } from '@uniconnect/shared'
+import type { AttachmentInput, FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
+import { AttachmentPicker } from '@/components/AttachmentPicker'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { api } from '@/lib/axios'
@@ -45,6 +46,12 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
   const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // File attachments (documents/images shown as download chips, separate from the gallery)
+  const [attachments, setAttachments] = useState<AttachmentInput[]>([])
+  const [existingAttachments, setExistingAttachments] = useState<FeedPost['attachments']>([])
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([])
+  const [attachmentsUploading, setAttachmentsUploading] = useState(false)
 
   // Poll state
   const [pollQuestion, setPollQuestion] = useState('')
@@ -113,6 +120,9 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
       setActiveTab(null)
       setPhotos([])
     }
+    setExistingAttachments(editPost.attachments ?? [])
+    setAttachments([])
+    setRemovedAttachmentIds([])
   }, [editPost])
 
   useEffect(() => {
@@ -154,6 +164,9 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
     ])
     setPollExpiresAt('')
     setScheduleAt('')
+    setAttachments([])
+    setExistingAttachments([])
+    setRemovedAttachmentIds([])
   }
 
   function toggleTab(tab: TabMode) {
@@ -238,7 +251,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
   }
 
   function canSubmit() {
-    if (uploading || isSubmitting) return false
+    if (uploading || attachmentsUploading || isSubmitting) return false
     if (activeTab === 'poll') {
       if (!pollQuestion.trim()) return false
       if (pollOptions.filter((o) => o.text.trim()).length < 2) return false
@@ -266,6 +279,8 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
           content: text.trim(),
           type: postType,
           media_urls: mediaUrls,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          removedAttachmentIds: removedAttachmentIds.length > 0 ? removedAttachmentIds : undefined,
         },
       })
     } else {
@@ -276,6 +291,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
         type: postType,
         content: text.trim(),
         media_urls: mediaUrls,
+        attachments: attachments.length > 0 ? attachments : undefined,
         poll: pollData,
         is_published: isScheduled ? false : !asDraft,
         publish_at: isScheduled ? publishAt.toISOString() : undefined,
@@ -638,6 +654,19 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                   )}
                 </div>
               )}
+
+              {/* File attachments */}
+              <div style={{ marginTop: 12 }}>
+                <AttachmentPicker
+                  value={attachments}
+                  onChange={setAttachments}
+                  existing={existingAttachments}
+                  removedIds={removedAttachmentIds}
+                  onRemovedIdsChange={setRemovedAttachmentIds}
+                  onUploadingChange={setAttachmentsUploading}
+                  disabled={isSubmitting}
+                />
+              </div>
 
               {/* Poll UI */}
               {activeTab === 'poll' && !isEditMode && (

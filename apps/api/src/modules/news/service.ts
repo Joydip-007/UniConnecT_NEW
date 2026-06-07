@@ -3,7 +3,7 @@ import { db } from '../../config/db'
 import { getIo } from '../../socket'
 import { forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
-import { getAttachmentsFor } from '../content-sync/attachments'
+import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
 import type { CreateNewsInput, NewsListQuery, UpdateNewsInput } from './schema'
 
 interface AuthContext {
@@ -66,24 +66,35 @@ export class NewsService {
 
   async createNews(context: AuthContext, input: CreateNewsInput) {
     const slug = await uniqueSlug(context.universityId, input.title)
-    const [row] = await db('news')
-      .insert({
-        university_id: context.universityId,
-        author_id: context.userId,
-        title: input.title,
-        slug,
-        body: input.body,
-        cover_url: input.cover_url ?? null,
-        category: input.category,
-        is_published: input.is_published,
-        is_pinned: input.is_pinned,
-        published_at: input.is_published ? db.fn.now() : null,
+    const newsId = await db.transaction(async (trx) => {
+      const [row] = await trx('news')
+        .insert({
+          university_id: context.universityId,
+          author_id: context.userId,
+          title: input.title,
+          slug,
+          body: input.body,
+          cover_url: input.cover_url ?? null,
+          category: input.category,
+          is_published: input.is_published,
+          is_pinned: input.is_pinned,
+          published_at: input.is_published ? db.fn.now() : null,
+        })
+        .returning<{ id: string }[]>('id')
+
+      if (!row) throw notFound('News not found', 'NEWS_NOT_FOUND')
+
+      await addUserAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'news',
+        entityId: row.id,
+        uploadedBy: context.userId,
+        attachments: input.attachments ?? [],
       })
-      .returning<{ id: string }[]>('id')
+      return row.id
+    })
 
-    if (!row) throw notFound('News not found', 'NEWS_NOT_FOUND')
-
-    const news = await this.getNews(context, row.id, { incrementView: false })
+    const news = await this.getNews(context, newsId, { incrementView: false })
     if (input.is_published) {
       if (input.category === 'notice') await this.refreshLatestAnnouncement(context.universityId)
       getIo().to(`uni:${context.universityId}`).emit('news:published', { news })
@@ -144,21 +155,40 @@ export class NewsService {
         ? existing.source_published_at
         : db.fn.now()
       : undefined
-    await db('news')
-      .where({ id: newsId, university_id: context.universityId })
-      .update({
-        ...pickDefined({
-          title: input.title,
-          slug: input.title ? await uniqueSlug(context.universityId, input.title, newsId) : undefined,
-          body: input.body,
-          cover_url: input.cover_url,
-          category: input.category,
-          is_published: input.is_published,
-          is_pinned: input.is_pinned,
-          published_at: publishedAtValue,
-        }),
-        updated_at: db.fn.now(),
+    const slugUpdate = input.title
+      ? await uniqueSlug(context.universityId, input.title, newsId)
+      : undefined
+    await db.transaction(async (trx) => {
+      await trx('news')
+        .where({ id: newsId, university_id: context.universityId })
+        .update({
+          ...pickDefined({
+            title: input.title,
+            slug: slugUpdate,
+            body: input.body,
+            cover_url: input.cover_url,
+            category: input.category,
+            is_published: input.is_published,
+            is_pinned: input.is_pinned,
+            published_at: publishedAtValue,
+          }),
+          updated_at: db.fn.now(),
+        })
+
+      await removeAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'news',
+        entityId: newsId,
+        ids: input.removedAttachmentIds ?? [],
       })
+      await addUserAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'news',
+        entityId: newsId,
+        uploadedBy: context.userId,
+        attachments: input.attachments ?? [],
+      })
+    })
 
     // Publishing a notice may change which notice is the latest, so recompute the
     // single featured announcement (always the newest published notice).

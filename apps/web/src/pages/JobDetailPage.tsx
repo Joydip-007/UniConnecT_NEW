@@ -13,6 +13,7 @@ import { GhostBtn, MintBtn } from '@/components/Button'
 import { ApplyModal } from '@/features/jobs/components/ApplyModal'
 import { ApplicationsList } from '@/features/jobs/components/ApplicationsList'
 import type { Job } from '@/features/jobs/components/JobCard'
+import { AttachmentList } from '@/features/content-sync'
 
 const TYPE_LABELS: Record<Job['type'], string> = {
   full_time: 'Full-time',
@@ -180,6 +181,7 @@ export default function JobDetailPage() {
           <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 400, lineHeight: 1.7 }}>
             {job.description}
           </p>
+          <AttachmentList attachments={job.attachments} />
         </section>
 
         {job.requirements.length > 0 && (

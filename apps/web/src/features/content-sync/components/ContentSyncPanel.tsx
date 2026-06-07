@@ -96,7 +96,7 @@ export function ContentSyncPanel() {
 
   // Persist any unsaved edits (e.g. a changed entry count) before running, so a
   // sync always uses what's currently in the form — not a stale saved value.
-  async function sync() {
+  async function sync(backfill = false) {
     setError(null)
     try {
       await updateConfig.mutateAsync(configPayload())
@@ -104,9 +104,10 @@ export function ContentSyncPanel() {
       setError(extractError(e, 'Could not save settings.'))
       return
     }
-    triggerSync.mutate(undefined, {
-      onError: (e) => setError(extractError(e, 'Could not start sync.')),
-    })
+    triggerSync.mutate(
+      { backfill },
+      { onError: (e) => setError(extractError(e, 'Could not start sync.')) },
+    )
   }
 
   if (isLoading) return <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
@@ -163,11 +164,19 @@ export function ContentSyncPanel() {
             {updateConfig.isPending ? 'Saving…' : 'Save settings'}
           </PrimaryBtn>
           <GhostBtn
-            onClick={() => void sync()}
+            onClick={() => void sync(false)}
             disabled={!draft.enabled || !hasSource || isRunning || triggerSync.isPending || updateConfig.isPending}
           >
             <RefreshCw size={14} style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }} />
             {isRunning ? 'Syncing…' : 'Sync now'}
+          </GhostBtn>
+          <GhostBtn
+            onClick={() => void sync(true)}
+            disabled={!draft.enabled || !hasSource || isRunning || triggerSync.isPending || updateConfig.isPending}
+            title="Fetch a larger window so older items and their attachments get imported"
+          >
+            <RefreshCw size={14} style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }} />
+            Backfill attachments
           </GhostBtn>
           {savedMsg && (
             <span style={{ fontSize: 13, color: 'var(--uc-mint)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>

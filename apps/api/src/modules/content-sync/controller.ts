@@ -4,7 +4,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { unauthorized } from '../../utils/errors'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { contentSyncService } from './service'
-import type { RunsQuery } from './schema'
+import type { RunContentSyncInput, RunsQuery } from './schema'
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
@@ -19,7 +19,8 @@ export const updateConfig = asyncHandler(async (req: Request, res: Response) => 
 
 export const triggerRun = asyncHandler(async (req: Request, res: Response) => {
   const { universityId, userId } = getContext(req)
-  sendSuccess(res, await contentSyncService.triggerRun(universityId, userId), 202)
+  const { backfill } = req.body as RunContentSyncInput
+  sendSuccess(res, await contentSyncService.triggerRun(universityId, userId, { backfill }), 202)
 })
 
 export const listPendingImported = asyncHandler(async (req: Request, res: Response) => {

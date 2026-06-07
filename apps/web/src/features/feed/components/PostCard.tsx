@@ -24,6 +24,7 @@ import { Badge } from '@/components/Badge'
 import { ReactionBtn } from '@/components/Button'
 import { ShareMenu } from '@/components/ShareMenu'
 import { ImageLightbox } from '@/components/ImageLightbox'
+import { AttachmentList } from '@/features/content-sync'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
 import { useSavePost } from '@/features/feed/hooks/useSavePost'
@@ -442,6 +443,9 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             ))}
           </div>
         )}
+
+        {/* File attachments (shown on the post-detail view) */}
+        <AttachmentList attachments={post.attachments} />
 
         {/* Poll */}
         {post.poll && <PollBlock poll={post.poll} postId={post.id} />}

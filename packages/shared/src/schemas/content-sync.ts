@@ -90,9 +90,14 @@ export interface ContentSyncRun {
 
 export type ContentAttachmentStatus = 'pending' | 'done' | 'failed'
 
+/** Entities that can carry attachments — content-sync imports (news/event) plus
+ *  user-uploaded files on jobs and feed posts. */
+export const ATTACHMENT_ENTITY_TYPES = ['news', 'event', 'job', 'post'] as const
+export type AttachmentEntityType = (typeof ATTACHMENT_ENTITY_TYPES)[number]
+
 export interface ContentAttachment {
   id: string
-  entityType: 'news' | 'event'
+  entityType: AttachmentEntityType
   entityId: string
   fileUrl: string | null
   fileName: string
@@ -100,3 +105,14 @@ export interface ContentAttachment {
   sizeBytes: number | null
   downloadStatus: ContentAttachmentStatus
 }
+
+/** One user-uploaded file, already PUT to R2 via the presign flow, submitted alongside
+ *  a create/update payload. Validated server-side against the attachment allowlist. */
+export const attachmentInputSchema = z.object({
+  fileUrl: z.string().url(),
+  fileName: z.string().trim().min(1).max(255),
+  mimeType: z.string().trim().max(255).optional(),
+  sizeBytes: z.number().int().positive().optional(),
+})
+
+export type AttachmentInput = z.infer<typeof attachmentInputSchema>

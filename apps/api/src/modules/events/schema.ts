@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import { attachmentInputSchema, MAX_ATTACHMENTS_PER_ENTITY } from '@uniconnect/shared'
+
+const attachmentsField = z.array(attachmentInputSchema).max(MAX_ATTACHMENTS_PER_ENTITY).optional()
+const removedAttachmentIdsField = z.array(z.string().uuid()).optional()
 
 export const EventTypeSchema = z.enum(['general', 'career_fair', 'seminar', 'alumni_meetup', 'workshop', 'club'])
 export const RsvpStatusSchema = z.enum(['going', 'maybe', 'not_going'])
@@ -39,6 +43,7 @@ export const CreateEventSchema = z
     type: EventTypeSchema.default('general'),
     is_published: z.boolean().optional(),
     isPublished: z.boolean().optional(),
+    attachments: attachmentsField,
   })
   .transform((value) => ({
     group_id: value.group_id ?? value.groupId,
@@ -53,6 +58,7 @@ export const CreateEventSchema = z
     capacity: value.capacity,
     type: value.type,
     is_published: value.is_published ?? value.isPublished ?? false,
+    attachments: value.attachments,
   }))
   .refine((value) => Boolean(value.starts_at), {
     message: 'starts_at is required',
@@ -82,6 +88,8 @@ export const UpdateEventSchema = z
     endsAt: z.string().datetime({ offset: true }).nullable().optional(),
     capacity: z.number().int().positive().nullable().optional(),
     type: EventTypeSchema.optional(),
+    attachments: attachmentsField,
+    removedAttachmentIds: removedAttachmentIdsField,
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',
@@ -108,6 +116,8 @@ export const UpdateEventSchema = z
     ends_at: value.ends_at ?? value.endsAt,
     capacity: value.capacity,
     type: value.type,
+    attachments: value.attachments,
+    removedAttachmentIds: value.removedAttachmentIds,
   }))
 
 export const RsvpSchema = z.object({

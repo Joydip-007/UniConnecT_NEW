@@ -7,6 +7,7 @@ import { logger } from '../../utils/logger'
 import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput } from './schema'
 import { notificationsService } from '../notifications/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
+import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
 type ReactionType = 'like' | 'love' | 'insightful' | 'celebrate'
@@ -254,6 +255,14 @@ export class FeedService {
         }
       }
 
+      await addUserAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'post',
+        entityId: post.id,
+        uploadedBy: context.userId,
+        attachments: input.attachments ?? [],
+      })
+
       return post.id
     })
 
@@ -295,7 +304,8 @@ export class FeedService {
     }
 
     const [post] = await this.attachPolls([toPost(row)], [row.id], userId)
-    return post
+    const attachments = await getAttachmentsFor('post', postId)
+    return { ...post, attachments }
   }
 
   async updatePost(context: AuthContext, postId: string, input: UpdatePostInput) {
@@ -364,6 +374,20 @@ export class FeedService {
         }
       }
     }
+
+    await removeAttachments(db, {
+      universityId: context.universityId,
+      entityType: 'post',
+      entityId: postId,
+      ids: input.removedAttachmentIds ?? [],
+    })
+    await addUserAttachments(db, {
+      universityId: context.universityId,
+      entityType: 'post',
+      entityId: postId,
+      uploadedBy: context.userId,
+      attachments: input.attachments ?? [],
+    })
 
     const updated = await this.getPost(context.universityId, context.userId, postId, { incrementView: false })
     if (publishingNow) {

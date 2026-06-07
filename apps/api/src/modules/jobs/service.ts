@@ -4,6 +4,7 @@ import { db } from '../../config/db'
 import { getIo } from '../../socket'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
+import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
 import type {
   ApplyJobInput,
   CreateJobInput,
@@ -140,6 +141,14 @@ export class JobsService {
         .returning<{ id: string }[]>('id')
 
       if (!job) throw badRequest('Job could not be created', 'JOB_CREATE_FAILED')
+
+      await addUserAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'job',
+        entityId: job.id,
+        uploadedBy: context.userId,
+        attachments: input.attachments ?? [],
+      })
       return job.id
     })
 
@@ -170,30 +179,47 @@ export class JobsService {
         .catch((error: unknown) => logger.warn('Failed to increment job view count', { error, jobId }))
     }
 
-    return toJob(row)
+    const attachments = await getAttachmentsFor('job', jobId)
+    return { ...toJob(row), attachments }
   }
 
   async updateJob(context: AuthContext, jobId: string, input: UpdateJobInput) {
     const job = await assertJobInUniversity(jobId, context.universityId, { includeInactive: true })
     assertCanMutateJob(context, job.posted_by)
 
-    await db('jobs')
-      .where({ id: jobId, university_id: context.universityId })
-      .update({
-        ...pickDefined({
-          title: input.title,
-          company: input.company,
-          location: input.location,
-          type: input.type,
-          description: input.description,
-          requirements: input.requirements,
-          salary_range: input.salary_range,
-          application_url: input.application_url,
-          deadline: input.deadline ? new Date(input.deadline) : undefined,
-          is_active: input.is_active,
-          is_published: input.is_published,
-        }),
+    await db.transaction(async (trx) => {
+      await trx('jobs')
+        .where({ id: jobId, university_id: context.universityId })
+        .update({
+          ...pickDefined({
+            title: input.title,
+            company: input.company,
+            location: input.location,
+            type: input.type,
+            description: input.description,
+            requirements: input.requirements,
+            salary_range: input.salary_range,
+            application_url: input.application_url,
+            deadline: input.deadline ? new Date(input.deadline) : undefined,
+            is_active: input.is_active,
+            is_published: input.is_published,
+          }),
+        })
+
+      await removeAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'job',
+        entityId: jobId,
+        ids: input.removedAttachmentIds ?? [],
       })
+      await addUserAttachments(trx, {
+        universityId: context.universityId,
+        entityType: 'job',
+        entityId: jobId,
+        uploadedBy: context.userId,
+        attachments: input.attachments ?? [],
+      })
+    })
 
     const publishingNow = input.is_published === true && !job.is_published
     const updated = await this.getJob(context.universityId, context.userId, jobId, { incrementView: false })
