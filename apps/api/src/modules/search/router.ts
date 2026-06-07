@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth'
+import { searchLimiter } from '../../middleware/rateLimiter'
 import { resolveUniversity } from '../../middleware/university'
 import { validateRequest } from '../../middleware/validate'
 import { SearchAllQuerySchema, SearchPagedQuerySchema, SearchPeopleQuerySchema, SearchPostsQuerySchema } from './schema'
@@ -14,7 +15,7 @@ import {
 
 export const searchRouter = Router()
 
-searchRouter.use(resolveUniversity, requireAuth)
+searchRouter.use(resolveUniversity, requireAuth, searchLimiter)
 
 searchRouter.get('/', validateRequest({ query: SearchAllQuerySchema }), searchAllController)
 searchRouter.get('/people', validateRequest({ query: SearchPeopleQuerySchema }), searchPeopleController)

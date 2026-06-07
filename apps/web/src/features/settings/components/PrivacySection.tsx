@@ -8,6 +8,7 @@ import {
 import { usePrivacyPreferences, useUpdatePrivacyPreferences } from '../hooks/usePrivacyPreferences'
 import { Toggle } from './Toggle'
 import { SectionHeader } from './NotificationsSection'
+import BlockedAccountsSection from './BlockedAccountsSection'
 
 const TIER_LABEL: Record<AudienceTier, string> = {
   everyone: 'Everyone',
@@ -187,6 +188,8 @@ export default function PrivacySection() {
           </div>
         </div>
       )}
+
+      <BlockedAccountsSection />
     </div>
   )
 }

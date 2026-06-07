@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth'
+import { writeLimiter } from '../../middleware/rateLimiter'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
@@ -39,7 +40,7 @@ export const pollsRouter = Router()
 feedRouter.use(requireAuth, resolveUniversity)
 
 feedRouter.get('/', validateRequest({ query: PostListQuerySchema }), listPosts)
-feedRouter.post('/', validate(CreatePostSchema), createPost)
+feedRouter.post('/', writeLimiter, validate(CreatePostSchema), createPost)
 feedRouter.get('/trending', getTrending)
 // Static paths must precede '/:postId' so they aren't captured as a post id.
 feedRouter.get('/archived', validateRequest({ query: PaginationQuerySchema }), listArchived)
@@ -51,7 +52,7 @@ feedRouter.post('/:postId/unarchive', unarchivePost)
 feedRouter.post('/:postId/reactions', validate(ReactionSchema), addReaction)
 feedRouter.delete('/:postId/reactions', removeReaction)
 feedRouter.get('/:postId/comments', validateRequest({ query: PaginationQuerySchema }), getComments)
-feedRouter.post('/:postId/comments', validate(CreateCommentSchema), createComment)
+feedRouter.post('/:postId/comments', writeLimiter, validate(CreateCommentSchema), createComment)
 feedRouter.delete('/:postId/comments/:commentId', deleteComment)
 feedRouter.post('/:postId/comments/:commentId/reactions', validate(ReactionSchema), addCommentReaction)
 feedRouter.delete('/:postId/comments/:commentId/reactions', removeCommentReaction)

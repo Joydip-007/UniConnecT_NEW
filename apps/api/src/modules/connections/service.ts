@@ -4,6 +4,7 @@ import { db } from '../../config/db'
 import { notificationQueue } from '../../queues/notification.queue'
 import { getIo } from '../../socket'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
+import { moderationService } from '../moderation/service'
 import { loadPrivacy } from '../users/privacy.service'
 import type { PaginationQuery } from './schema'
 
@@ -51,6 +52,11 @@ export class ConnectionsService {
     }
 
     await assertUserInUniversity(targetUserId, universityId)
+
+    // Moderation: a block in either direction severs all interaction.
+    if (await moderationService.isBlockedBetween(currentUserId, targetUserId)) {
+      throw forbidden('You cannot connect with this user', 'USER_BLOCKED')
+    }
 
     // Privacy: respect the target's "who can send connection requests" gate.
     const targetPrivacy = await loadPrivacy(targetUserId)

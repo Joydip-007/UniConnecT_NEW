@@ -26,7 +26,7 @@ function getAuthContext(req: Request) {
 }
 
 function sendPage<T>(res: Response, result: { items: T[]; total: number; page: number; hasMore: boolean }) {
-  return res.json({ data: result })
+  return sendSuccess(res, result)
 }
 
 export const listAlumni = asyncHandler(async (req: Request, res: Response) => {

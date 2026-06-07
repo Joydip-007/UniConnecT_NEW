@@ -19,6 +19,7 @@ import { connectionsRouter } from './modules/connections'
 import { contentSyncRouter } from './modules/content-sync'
 import { draftsRouter } from './modules/drafts'
 import { mentorshipRouter } from './modules/mentorship'
+import { moderationRouter } from './modules/moderation'
 import { presenceRouter } from './modules/presence'
 import { pushRouter } from './modules/push'
 import { searchRouter } from './modules/search'
@@ -26,6 +27,7 @@ import { exploreRouter } from './modules/explore'
 import { uploadRouter } from './modules/upload'
 import { usersRouter } from './modules/users'
 import { errorHandler } from './middleware/error-handler'
+import { globalLimiter } from './middleware/rateLimiter'
 import { asyncHandler } from './utils/asyncHandler'
 import { db } from './config/db'
 
@@ -47,7 +49,7 @@ export function createApp() {
     }),
   )
   app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'))
-  app.use(express.json())
+  app.use(express.json({ limit: '100kb' }))
   app.use(cookieParser())
 
   app.get('/', (_req, res) => {
@@ -70,6 +72,10 @@ export function createApp() {
     }),
   )
 
+  // Coarse global rate-limit net across the whole authenticated API surface.
+  // Per-subject (user when authenticated, else IP); finer limits live per-route.
+  app.use('/api/v1', globalLimiter)
+
   app.use('/api/v1/admin', adminRouter)
   app.use('/api/v1/admin/content-sync', contentSyncRouter)
   app.use('/api/v1/auth', authRouter)
@@ -88,6 +94,7 @@ export function createApp() {
   app.use('/api/v1/me/drafts', draftsRouter)
   app.use('/api/v1/connections', connectionsRouter)
   app.use('/api/v1/mentorship', mentorshipRouter)
+  app.use('/api/v1/moderation', moderationRouter)
   app.use('/api/v1/search', searchRouter)
   app.use('/api/v1/explore', exploreRouter)
   app.use('/api/v1', campusRouter)

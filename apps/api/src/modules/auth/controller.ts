@@ -3,6 +3,7 @@ import type { Request, Response } from 'express'
 import { env } from '../../config/env'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { AppError } from '../../utils/errors'
+import { sendSuccess } from '../../utils/response'
 import { authService } from './service'
 import type {
   ChangePasswordInput,
@@ -27,7 +28,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   )
 
   setRefreshCookie(res, result.refreshToken)
-  res.status(201).json({ data: { message: result.message, accessToken: result.accessToken, user: result.user } })
+  sendSuccess(res, { message: result.message, accessToken: result.accessToken, user: result.user }, 201)
 })
 
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
@@ -42,7 +43,7 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
       getDeviceInfo(req),
     )
     setRefreshCookie(res, result.refreshToken)
-    res.json({ data: { accessToken: result.accessToken, user: result.user } })
+    sendSuccess(res, { accessToken: result.accessToken, user: result.user })
     return
   }
 
@@ -52,14 +53,14 @@ export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await authService.verifyAccount(body.email, body.otp, getUniversityId(req), getIpAddress(req), getDeviceInfo(req))
   setRefreshCookie(res, result.refreshToken)
-  res.json({ data: { accessToken: result.accessToken, user: result.user } })
+  sendSuccess(res, { accessToken: result.accessToken, user: result.user })
 })
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as LoginInput
   const result = await authService.login(body.email, body.password, getUniversityId(req), getIpAddress(req), getDeviceInfo(req))
   setRefreshCookie(res, result.refreshToken)
-  res.json({ data: { accessToken: result.accessToken, user: result.user } })
+  sendSuccess(res, { accessToken: result.accessToken, user: result.user })
 })
 
 export const verifyLoginOtp = asyncHandler(async (req: Request, res: Response) => {
@@ -73,13 +74,13 @@ export const verifyLoginOtp = asyncHandler(async (req: Request, res: Response) =
   )
 
   setRefreshCookie(res, result.refreshToken)
-  res.json({ data: { accessToken: result.accessToken, user: result.user } })
+  sendSuccess(res, { accessToken: result.accessToken, user: result.user })
 })
 
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
   const result = await authService.refreshTokens(req.cookies?.[refreshCookieName], getIpAddress(req), getDeviceInfo(req))
   setRefreshCookie(res, result.refreshToken)
-  res.json({ data: { accessToken: result.accessToken } })
+  sendSuccess(res, { accessToken: result.accessToken })
 })
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
@@ -90,52 +91,52 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
 
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as ForgotPasswordInput
-  res.json({ data: await authService.forgotPassword(body.email, getUniversityId(req)) })
+  sendSuccess(res, await authService.forgotPassword(body.email, getUniversityId(req)))
 })
 
 export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as ResetPasswordInput
   const result = await authService.resetPassword(body.email, body.otp, body.new_password, getUniversityId(req))
-  res.json({ data: result })
+  sendSuccess(res, result)
 })
 
 export const resendOtp = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as ResendOtpInput
   const result = await authService.resendOtp(body.email, body.purpose, getUniversityId(req))
-  res.json({ data: result })
+  sendSuccess(res, result)
 })
 
 export const me = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
-  res.json({ data: await authService.getMe(req.user.userId) })
+  sendSuccess(res, await authService.getMe(req.user.userId))
 })
 
 export const checkInvitation = asyncHandler(async (req: Request, res: Response) => {
   const { token } = req.params as { token: string }
   const data = await authService.peekInvitation(token, getUniversityId(req))
-  res.json({ data })
+  sendSuccess(res, data)
 })
 
 export const changePassword = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
   const body = req.body as ChangePasswordInput
-  res.json({ data: await authService.changePassword(req.user.userId, body.currentPassword, body.newPassword) })
+  sendSuccess(res, await authService.changePassword(req.user.userId, body.currentPassword, body.newPassword))
 })
 
 export const listSessions = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
-  res.json({ data: await authService.listSessions(req.user.userId, req.cookies?.[refreshCookieName]) })
+  sendSuccess(res, await authService.listSessions(req.user.userId, req.cookies?.[refreshCookieName]))
 })
 
 export const revokeSession = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
   const { sessionId } = req.params as { sessionId: string }
-  res.json({ data: await authService.revokeSession(req.user.userId, sessionId) })
+  sendSuccess(res, await authService.revokeSession(req.user.userId, sessionId))
 })
 
 export const revokeOtherSessions = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new AppError('Unauthorized', 401, 'AUTH_REQUIRED')
-  res.json({ data: await authService.revokeOtherSessions(req.user.userId, req.cookies?.[refreshCookieName]) })
+  sendSuccess(res, await authService.revokeOtherSessions(req.user.userId, req.cookies?.[refreshCookieName]))
 })
 
 function setRefreshCookie(res: Response, refreshToken: string) {
