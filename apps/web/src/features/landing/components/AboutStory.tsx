@@ -1,7 +1,6 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { OrangeBtn, GhostBtn } from '@/components/Button'
-import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 import { PATHS } from '@/router/paths'
 
 const TEAM = [
@@ -26,7 +25,55 @@ const VALUES = [
   },
 ]
 
+/**
+ * Story-scroll: panels stack via sticky + rising z-index, and each incoming
+ * panel swings up from 30°→0° (pivoting bottom-left), scrubbed to scroll —
+ * mirroring the GSAP reference without adding the dependency.
+ */
+function useStoryScroll(rootRef: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+
+    const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-story-section]'))
+    const cards = sections.map((s) => s.querySelector<HTMLElement>('[data-story-card]'))
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce) {
+      cards.forEach((c) => c && (c.style.transform = 'none'))
+      return
+    }
+
+    let raf = 0
+    const update = () => {
+      raf = 0
+      const vh = window.innerHeight
+      sections.forEach((section, i) => {
+        const card = cards[i]
+        if (!card || i === 0) return // first panel never rotates
+        const top = section.getBoundingClientRect().top
+        // top bottom (vh) → top 25% (0.25vh): rotation 30 → 0
+        const progress = Math.min(1, Math.max(0, (vh - top) / (vh * 0.75)))
+        card.style.transform = `rotate(${30 * (1 - progress)}deg)`
+      })
+    }
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [rootRef])
+}
+
 type PanelProps = {
+  index: number
   num: string
   label: string
   accent: string
@@ -34,92 +81,80 @@ type PanelProps = {
   children: ReactNode
 }
 
-function StoryPanel({ num, label, accent, bg, children }: PanelProps) {
+function StoryPanel({ index, num, label, accent, bg, children }: PanelProps) {
   return (
     <section
+      data-story-section
       className="uc-story-panel"
       style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: index + 1,
         minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        background: bg,
-        borderTop: '0.5px solid var(--border-default)',
-        position: 'relative',
         overflow: 'hidden',
       }}
     >
-      <span aria-hidden className="uc-story-watermark" style={{ color: 'var(--surface-glint)' }}>
-        {num}
-      </span>
+      <div
+        data-story-card
+        className="uc-story-card"
+        style={{
+          background: bg,
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          position: 'relative',
+          transformOrigin: 'bottom left',
+          willChange: 'transform',
+        }}
+      >
+        <span aria-hidden className="uc-story-watermark" style={{ color: 'var(--surface-glint)' }}>
+          {num}
+        </span>
 
-      <div className="uc-story-inner">
-        <p
-          className="reveal"
-          data-delay="0"
-          style={{
-            margin: '0 0 20px',
-            fontSize: 12,
-            fontWeight: 500,
-            letterSpacing: '0.08em',
-            color: accent,
-          }}
-        >
-          {num} — {label}
-        </p>
-        <hr
-          className="reveal"
-          data-delay="60"
-          style={{
-            border: 0,
-            borderTop: '0.5px solid var(--border-default)',
-            margin: '0 0 36px',
-          }}
-        />
-        {children}
+        <div className="uc-story-inner">
+          <p
+            style={{
+              margin: '0 0 20px',
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: '0.08em',
+              color: accent,
+            }}
+          >
+            {num} — {label}
+          </p>
+          <hr style={{ border: 0, borderTop: '0.5px solid var(--border-default)', margin: '0 0 36px' }} />
+          {children}
+        </div>
       </div>
     </section>
   )
 }
 
 export function AboutStory() {
-  const rootRef = useScrollReveal<HTMLDivElement>()
+  const rootRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  useStoryScroll(rootRef)
 
   return (
     <div ref={rootRef}>
       {/* 00 — Intro */}
-      <StoryPanel num="00" label="The story" accent="var(--uc-indigo-l)" bg="var(--surface-page)">
-        <h1
-          className="reveal uc-story-heading"
-          data-delay="120"
-          style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}
-        >
+      <StoryPanel index={0} num="00" label="The story" accent="var(--uc-indigo-l)" bg="var(--surface-page)">
+        <h1 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           A campus, online — without the rest of the internet.
         </h1>
-        <p
-          className="reveal uc-story-lede"
-          data-delay="200"
-          style={{ margin: 0, color: 'var(--text-secondary)' }}
-        >
+        <p className="uc-story-lede" style={{ margin: 0, color: 'var(--text-secondary)' }}>
           UniConnecT is a private social network for one university at a time. Scroll to see how it
           started, what we believe, and who is building it.
         </p>
       </StoryPanel>
 
       {/* 01 — Who we are */}
-      <StoryPanel num="01" label="Who we are" accent="var(--uc-orange-l)" bg="var(--surface-card)">
-        <h2
-          className="reveal uc-story-heading"
-          data-delay="120"
-          style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}
-        >
+      <StoryPanel index={1} num="01" label="Who we are" accent="var(--uc-orange-l)" bg="var(--surface-card)">
+        <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           Team Mavericks, building at UIU.
         </h2>
-        <p
-          className="reveal uc-story-lede"
-          data-delay="200"
-          style={{ margin: 0, color: 'var(--text-secondary)' }}
-        >
+        <p className="uc-story-lede" style={{ margin: 0, color: 'var(--text-secondary)' }}>
           We are a group of computer science students at United International University in Dhaka. We
           spent three years on campus wishing for a place that felt like ours — so we decided to
           build it.
@@ -127,48 +162,30 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 02 — Why we built it */}
-      <StoryPanel num="02" label="Why it exists" accent="var(--uc-cyan)" bg="var(--surface-page)">
-        <h2
-          className="reveal uc-story-heading"
-          data-delay="120"
-          style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}
-        >
+      <StoryPanel index={2} num="02" label="Why it exists" accent="var(--uc-cyan)" bg="var(--surface-page)">
+        <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           The campus network keeps disappearing.
         </h2>
-        <p
-          className="reveal uc-story-lede"
-          data-delay="200"
-          style={{ margin: '0 0 16px', color: 'var(--text-secondary)' }}
-        >
+        <p className="uc-story-lede" style={{ margin: '0 0 16px', color: 'var(--text-secondary)' }}>
           Class groups scatter across chat apps. Alumni vanish after graduation. The people most
           worth knowing are the hardest to reach. Public social networks were never built for the
           messy, valuable, slow-burn relationships a university creates.
         </p>
-        <p
-          className="reveal uc-story-lede"
-          data-delay="280"
-          style={{ margin: 0, color: 'var(--text-secondary)' }}
-        >
+        <p className="uc-story-lede" style={{ margin: 0, color: 'var(--text-secondary)' }}>
           UniConnecT started as a capstone project and grew into a platform designed for every
           university in Bangladesh — and beyond.
         </p>
       </StoryPanel>
 
       {/* 03 — What we believe */}
-      <StoryPanel num="03" label="What we believe" accent="var(--uc-mint)" bg="var(--surface-card)">
-        <h2
-          className="reveal uc-story-heading"
-          data-delay="120"
-          style={{ margin: '0 0 48px', color: 'var(--text-primary)' }}
-        >
+      <StoryPanel index={3} num="03" label="What we believe" accent="var(--uc-mint)" bg="var(--surface-card)">
+        <h2 className="uc-story-heading" style={{ margin: '0 0 48px', color: 'var(--text-primary)' }}>
           Three things we will not compromise on.
         </h2>
         <div className="uc-story-values">
-          {VALUES.map(({ label, body }, i) => (
+          {VALUES.map(({ label, body }) => (
             <div
               key={label}
-              className="reveal"
-              data-delay={String(200 + i * 80)}
               style={{
                 background: 'var(--surface-raised)',
                 border: '0.5px solid var(--border-default)',
@@ -176,14 +193,7 @@ export function AboutStory() {
                 padding: '28px 24px',
               }}
             >
-              <p
-                style={{
-                  margin: '0 0 12px',
-                  fontSize: 17,
-                  fontWeight: 500,
-                  color: 'var(--text-primary)',
-                }}
-              >
+              <p style={{ margin: '0 0 12px', fontSize: 17, fontWeight: 500, color: 'var(--text-primary)' }}>
                 {label}
               </p>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
@@ -195,27 +205,17 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 04 — The team */}
-      <StoryPanel num="04" label="The team" accent="var(--uc-indigo-l)" bg="var(--surface-page)">
-        <h2
-          className="reveal uc-story-heading"
-          data-delay="120"
-          style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}
-        >
+      <StoryPanel index={4} num="04" label="The team" accent="var(--uc-indigo-l)" bg="var(--surface-page)">
+        <h2 className="uc-story-heading" style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}>
           Built at UIU, for UIU.
         </h2>
-        <p
-          className="reveal uc-story-lede"
-          data-delay="200"
-          style={{ margin: '0 0 48px', color: 'var(--text-secondary)' }}
-        >
+        <p className="uc-story-lede" style={{ margin: '0 0 48px', color: 'var(--text-secondary)' }}>
           Four students, one campus, one mission.
         </p>
         <div className="uc-story-team">
-          {TEAM.map(({ initials, color, name, role }, i) => (
+          {TEAM.map(({ initials, color, name, role }) => (
             <div
               key={name}
-              className="reveal"
-              data-delay={String(280 + i * 80)}
               style={{
                 background: 'var(--surface-card)',
                 border: '0.5px solid var(--border-default)',
@@ -244,15 +244,7 @@ export function AboutStory() {
                 {initials}
               </div>
               <div>
-                <p
-                  style={{
-                    margin: '0 0 3px',
-                    fontSize: 15,
-                    fontWeight: 500,
-                    color: 'var(--text-primary)',
-                    lineHeight: 1.3,
-                  }}
-                >
+                <p style={{ margin: '0 0 3px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                   {name}
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -265,27 +257,15 @@ export function AboutStory() {
       </StoryPanel>
 
       {/* 05 — Where we're headed */}
-      <StoryPanel num="05" label="What's next" accent="var(--uc-orange-l)" bg="var(--uc-orange-bg)">
-        <h2
-          className="reveal uc-story-heading"
-          data-delay="120"
-          style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}
-        >
+      <StoryPanel index={5} num="05" label="What's next" accent="var(--uc-orange-l)" bg="var(--uc-orange-bg)">
+        <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
           Every campus deserves its own network.
         </h2>
-        <p
-          className="reveal uc-story-lede"
-          data-delay="200"
-          style={{ margin: '0 0 40px', color: 'var(--text-secondary)' }}
-        >
+        <p className="uc-story-lede" style={{ margin: '0 0 40px', color: 'var(--text-secondary)' }}>
           We started with UIU. The goal is every university — a place where your people stay
           reachable long after the last lecture.
         </p>
-        <div
-          className="reveal"
-          data-delay="280"
-          style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}
-        >
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <OrangeBtn onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}>
             Join free
           </OrangeBtn>
