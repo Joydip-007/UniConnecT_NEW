@@ -11,7 +11,7 @@ const NAV = [
 
 export default function SettingsPage() {
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto', padding: '20px 16px 64px' }}>
+    <div style={{ padding: '20px 0 0' }}>
       <h1 style={{ fontSize: 22, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 20 }}>
         Settings
       </h1>

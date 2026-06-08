@@ -400,9 +400,7 @@ export default function ConnectionsPage() {
   return (
     <div
       style={{
-        maxWidth: 800,
-        margin: '0 auto',
-        padding: 24,
+        padding: '20px 0 0',
         display: 'flex',
         flexDirection: 'column',
         gap: 16,
