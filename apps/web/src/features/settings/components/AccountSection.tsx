@@ -9,8 +9,12 @@ import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
 import {
   useActiveSessions,
+  useCancelDeletion,
   useChangePassword,
   useDeactivateAccount,
+  useDeletionRequest,
+  useExportData,
+  useRequestDeletion,
   useRevokeOtherSessions,
   useRevokeSession,
 } from '../hooks/useAccountSettings'
@@ -91,12 +95,152 @@ export default function AccountSection() {
       <ChangePasswordForm />
       <ActiveSessionsPanel />
 
+      <DataExportPanel />
+      <DeletionRequestPanel />
+
       <DeactivatePanel
         onDeactivated={() => {
           clearAuth()
           navigate(PATHS.LOGIN)
         }}
       />
+    </div>
+  )
+}
+
+function DataExportPanel() {
+  const exportData = useExportData()
+
+  function download() {
+    exportData.mutate(undefined, {
+      onSuccess: (bundle) => {
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `uniconnect-data-${new Date().toISOString().slice(0, 10)}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+        toast.success('Your data has been downloaded')
+      },
+      onError: () => toast.error('Could not export your data.'),
+    })
+  }
+
+  return (
+    <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>
+        Download your data
+      </h3>
+      <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 12, lineHeight: 1.5, maxWidth: 460 }}>
+        Get a copy of your profile, posts, comments, connections and settings as a JSON file. Private
+        messages are not included.
+      </p>
+      <button
+        type="button"
+        onClick={download}
+        disabled={exportData.isPending}
+        style={{ ...pillButton, background: 'transparent', color: 'var(--text-primary)' }}
+      >
+        {exportData.isPending ? 'Preparing…' : 'Download your data'}
+      </button>
+    </div>
+  )
+}
+
+function DeletionRequestPanel() {
+  const { data: request, isLoading } = useDeletionRequest()
+  const requestDeletion = useRequestDeletion()
+  const cancelDeletion = useCancelDeletion()
+  const [reason, setReason] = useState('')
+  const MIN = 10
+  const MAX = 1000
+
+  if (isLoading) return null
+
+  const pending = request?.status === 'pending'
+
+  return (
+    <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 6 }}>
+        Request account deletion
+      </h3>
+
+      {pending ? (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 12, lineHeight: 1.5, maxWidth: 460 }}>
+            Your deletion request is pending review by an admin. You can withdraw it while it's still pending.
+          </p>
+          <div
+            style={{
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-md)',
+              padding: '12px 14px',
+              marginBottom: 12,
+              maxWidth: 460,
+            }}
+          >
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Your reason</span>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{request?.reason}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              cancelDeletion.mutate(undefined, {
+                onSuccess: () => toast.success('Deletion request withdrawn'),
+                onError: () => toast.error('Could not withdraw the request.'),
+              })
+            }
+            disabled={cancelDeletion.isPending}
+            style={{ ...pillButton, background: 'transparent', color: 'var(--text-secondary)' }}
+          >
+            {cancelDeletion.isPending ? 'Withdrawing…' : 'Withdraw request'}
+          </button>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 12, lineHeight: 1.5, maxWidth: 460 }}>
+            UniConnecT is invite-only, so accounts can't be deleted instantly. Tell us why you'd like to leave
+            and an admin will review your request.
+          </p>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value.slice(0, MAX))}
+            placeholder="Why do you want to delete your account?"
+            rows={3}
+            style={{
+              width: '100%',
+              maxWidth: 460,
+              display: 'block',
+              padding: '10px 12px',
+              background: 'var(--surface-page)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-md)',
+              color: 'var(--text-primary)',
+              fontSize: 13,
+              resize: 'vertical',
+              marginBottom: 12,
+            }}
+          />
+          <button
+            type="button"
+            disabled={reason.trim().length < MIN || requestDeletion.isPending}
+            onClick={() =>
+              requestDeletion.mutate(reason.trim(), {
+                onSuccess: () => {
+                  setReason('')
+                  toast.success('Deletion request submitted for review')
+                },
+                onError: () => toast.error('Could not submit your request.'),
+              })
+            }
+            style={{ ...pillButton, background: 'transparent', color: 'var(--uc-red)', borderColor: 'var(--uc-red)' }}
+          >
+            {requestDeletion.isPending ? 'Submitting…' : 'Request account deletion'}
+          </button>
+        </>
+      )}
     </div>
   )
 }

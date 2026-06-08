@@ -1,5 +1,6 @@
 import { api } from '@/lib/axios'
 import type {
+  AccountDeletionRequest,
   NotificationPreferencesInput,
   NotificationPreferencesResponse,
   PrivacyPreferencesInput,
@@ -75,4 +76,25 @@ export async function changePassword(input: { currentPassword: string; newPasswo
 
 export async function deactivateAccount() {
   await api.post('/users/me/deactivate')
+}
+
+// ── Account: data export + deletion request ─────────────────────────────────
+
+export async function exportMyData() {
+  const { data } = await api.get<{ data: unknown }>('/users/me/export')
+  return data.data
+}
+
+export async function getDeletionRequest() {
+  const { data } = await api.get<{ data: AccountDeletionRequest | null }>('/users/me/deletion-request')
+  return data.data
+}
+
+export async function requestAccountDeletion(reason: string) {
+  const { data } = await api.post<{ data: AccountDeletionRequest }>('/users/me/deletion-request', { reason })
+  return data.data
+}
+
+export async function cancelDeletionRequest() {
+  await api.delete('/users/me/deletion-request')
 }

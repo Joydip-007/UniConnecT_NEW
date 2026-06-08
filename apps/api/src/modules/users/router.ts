@@ -1,14 +1,18 @@
 import { Router } from 'express'
-import { privacyPreferencesSchema } from '@uniconnect/shared'
+import { createAccountDeletionRequestSchema, privacyPreferencesSchema } from '@uniconnect/shared'
 import { requireAuth } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
   createEducation,
   createExperience,
+  cancelMyDeletionRequest,
   createFeatured,
   deactivateMe,
   deleteEducation,
+  exportMyData,
+  getMyDeletionRequest,
+  requestAccountDeletion,
   deleteExperience,
   deleteFeatured,
   getMe,
@@ -52,6 +56,10 @@ usersRouter.get('/me', getMe)
 usersRouter.patch('/me', validate(UpdateProfileSchema), updateMe)
 usersRouter.patch('/me/preferences', validate(UpdatePreferencesSchema), updateMyPreferences)
 usersRouter.post('/me/deactivate', deactivateMe)
+usersRouter.get('/me/export', exportMyData)
+usersRouter.get('/me/deletion-request', getMyDeletionRequest)
+usersRouter.post('/me/deletion-request', validate(createAccountDeletionRequestSchema), requestAccountDeletion)
+usersRouter.delete('/me/deletion-request', cancelMyDeletionRequest)
 usersRouter.get('/me/privacy', getMyPrivacy)
 usersRouter.put('/me/privacy', validate(privacyPreferencesSchema), updateMyPrivacy)
 usersRouter.get('/me/progress', getProgress)

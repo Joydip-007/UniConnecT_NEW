@@ -6,6 +6,7 @@ import {
   Users, FileText, Mail, Flag, Trash2, X,
   ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw,
 } from 'lucide-react'
+import type { AccountDeletionRequest } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
@@ -162,7 +163,7 @@ function MetricCard({ label, value }: { label: string; value: number }) {
 
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'content-sync' | 'reports'
+type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'content-sync' | 'reports' | 'deletion'
 const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Overview', value: 'overview', icon: <FileText size={14} /> },
   { label: 'Users', value: 'users', icon: <Users size={14} /> },
@@ -170,6 +171,7 @@ const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Content', value: 'content', icon: <LayoutGrid size={14} /> },
   { label: 'Content sync', value: 'content-sync', icon: <RefreshCw size={14} /> },
   { label: 'Reports', value: 'reports', icon: <Flag size={14} /> },
+  { label: 'Deletion requests', value: 'deletion', icon: <Trash2 size={14} /> },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1364,6 +1366,114 @@ function ReportsTab() {
   )
 }
 
+// ── Deletion requests tab ───────────────────────────────────────────────────
+
+function DeletionRequestsTab() {
+  const qc = useQueryClient()
+  const [page, setPage] = useState(1)
+  const limit = 20
+
+  const { data, isLoading } = useQuery<Paginated<AccountDeletionRequest>>({
+    queryKey: ['admin', 'deletion-requests', page],
+    queryFn: () =>
+      api.get<{ data: Paginated<AccountDeletionRequest> }>(`/admin/deletion-requests?page=${page}&limit=${limit}`)
+        .then((r) => r.data.data),
+  })
+
+  const resolveMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'approved' | 'declined' }) =>
+      api.patch(`/admin/deletion-requests/${id}`, { status }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'deletion-requests'] }) },
+  })
+
+  if (isLoading || !data) return <Spinner />
+
+  const totalPages = Math.ceil(data.total / limit)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
+        {data.total.toLocaleString()} requests · approving deactivates the account and signs the user out
+        everywhere
+      </p>
+
+      {data.items.length === 0 && (
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '48px 0',
+          textAlign: 'center',
+          fontSize: 14,
+          color: 'var(--text-tertiary)',
+        }}>
+          No deletion requests
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {data.items.map((r) => (
+          <div key={r.id} style={{
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-md)',
+            padding: '16px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {r.requesterName ?? r.requesterEmail ?? 'Unknown user'}
+                  </span>
+                  <Badge variant={r.status === 'pending' ? 'dept' : r.status === 'approved' ? 'alumni' : 'neutral'}>
+                    {r.status}
+                  </Badge>
+                </div>
+                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{r.reason}</p>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                  {r.requesterEmail} · {fmtDate(String(r.createdAt))}
+                </span>
+              </div>
+
+              {r.status === 'pending' && (
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <GhostBtn
+                    onClick={() => resolveMutation.mutate({ id: r.id, status: 'approved' })}
+                    disabled={resolveMutation.isPending}
+                    style={{ fontSize: 12, padding: '4px 10px', color: 'var(--uc-red)' }}
+                  >
+                    Approve
+                  </GhostBtn>
+                  <GhostBtn
+                    onClick={() => resolveMutation.mutate({ id: r.id, status: 'declined' })}
+                    disabled={resolveMutation.isPending}
+                    style={{ fontSize: 12, padding: '4px 10px' }}
+                  >
+                    Decline
+                  </GhostBtn>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+          <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
+            {page} / {totalPages}
+          </span>
+          <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Spinner ───────────────────────────────────────────────────────────────────
 
 function Spinner() {
@@ -1533,6 +1643,7 @@ export default function AdminPage() {
         {activeTab === 'content' && <ContentTab />}
         {activeTab === 'content-sync' && <ContentSyncPanel />}
         {activeTab === 'reports' && <ReportsTab />}
+        {activeTab === 'deletion' && <DeletionRequestsTab />}
       </div>
     </div>
   )

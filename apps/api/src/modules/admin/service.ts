@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 import bcrypt from 'bcryptjs'
-import type { UserRole } from '@uniconnect/shared'
+import type { AccountDeletionRequest, ResolveAccountDeletionRequestInput, UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, notFound } from '../../utils/errors'
 import { emailQueue } from '../../queues/email.queue'
@@ -337,6 +337,102 @@ export class AdminService {
 
     if (updated === 0) throw notFound('Report not found')
     return { reportId, status: input.status }
+  }
+
+  async listDeletionRequests(universityId: string, query: PaginationQuery) {
+    const base = db('account_deletion_requests as adr')
+      .join('users as u', 'u.id', 'adr.user_id')
+      .leftJoin('profiles as p', 'p.user_id', 'adr.user_id')
+      .where('adr.university_id', universityId)
+
+    const [{ count }] = await base.clone().count<{ count: string }[]>('adr.id as count')
+
+    const rows = await base
+      .clone()
+      .select(
+        'adr.id',
+        'adr.user_id',
+        'adr.reason',
+        'adr.status',
+        'adr.admin_note',
+        'adr.reviewed_at',
+        'adr.created_at',
+        'p.full_name as requester_name',
+        'u.email as requester_email',
+      )
+      // Pending first, then most recent.
+      .orderByRaw("CASE WHEN adr.status = 'pending' THEN 0 ELSE 1 END")
+      .orderBy('adr.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    const items: AccountDeletionRequest[] = (
+      rows as {
+        id: string
+        user_id: string
+        reason: string
+        status: AccountDeletionRequest['status']
+        admin_note: string | null
+        reviewed_at: Date | null
+        created_at: Date
+        requester_name: string | null
+        requester_email: string | null
+      }[]
+    ).map((r) => ({
+      id: r.id,
+      reason: r.reason,
+      status: r.status,
+      adminNote: r.admin_note,
+      reviewedAt: r.reviewed_at,
+      createdAt: r.created_at,
+      requesterId: r.user_id,
+      requesterName: r.requester_name,
+      requesterEmail: r.requester_email,
+    }))
+
+    return { items, total: Number(count), page: query.page, limit: query.limit }
+  }
+
+  async resolveDeletionRequest(
+    universityId: string,
+    actorId: string,
+    requestId: string,
+    input: ResolveAccountDeletionRequestInput,
+  ) {
+    const request = await db('account_deletion_requests')
+      .where({ id: requestId, university_id: universityId })
+      .first<{ id: string; user_id: string; status: string }>()
+    if (!request) throw notFound('Deletion request not found')
+    if (request.status !== 'pending') {
+      throw badRequest('This request has already been resolved', 'DELETION_REQUEST_ALREADY_RESOLVED')
+    }
+
+    await db.transaction(async (trx) => {
+      await trx('account_deletion_requests').where({ id: requestId }).update({
+        status: input.status,
+        admin_note: input.adminNote ?? null,
+        reviewed_by: actorId,
+        reviewed_at: trx.fn.now(),
+      })
+
+      // Approving a deletion deactivates the account and ends every session;
+      // actual data erasure stays a deliberate, separate admin/ops step.
+      if (input.status === 'approved') {
+        await trx('users')
+          .where({ id: request.user_id })
+          .update({ is_active: false, deactivated_at: trx.fn.now() })
+        await trx('user_sessions').where({ user_id: request.user_id }).delete()
+      }
+
+      await trx('university_audit_logs').insert({
+        university_id: universityId,
+        actor_id: actorId,
+        action: `account_deletion.${input.status}`,
+        payload: JSON.stringify({ requestId, targetUserId: request.user_id }),
+      })
+    })
+
+    return { requestId, status: input.status }
   }
 
   async createInvitation(

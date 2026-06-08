@@ -2,9 +2,10 @@ import type { Request, Response } from 'express'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
-import type { PrivacyPreferencesInput } from '@uniconnect/shared'
+import type { CreateAccountDeletionRequestInput, PrivacyPreferencesInput } from '@uniconnect/shared'
 import { RESERVED_USERNAMES, normalizeUsername, usernameSchema } from '@uniconnect/shared'
 import { usersService } from './service'
+import * as accountService from './account.service'
 import { loadPrivacy, updatePrivacy } from './privacy.service'
 import type {
   EducationInput,
@@ -45,6 +46,27 @@ export const updateMyPreferences = asyncHandler(async (req: Request, res: Respon
 export const deactivateMe = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await usersService.deactivateAccount(context.userId, context.universityId))
+})
+
+export const requestAccountDeletion = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { reason } = req.body as CreateAccountDeletionRequestInput
+  sendSuccess(res, await accountService.requestAccountDeletion(context.userId, context.universityId, reason), 201)
+})
+
+export const getMyDeletionRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await accountService.getMyDeletionRequest(context.userId))
+})
+
+export const cancelMyDeletionRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await accountService.cancelDeletionRequest(context.userId))
+})
+
+export const exportMyData = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await accountService.exportUserData(context.userId, context.universityId))
 })
 
 export const getMyPrivacy = asyncHandler(async (req: Request, res: Response) => {

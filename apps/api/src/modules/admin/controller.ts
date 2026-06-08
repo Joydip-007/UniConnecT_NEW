@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import type { ResolveAccountDeletionRequestInput } from '@uniconnect/shared'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { AppError } from '../../utils/errors'
@@ -61,6 +62,26 @@ export const resolveReport = asyncHandler(async (req: Request, res: Response) =>
   const { universityId, userId } = getAdminContext(req)
   const reportId = req.params.reportId as string
   sendSuccess(res, await adminService.resolveReport(universityId, userId, reportId, req.body as ResolveReportInput))
+})
+
+export const listDeletionRequests = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const result = await adminService.listDeletionRequests(universityId, req.query as unknown as PaginationQuery)
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const resolveDeletionRequest = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  const requestId = req.params.requestId as string
+  sendSuccess(
+    res,
+    await adminService.resolveDeletionRequest(
+      universityId,
+      userId,
+      requestId,
+      req.body as ResolveAccountDeletionRequestInput,
+    ),
+  )
 })
 
 export const createInvitation = asyncHandler(async (req: Request, res: Response) => {
