@@ -80,7 +80,7 @@ export function ImageUploadField({
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'rgba(6,13,26,0.45)',
+            background: 'var(--overlay-media)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

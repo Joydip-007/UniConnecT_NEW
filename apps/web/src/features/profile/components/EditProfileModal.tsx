@@ -488,7 +488,7 @@ export function EditProfileModal({ onClose }: Props) {
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  background: 'rgba(6,13,26,0.30)',
+                  background: 'var(--overlay-media)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -549,7 +549,7 @@ export function EditProfileModal({ onClose }: Props) {
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'rgba(6,13,26,0.45)',
+                    background: 'var(--overlay-media)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

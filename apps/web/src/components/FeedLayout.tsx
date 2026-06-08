@@ -45,7 +45,7 @@ export function FeedLayout() {
         <div className="feed-layout-left">
           <LeftSidebar />
         </div>
-        <main className="feed-layout-main" style={{ minWidth: 0 }}>
+        <main className="feed-layout-main" style={{ minWidth: 0, paddingTop: 18 }}>
           <Outlet />
         </main>
         <div className="feed-layout-right">

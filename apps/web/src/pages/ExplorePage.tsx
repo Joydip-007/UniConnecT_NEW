@@ -37,9 +37,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 // ── Stable styles ─────────────────────────────────────────────────────────────
 
-const containerStyle: React.CSSProperties = {
-  padding: '20px 0 0',
-}
+const containerStyle: React.CSSProperties = {}
 
 const searchInputWrapStyle: React.CSSProperties = {
   position: 'relative',

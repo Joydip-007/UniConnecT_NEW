@@ -942,7 +942,7 @@ function AddDriverPanel() {
           padding: '9px 18px',
           fontSize: 13,
           fontWeight: 500,
-          color: '#fff',
+          color: 'var(--on-accent)',
           background: valid ? 'var(--uc-orange)' : 'var(--surface-raised)',
           border: 'none',
           borderRadius: 'var(--r-pill)',
