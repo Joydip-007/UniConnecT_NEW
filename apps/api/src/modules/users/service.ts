@@ -422,6 +422,9 @@ export class UsersService {
       isVerified: row.is_verified,
       hasAddedExperience,
       hasAddedEducation,
+      hasAvatar: Boolean(row.avatar_url),
+      hasBio: Boolean(row.bio),
+      hasHeadline: Boolean(row.headline),
     }
   }
 

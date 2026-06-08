@@ -5,6 +5,7 @@ import { Calendar, FileText, Megaphone, Newspaper, PackageSearch, Rss } from 'lu
 import type { LucideIcon } from 'lucide-react'
 import type { FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
+import { OnboardingChecklist } from '@/features/onboarding'
 import { CreatePost } from '@/features/feed/components/CreatePost'
 import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
@@ -124,6 +125,8 @@ export default function FeedPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <OnboardingChecklist />
+
       <CreatePost editPost={editPost} onDismissEdit={() => setEditPost(null)} />
 
       {/* Filter tabs */}
