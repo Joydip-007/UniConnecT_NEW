@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Plus, Trash2, X, Bus } from 'lucide-react'
+import { Plus, Trash2, X, Bus, MapPin } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { useRouteGeometry } from '@/features/shuttle/hooks/useRouteGeometry'
@@ -210,6 +210,114 @@ function RouteMapPreview({ stops, color }: { stops: StopDraft[]; color: string }
   )
 }
 
+// ── Location picker modal ─────────────────────────────────────────────────────
+
+function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({ click: (e) => onPick(e.latlng.lat, e.latlng.lng) })
+  return null
+}
+
+function LocationPickerModal({
+  initial,
+  onConfirm,
+  onClose,
+}: {
+  initial?: { lat: number; lng: number }
+  onConfirm: (lat: number, lng: number) => void
+  onClose: () => void
+}) {
+  const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(initial ?? null)
+  const center: [number, number] = picked
+    ? [picked.lat, picked.lng]
+    : initial
+      ? [initial.lat, initial.lng]
+      : DHAKA
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(0,0,0,0.6)',
+      zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        width: 560, maxWidth: '95vw',
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 18px',
+          borderBottom: '0.5px solid var(--border-default)',
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Pick stop location
+          </span>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Hint */}
+        <div style={{ padding: '8px 18px 4px', fontSize: 12, color: 'var(--text-tertiary)' }}>
+          Click anywhere on the map to place the stop marker
+        </div>
+
+        {/* Map */}
+        <MapContainer
+          center={center}
+          zoom={picked ? 16 : 14}
+          scrollWheelZoom
+          style={{ height: 360, width: '100%' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <MapClickHandler onPick={(lat, lng) => setPicked({ lat, lng })} />
+          {picked && (
+            <CircleMarker
+              center={[picked.lat, picked.lng]}
+              radius={9}
+              pathOptions={{ color: 'var(--uc-orange)', fillColor: 'var(--uc-orange)', fillOpacity: 1, weight: 2 }}
+            >
+              <Tooltip permanent direction="top" offset={[0, -12]}>
+                {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}
+              </Tooltip>
+            </CircleMarker>
+          )}
+          {/* crosshair cursor inside the map */}
+          <style>{`.leaflet-container { cursor: crosshair !important; }`}</style>
+        </MapContainer>
+
+        {/* Coordinate readout */}
+        <div style={{
+          padding: '9px 18px',
+          fontSize: 12, fontFamily: 'monospace',
+          color: picked ? 'var(--text-primary)' : 'var(--text-tertiary)',
+          background: 'var(--surface-raised)',
+          borderTop: '0.5px solid var(--border-default)',
+        }}>
+          {picked ? `${picked.lat.toFixed(6)},  ${picked.lng.toFixed(6)}` : 'No location selected — click the map'}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', gap: 8, padding: '12px 18px', borderTop: '0.5px solid var(--border-default)' }}>
+          <PrimaryBtn disabled={!picked} onClick={() => picked && onConfirm(picked.lat, picked.lng)}>
+            Use this location
+          </PrimaryBtn>
+          <GhostBtn onClick={onClose}>Cancel</GhostBtn>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Shared input style ────────────────────────────────────────────────────────
 
 const inputSt: React.CSSProperties = {
@@ -239,9 +347,10 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [pickingStopIdx, setPickingStopIdx] = useState<number | null>(null)
 
   // Keep editor in sync when a different route is selected
-  useEffect(() => { setE(initial); setConfirmDelete(false); setSaveError(null); setDeleteError(null) }, [initial])
+  useEffect(() => { setE(initial); setConfirmDelete(false); setSaveError(null); setDeleteError(null); setPickingStopIdx(null) }, [initial])
 
   const set = <K extends keyof EditorState>(key: K, value: EditorState[K]) =>
     setE((prev) => ({ ...prev, [key]: value }))
@@ -472,16 +581,17 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {/* Header row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px', gap: 6, padding: '0 4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px 32px', gap: 6, padding: '0 4px' }}>
               <div style={{ ...labelSt, marginBottom: 0 }}>#</div>
               <div style={{ ...labelSt, marginBottom: 0 }}>Stop name</div>
               <div style={{ ...labelSt, marginBottom: 0 }}>Latitude</div>
               <div style={{ ...labelSt, marginBottom: 0 }}>Longitude</div>
               <div />
+              <div />
             </div>
 
             {e.stops.map((stop, idx) => (
-              <div key={stop.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px', gap: 6, alignItems: 'center' }}>
+              <div key={stop.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px 32px', gap: 6, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>{idx + 1}</span>
                 <input
                   style={inputSt}
@@ -501,6 +611,22 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
                   value={stop.lng}
                   onChange={(ev) => updateStop(idx, 'lng', ev.target.value)}
                 />
+                <button
+                  type="button"
+                  title="Pick on map"
+                  onClick={() => setPickingStopIdx(idx)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'var(--uc-indigo-xl)',
+                  }}
+                >
+                  <MapPin size={14} />
+                </button>
                 <button
                   type="button"
                   onClick={() => removeStop(idx)}
@@ -611,6 +737,23 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
         {saveError && <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{saveError}</span>}
         {deleteError && <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>{deleteError}</span>}
       </div>
+
+      {pickingStopIdx !== null && (
+        <LocationPickerModal
+          initial={(() => {
+            const s = e.stops[pickingStopIdx]
+            const lat = parseFloat(s?.lat ?? '')
+            const lng = parseFloat(s?.lng ?? '')
+            return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : undefined
+          })()}
+          onConfirm={(lat, lng) => {
+            updateStop(pickingStopIdx, 'lat', lat.toFixed(6))
+            updateStop(pickingStopIdx, 'lng', lng.toFixed(6))
+            setPickingStopIdx(null)
+          }}
+          onClose={() => setPickingStopIdx(null)}
+        />
+      )}
     </div>
   )
 }
