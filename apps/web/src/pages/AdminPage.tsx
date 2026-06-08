@@ -144,20 +144,40 @@ function ReportsStatCard({ count }: { count: number }) {
   )
 }
 
-function MetricCard({ label, value }: { label: string; value: number }) {
+function ContentMetricsStrip({ stats }: { stats: Stats }) {
+  const metrics: { label: string; value: number }[] = [
+    { label: 'Posts',  value: stats.posts   },
+    { label: 'Jobs',   value: stats.jobs    },
+    { label: 'Events', value: stats.events  },
+    { label: 'Groups', value: stats.groups  },
+    { label: 'News',   value: stats.news    },
+  ]
   return (
     <div style={{
       background: 'var(--surface-card)',
       border: '0.5px solid var(--border-default)',
       borderRadius: 'var(--r-lg)',
-      padding: '16px 20px',
+      display: 'flex',
+      overflow: 'hidden',
     }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 8 }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
-        {value.toLocaleString()}
-      </div>
+      {metrics.map(({ label, value }, i) => (
+        <div key={label} style={{
+          flex: '1 1 0',
+          minWidth: 80,
+          padding: '16px 20px',
+          borderLeft: i > 0 ? '0.5px solid var(--border-default)' : 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>
+            {label}
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+            {value.toLocaleString()}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -297,7 +317,7 @@ function AllowedDomainsPanel() {
               justifyContent: 'space-between',
               alignItems: 'center',
               background: 'var(--uc-mint-bg)',
-              border: '0.5px solid var(--border-default)',
+              border: '0.5px solid var(--uc-mint-bdr)',
               borderRadius: 'var(--r-md)',
               padding: '10px 14px',
             }}>
@@ -407,13 +427,7 @@ function OverviewTab() {
         <UsersStatCard total={data.users} active={data.activeUsers} />
         <ReportsStatCard count={data.reports} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
-        <MetricCard label="Posts"         value={data.posts}  />
-        <MetricCard label="Jobs"          value={data.jobs}   />
-        <MetricCard label="Events"        value={data.events} />
-        <MetricCard label="Groups"        value={data.groups} />
-        <MetricCard label="News articles" value={data.news}   />
-      </div>
+      <ContentMetricsStrip stats={data} />
       <AllowedDomainsPanel />
     </div>
   )
@@ -917,7 +931,7 @@ function AddDriverPanel() {
           Could not create driver. The email may already be in use.
         </span>
       )}
-      {msg && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-orange-l)' }}>{msg}</span>}
+      {msg && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-mint)' }}>{msg}</span>}
 
       <button
         type="button"
@@ -1178,7 +1192,7 @@ function InvitationsTab() {
             justifyContent: 'space-between',
             alignItems: 'center',
             background: 'var(--uc-mint-bg)',
-            border: '0.5px solid var(--border-default)',
+            border: '0.5px solid var(--uc-mint-bdr)',
             borderRadius: 'var(--r-md)',
             padding: '10px 14px',
           }}>

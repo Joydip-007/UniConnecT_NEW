@@ -62,7 +62,7 @@ function blankEditor(): EditorState {
   return {
     routeId: null,
     name: '',
-    color: '#3B82F6',
+    color: '#5B5BD6',
     isActive: true,
     scheduleType: 'fixed',
     outboundTimes: '',
@@ -233,8 +233,8 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
   const saveMutation = useMutation({
     mutationFn: (payload: ReturnType<typeof editorToPayload>) =>
       e.routeId
-        ? api.patch(`/campus/shuttle/routes/${e.routeId}`, payload)
-        : api.post('/campus/shuttle/routes', payload),
+        ? api.patch(`/shuttle/routes/${e.routeId}`, payload)
+        : api.post('/shuttle/routes', payload),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'shuttle', 'routes'] })
       onSaved()
@@ -243,7 +243,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/campus/shuttle/routes/${e.routeId}`),
+    mutationFn: () => api.delete(`/shuttle/routes/${e.routeId}`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'shuttle', 'routes'] })
       onSaved()
@@ -331,7 +331,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
               width: 20,
               height: 20,
               borderRadius: '50%',
-              background: '#fff',
+              background: 'var(--on-accent)',
               transition: 'left 200ms',
             }} />
           </button>
@@ -607,7 +607,7 @@ export function ShuttleTab() {
   const { data: routes = [], isLoading } = useQuery<ShuttleRoute[]>({
     queryKey: ['admin', 'shuttle', 'routes'],
     queryFn: () =>
-      api.get<{ data: ShuttleRoute[] }>('/campus/shuttle/routes?includeInactive=true').then((r) => r.data.data),
+      api.get<{ data: ShuttleRoute[] }>('/shuttle/routes?includeInactive=true').then((r) => r.data.data),
   })
 
   function selectRoute(id: string) {

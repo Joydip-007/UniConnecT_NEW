@@ -767,7 +767,7 @@ function StatusPill({ tone, children }: { tone: StatusTone; children: React.Reac
     },
     mint: {
       background: 'var(--uc-mint-bg)',
-      borderColor: 'var(--border-default)',
+      borderColor: 'var(--uc-mint-bdr)',
       color: 'var(--uc-mint)',
     },
     orange: {
