@@ -181,9 +181,7 @@ function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport }: ThreeD
 
   function handleDelete() {
     setOpen(false)
-    if (window.confirm('Delete this post? This cannot be undone.')) {
-      onDelete()
-    }
+    onDelete()
   }
 
   function handleArchive() {
@@ -322,6 +320,14 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const deleteMutation = useDeletePost()
   const archiveMutation = useArchivePost()
 
+  function handleDeletePost() {
+    const tid = window.setTimeout(() => deleteMutation.mutate(post.id), 5000)
+    toast('Post deleted', {
+      action: { label: 'Undo', onClick: () => window.clearTimeout(tid) },
+      duration: 5000,
+    })
+  }
+
   function handleLike() {
     const wasLiked = localLike
     setLocalLike(!wasLiked)
@@ -404,7 +410,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             <ThreeDotMenu
               canEdit={!!canEdit}
               onEdit={() => onEditPost(post)}
-              onDelete={() => deleteMutation.mutate(post.id)}
+              onDelete={handleDeletePost}
               onArchive={() => archiveMutation.mutate(post.id)}
               onReport={() => setReportOpen(true)}
             />

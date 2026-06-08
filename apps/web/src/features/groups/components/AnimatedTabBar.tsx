@@ -46,11 +46,13 @@ export function AnimatedTabBar({ tabs, active, onChange }: Props) {
         style={{
           position: 'absolute',
           bottom: 0,
-          left: underline.left,
-          width: underline.width,
+          left: 0,
+          width: 1,
           height: 2,
           background: 'var(--uc-orange)',
-          transition: 'left 200ms ease, width 200ms ease',
+          transform: `translateX(${underline.left}px) scaleX(${underline.width})`,
+          transformOrigin: 'left center',
+          transition: 'transform 200ms ease',
           borderRadius: '2px 2px 0 0',
         }}
       />

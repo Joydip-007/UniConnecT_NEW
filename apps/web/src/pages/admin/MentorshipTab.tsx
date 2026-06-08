@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Info } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Avatar } from '@/components/Avatar'
@@ -305,17 +305,28 @@ function MentorRow({ mentor }: { mentor: MentorSummary }) {
         </span>
 
         {/* Capacity */}
-        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 80 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'right' }}>
-            {mentor.currentMentees} / {mentor.maxMentees} mentees
+        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 88 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+              {mentor.currentMentees} / {mentor.maxMentees} mentees
+            </span>
+            <span style={{
+              fontSize: 10,
+              fontWeight: 500,
+              color: capacityPct >= 1 ? 'var(--uc-orange-l)' : 'var(--uc-mint)',
+            }}>
+              {capacityPct >= 1 ? 'Full' : 'Open'}
+            </span>
           </div>
           <div style={{ height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
             <div style={{
               height: '100%',
-              width: `${Math.min(capacityPct * 100, 100)}%`,
+              width: '100%',
               background: capacityPct >= 1 ? 'var(--uc-orange)' : 'var(--uc-mint)',
               borderRadius: 'var(--r-pill)',
-              transition: 'width 0.4s var(--ease-out-strong)',
+              transform: `scaleX(${Math.min(capacityPct, 1)})`,
+              transformOrigin: 'left center',
+              transition: 'transform 0.4s var(--ease-out-strong)',
             }} />
           </div>
         </div>
@@ -349,6 +360,67 @@ function MentorRow({ mentor }: { mentor: MentorSummary }) {
 
 // ── MentorshipTab ─────────────────────────────────────────────────────────────
 
+function LegendPopover() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="How mentor stats are calculated"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 4,
+          color: open ? 'var(--uc-indigo-xl)' : 'var(--text-tertiary)',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <Info size={14} strokeWidth={1.5} />
+      </button>
+      {open && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setOpen(false)} />
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            zIndex: 50,
+            marginTop: 6,
+            width: 280,
+            background: 'var(--surface-raised)',
+            border: '0.5px solid var(--border-hover)',
+            borderRadius: 'var(--r-md)',
+            padding: '14px 16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+              How mentor stats work
+            </p>
+            <dl style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                ['Points', 'Earned at 10 pts per completed session. Shown on the mentor\'s profile. No points are deducted.'],
+                ['Capacity bar', 'Green = slots available. Orange = at maximum mentees. Set by the mentor in their profile settings (default: 3).'],
+                ['Completed', 'Mentorship requests where both parties confirmed the relationship ended. Sessions are counted separately.'],
+                ['Sessions', 'Individual meeting logs recorded by either party within an accepted request.'],
+              ].map(([term, def]) => (
+                <div key={term as string}>
+                  <dt style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 2 }}>{term}</dt>
+                  <dd style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>{def}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function MentorshipTab() {
   const [page, setPage] = useState(1)
   const { data, isLoading } = useAdminMentors(page)
@@ -371,9 +443,12 @@ export function MentorshipTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-        {data.total.toLocaleString()} alumni mentor{data.total !== 1 ? 's' : ''}
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)', flex: 1 }}>
+          {data.total.toLocaleString()} alumni mentor{data.total !== 1 ? 's' : ''}
+        </p>
+        <LegendPopover />
+      </div>
 
       {data.items.length === 0 && (
         <div style={{

@@ -162,6 +162,7 @@ export default function FeedPage() {
                 cursor: 'pointer',
                 background: active ? 'var(--uc-orange-bg)' : 'transparent',
                 color: active ? 'var(--uc-orange-l)' : 'var(--text-secondary)',
+                transition: 'background 150ms, color 150ms',
               }}
             >
               {label}
@@ -193,6 +194,7 @@ export default function FeedPage() {
                 cursor: 'pointer',
                 background: active ? 'var(--uc-indigo-bg)' : 'transparent',
                 color: active ? 'var(--uc-indigo-l)' : 'var(--text-tertiary)',
+                transition: 'background 150ms, color 150ms',
               }}
             >
               {value === 'recent' ? 'Recent' : 'Top'}

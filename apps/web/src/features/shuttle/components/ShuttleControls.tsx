@@ -89,14 +89,26 @@ export function ShuttleControls({
       </div>
 
       {/* Live only */}
-      <button type="button" style={pill(liveOnly)} onClick={() => onLiveOnlyChange(!liveOnly)}>
+      <button
+        type="button"
+        style={pill(liveOnly)}
+        onClick={() => onLiveOnlyChange(!liveOnly)}
+        title="Show only buses with a live GPS signal — hides buses on estimated positions"
+        aria-pressed={liveOnly}
+      >
         <Radio size={14} strokeWidth={1.5} /> Live only
       </button>
 
-      {/* Focus one (only meaningful in map view) */}
+      {/* Dim others (only meaningful in map view) */}
       {view === 'map' && (
-        <button type="button" style={pill(focusMode)} onClick={() => onFocusModeChange(!focusMode)}>
-          <Layers size={14} strokeWidth={1.5} /> Focus one
+        <button
+          type="button"
+          style={pill(focusMode)}
+          onClick={() => onFocusModeChange(!focusMode)}
+          title="Dim all routes except the selected one"
+          aria-pressed={focusMode}
+        >
+          <Layers size={14} strokeWidth={1.5} /> Dim others
         </button>
       )}
     </div>

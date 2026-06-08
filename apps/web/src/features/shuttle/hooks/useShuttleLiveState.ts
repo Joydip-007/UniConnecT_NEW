@@ -37,7 +37,7 @@ export function useShuttleLiveState() {
   const [now, setNow] = useState(() => new Date())
   const rafRef = useRef<number | null>(null)
 
-  const { data: routesData, isLoading: routesLoading } = useQuery<ShuttleRoute[]>({
+  const { data: routesData, isLoading: routesLoading, isError: routesError, refetch: refetchRoutes } = useQuery<ShuttleRoute[]>({
     queryKey: ['shuttle', 'routes'],
     queryFn: () => api.get<{ data: ShuttleRoute[] }>('/shuttle/routes').then((r) => r.data.data),
   })
@@ -135,5 +135,5 @@ export function useShuttleLiveState() {
     return result
   }, [routes, liveLocations, now])
 
-  return { routes, routesLoading, busStates, now }
+  return { routes, routesLoading, routesError, refetchRoutes, busStates, now }
 }

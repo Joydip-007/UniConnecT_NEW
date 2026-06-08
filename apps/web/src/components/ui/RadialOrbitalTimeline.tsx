@@ -188,8 +188,6 @@ export function RadialOrbitalTimeline({ nodes, height = 480 }: RadialOrbitalTime
 
         /* Halo grows on hover */
         const haloBase   = node.energy * 0.45 + 44
-        const haloSize   = isHovered ? haloBase * 1.28 : haloBase
-        const haloOffset = -(haloSize - 40) / 2
 
         /* Icon scale: expanded > hovered > default */
         const iconScale  = isExpanded ? 1.40 : isHovered ? 1.18 : 1
@@ -219,13 +217,14 @@ export function RadialOrbitalTimeline({ nodes, height = 480 }: RadialOrbitalTime
                 position: 'absolute',
                 borderRadius: '50%',
                 background: `radial-gradient(circle, ${node.accentBg} 0%, transparent 70%)`,
-                width:  haloSize,
-                height: haloSize,
-                top:    haloOffset,
-                left:   haloOffset,
+                width:  haloBase,
+                height: haloBase,
+                top:    -(haloBase - 40) / 2,
+                left:   -(haloBase - 40) / 2,
                 pointerEvents: 'none',
                 opacity: isExpanded ? 1 : isHovered ? 1 : isRelated ? 0.9 : 0.55,
-                transition: `width 240ms ${EASE}, height 240ms ${EASE}, top 240ms ${EASE}, left 240ms ${EASE}, opacity 240ms ${EASE}`,
+                transform: isHovered ? 'scale(1.28)' : 'scale(1)',
+                transition: `transform 240ms ${EASE}, opacity 240ms ${EASE}`,
               }}
             />
 

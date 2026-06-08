@@ -97,10 +97,12 @@ export function OnboardingChecklist() {
           <div
             style={{
               height: '100%',
-              width: `${pct}%`,
+              width: '100%',
               background: 'var(--uc-orange)',
               borderRadius: 'var(--r-pill)',
-              transition: 'width 300ms cubic-bezier(0.23, 1, 0.32, 1)',
+              transform: `scaleX(${pct / 100})`,
+              transformOrigin: 'left center',
+              transition: 'transform 300ms cubic-bezier(0.23, 1, 0.32, 1)',
             }}
           />
         </div>

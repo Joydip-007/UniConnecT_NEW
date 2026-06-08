@@ -129,6 +129,18 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
     if (open) setTimeout(() => textareaRef.current?.focus(), 50)
   }, [open])
 
+  // Warn before page unload if composer has unsaved content
+  useEffect(() => {
+    if (!open) return
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (text.trim().length > 0 || photos.length > 0 || pollQuestion.trim().length > 0) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [open, text, photos, pollQuestion])
+
   // Open when the `c` keyboard shortcut fires
   useEffect(() => {
     function handleOpenEvent(event: Event) {
@@ -145,7 +157,9 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
   const name = user.profile.fullName ?? ''
   const firstName = name.split(' ')[0] ?? ''
 
-  function handleClose() {
+  function handleClose(force = false) {
+    const isDirty = text.trim().length > 0 || photos.length > 0 || pollQuestion.trim().length > 0
+    if (!force && isDirty && !window.confirm('Discard this post?')) return
     setOpen(false)
     setInstantOpen(false)
     resetForm()
@@ -297,7 +311,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
         publish_at: isScheduled ? publishAt.toISOString() : undefined,
       })
     }
-    handleClose()
+    handleClose(true)
   }
 
   return (
@@ -397,7 +411,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
           {/* Backdrop */}
           <div
             style={{ position: 'absolute', inset: 0, background: 'var(--overlay-bg-strong)' }}
-            onClick={handleClose}
+            onClick={() => handleClose()}
           />
 
           {/* Modal panel — full-screen composer on mobile (see .create-post-panel in index.css) */}
@@ -483,7 +497,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
 
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={() => handleClose()}
                 className="press-feedback row-hover-bg"
                 style={{
                   background: 'transparent',
@@ -823,7 +837,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                     Save as draft
                   </GhostBtn>
                 )}
-                <GhostBtn onClick={handleClose} disabled={isSubmitting}>
+                <GhostBtn onClick={() => handleClose()} disabled={isSubmitting}>
                   Cancel
                 </GhostBtn>
                 <PrimaryBtn onClick={() => handleSubmit(false)} disabled={!canSubmit()}>

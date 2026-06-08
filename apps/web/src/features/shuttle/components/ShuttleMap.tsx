@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
 import { BusMarker } from './BusMarker'
 import { bearingDeg } from '../lib/estimatePosition'
 import { useRouteGeometry } from '../hooks/useRouteGeometry'
@@ -167,10 +167,10 @@ function RouteLayer({ route, isFocused, onSelect, bus, showBus }: RouteLayerProp
           <CircleMarker
             key={stop.id}
             center={[stop.lat, stop.lng]}
-            radius={4}
+            radius={6}
             pathOptions={{ color: route.color, fillColor: route.color, fillOpacity: 1, weight: 1 }}
           >
-            <Tooltip>{stop.name}</Tooltip>
+            <Popup>{stop.name}</Popup>
           </CircleMarker>
         ))}
       {showBus && bus && <BusMarker route={route} bus={bus} />}
@@ -248,7 +248,7 @@ export function ShuttleMap({
             radius={6}
             pathOptions={{ color: '#F05A28', fillColor: '#F05A28', fillOpacity: 0.9, weight: 2 }}
           >
-            <Tooltip>You are here</Tooltip>
+            <Popup>You are here</Popup>
           </CircleMarker>
         )}
       </MapContainer>

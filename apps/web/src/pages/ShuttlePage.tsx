@@ -23,7 +23,7 @@ export default function ShuttlePage() {
   const [focusMode, setFocusMode] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
 
-  const { routes, routesLoading, busStates, now } = useShuttleLiveState()
+  const { routes, routesLoading, routesError, refetchRoutes, busStates, now } = useShuttleLiveState()
 
   // Ask for the user's location once — powers "Nearest to me" sorting + the map dot.
   useEffect(() => {
@@ -80,6 +80,50 @@ export default function ShuttlePage() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <SkeletonCard />
         <SkeletonCard />
+      </div>
+    )
+  }
+
+  if (routesError) {
+    return (
+      <div
+        style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '48px 24px',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <Bus size={28} strokeWidth={1} color="var(--text-tertiary)" />
+        <div>
+          <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Couldn't reach the shuttle service
+          </p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
+            Check your connection and try again.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => refetchRoutes()}
+          style={{
+            padding: '8px 20px',
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--on-accent)',
+            background: 'var(--uc-indigo)',
+            border: 'none',
+            borderRadius: 'var(--r-pill)',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
       </div>
     )
   }
