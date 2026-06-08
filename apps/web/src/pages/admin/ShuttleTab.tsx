@@ -189,8 +189,10 @@ function RouteMapPreview({ stops, color }: { stops: StopDraft[]; color: string }
   return (
     <MapContainer center={DHAKA} zoom={13} scrollWheelZoom={false} style={{ height: 280, width: '100%', borderRadius: 'var(--r-md)' }}>
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url={`https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_TOKEN}`}
+        tileSize={512}
+        zoomOffset={-1}
       />
       <FitPreview points={straightPositions} />
       {positions.length >= 2 && (
@@ -217,6 +219,12 @@ function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => voi
   return null
 }
 
+function InvalidateSizeOnMount() {
+  const map = useMap()
+  useEffect(() => { map.invalidateSize() }, [map])
+  return null
+}
+
 function LocationPickerModal({
   initial,
   onConfirm,
@@ -227,11 +235,16 @@ function LocationPickerModal({
   onClose: () => void
 }) {
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(initial ?? null)
+  const [satellite, setSatellite] = useState(false)
   const center: [number, number] = picked
     ? [picked.lat, picked.lng]
     : initial
       ? [initial.lat, initial.lng]
       : DHAKA
+  const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string
+  const tileUrl = satellite
+    ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${TOKEN}`
+    : `https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}?access_token=${TOKEN}`
 
   return (
     <div style={{
@@ -263,37 +276,63 @@ function LocationPickerModal({
           </button>
         </div>
 
-        {/* Hint */}
-        <div style={{ padding: '8px 18px 4px', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Click anywhere on the map to place the stop marker
+        {/* Hint + tile toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 18px 4px' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+            Click anywhere on the map to place the stop marker
+          </span>
+          <button
+            type="button"
+            onClick={() => setSatellite((s) => !s)}
+            style={{
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-pill)',
+              padding: '3px 10px',
+              fontSize: 11, fontWeight: 500,
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              flexShrink: 0,
+            }}
+          >
+            {satellite ? 'Street view' : 'Satellite view'}
+          </button>
         </div>
 
         {/* Map */}
-        <MapContainer
-          center={center}
-          zoom={picked ? 16 : 14}
-          scrollWheelZoom
-          style={{ height: 360, width: '100%' }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <MapClickHandler onPick={(lat, lng) => setPicked({ lat, lng })} />
-          {picked && (
-            <CircleMarker
-              center={[picked.lat, picked.lng]}
-              radius={9}
-              pathOptions={{ color: 'var(--uc-orange)', fillColor: 'var(--uc-orange)', fillOpacity: 1, weight: 2 }}
+        <div style={{ position: 'relative' }}>
+          <style>{`.leaflet-picker .leaflet-container { cursor: crosshair !important; }`}</style>
+          <div className="leaflet-picker">
+            <MapContainer
+              center={center}
+              zoom={picked ? 16 : 14}
+              scrollWheelZoom
+              style={{ height: 360, width: '100%' }}
             >
-              <Tooltip permanent direction="top" offset={[0, -12]}>
-                {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}
-              </Tooltip>
-            </CircleMarker>
-          )}
-          {/* crosshair cursor inside the map */}
-          <style>{`.leaflet-container { cursor: crosshair !important; }`}</style>
-        </MapContainer>
+              <TileLayer
+                key={String(satellite)}
+                attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url={tileUrl}
+                tileSize={512}
+                zoomOffset={-1}
+              />
+              <InvalidateSizeOnMount />
+              <MapClickHandler onPick={(lat, lng) => setPicked({ lat, lng })} />
+              {picked && (
+                <CircleMarker
+                  center={[picked.lat, picked.lng]}
+                  radius={9}
+                  pathOptions={{ color: 'var(--uc-orange)', fillColor: 'var(--uc-orange)', fillOpacity: 1, weight: 2 }}
+                >
+                  <Tooltip permanent direction="top" offset={[0, -12]}>
+                    {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}
+                  </Tooltip>
+                </CircleMarker>
+              )}
+            </MapContainer>
+          </div>
+        </div>
 
         {/* Coordinate readout */}
         <div style={{

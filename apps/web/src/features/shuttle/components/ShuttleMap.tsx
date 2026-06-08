@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
@@ -41,6 +41,21 @@ function FitBounds({ routes }: { routes: ShuttleRoute[] }) {
 }
 
 const DHAKA: [number, number] = [23.8103, 90.4125]
+
+const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string
+
+const TILE_LAYERS = {
+  street: {
+    url: `https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}?access_token=${TOKEN}`,
+    label: 'Satellite',
+  },
+  satellite: {
+    url: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${TOKEN}`,
+    label: 'Street',
+  },
+} as const
+
+type TileMode = keyof typeof TILE_LAYERS
 
 interface RouteLayerProps {
   route: ShuttleRoute
@@ -94,8 +109,31 @@ export function ShuttleMap({
   userLocation,
   onSelectRoute,
 }: ShuttleMapProps) {
+  const [tileMode, setTileMode] = useState<TileMode>('street')
+  const tile = TILE_LAYERS[tileMode]
+
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
+      {/* Tile toggle */}
+      <button
+        type="button"
+        onClick={() => setTileMode((m) => (m === 'street' ? 'satellite' : 'street'))}
+        style={{
+          position: 'absolute', top: 10, right: 10, zIndex: 1000,
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-pill)',
+          padding: '5px 12px',
+          fontSize: 12, fontWeight: 500,
+          color: 'var(--text-primary)',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+        }}
+      >
+        {tile.label} view
+      </button>
+
       <MapContainer
         center={DHAKA}
         zoom={13}
@@ -103,8 +141,11 @@ export function ShuttleMap({
         style={{ height: '100%', width: '100%', borderRadius: 'var(--r-lg)' }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={tileMode}
+          attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url={tile.url}
+          tileSize={512}
+          zoomOffset={-1}
         />
         <FitBounds routes={routes} />
 
