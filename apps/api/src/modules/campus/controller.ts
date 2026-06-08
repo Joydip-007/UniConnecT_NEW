@@ -42,7 +42,15 @@ export const resolveLostFound = asyncHandler(async (req: Request, res: Response)
 
 export const listShuttleRoutes = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  sendSuccess(res, await campusService.listShuttleRoutes(context.universityId))
+  const includeInactive =
+    req.query.includeInactive === 'true' && (context.role === 'faculty' || context.role === 'admin')
+  sendSuccess(res, await campusService.listShuttleRoutes(context.universityId, includeInactive))
+})
+
+export const deleteShuttleRoute = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  await campusService.deleteShuttleRoute(context.universityId, getRouteIdParam(req))
+  res.status(204).end()
 })
 
 export const createShuttleRoute = asyncHandler(async (req: Request, res: Response) => {

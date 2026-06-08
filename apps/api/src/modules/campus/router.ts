@@ -7,6 +7,7 @@ import {
   createLostFound,
   createShuttleLocation,
   createShuttleRoute,
+  deleteShuttleRoute,
   enrollCourse,
   getLostFound,
   listCourses,
@@ -43,6 +44,7 @@ campusRouter.patch('/lost-found/:itemId/resolve', requireRole('student', 'alumni
 campusRouter.get('/shuttle/routes', listShuttleRoutes)
 campusRouter.post('/shuttle/routes', requireRole('faculty', 'admin'), validate(ShuttleRouteSchema), createShuttleRoute)
 campusRouter.patch('/shuttle/routes/:routeId', requireRole('faculty', 'admin'), validate(ShuttleRouteSchema), updateShuttleRoute)
+campusRouter.delete('/shuttle/routes/:routeId', requireRole('faculty', 'admin'), deleteShuttleRoute)
 campusRouter.get('/shuttle/locations', listShuttleLocations)
 campusRouter.post('/shuttle/locations', requireRole('driver', 'admin'), validate(ShuttleLocationSchema), createShuttleLocation)
 

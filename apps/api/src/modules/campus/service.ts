@@ -166,12 +166,16 @@ export class CampusService {
     return this.getLostFound(context.universityId, itemId)
   }
 
-  async listShuttleRoutes(universityId: string) {
-    const rows = await db('shuttle_routes')
-      .select<ShuttleRouteRow[]>('*')
-      .where({ university_id: universityId, is_active: true })
-      .orderBy('name', 'asc')
+  async listShuttleRoutes(universityId: string, includeInactive = false) {
+    const query = db('shuttle_routes').select<ShuttleRouteRow[]>('*').where({ university_id: universityId })
+    if (!includeInactive) query.andWhere({ is_active: true })
+    const rows = await query.orderBy('name', 'asc')
     return rows.map(toShuttleRoute)
+  }
+
+  async deleteShuttleRoute(universityId: string, routeId: string) {
+    const deleted = await db('shuttle_routes').where({ id: routeId, university_id: universityId }).del()
+    if (deleted === 0) throw notFound('Shuttle route not found', 'SHUTTLE_ROUTE_NOT_FOUND')
   }
 
   async createShuttleRoute(universityId: string, input: ShuttleRouteInput) {

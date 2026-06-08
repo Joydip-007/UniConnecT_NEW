@@ -1,0 +1,807 @@
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+import { Plus, Trash2, X, Bus } from 'lucide-react'
+import { api } from '@/lib/axios'
+import { GhostBtn, PrimaryBtn } from '@/components/Button'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface ShuttleStop {
+  id: string
+  name: string
+  orderIndex: number
+  lat: number
+  lng: number
+}
+
+interface ShuttleSchedule {
+  type?: 'fixed' | 'continuous'
+  departures?: { outbound?: string[]; inbound?: string[] }
+  operatingHours?: { start?: string; end?: string }
+}
+
+interface ShuttleRoute {
+  id: string
+  name: string
+  color: string
+  isActive: boolean
+  stops: ShuttleStop[]
+  schedule?: ShuttleSchedule
+  estDurationMin?: number | null
+  cycleMinutes?: number | null
+}
+
+interface StopDraft {
+  id: string
+  name: string
+  lat: string
+  lng: string
+}
+
+interface EditorState {
+  routeId: string | null
+  name: string
+  color: string
+  isActive: boolean
+  scheduleType: 'fixed' | 'continuous'
+  outboundTimes: string
+  inboundTimes: string
+  opStart: string
+  opEnd: string
+  estDurationMin: string
+  cycleMinutes: string
+  stops: StopDraft[]
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function blankEditor(): EditorState {
+  return {
+    routeId: null,
+    name: '',
+    color: '#3B82F6',
+    isActive: true,
+    scheduleType: 'fixed',
+    outboundTimes: '',
+    inboundTimes: '',
+    opStart: '07:30',
+    opEnd: '17:00',
+    estDurationMin: '',
+    cycleMinutes: '',
+    stops: [],
+  }
+}
+
+function routeToEditor(r: ShuttleRoute): EditorState {
+  const schedule = r.schedule ?? {}
+  const isFixed = schedule.type !== 'continuous'
+  const stops = [...(r.stops ?? [])].sort((a, b) => a.orderIndex - b.orderIndex)
+  return {
+    routeId: r.id,
+    name: r.name,
+    color: r.color,
+    isActive: r.isActive,
+    scheduleType: isFixed ? 'fixed' : 'continuous',
+    outboundTimes: (schedule.departures?.outbound ?? []).join('\n'),
+    inboundTimes: (schedule.departures?.inbound ?? []).join('\n'),
+    opStart: schedule.operatingHours?.start ?? '07:30',
+    opEnd: schedule.operatingHours?.end ?? '17:00',
+    estDurationMin: r.estDurationMin != null ? String(r.estDurationMin) : '',
+    cycleMinutes: r.cycleMinutes != null ? String(r.cycleMinutes) : '',
+    stops: stops.map((s) => ({ id: s.id, name: s.name, lat: String(s.lat), lng: String(s.lng) })),
+  }
+}
+
+function parseTimeLines(text: string): string[] {
+  return text
+    .split('\n')
+    .map((t) => t.trim())
+    .filter((t) => /^\d{1,2}:\d{2}$/.test(t))
+}
+
+function editorToPayload(e: EditorState) {
+  const stops = e.stops
+    .filter((s) => s.name.trim() && s.lat.trim() && s.lng.trim())
+    .map((s, i) => ({
+      id: s.id,
+      name: s.name.trim(),
+      orderIndex: i,
+      lat: parseFloat(s.lat),
+      lng: parseFloat(s.lng),
+    }))
+    .filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng))
+
+  const schedule: ShuttleSchedule =
+    e.scheduleType === 'fixed'
+      ? { type: 'fixed', departures: { outbound: parseTimeLines(e.outboundTimes), inbound: parseTimeLines(e.inboundTimes) } }
+      : { type: 'continuous', operatingHours: { start: e.opStart, end: e.opEnd } }
+
+  return {
+    name: e.name.trim(),
+    color: e.color,
+    is_active: e.isActive,
+    stops,
+    schedule,
+    est_duration_min: e.scheduleType === 'fixed' && e.estDurationMin ? parseInt(e.estDurationMin, 10) : null,
+    cycle_minutes: e.scheduleType === 'continuous' && e.cycleMinutes ? parseInt(e.cycleMinutes, 10) : null,
+  }
+}
+
+function editorValid(e: EditorState): boolean {
+  if (!e.name.trim()) return false
+  if (!/^#[0-9a-fA-F]{6}$/.test(e.color)) return false
+  const validStops = e.stops.filter(
+    (s) => s.name.trim() && Number.isFinite(parseFloat(s.lat)) && Number.isFinite(parseFloat(s.lng)),
+  )
+  if (validStops.length < 2) return false
+  return true
+}
+
+function mapStops(stops: StopDraft[]): { lat: number; lng: number; name: string; id: string }[] {
+  return stops
+    .filter((s) => s.name.trim() && Number.isFinite(parseFloat(s.lat)) && Number.isFinite(parseFloat(s.lng)))
+    .map((s) => ({ id: s.id, name: s.name, lat: parseFloat(s.lat), lng: parseFloat(s.lng) }))
+}
+
+// ── Map preview ───────────────────────────────────────────────────────────────
+
+function FitPreview({ points }: { points: [number, number][] }) {
+  const map = useMap()
+  const prev = useRef<string>('')
+  useEffect(() => {
+    const key = JSON.stringify(points)
+    if (key === prev.current || points.length < 1) return
+    prev.current = key
+    if (points.length === 1) {
+      map.setView(points[0], 14)
+    } else {
+      map.fitBounds(L.latLngBounds(points as L.LatLngExpression[]).pad(0.25))
+    }
+  }, [points, map])
+  return null
+}
+
+const DHAKA: [number, number] = [23.8103, 90.4125]
+
+function RouteMapPreview({ stops, color }: { stops: StopDraft[]; color: string }) {
+  const valid = mapStops(stops)
+  const positions = valid.map((s) => [s.lat, s.lng] as [number, number])
+
+  return (
+    <MapContainer center={DHAKA} zoom={13} scrollWheelZoom={false} style={{ height: 280, width: '100%', borderRadius: 'var(--r-md)' }}>
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <FitPreview points={positions} />
+      {positions.length >= 2 && (
+        <Polyline positions={positions} pathOptions={{ color, weight: 4, opacity: 0.85 }} />
+      )}
+      {valid.map((s) => (
+        <CircleMarker
+          key={s.id}
+          center={[s.lat, s.lng]}
+          radius={5}
+          pathOptions={{ color, fillColor: color, fillOpacity: 1, weight: 1 }}
+        >
+          <Tooltip>{s.name}</Tooltip>
+        </CircleMarker>
+      ))}
+    </MapContainer>
+  )
+}
+
+// ── Shared input style ────────────────────────────────────────────────────────
+
+const inputSt: React.CSSProperties = {
+  background: 'var(--surface-raised)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-sm)',
+  padding: '8px 12px',
+  fontSize: 13,
+  color: 'var(--text-primary)',
+  fontFamily: 'inherit',
+  width: '100%',
+  boxSizing: 'border-box' as const,
+  outline: 'none',
+}
+
+// ── Route editor ──────────────────────────────────────────────────────────────
+
+interface RouteEditorProps {
+  initial: EditorState
+  onSaved: () => void
+  onCancel: () => void
+}
+
+function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
+  const qc = useQueryClient()
+  const [e, setE] = useState<EditorState>(initial)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Keep editor in sync when a different route is selected
+  useEffect(() => { setE(initial); setConfirmDelete(false); setSaveError(null); setDeleteError(null) }, [initial])
+
+  const set = <K extends keyof EditorState>(key: K, value: EditorState[K]) =>
+    setE((prev) => ({ ...prev, [key]: value }))
+
+  const saveMutation = useMutation({
+    mutationFn: (payload: ReturnType<typeof editorToPayload>) =>
+      e.routeId
+        ? api.patch(`/campus/shuttle/routes/${e.routeId}`, payload)
+        : api.post('/campus/shuttle/routes', payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'shuttle', 'routes'] })
+      onSaved()
+    },
+    onError: () => setSaveError('Failed to save. Please try again.'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.delete(`/campus/shuttle/routes/${e.routeId}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'shuttle', 'routes'] })
+      onSaved()
+    },
+    onError: () => setDeleteError('Failed to delete. Please try again.'),
+  })
+
+  function addStop() {
+    setE((prev) => ({
+      ...prev,
+      stops: [...prev.stops, { id: crypto.randomUUID(), name: '', lat: '', lng: '' }],
+    }))
+  }
+
+  function updateStop(idx: number, field: keyof StopDraft, value: string) {
+    setE((prev) => {
+      const stops = [...prev.stops]
+      stops[idx] = { ...stops[idx], [field]: value }
+      return { ...prev, stops }
+    })
+  }
+
+  function removeStop(idx: number) {
+    setE((prev) => ({ ...prev, stops: prev.stops.filter((_, i) => i !== idx) }))
+  }
+
+  const valid = editorValid(e)
+  const isNew = e.routeId === null
+
+  const labelSt: React.CSSProperties = { fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 4 }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+      {/* Name + color + active */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ flex: '3 1 200px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={labelSt}>Route name</div>
+          <input
+            style={inputSt}
+            placeholder="e.g. Notun Bazar ↔ UIU"
+            value={e.name}
+            onChange={(ev) => set('name', ev.target.value)}
+          />
+        </div>
+
+        <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={labelSt}>Color</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="color"
+              value={e.color}
+              onChange={(ev) => set('color', ev.target.value)}
+              style={{ width: 36, height: 36, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+            />
+            <input
+              style={{ ...inputSt, width: 90, fontFamily: 'monospace' }}
+              value={e.color}
+              onChange={(ev) => set('color', ev.target.value)}
+              maxLength={7}
+            />
+          </div>
+        </div>
+
+        <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={labelSt}>Active</div>
+          <button
+            type="button"
+            onClick={() => set('isActive', !e.isActive)}
+            style={{
+              width: 44,
+              height: 24,
+              borderRadius: 'var(--r-pill)',
+              border: 'none',
+              cursor: 'pointer',
+              position: 'relative',
+              background: e.isActive ? 'var(--uc-indigo)' : 'var(--surface-raised)',
+              transition: 'background 200ms',
+            }}
+          >
+            <span style={{
+              position: 'absolute',
+              top: 2,
+              left: e.isActive ? 22 : 2,
+              width: 20,
+              height: 20,
+              borderRadius: '50%',
+              background: '#fff',
+              transition: 'left 200ms',
+            }} />
+          </button>
+        </div>
+      </div>
+
+      {/* Schedule */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={labelSt}>Schedule type</div>
+            <select
+              value={e.scheduleType}
+              onChange={(ev) => set('scheduleType', ev.target.value as 'fixed' | 'continuous')}
+              style={{ ...inputSt, width: 'auto', cursor: 'pointer' }}
+            >
+              <option value="fixed">Fixed departures</option>
+              <option value="continuous">Continuous (loop)</option>
+            </select>
+          </div>
+
+          {e.scheduleType === 'fixed' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={labelSt}>Est. duration (min)</div>
+              <input
+                style={{ ...inputSt, width: 120 }}
+                type="number"
+                min={1}
+                placeholder="e.g. 35"
+                value={e.estDurationMin}
+                onChange={(ev) => set('estDurationMin', ev.target.value)}
+              />
+            </div>
+          )}
+
+          {e.scheduleType === 'continuous' && (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={labelSt}>Cycle (min)</div>
+                <input
+                  style={{ ...inputSt, width: 100 }}
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 50"
+                  value={e.cycleMinutes}
+                  onChange={(ev) => set('cycleMinutes', ev.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={labelSt}>Start</div>
+                <input style={{ ...inputSt, width: 100 }} type="time" value={e.opStart} onChange={(ev) => set('opStart', ev.target.value)} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={labelSt}>End</div>
+                <input style={{ ...inputSt, width: 100 }} type="time" value={e.opEnd} onChange={(ev) => set('opEnd', ev.target.value)} />
+              </div>
+            </>
+          )}
+        </div>
+
+        {e.scheduleType === 'fixed' && (
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={labelSt}>Outbound departures (one HH:MM per line)</div>
+              <textarea
+                style={{ ...inputSt, resize: 'vertical', minHeight: 90, lineHeight: 1.6 }}
+                placeholder={'07:30\n09:25\n10:45'}
+                value={e.outboundTimes}
+                onChange={(ev) => set('outboundTimes', ev.target.value)}
+              />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={labelSt}>Inbound departures (one HH:MM per line)</div>
+              <textarea
+                style={{ ...inputSt, resize: 'vertical', minHeight: 90, lineHeight: 1.6 }}
+                placeholder={'10:05\n11:25\n12:45'}
+                value={e.inboundTimes}
+                onChange={(ev) => set('inboundTimes', ev.target.value)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Stops */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={labelSt}>Stops ({e.stops.length})</div>
+          <button
+            type="button"
+            onClick={addStop}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              background: 'var(--uc-indigo-bg)',
+              border: '0.5px solid var(--uc-indigo-bdr)',
+              borderRadius: 'var(--r-pill)',
+              padding: '4px 12px',
+              fontSize: 12,
+              color: 'var(--uc-indigo-xl)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <Plus size={12} /> Add stop
+          </button>
+        </div>
+
+        {e.stops.length === 0 ? (
+          <div style={{
+            padding: '24px 0',
+            textAlign: 'center',
+            fontSize: 13,
+            color: 'var(--text-tertiary)',
+            background: 'var(--surface-raised)',
+            borderRadius: 'var(--r-md)',
+            border: '0.5px solid var(--border-default)',
+          }}>
+            No stops yet — add at least 2 to draw the route
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {/* Header row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px', gap: 6, padding: '0 4px' }}>
+              <div style={{ ...labelSt, marginBottom: 0 }}>#</div>
+              <div style={{ ...labelSt, marginBottom: 0 }}>Stop name</div>
+              <div style={{ ...labelSt, marginBottom: 0 }}>Latitude</div>
+              <div style={{ ...labelSt, marginBottom: 0 }}>Longitude</div>
+              <div />
+            </div>
+
+            {e.stops.map((stop, idx) => (
+              <div key={stop.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>{idx + 1}</span>
+                <input
+                  style={inputSt}
+                  placeholder="Stop name"
+                  value={stop.name}
+                  onChange={(ev) => updateStop(idx, 'name', ev.target.value)}
+                />
+                <input
+                  style={{ ...inputSt, fontFamily: 'monospace' }}
+                  placeholder="23.8128"
+                  value={stop.lat}
+                  onChange={(ev) => updateStop(idx, 'lat', ev.target.value)}
+                />
+                <input
+                  style={{ ...inputSt, fontFamily: 'monospace' }}
+                  placeholder="90.4501"
+                  value={stop.lng}
+                  onChange={(ev) => updateStop(idx, 'lng', ev.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeStop(idx)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: 'var(--text-tertiary)',
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!valid && e.stops.length > 0 && e.stops.length < 2 && (
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--uc-orange-l)' }}>
+            At least 2 valid stops are required.
+          </p>
+        )}
+      </div>
+
+      {/* Map preview */}
+      {mapStops(e.stops).length >= 1 && (
+        <div>
+          <div style={{ ...labelSt, marginBottom: 6 }}>Route preview</div>
+          <RouteMapPreview stops={e.stops} color={e.color} />
+        </div>
+      )}
+
+      {/* Footer actions */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <PrimaryBtn
+            disabled={!valid || saveMutation.isPending}
+            onClick={() => { setSaveError(null); saveMutation.mutate(editorToPayload(e)) }}
+          >
+            {saveMutation.isPending ? 'Saving…' : isNew ? 'Create route' : 'Save changes'}
+          </PrimaryBtn>
+          <GhostBtn onClick={onCancel}>Cancel</GhostBtn>
+
+          {!isNew && !confirmDelete && (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                marginLeft: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'none',
+                border: '0.5px solid var(--uc-red-bdr)',
+                borderRadius: 'var(--r-pill)',
+                padding: '7px 14px',
+                fontSize: 13,
+                color: 'var(--uc-red)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <Trash2 size={13} /> Delete route
+            </button>
+          )}
+        </div>
+
+        {!isNew && confirmDelete && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: 'var(--uc-red-bg)',
+            border: '0.5px solid var(--uc-red-bdr)',
+            borderRadius: 'var(--r-md)',
+            padding: '10px 14px',
+          }}>
+            <span style={{ fontSize: 13, color: 'var(--uc-red)', flex: 1 }}>
+              Delete this route? This cannot be undone.
+            </span>
+            <button
+              type="button"
+              disabled={deleteMutation.isPending}
+              onClick={() => { setDeleteError(null); deleteMutation.mutate() }}
+              style={{
+                background: 'var(--uc-red-bg)',
+                border: '0.5px solid var(--uc-red-bdr)',
+                borderRadius: 'var(--r-pill)',
+                padding: '5px 14px',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--uc-red)',
+                cursor: deleteMutation.isPending ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Confirm delete'}
+            </button>
+            <GhostBtn onClick={() => setConfirmDelete(false)} style={{ fontSize: 12, padding: '5px 12px' }}>
+              Cancel
+            </GhostBtn>
+          </div>
+        )}
+
+        {saveError && <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>{saveError}</span>}
+        {deleteError && <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>{deleteError}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ── ShuttleTab ────────────────────────────────────────────────────────────────
+
+export function ShuttleTab() {
+  const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
+
+  const { data: routes = [], isLoading } = useQuery<ShuttleRoute[]>({
+    queryKey: ['admin', 'shuttle', 'routes'],
+    queryFn: () =>
+      api.get<{ data: ShuttleRoute[] }>('/campus/shuttle/routes?includeInactive=true').then((r) => r.data.data),
+  })
+
+  function selectRoute(id: string) {
+    setSelectedId(id)
+  }
+
+  function openNew() {
+    setSelectedId('new')
+  }
+
+  function closeEditor() {
+    setSelectedId(null)
+  }
+
+  const selectedRoute = selectedId && selectedId !== 'new' ? routes.find((r) => r.id === selectedId) ?? null : null
+  const editorInitial =
+    selectedId === 'new'
+      ? blankEditor()
+      : selectedRoute
+        ? routeToEditor(selectedRoute)
+        : null
+
+  return (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      {/* ── Route list ── */}
+      <div style={{
+        width: 268,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}>
+        <button
+          type="button"
+          onClick={openNew}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 7,
+            width: '100%',
+            padding: '9px 0',
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--uc-indigo-xl)',
+            background: 'var(--uc-indigo-bg)',
+            border: '0.5px solid var(--uc-indigo-bdr)',
+            borderRadius: 'var(--r-pill)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          <Plus size={14} /> New route
+        </button>
+
+        {isLoading ? (
+          <RouteListSkeleton />
+        ) : routes.length === 0 ? (
+          <div style={{
+            padding: '32px 0',
+            textAlign: 'center',
+            fontSize: 13,
+            color: 'var(--text-tertiary)',
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-lg)',
+          }}>
+            No routes yet
+          </div>
+        ) : (
+          routes.map((r) => {
+            const active = selectedId === r.id
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => selectRoute(r.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '12px 14px',
+                  background: active ? 'var(--uc-indigo-bg)' : 'var(--surface-card)',
+                  border: `0.5px solid ${active ? 'var(--uc-indigo-bdr)' : 'var(--border-default)'}`,
+                  borderRadius: 'var(--r-md)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'background 150ms, border-color 150ms',
+                }}
+              >
+                <span style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  background: r.color,
+                  flexShrink: 0,
+                  opacity: r.isActive ? 1 : 0.4,
+                }} />
+                <span style={{
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: active ? 500 : 400,
+                  color: active ? 'var(--uc-indigo-xl)' : r.isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {r.name}
+                </span>
+                {!r.isActive && (
+                  <span style={{
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: 'var(--text-tertiary)',
+                    background: 'var(--surface-raised)',
+                    borderRadius: 'var(--r-pill)',
+                    padding: '2px 7px',
+                    flexShrink: 0,
+                  }}>
+                    off
+                  </span>
+                )}
+              </button>
+            )
+          })
+        )}
+      </div>
+
+      {/* ── Editor panel ── */}
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: '24px',
+      }}>
+        {editorInitial ? (
+          <Fragment>
+            <div style={{ marginBottom: 18 }}>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
+                {selectedId === 'new' ? 'New route' : editorInitial.name || 'Edit route'}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                {selectedId === 'new'
+                  ? 'Fill in the details and add at least 2 stops to create the route.'
+                  : 'Edit the route details, stops, and schedule below.'}
+              </p>
+            </div>
+            <RouteEditor
+              key={selectedId}
+              initial={editorInitial}
+              onSaved={closeEditor}
+              onCancel={closeEditor}
+            />
+          </Fragment>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '64px 0',
+            gap: 12,
+            color: 'var(--text-tertiary)',
+          }}>
+            <Bus size={32} strokeWidth={1.2} />
+            <p style={{ margin: 0, fontSize: 13 }}>Select a route to edit, or create a new one.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function RouteListSkeleton() {
+  return (
+    <Fragment>
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          style={{
+            height: 46,
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-md)',
+            opacity: 0.5,
+          }}
+        />
+      ))}
+    </Fragment>
+  )
+}
