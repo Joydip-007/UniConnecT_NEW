@@ -41,7 +41,7 @@ export function FeedLayout() {
       )}
       <TopNav />
       <MobileBottomNav />
-      <div className="feed-layout-grid" style={{ flex: 1 }}>
+      <div className="feed-layout-grid">
         <div className="feed-layout-left">
           <LeftSidebar />
         </div>
@@ -52,7 +52,9 @@ export function FeedLayout() {
           <RightSidebar />
         </div>
       </div>
-      <LandingFooter />
+      <div style={{ marginTop: 'auto' }}>
+        <LandingFooter />
+      </div>
     </div>
   )
 }

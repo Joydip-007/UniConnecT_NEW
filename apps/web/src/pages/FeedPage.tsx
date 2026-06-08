@@ -93,7 +93,7 @@ export default function FeedPage() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   const posts = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data])
-  const allCaughtUp = !isLoading && !hasNextPage && posts.length > 0
+
   const openPost = posts.find((p) => p.id === openPostId) ?? null
 
   function buildParams(nextFilter: FeedFilter, nextSort: 'recent' | 'top') {
@@ -256,18 +256,6 @@ export default function FeedPage() {
       {/* Intersection sentinel */}
       <div ref={sentinelRef} style={{ height: 1 }} />
 
-      {/* All caught up */}
-      {allCaughtUp && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0 16px' }}>
-          <div style={{ flex: 1, height: '0.5px', background: 'var(--border-hover)' }} />
-          <span
-            style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', flexShrink: 0 }}
-          >
-            You're all caught up
-          </span>
-          <div style={{ flex: 1, height: '0.5px', background: 'var(--border-hover)' }} />
-        </div>
-      )}
 
       {/* Comment drawer */}
       <AnimatePresence>
