@@ -3,6 +3,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { BusMarker } from './BusMarker'
+import { useRouteGeometry } from '../hooks/useRouteGeometry'
 import type { BusState, ShuttleRoute, ShuttleStop } from '../types'
 
 interface ShuttleMapProps {
@@ -41,6 +42,49 @@ function FitBounds({ routes }: { routes: ShuttleRoute[] }) {
 
 const DHAKA: [number, number] = [23.8103, 90.4125]
 
+interface RouteLayerProps {
+  route: ShuttleRoute
+  isFocused: boolean
+  onSelect: (id: string) => void
+  bus: BusState | undefined
+  showBus: boolean
+}
+
+function RouteLayer({ route, isFocused, onSelect, bus, showBus }: RouteLayerProps) {
+  const stops = geoStops(route)
+  const { data: routedPositions } = useRouteGeometry(stops)
+  // Fall back to straight lines while the OSRM response is loading
+  const positions: [number, number][] = routedPositions ?? stops.map((s) => [s.lat, s.lng])
+
+  if (positions.length < 2) return null
+
+  return (
+    <Fragment>
+      <Polyline
+        positions={positions}
+        pathOptions={{
+          color: route.color,
+          weight: isFocused ? 5 : 3,
+          opacity: isFocused ? 0.9 : 0.2,
+        }}
+        eventHandlers={{ click: () => onSelect(route.id) }}
+      />
+      {isFocused &&
+        stops.map((stop) => (
+          <CircleMarker
+            key={stop.id}
+            center={[stop.lat, stop.lng]}
+            radius={4}
+            pathOptions={{ color: route.color, fillColor: route.color, fillOpacity: 1, weight: 1 }}
+          >
+            <Tooltip>{stop.name}</Tooltip>
+          </CircleMarker>
+        ))}
+      {showBus && bus && <BusMarker route={route} bus={bus} />}
+    </Fragment>
+  )
+}
+
 export function ShuttleMap({
   routes,
   busStates,
@@ -66,35 +110,17 @@ export function ShuttleMap({
 
         {routes.map((route) => {
           const isFocused = !focusMode || route.id === selectedRouteId
-          const positions = latLngs(route)
-          if (positions.length < 2) return null
           const bus = busStates[route.id]
-          const showBus = bus && isFocused && (!liveOnly || bus.source === 'live')
-
+          const showBus = Boolean(bus && isFocused && (!liveOnly || bus.source === 'live'))
           return (
-            <Fragment key={route.id}>
-              <Polyline
-                positions={positions}
-                pathOptions={{
-                  color: route.color,
-                  weight: isFocused ? 5 : 3,
-                  opacity: isFocused ? 0.9 : 0.2,
-                }}
-                eventHandlers={{ click: () => onSelectRoute(route.id) }}
-              />
-              {isFocused &&
-                geoStops(route).map((stop) => (
-                  <CircleMarker
-                    key={stop.id}
-                    center={[stop.lat, stop.lng]}
-                    radius={4}
-                    pathOptions={{ color: route.color, fillColor: route.color, fillOpacity: 1, weight: 1 }}
-                  >
-                    <Tooltip>{stop.name}</Tooltip>
-                  </CircleMarker>
-                ))}
-              {showBus && <BusMarker route={route} bus={bus} />}
-            </Fragment>
+            <RouteLayer
+              key={route.id}
+              route={route}
+              isFocused={isFocused}
+              onSelect={onSelectRoute}
+              bus={bus}
+              showBus={showBus}
+            />
           )
         })}
 

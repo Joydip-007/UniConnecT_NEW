@@ -6,6 +6,7 @@ import L from 'leaflet'
 import { Plus, Trash2, X, Bus } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { useRouteGeometry } from '@/features/shuttle/hooks/useRouteGeometry'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -170,7 +171,20 @@ const DHAKA: [number, number] = [23.8103, 90.4125]
 
 function RouteMapPreview({ stops, color }: { stops: StopDraft[]; color: string }) {
   const valid = mapStops(stops)
-  const positions = valid.map((s) => [s.lat, s.lng] as [number, number])
+  const stopKey = valid.map((s) => `${s.lat},${s.lng}`).join('|')
+
+  // Debounce the OSRM fetch so it doesn't fire on every keystroke
+  const [debouncedStops, setDebouncedStops] = useState(valid)
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedStops(mapStops(stops)), 600)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stopKey])
+
+  const { data: routedPositions } = useRouteGeometry(debouncedStops)
+  const straightPositions = valid.map((s) => [s.lat, s.lng] as [number, number])
+  // Use road-following geometry when available, straight lines while loading
+  const positions: [number, number][] = routedPositions ?? straightPositions
 
   return (
     <MapContainer center={DHAKA} zoom={13} scrollWheelZoom={false} style={{ height: 280, width: '100%', borderRadius: 'var(--r-md)' }}>
@@ -178,7 +192,7 @@ function RouteMapPreview({ stops, color }: { stops: StopDraft[]; color: string }
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <FitPreview points={positions} />
+      <FitPreview points={straightPositions} />
       {positions.length >= 2 && (
         <Polyline positions={positions} pathOptions={{ color, weight: 4, opacity: 0.85 }} />
       )}
