@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
-import { LandingFooter } from '@/features/landing/components/LandingFooter'
+import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import type { User } from '@uniconnect/shared/types'
 
 type OtpPurpose = 'verify' | 'login'
@@ -307,7 +307,7 @@ function OtpForm({
         </div>
       </div>
       </div>
-      <LandingFooter />
+      <MinimalPageFooter />
     </div>
   )
 }

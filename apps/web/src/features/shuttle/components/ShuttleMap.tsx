@@ -85,11 +85,12 @@ const IDLE_BOX = Math.ceil(Math.sqrt(IDLE_W ** 2 + IDLE_H ** 2)) + 4 // 40
 function IdleBuses({ route }: { route: ShuttleRoute }) {
   const stops = geoStops(route)
   const terminalIdx = stops.findIndex((s) => /uiu/i.test(s.name))
-  if (terminalIdx < 0 || stops.length < 2) return null
-
-  const terminal = stops[terminalIdx]
-  const neighbor = terminalIdx === stops.length - 1 ? stops[terminalIdx - 1] : stops[terminalIdx + 1]
-  const heading = bearingDeg(terminal.lat, terminal.lng, neighbor.lat, neighbor.lng)
+  const valid = terminalIdx >= 0 && stops.length >= 2
+  const terminal = valid ? stops[terminalIdx] : stops[0]
+  const neighbor = valid
+    ? terminalIdx === stops.length - 1 ? stops[terminalIdx - 1] : stops[terminalIdx + 1]
+    : stops[0]
+  const heading = valid ? bearingDeg(terminal.lat, terminal.lng, neighbor.lat, neighbor.lng) : 0
 
   const icon = useMemo(
     () =>
@@ -107,6 +108,8 @@ function IdleBuses({ route }: { route: ShuttleRoute }) {
       }),
     [heading],
   )
+
+  if (!valid) return null
 
   return (
     <>
@@ -195,15 +198,14 @@ export function ShuttleMap({
         onClick={() => setTileMode((m) => (m === 'street' ? 'satellite' : 'street'))}
         style={{
           position: 'absolute', top: 10, right: 10, zIndex: 1000,
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
+          background: 'var(--surface-raised)',
+          border: '0.5px solid var(--border-hover)',
           borderRadius: 'var(--r-pill)',
           padding: '5px 12px',
           fontSize: 12, fontWeight: 500,
           color: 'var(--text-primary)',
           cursor: 'pointer',
           fontFamily: 'inherit',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
         }}
       >
         {tile.label} view
@@ -244,7 +246,7 @@ export function ShuttleMap({
           <CircleMarker
             center={[userLocation.lat, userLocation.lng]}
             radius={6}
-            pathOptions={{ color: '#1769ff', fillColor: '#1769ff', fillOpacity: 0.9, weight: 2 }}
+            pathOptions={{ color: '#F05A28', fillColor: '#F05A28', fillOpacity: 0.9, weight: 2 }}
           >
             <Tooltip>You are here</Tooltip>
           </CircleMarker>

@@ -147,12 +147,6 @@ export default function ShuttlePage() {
         <StopList route={selectedRoute} hasLocation={currentLocation !== null} derived={derived} atFinalStop={atFinalStop} />
       )}
 
-      <style>{`
-        @keyframes livePulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
     </div>
   )
 }

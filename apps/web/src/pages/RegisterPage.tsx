@@ -8,7 +8,7 @@ import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
-import { LandingFooter } from '@/features/landing/components/LandingFooter'
+import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import type { User, UserRole } from '@uniconnect/shared/types'
 
 interface RegisterResponse {
@@ -447,7 +447,7 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
-      <LandingFooter />
+      <MinimalPageFooter />
     </main>
   )
 }

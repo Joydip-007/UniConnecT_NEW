@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { PrimaryBtn } from '@/components/Button'
-import { LandingFooter } from '@/features/landing/components/LandingFooter'
+import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 
 export default function NotFoundPage() {
   const navigate = useNavigate()
@@ -70,7 +70,7 @@ export default function NotFoundPage() {
         </PrimaryBtn>
       </div>
       </div>
-      <LandingFooter />
+      <MinimalPageFooter />
     </div>
   )
 }

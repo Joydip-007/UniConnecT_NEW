@@ -682,3 +682,8 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .admin-skeleton-card::after { animation: none; }
 }
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}

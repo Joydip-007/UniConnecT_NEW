@@ -55,7 +55,7 @@ export function BusMarker({ route, bus }: BusMarkerProps) {
     <Marker ref={markerRef} position={[bus.lat, bus.lng]} icon={icon} zIndexOffset={1000}>
       <Popup>
         <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{route.name}</div>
-        <div style={{ fontSize: 12, color: '#666' }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
           {bus.source === 'live'
             ? `Live${bus.updatedAt ? ` · updated ${relativeTime(bus.updatedAt)}` : ''}`
             : 'Estimated from schedule'}

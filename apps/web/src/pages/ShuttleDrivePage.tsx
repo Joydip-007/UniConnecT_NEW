@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LandingFooter } from '@/features/landing/components/LandingFooter'
+import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import { useQuery } from '@tanstack/react-query'
 import { Bus, LogOut, MapPin, Radio } from 'lucide-react'
 import { api } from '@/lib/axios'
@@ -155,7 +155,7 @@ export default function ShuttleDrivePage() {
               padding: '15px',
               fontSize: 15,
               fontWeight: 500,
-              color: '#fff',
+              color: 'var(--on-accent)',
               background: selectedRouteId ? 'var(--uc-orange)' : 'var(--surface-raised)',
               border: 'none',
               borderRadius: 'var(--r-pill)',
@@ -188,7 +188,7 @@ export default function ShuttleDrivePage() {
         </p>
       </div>
       </div>
-      <LandingFooter />
+      <MinimalPageFooter />
     </div>
   )
 }
