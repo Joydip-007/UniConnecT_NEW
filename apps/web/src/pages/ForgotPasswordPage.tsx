@@ -6,7 +6,7 @@ import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
-import { MinimalPageFooter } from '@/components/MinimalPageFooter'
+import { LandingFooter } from '@/features/landing/components/LandingFooter'
 
 type Step = 'email' | 'otp' | 'password' | 'success'
 
@@ -486,24 +486,22 @@ function Shell({ children }: { children: React.ReactNode }) {
       background: 'var(--surface-page)',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
-      position: 'relative',
     }}>
-      <div style={{
-        width: '100%',
-        maxWidth: 400,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 32,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <BrandLogo height={40} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+        <div style={{
+          width: '100%',
+          maxWidth: 400,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 32,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <BrandLogo height={40} />
+          </div>
+          {children}
         </div>
-        {children}
       </div>
-      <MinimalPageFooter />
+      <LandingFooter />
     </div>
   )
 }

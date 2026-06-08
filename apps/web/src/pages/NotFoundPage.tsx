@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { PrimaryBtn } from '@/components/Button'
-import { MinimalPageFooter } from '@/components/MinimalPageFooter'
+import { LandingFooter } from '@/features/landing/components/LandingFooter'
 
 export default function NotFoundPage() {
   const navigate = useNavigate()
@@ -8,15 +8,13 @@ export default function NotFoundPage() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: 'var(--surface-page)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        position: 'relative',
+        flexDirection: 'column',
       }}
     >
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div
         style={{
           display: 'flex',
@@ -71,7 +69,8 @@ export default function NotFoundPage() {
           Back to feed
         </PrimaryBtn>
       </div>
-      <MinimalPageFooter />
+      </div>
+      <LandingFooter />
     </div>
   )
 }

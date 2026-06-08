@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LandingFooter } from '@/features/landing/components/LandingFooter'
 import { useQuery } from '@tanstack/react-query'
 import { Bus, LogOut, MapPin, Radio } from 'lucide-react'
 import { api } from '@/lib/axios'
@@ -36,10 +37,9 @@ export default function ShuttleDrivePage() {
         background: 'var(--surface-page)',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        padding: '24px 16px',
       }}
     >
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px 16px' }}>
       <div style={{ width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -187,6 +187,8 @@ export default function ShuttleDrivePage() {
           Keep this screen open while driving. Your location is shared with students only while broadcasting.
         </p>
       </div>
+      </div>
+      <LandingFooter />
     </div>
   )
 }

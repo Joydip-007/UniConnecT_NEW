@@ -3,6 +3,7 @@ import { TopNav } from '@/components/TopNav'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { RightSidebar } from '@/components/RightSidebar'
 import { MobileBottomNav } from '@/components/MobileBottomNav'
+import { LandingFooter } from '@/features/landing/components/LandingFooter'
 import { useAuthStore } from '@/stores/authStore'
 import { useSocketStore } from '@/stores/socketStore'
 import { useNotificationsSocket } from '@/features/notifications'
@@ -15,7 +16,7 @@ export function FeedLayout() {
   usePresenceHeartbeat(Boolean(userId))
 
   return (
-    <div style={{ background: 'var(--surface-page)', minHeight: '100dvh' }}>
+    <div style={{ background: 'var(--surface-page)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       {hasConnected && !connected && (
         <div
           role="alert"
@@ -40,7 +41,7 @@ export function FeedLayout() {
       )}
       <TopNav />
       <MobileBottomNav />
-      <div className="feed-layout-grid">
+      <div className="feed-layout-grid" style={{ flex: 1 }}>
         <div className="feed-layout-left">
           <LeftSidebar />
         </div>
@@ -51,6 +52,7 @@ export function FeedLayout() {
           <RightSidebar />
         </div>
       </div>
+      <LandingFooter />
     </div>
   )
 }

@@ -8,7 +8,7 @@ import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
-import { MinimalPageFooter } from '@/components/MinimalPageFooter'
+import { LandingFooter } from '@/features/landing/components/LandingFooter'
 import type { User } from '@uniconnect/shared/types'
 
 interface LoginResponse {
@@ -73,9 +73,6 @@ export default function LoginPage() {
       background: 'var(--surface-page)',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
       position: 'relative',
     }}>
       {/* Back Button */}
@@ -103,6 +100,7 @@ export default function LoginPage() {
         </Link>
       </div>
 
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
       <div style={{
         width: '100%',
         maxWidth: 400,
@@ -248,7 +246,8 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
-      <MinimalPageFooter />
+      </div>
+      <LandingFooter />
     </main>
   )
 }

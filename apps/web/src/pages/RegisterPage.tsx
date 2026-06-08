@@ -8,7 +8,7 @@ import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
-import { MinimalPageFooter } from '@/components/MinimalPageFooter'
+import { LandingFooter } from '@/features/landing/components/LandingFooter'
 import type { User, UserRole } from '@uniconnect/shared/types'
 
 interface RegisterResponse {
@@ -406,9 +406,6 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
       background: 'var(--surface-page)',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px 16px',
       position: 'relative',
     }}>
       <div style={{ position: 'absolute', top: 24, left: 24 }}>
@@ -442,13 +439,15 @@ function RegisterShell({ children }: { children: React.ReactNode }) {
         </Link>
       </div>
 
-      <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 32 }}>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <BrandLogo height={40} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+        <div style={{ width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <BrandLogo height={40} />
+          </div>
+          {children}
         </div>
-        {children}
       </div>
-      <MinimalPageFooter />
+      <LandingFooter />
     </main>
   )
 }

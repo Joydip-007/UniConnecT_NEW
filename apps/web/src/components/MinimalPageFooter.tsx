@@ -4,11 +4,8 @@ export function MinimalPageFooter() {
   return (
     <footer
       style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         padding: '16px 24px',
+        borderTop: '0.5px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
