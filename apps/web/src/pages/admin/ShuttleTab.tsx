@@ -151,6 +151,8 @@ function mapStops(stops: StopDraft[]): { lat: number; lng: number; name: string;
 function FitPreview({ points }: { points: [number, number][] }) {
   const map = useMap()
   const prev = useRef<string>('')
+  // Reset prev on unmount so Strict Mode's simulated remount doesn't skip fitBounds
+  useEffect(() => () => { prev.current = '' }, [])
   useEffect(() => {
     const key = JSON.stringify(points)
     if (key === prev.current || points.length < 1) return
