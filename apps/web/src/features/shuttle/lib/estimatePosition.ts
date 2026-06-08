@@ -17,6 +17,7 @@ export interface EstimatedPosition {
   lat: number
   lng: number
   headingDeg: number
+  direction: 'outbound' | 'inbound'
   source: 'estimated'
 }
 
@@ -31,8 +32,8 @@ function geoStops(route: ShuttleRoute): ShuttleStop[] {
     .sort((a, b) => a.orderIndex - b.orderIndex)
 }
 
-/** Initial bearing from point A to point B, degrees in [0, 360). */
-function bearingDeg(aLat: number, aLng: number, bLat: number, bLng: number): number {
+/** Initial bearing from point A to point B, degrees in [0, 360). Exported for direction inference on live beacons. */
+export function bearingDeg(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const toRad = (d: number) => (d * Math.PI) / 180
   const φ1 = toRad(aLat)
   const φ2 = toRad(bLat)
@@ -110,13 +111,13 @@ function estimateFixed(route: ShuttleRoute, stops: ShuttleStop[], nowMin: number
   const tripMin = route.estDurationMin ?? DEFAULT_TRIP_MIN
 
   // Each candidate trip = a departure time + a direction-ordered stop list.
-  const candidates: Array<{ dep: number; ordered: ShuttleStop[] }> = [
-    ...readDepartures(route, 'outbound').map((dep) => ({ dep, ordered: stops })),
-    ...readDepartures(route, 'inbound').map((dep) => ({ dep, ordered: [...stops].reverse() })),
+  const candidates: Array<{ dep: number; ordered: ShuttleStop[]; direction: 'outbound' | 'inbound' }> = [
+    ...readDepartures(route, 'outbound').map((dep) => ({ dep, ordered: stops, direction: 'outbound' as const })),
+    ...readDepartures(route, 'inbound').map((dep) => ({ dep, ordered: [...stops].reverse(), direction: 'inbound' as const })),
   ]
 
   // The active trip is the latest one whose [dep, dep+tripMin] window contains now.
-  let best: { dep: number; ordered: ShuttleStop[] } | null = null
+  let best: { dep: number; ordered: ShuttleStop[]; direction: 'outbound' | 'inbound' } | null = null
   for (const c of candidates) {
     if (nowMin >= c.dep && nowMin <= c.dep + tripMin) {
       if (!best || c.dep > best.dep) best = c
@@ -126,7 +127,7 @@ function estimateFixed(route: ShuttleRoute, stops: ShuttleStop[], nowMin: number
 
   const f = (nowMin - best.dep) / tripMin
   const p = positionAlong(best.ordered, f)
-  return { lat: p.lat, lng: p.lng, headingDeg: p.headingDeg, source: 'estimated' }
+  return { lat: p.lat, lng: p.lng, headingDeg: p.headingDeg, direction: best.direction, source: 'estimated' }
 }
 
 function estimateContinuous(route: ShuttleRoute, stops: ShuttleStop[], nowMin: number): EstimatedPosition | null {
@@ -142,10 +143,11 @@ function estimateContinuous(route: ShuttleRoute, stops: ShuttleStop[], nowMin: n
   const phase = (((nowMin - base) % cycle) + cycle) % cycle / cycle // 0..1
 
   // Ping-pong: first half travels out, second half travels back.
-  const ordered = phase < 0.5 ? stops : [...stops].reverse()
+  const direction: 'outbound' | 'inbound' = phase < 0.5 ? 'outbound' : 'inbound'
+  const ordered = direction === 'outbound' ? stops : [...stops].reverse()
   const f = phase < 0.5 ? phase * 2 : (phase - 0.5) * 2
   const p = positionAlong(ordered, f)
-  return { lat: p.lat, lng: p.lng, headingDeg: p.headingDeg, source: 'estimated' }
+  return { lat: p.lat, lng: p.lng, headingDeg: p.headingDeg, direction, source: 'estimated' }
 }
 
 export function estimateAlongPath(route: ShuttleRoute, now: Date): EstimatedPosition | null {

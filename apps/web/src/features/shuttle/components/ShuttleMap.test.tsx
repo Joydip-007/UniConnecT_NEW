@@ -19,7 +19,7 @@ const route: ShuttleRoute = {
 }
 
 const busStates: Record<string, BusState> = {
-  r1: { routeId: 'r1', lat: 23.804, lng: 90.438, headingDeg: 45, speedKmh: null, source: 'estimated', updatedAt: null },
+  r1: { routeId: 'r1', lat: 23.804, lng: 90.438, headingDeg: 45, direction: 'outbound', speedKmh: null, source: 'estimated', updatedAt: null },
 }
 
 describe('ShuttleMap', () => {

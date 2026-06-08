@@ -1,10 +1,12 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { BusMarker } from './BusMarker'
+import { bearingDeg } from '../lib/estimatePosition'
 import { useRouteGeometry } from '../hooks/useRouteGeometry'
 import type { BusState, ShuttleRoute, ShuttleStop } from '../types'
+import logoUrl from '@/assets/logo.svg'
 
 interface ShuttleMapProps {
   routes: ShuttleRoute[]
@@ -57,6 +59,68 @@ const TILE_LAYERS = {
 
 type TileMode = keyof typeof TILE_LAYERS
 
+// 9 small lat/lng offsets that fan idle buses across the depot like Uber's car cluster.
+// Spacing ≈ 15–30 m at Dhaka's latitude — large enough to see individually at zoom 15+.
+const FAN_OFFSETS: [number, number][] = [
+  [0, 0],
+  [0.0002, 0],
+  [-0.0002, 0],
+  [0, 0.0003],
+  [0, -0.0003],
+  [0.00015, 0.00022],
+  [0.00015, -0.00022],
+  [-0.00015, 0.00022],
+  [-0.00015, -0.00022],
+]
+
+/**
+ * Shows 9 idle bus icons at the UIU terminal (the stop whose name matches /uiu/i,
+ * or the last stop as fallback). Each icon faces the outbound departure direction.
+ */
+function IdleBuses({ route }: { route: ShuttleRoute }) {
+  const stops = geoStops(route)
+  if (stops.length < 2) return null
+
+  const terminalIdx = (() => {
+    const i = stops.findIndex((s) => /uiu/i.test(s.name))
+    return i >= 0 ? i : stops.length - 1
+  })()
+  const terminal = stops[terminalIdx]
+  const neighbor = terminalIdx === stops.length - 1 ? stops[terminalIdx - 1] : stops[terminalIdx + 1]
+  const heading = bearingDeg(terminal.lat, terminal.lng, neighbor.lat, neighbor.lng)
+
+  const icon = useMemo(
+    () =>
+      L.divIcon({
+        className: '',
+        html: `
+          <div class="bus-badge bus-badge--idle">
+            <img class="bus-logo bus-logo--idle" src="${logoUrl}" alt="" draggable="false" />
+            <span class="bus-arrow-rot" style="transform:rotate(${heading}deg)">
+              <span class="bus-arrow bus-arrow--idle"></span>
+            </span>
+          </div>
+        `,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      }),
+    [heading],
+  )
+
+  return (
+    <>
+      {FAN_OFFSETS.map(([dLat, dLng], i) => (
+        <Marker
+          key={`idle-${route.id}-${i}`}
+          position={[terminal.lat + dLat, terminal.lng + dLng]}
+          icon={icon}
+          zIndexOffset={500}
+        />
+      ))}
+    </>
+  )
+}
+
 interface RouteLayerProps {
   route: ShuttleRoute
   isFocused: boolean
@@ -67,8 +131,17 @@ interface RouteLayerProps {
 
 function RouteLayer({ route, isFocused, onSelect, bus, showBus }: RouteLayerProps) {
   const stops = geoStops(route)
-  const { data: routedPositions } = useRouteGeometry(stops)
-  // Fall back to straight lines while the OSRM response is loading
+  const reversedStops = [...stops].reverse()
+
+  // Fetch road geometry for both directions — ORS respects one-way streets and
+  // road dividers, so the return path may differ from the outbound path.
+  const { data: outboundPositions } = useRouteGeometry(stops)
+  const { data: inboundPositions } = useRouteGeometry(reversedStops)
+
+  const dir = bus?.direction ?? 'outbound'
+  const routedPositions = dir === 'outbound' ? outboundPositions : inboundPositions
+
+  // Fall back to straight lines while the ORS response is loading
   const positions: [number, number][] = routedPositions ?? stops.map((s) => [s.lat, s.lng])
 
   if (positions.length < 2) return null
@@ -84,6 +157,7 @@ function RouteLayer({ route, isFocused, onSelect, bus, showBus }: RouteLayerProp
         }}
         eventHandlers={{ click: () => onSelect(route.id) }}
       />
+      <IdleBuses route={route} />
       {isFocused &&
         stops.map((stop) => (
           <CircleMarker
@@ -188,6 +262,19 @@ export function ShuttleMap({
         .bus-badge--estimated {
           background: var(--surface-card);
           border: 2px dashed var(--uc-orange);
+        }
+        .bus-badge--idle {
+          width: 26px; height: 26px;
+          background: var(--surface-raised);
+          border: 1.5px solid var(--uc-orange);
+          opacity: 0.72;
+        }
+        .bus-logo--idle { width: 15px; height: 15px; }
+        .bus-arrow--idle {
+          transform: translate(-50%, -20px);
+          border-left: 4px solid transparent;
+          border-right: 4px solid transparent;
+          border-bottom: 6px solid var(--uc-orange);
         }
         .bus-badge--live::before {
           content: ''; position: absolute; inset: -5px;

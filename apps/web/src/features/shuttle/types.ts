@@ -54,6 +54,7 @@ export interface BusState {
   lat: number
   lng: number
   headingDeg: number
+  direction: 'outbound' | 'inbound'
   speedKmh: number | null
   source: 'live' | 'estimated'
   updatedAt: string | null

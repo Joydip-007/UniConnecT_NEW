@@ -2,8 +2,26 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { socket } from '@/lib/socket'
-import { estimateAlongPath } from '../lib/estimatePosition'
+import { bearingDeg, estimateAlongPath } from '../lib/estimatePosition'
 import type { BusState, LiveLocation, ShuttleRoute } from '../types'
+
+/**
+ * For live GPS beacons the server doesn't tell us direction, so we infer it by
+ * comparing the driver's heading to the overall outbound bearing of the route
+ * (first stop → last stop). If they agree within 90°, the bus is outbound.
+ */
+function inferDirection(route: ShuttleRoute, headingDeg: number): 'outbound' | 'inbound' {
+  const stops = [...route.stops]
+    .filter((s) => Number.isFinite(s.lat) && Number.isFinite(s.lng))
+    .sort((a, b) => a.orderIndex - b.orderIndex)
+  if (stops.length < 2) return 'outbound'
+  const outboundBearing = bearingDeg(
+    stops[0].lat, stops[0].lng,
+    stops[stops.length - 1].lat, stops[stops.length - 1].lng,
+  )
+  const diff = Math.abs(((headingDeg - outboundBearing) + 540) % 360 - 180)
+  return diff < 90 ? 'outbound' : 'inbound'
+}
 
 /** A real beacon is treated as "live" only while this fresh; after that we estimate. */
 const BEACON_FRESH_MS = 90_000
@@ -92,6 +110,7 @@ export function useShuttleLiveState() {
           lat: beacon.lat,
           lng: beacon.lng,
           headingDeg: beacon.headingDeg,
+          direction: inferDirection(route, beacon.headingDeg),
           speedKmh: beacon.speedKmh,
           source: 'live',
           updatedAt: beacon.updatedAt,
@@ -106,6 +125,7 @@ export function useShuttleLiveState() {
           lat: est.lat,
           lng: est.lng,
           headingDeg: est.headingDeg,
+          direction: est.direction,
           speedKmh: null,
           source: 'estimated',
           updatedAt: null,
