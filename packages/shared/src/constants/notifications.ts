@@ -30,7 +30,31 @@ export interface CategoryPreference {
   push: boolean
 }
 
-export type NotificationPreferences = Record<ControllableCategory, CategoryPreference>
+/** Push is suppressed during this window (in-app notifications are still recorded). */
+export interface QuietHours {
+  enabled: boolean
+  /** Local start time, "HH:MM" 24h. */
+  start: string
+  /** Local end time, "HH:MM" 24h. May be earlier than start for overnight windows. */
+  end: string
+  /** IANA timezone the start/end are expressed in. */
+  timezone: string
+}
+
+/** How notification emails are delivered. `off` = no emails; `daily` = one digest per day. */
+export type EmailDigestFrequency = 'off' | 'daily'
+
+export type NotificationPreferences = Record<ControllableCategory, CategoryPreference> & {
+  quietHours: QuietHours
+  emailDigest: EmailDigestFrequency
+}
+
+export const DEFAULT_QUIET_HOURS: QuietHours = {
+  enabled: false,
+  start: '22:00',
+  end: '07:00',
+  timezone: 'Asia/Dhaka',
+}
 
 /** All channels on by default — preserves current behaviour for users who never visit settings. */
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
@@ -39,6 +63,33 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   groups: { in_app: true, push: true },
   mentorship: { in_app: true, push: true },
   messages: { in_app: true, push: true },
+  quietHours: DEFAULT_QUIET_HOURS,
+  emailDigest: 'off',
+}
+
+function quietHoursMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map((n) => Number.parseInt(n, 10))
+  return ((h % 24) * 60 + (m || 0)) % (24 * 60)
+}
+
+/**
+ * Whether `now` falls inside the quiet-hours window, evaluated in the window's
+ * timezone. Handles overnight windows (start > end, e.g. 22:00 → 07:00). Pure —
+ * safe to share between the API (push gating) and tests.
+ */
+export function isWithinQuietHours(qh: QuietHours, now: Date = new Date()): boolean {
+  if (!qh.enabled) return false
+  const current = new Intl.DateTimeFormat('en-GB', {
+    timeZone: qh.timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(now)
+  const cur = quietHoursMinutes(current)
+  const start = quietHoursMinutes(qh.start)
+  const end = quietHoursMinutes(qh.end)
+  if (start === end) return false
+  return start < end ? cur >= start && cur < end : cur >= start || cur < end
 }
 
 /** Maps a notification `type` to its category. Unknown types fall back to `system` (always delivered). */
