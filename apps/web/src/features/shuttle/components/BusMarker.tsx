@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import { Marker, Popup } from 'react-leaflet'
-import logoUrl from '@/assets/logo.svg'
+import busUrl from '@/assets/shuttle_bus.svg'
 import { relativeTime } from '../utils'
 import type { BusState, ShuttleRoute } from '../types'
 
@@ -10,15 +10,21 @@ interface BusMarkerProps {
   bus: BusState
 }
 
-// A UIU-orange, logo-stamped bus that glides between position updates and points
-// in its heading direction. Live buses are solid + pulsing; estimated buses are
-// hollow/dashed. The icon is memoised on `source` only so the marker DOM element
-// is reused across ticks — that's what lets the CSS transform-transition glide.
+// Display dimensions for the active bus SVG (portrait 1:2 ratio).
+const BUS_W = 24
+const BUS_H = 48
+// Container must be large enough so the icon never clips at any rotation angle.
+const BOX = Math.ceil(Math.sqrt(BUS_W ** 2 + BUS_H ** 2)) + 6 // 60
+
 function busIconHtml(source: BusState['source']): string {
+  const dimmed = source === 'estimated' ? 'opacity:0.7;filter:grayscale(25%);' : ''
   return `
-    <div class="bus-badge bus-badge--${source}">
-      <img class="bus-logo" src="${logoUrl}" alt="" draggable="false" />
-      <span class="bus-arrow-rot"><span class="bus-arrow"></span></span>
+    <div style="width:${BOX}px;height:${BOX}px;position:relative;display:flex;align-items:center;justify-content:center;">
+      ${source === 'live' ? '<div class="bus-pulse-ring"></div>' : ''}
+      <img class="bus-svg-rot"
+           src="${busUrl}"
+           style="width:${BUS_W}px;height:${BUS_H}px;position:absolute;${dimmed}"
+           alt="" draggable="false" />
     </div>
   `
 }
@@ -31,18 +37,18 @@ export function BusMarker({ route, bus }: BusMarkerProps) {
       L.divIcon({
         className: 'bus-glide',
         html: busIconHtml(bus.source),
-        iconSize: [34, 34],
-        iconAnchor: [17, 17],
-        popupAnchor: [0, -18],
+        iconSize: [BOX, BOX],
+        iconAnchor: [BOX / 2, BOX / 2],
+        popupAnchor: [0, -(BOX / 2 + 4)],
       }),
     [bus.source],
   )
 
-  // Rotate the arrow imperatively so the icon itself never has to be recreated.
+  // Rotate the bus SVG imperatively — avoids recreating the icon on every tick.
   useEffect(() => {
     const el = markerRef.current?.getElement()
-    const rot = el?.querySelector<HTMLElement>('.bus-arrow-rot')
-    if (rot) rot.style.transform = `rotate(${bus.headingDeg}deg)`
+    const img = el?.querySelector<HTMLElement>('.bus-svg-rot')
+    if (img) img.style.transform = `rotate(${bus.headingDeg}deg)`
   }, [bus.headingDeg, bus.source])
 
   return (

@@ -6,7 +6,7 @@ import { BusMarker } from './BusMarker'
 import { bearingDeg } from '../lib/estimatePosition'
 import { useRouteGeometry } from '../hooks/useRouteGeometry'
 import type { BusState, ShuttleRoute, ShuttleStop } from '../types'
-import logoUrl from '@/assets/logo.svg'
+import busUrl from '@/assets/shuttle_bus.svg'
 
 interface ShuttleMapProps {
   routes: ShuttleRoute[]
@@ -73,18 +73,20 @@ const FAN_OFFSETS: [number, number][] = [
   [-0.00015, -0.00022],
 ]
 
+// Idle bus SVG dimensions — smaller than the active bus to read as "parked".
+const IDLE_W = 16
+const IDLE_H = 32
+const IDLE_BOX = Math.ceil(Math.sqrt(IDLE_W ** 2 + IDLE_H ** 2)) + 4 // 40
+
 /**
- * Shows 9 idle bus icons at the UIU terminal (the stop whose name matches /uiu/i,
- * or the last stop as fallback). Each icon faces the outbound departure direction.
+ * Shows 9 idle bus icons at the stop whose name contains "UIU" (case-insensitive).
+ * Renders nothing if no such stop exists on the route.
  */
 function IdleBuses({ route }: { route: ShuttleRoute }) {
   const stops = geoStops(route)
-  if (stops.length < 2) return null
+  const terminalIdx = stops.findIndex((s) => /uiu/i.test(s.name))
+  if (terminalIdx < 0 || stops.length < 2) return null
 
-  const terminalIdx = (() => {
-    const i = stops.findIndex((s) => /uiu/i.test(s.name))
-    return i >= 0 ? i : stops.length - 1
-  })()
   const terminal = stops[terminalIdx]
   const neighbor = terminalIdx === stops.length - 1 ? stops[terminalIdx - 1] : stops[terminalIdx + 1]
   const heading = bearingDeg(terminal.lat, terminal.lng, neighbor.lat, neighbor.lng)
@@ -94,15 +96,14 @@ function IdleBuses({ route }: { route: ShuttleRoute }) {
       L.divIcon({
         className: '',
         html: `
-          <div class="bus-badge bus-badge--idle">
-            <img class="bus-logo bus-logo--idle" src="${logoUrl}" alt="" draggable="false" />
-            <span class="bus-arrow-rot" style="transform:rotate(${heading}deg)">
-              <span class="bus-arrow bus-arrow--idle"></span>
-            </span>
+          <div style="width:${IDLE_BOX}px;height:${IDLE_BOX}px;position:relative;display:flex;align-items:center;justify-content:center;">
+            <img src="${busUrl}"
+                 style="width:${IDLE_W}px;height:${IDLE_H}px;position:absolute;opacity:0.55;transform:rotate(${heading}deg);"
+                 alt="" draggable="false" />
           </div>
         `,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
+        iconSize: [IDLE_BOX, IDLE_BOX],
+        iconAnchor: [IDLE_BOX / 2, IDLE_BOX / 2],
       }),
     [heading],
   )
@@ -157,7 +158,7 @@ function RouteLayer({ route, isFocused, onSelect, bus, showBus }: RouteLayerProp
         }}
         eventHandlers={{ click: () => onSelect(route.id) }}
       />
-      <IdleBuses route={route} />
+      {!bus && <IdleBuses route={route} />}
       {isFocused &&
         stops.map((stop) => (
           <CircleMarker
@@ -252,48 +253,17 @@ export function ShuttleMap({
 
       <style>{`
         .bus-glide { transition: transform 1000ms linear; }
-        .bus-badge {
-          position: relative;
-          width: 34px; height: 34px;
+        .bus-pulse-ring {
+          position: absolute;
+          width: 36px; height: 36px;
           border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .bus-badge--live { background: var(--uc-orange); }
-        .bus-badge--estimated {
-          background: var(--surface-card);
-          border: 2px dashed var(--uc-orange);
-        }
-        .bus-badge--idle {
-          width: 26px; height: 26px;
-          background: var(--surface-raised);
-          border: 1.5px solid var(--uc-orange);
-          opacity: 0.72;
-        }
-        .bus-logo--idle { width: 15px; height: 15px; }
-        .bus-arrow--idle {
-          transform: translate(-50%, -20px);
-          border-left: 4px solid transparent;
-          border-right: 4px solid transparent;
-          border-bottom: 6px solid var(--uc-orange);
-        }
-        .bus-badge--live::before {
-          content: ''; position: absolute; inset: -5px;
-          border-radius: 50%; border: 2px solid var(--uc-orange);
-          opacity: 0.5; animation: busPulse 1.8s ease-out infinite;
+          border: 2px solid var(--uc-orange);
+          animation: busPulse 1.8s ease-out infinite;
+          pointer-events: none;
         }
         @keyframes busPulse {
-          0% { transform: scale(0.7); opacity: 0.6; }
-          100% { transform: scale(1.4); opacity: 0; }
-        }
-        .bus-logo { width: 20px; height: 20px; object-fit: contain; pointer-events: none; }
-        .bus-arrow-rot { position: absolute; left: 50%; top: 50%; transform: rotate(0deg); }
-        .bus-arrow {
-          position: absolute; left: 0; top: 0;
-          width: 0; height: 0;
-          transform: translate(-50%, -26px);
-          border-left: 5px solid transparent;
-          border-right: 5px solid transparent;
-          border-bottom: 8px solid var(--uc-orange);
+          0%   { transform: scale(0.6); opacity: 0.7; }
+          100% { transform: scale(1.5); opacity: 0; }
         }
       `}</style>
     </div>
