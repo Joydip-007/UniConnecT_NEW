@@ -3,7 +3,9 @@ import {
   NOTIFICATION_CATEGORY_META,
   USER_CONTROLLABLE_CATEGORIES,
   type ControllableCategory,
+  type EmailDigestFrequency,
   type NotificationChannel,
+  type QuietHours,
 } from '@uniconnect/shared'
 import { useNotificationPreferences, useUpdateNotificationPreferences } from '../hooks/useNotificationPreferences'
 import { usePushSettings } from '../hooks/usePushSettings'
@@ -131,10 +133,133 @@ export default function NotificationsSection() {
               </div>
             )
           })}
+
+          <QuietHoursPanel
+            quietHours={prefs.quietHours}
+            disabled={update.isPending}
+            onUpdate={(patch) => update.mutate({ quietHours: { ...prefs.quietHours, ...patch } })}
+          />
+
+          <DigestPanel
+            value={prefs.emailDigest}
+            disabled={update.isPending}
+            onChange={(emailDigest) => update.mutate({ emailDigest })}
+          />
         </div>
       )}
     </div>
   )
+}
+
+function QuietHoursPanel({
+  quietHours,
+  disabled,
+  onUpdate,
+}: {
+  quietHours: QuietHours
+  disabled: boolean
+  onUpdate: (patch: Partial<QuietHours>) => void
+}) {
+  return (
+    <div style={{ borderTop: '0.5px solid var(--border-default)', padding: '14px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Quiet hours</div>
+          <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
+            Pause push alerts during these hours. In-app notifications still arrive.
+          </div>
+        </div>
+        <Toggle
+          label="Enable quiet hours"
+          checked={quietHours.enabled}
+          disabled={disabled}
+          onChange={(enabled) => onUpdate({ enabled })}
+        />
+      </div>
+
+      {quietHours.enabled && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
+          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            From
+            <input
+              type="time"
+              value={quietHours.start}
+              disabled={disabled}
+              onChange={(e) => onUpdate({ start: e.target.value })}
+              style={timeInputStyle}
+            />
+          </label>
+          <label style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            to
+            <input
+              type="time"
+              value={quietHours.end}
+              disabled={disabled}
+              onChange={(e) => onUpdate({ end: e.target.value })}
+              style={timeInputStyle}
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DigestPanel({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: EmailDigestFrequency
+  disabled: boolean
+  onChange: (next: EmailDigestFrequency) => void
+}) {
+  return (
+    <div
+      style={{
+        borderTop: '0.5px solid var(--border-default)',
+        padding: '14px 0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+      }}
+    >
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Email digest</div>
+        <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
+          Get a daily email summarising your unread notifications.
+        </div>
+      </div>
+      <select
+        aria-label="Email digest frequency"
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value as EmailDigestFrequency)}
+        style={{
+          background: 'var(--surface-raised)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-pill)',
+          color: 'var(--text-primary)',
+          fontSize: 13,
+          padding: '6px 12px',
+          cursor: 'pointer',
+        }}
+      >
+        <option value="off">Off</option>
+        <option value="daily">Daily</option>
+      </select>
+    </div>
+  )
+}
+
+const timeInputStyle: React.CSSProperties = {
+  background: 'var(--surface-raised)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-md)',
+  color: 'var(--text-primary)',
+  fontSize: 13,
+  padding: '6px 10px',
 }
 
 export function SectionHeader({ title, description }: { title: string; description: string }) {

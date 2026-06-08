@@ -3,6 +3,7 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   NOTIFICATION_CATEGORY_MAP,
   USER_CONTROLLABLE_CATEGORIES,
+  isWithinQuietHours,
   resolveNotificationCategory,
   type ControllableCategory,
   type NotificationPreferences,
@@ -86,9 +87,8 @@ export class NotificationsService {
   async createNotification(input: CreateNotificationInput) {
     const category = resolveNotificationCategory(input.type)
     const isSystem = category === 'system'
-    const channels = isSystem
-      ? { in_app: true, push: true }
-      : (await this.getEffectivePreferences(input.userId))[category as ControllableCategory]
+    const prefs = await this.getEffectivePreferences(input.userId)
+    const channels = isSystem ? { in_app: true, push: true } : prefs[category as ControllableCategory]
 
     const [row] = await db('notifications')
       .insert({
@@ -110,7 +110,9 @@ export class NotificationsService {
       getIo().to(`user:${input.userId}`).emit('notification:new:legacy', notification)
     }
 
-    if (channels.push) {
+    // Push is suppressed during the user's quiet hours; the in-app record above
+    // is still created so nothing is lost — they just aren't buzzed.
+    if (channels.push && !isWithinQuietHours(prefs.quietHours)) {
       enqueuePush(input.userId, {
         title: 'UniConnecT',
         body: input.content,
@@ -240,6 +242,16 @@ function mergePreferences(
       push: overrideCat?.push ?? storedCat?.push ?? base.push,
     }
   }
+
+  const baseQH = DEFAULT_NOTIFICATION_PREFERENCES.quietHours
+  result.quietHours = {
+    enabled: override?.quietHours?.enabled ?? stored?.quietHours?.enabled ?? baseQH.enabled,
+    start: override?.quietHours?.start ?? stored?.quietHours?.start ?? baseQH.start,
+    end: override?.quietHours?.end ?? stored?.quietHours?.end ?? baseQH.end,
+    timezone: override?.quietHours?.timezone ?? stored?.quietHours?.timezone ?? baseQH.timezone,
+  }
+  result.emailDigest = override?.emailDigest ?? stored?.emailDigest ?? DEFAULT_NOTIFICATION_PREFERENCES.emailDigest
+
   return result
 }
 
