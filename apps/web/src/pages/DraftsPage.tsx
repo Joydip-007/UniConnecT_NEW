@@ -48,7 +48,7 @@ export default function DraftsPage() {
   const archivedItems = archived.data?.items ?? []
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ padding: '20px 0 0' }}>
       <header style={{ marginBottom: 20 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>Drafts</h1>
         <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 400, color: 'var(--text-secondary)' }}>

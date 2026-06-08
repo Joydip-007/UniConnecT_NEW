@@ -37,7 +37,7 @@ export default function TagPage() {
   const items = allPages.flatMap((p) => p.items)
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 20px 80px' }}>
+    <div style={{ padding: '20px 0 0' }}>
       {/* Back link */}
       <Link
         to={PATHS.EXPLORE}

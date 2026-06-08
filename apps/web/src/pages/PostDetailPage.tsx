@@ -24,7 +24,7 @@ export default function PostDetailPage() {
   const stateNote = lifecycle && lifecycle !== 'published' ? STATE_LABEL[lifecycle] : null
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ padding: '20px 0 0' }}>
       <button
         type="button"
         onClick={() => navigate(PATHS.FEED)}
