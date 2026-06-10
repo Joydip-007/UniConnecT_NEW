@@ -2,7 +2,7 @@
 
 > A private social network built for universities — connecting students, alumni, faculty, and staff in one place.
 
-[![CI](https://github.com/team-mavericks/uniconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/team-mavericks/uniconnect)
+[![CI](https://github.com/Joydip-007/UniConnecT_NEW/blob/main/apps%2Fweb%2Fsrc%2Fassets%2Flogo.svg)](https://github.com/team-mavericks/uniconnect)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Team Mavericks · United International University · 2026–2027**
