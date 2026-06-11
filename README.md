@@ -8,7 +8,7 @@
 
 UniConnecT is a private, multi-tenant university social platform for students, alumni, faculty, staff, admins, and transport drivers. It brings campus communication, jobs, mentorship, groups, events, news, chat, lost-and-found, and shuttle tracking into one verified university network.
 
-[![CI](https://github.com/Joydip-007/UniConnecT_NEW/blob/main/apps%2Fweb%2Fsrc%2Fassets%2Flogo.svg)]
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Team Mavericks - United International University - 2026-2027**
