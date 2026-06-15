@@ -77,8 +77,8 @@ export function SearchPanel({ query, onClose }: Props) {
   }
 
   const panelStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 'calc(100% + 6px)',
+    position: 'fixed',
+    top: 66,
     left: '50%',
     transform: 'translateX(-50%)',
     width: 500,
