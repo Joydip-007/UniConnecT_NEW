@@ -490,29 +490,30 @@ export class FeedService {
     io.to(`uni:${context.universityId}`).emit('post:reaction', payload)
     io.to(`uni:${context.universityId}`).emit('feed:reaction:updated', { postId, reactionCounts })
 
-    // Notify post author (fire-and-forget) — at most once per actor per post
-    const post = await db('posts')
-      .select<{ author_id: string }>('author_id')
-      .where({ id: postId })
-      .first()
-    if (post && post.author_id !== context.userId) {
-      const alreadyNotified = await db('notifications')
-        .where({ user_id: post.author_id, type: 'post_reaction', actor_id: context.userId, reference_id: postId })
-        .first()
-      if (!alreadyNotified) {
+    // Notify post author at most once per actor per post (fully fire-and-forget)
+    void (async () => {
+      try {
+        const post = await db('posts').select<{ author_id: string }>('author_id').where({ id: postId }).first()
+        if (!post || post.author_id === context.userId) return
+
+        const [{ count }] = await db('notifications')
+          .where({ user_id: post.author_id, type: 'post_reaction', actor_id: context.userId, reference_id: postId })
+          .count<{ count: string }[]>({ count: '*' })
+        if (Number(count) > 0) return
+
         const actorName = await notificationsService.getActorName(context.userId)
-        notificationsService
-          .createNotification({
-            userId: post.author_id,
-            type: 'post_reaction',
-            actorId: context.userId,
-            referenceId: postId,
-            referenceType: 'post',
-            content: `${actorName} reacted to your post`,
-          })
-          .catch((err: unknown) => logger.warn('Failed to create reaction notification', { err }))
+        await notificationsService.createNotification({
+          userId: post.author_id,
+          type: 'post_reaction',
+          actorId: context.userId,
+          referenceId: postId,
+          referenceType: 'post',
+          content: `${actorName} reacted to your post`,
+        })
+      } catch (err) {
+        logger.warn('Failed to create reaction notification', { err })
       }
-    }
+    })()
 
     return payload
   }
