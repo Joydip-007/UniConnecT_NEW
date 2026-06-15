@@ -1,0 +1,821 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[margin=1in, headheight=15pt]{geometry}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{float}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textit{UniConnecT}}
+\lhead{\textit{System Analysis and Design --- UIU}}
+\rfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.5em}{}
+
+\setlist[itemize]{itemsep=2pt, topsep=4pt}
+\setlist[enumerate]{itemsep=2pt, topsep=4pt}
+
+\onehalfspacing
+
+% ---------------------------------------------------------------
+\begin{document}
+
+% ---------------------------------------------------------------
+%  COVER PAGE
+% ---------------------------------------------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{0.6cm}
+
+    {\LARGE \textbf{Software Requirements Specification (SRS)}}\\[0.4cm]
+    {\large \textit{System Analysis and Design Course Deliverable}}\\[0.7cm]
+
+    \rule{\textwidth}{1pt}\\[0.4cm]
+    {\Huge \textbf{UniConnecT}}\\[0.15cm]
+    {\large \textit{A Private University Social Network Platform}}\\[0.25cm]
+    \rule{\textwidth}{1pt}\\[0.9cm]
+
+    {\large \textbf{Prepared by --- Team Mavericks:}}\\[0.3cm]
+
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Name} & \textbf{Student ID} \\
+        \midrule
+        {Joydip Datta}                      & {0112330960} \\
+        {Sujana Bhuiyan}                    & {0112330938} \\
+        {MD. Saem Ferdous}                  & {0112330950} \\
+        {Md. Monabbur Hosen Bhuiyan}        & {0112330936} \\
+        {Md. Mahfujur Rahman Himel Akon}    & {0112330935} \\
+        \bottomrule
+    \end{tabular}\\[1.2cm]
+
+    {\large \textbf{Course:} System Analysis and Design}\\[0.15cm]
+    {\large \textbf{Institution:} United International University (UIU), Dhaka}\\[0.15cm]
+    {\large \textbf{Academic Year:} 2026--2027}\\[0.15cm]
+    {\large \textbf{Submission Date:} [DATE]}\\[1cm]
+
+    \textit{This document is a design-phase Software Requirements Specification
+    prepared in conjunction with a Figma UI/UX prototype.
+    It describes the planned system, its requirements, and its design ---
+    not any implementation or deployed product.}
+
+    \vfill
+\end{titlepage}
+
+% ---------------------------------------------------------------
+\tableofcontents
+\newpage
+
+% ---------------------------------------------------------------
+\section{Introduction}
+% ---------------------------------------------------------------
+
+\subsection{Project Overview}
+
+UniConnecT is a multi-tenant private social networking platform designed exclusively for
+university communities, connecting students, alumni, faculty, and administrative staff
+within a shared, institution-specific digital environment. Unlike general-purpose social
+networks, UniConnecT scopes all interactions, content, and connections to a single
+university per deployment, ensuring every engagement is relevant, verified, and
+community-driven. The platform serves as a central hub for academic and professional
+campus life, bringing together social engagement, career opportunities, mentorship,
+campus services, and real-time communication under one cohesive interface.
+
+\subsection{Purpose of the System}
+
+The purpose of UniConnecT is to eliminate the fragmentation that currently exists across
+university communication channels by providing one cohesive platform where every member
+of the university community can connect, collaborate, and grow. Through UniConnecT,
+students can build their professional network, discover job and internship opportunities,
+receive structured mentorship from alumni, stay informed through official university news,
+join groups and clubs, and coordinate campus activities --- all within a verified,
+institution-bound environment. Faculty and administrators gain a structured channel to
+publish announcements, manage users and content, and engage with the broader campus
+community. Transport staff can broadcast live shuttle location data for student use.
+
+\subsection{Problem Statement / Motivation}
+
+University communities currently lack a dedicated digital space that serves their unique
+social and professional needs. Students rely on a fragmented combination of general social
+media platforms, university email chains, physical notice boards, and third-party job
+portals --- none of which are tailored to the university context or integrated with one
+another. This fragmentation results in missed job and internship opportunities, weak
+alumni-to-student mentorship pipelines, poor information flow between administration and
+students, and no unified sense of campus identity online. Beyond social and professional
+concerns, practical campus services such as lost-and-found coordination and shuttle
+tracking are handled through informal channels with no digital structure. UniConnecT is
+proposed to address all of these challenges by offering a modern, purpose-built platform
+that brings the entire university experience --- social, professional, academic, and
+logistical --- into a single, well-designed digital space.
+
+% ---------------------------------------------------------------
+\section{Project Objectives}
+% ---------------------------------------------------------------
+
+The primary objectives of UniConnecT are as follows:
+
+\begin{itemize}
+    \item \textbf{Unified Campus Social Feed:} Provide a community-driven social feed
+    where students, alumni, and faculty can post, react, comment on, and share content
+    relevant to their university.
+
+    \item \textbf{Alumni--Student Mentorship:} Design a structured mentorship module
+    enabling students to discover alumni mentors and request guidance on academic and
+    career development.
+
+    \item \textbf{Job and Internship Discovery:} Offer a university-internal job board
+    where alumni and faculty can post opportunities and students can browse and apply,
+    all within a trusted institutional network.
+
+    \item \textbf{Campus Events Management:} Enable creation, browsing, and RSVP for
+    campus events so the community stays informed and engaged in university life.
+
+    \item \textbf{Professional Connection Network:} Implement a bidirectional
+    LinkedIn-style connection system allowing members to build and grow a verified
+    university professional network.
+
+    \item \textbf{Groups and Clubs:} Support the creation and management of university
+    groups (clubs, departments, study circles) with dedicated feeds, file resources,
+    study sessions, member roles, and group rules.
+
+    \item \textbf{Real-Time Messaging:} Provide direct and group messaging for
+    communication between connected community members and within mentorship relationships.
+
+    \item \textbf{Campus Utilities:} Integrate practical campus tools --- a
+    lost-and-found item tracking module and a real-time shuttle schedule and location
+    tracker --- directly into the platform.
+
+    \item \textbf{Role-Based Access and Multi-Tenancy:} Design distinct, role-aware
+    interface views for students, alumni, faculty, administrators, and transport drivers,
+    with each university operating as a fully isolated tenant.
+
+    \item \textbf{Modern, Accessible, Responsive Interface:} Deliver a visually
+    consistent, accessible UI across desktop, tablet, and mobile screen sizes, built
+    on a unified UIU-branded design system.
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Target Users}
+% ---------------------------------------------------------------
+
+The following user groups are the intended audience for UniConnecT. All users belong to
+a single university community; the platform does not allow cross-university interaction.
+
+\begin{itemize}
+    \item \textbf{Students:} The primary users of the platform. Students use UniConnecT
+    to browse and post on the social feed, build connections with peers and alumni,
+    discover jobs and internships, join groups and clubs, RSVP for events, request
+    mentorship from alumni, access campus news, save drafts, report lost items, and
+    track shuttle locations.
+
+    \item \textbf{Alumni:} Graduated members of the university who maintain access to
+    the platform after leaving. Alumni can post job and internship opportunities, offer
+    mentorship to current students, engage with the social feed, participate in groups,
+    and stay professionally connected to the university community.
+
+    \item \textbf{Faculty:} Academic staff members who use the platform to publish
+    announcements and news, engage with students and alumni, create and manage events,
+    and participate in group discussions. Faculty may also act in a moderation capacity
+    within their department-level groups.
+
+    \item \textbf{System Administrators:} University administrators who oversee the
+    platform's operation. Administrators manage user accounts and roles, issue and
+    revoke invitation tokens, moderate reported content, configure university-wide
+    settings, and monitor platform activity through a dedicated admin panel. All
+    administrative actions are recorded in an audit log.
+
+    \item \textbf{Transport Driver:} A least-privilege role assigned exclusively to
+    campus shuttle and transport staff. Drivers interact only with a dedicated GPS
+    broadcast view to transmit live shuttle location data to the platform. They have
+    no access to the broader social application.
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Functional Requirements}
+% ---------------------------------------------------------------
+
+The functional requirements define the specific behaviors and capabilities the
+UniConnecT system shall provide. Each requirement is labeled with a unique identifier
+for traceability.
+
+\begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
+
+    \item The system shall allow new users to register using a valid university
+    invitation token, providing their full name, email address, and a chosen password.
+
+    \item The system shall send a one-time password (OTP) to the user's registered
+    email address upon registration, which must be confirmed to activate the account.
+
+    \item The system shall allow registered users to log in with their email and
+    password and log out securely from any session.
+
+    \item The system shall support a password recovery flow that allows users to
+    request a reset link via their registered university email address.
+
+    \item The system shall validate all user input during registration and login,
+    displaying clear inline error messages for missing or invalid fields.
+
+    \item The system shall display a personalized social feed upon login, showing
+    posts, reactions, and activity from the user's university community, sortable
+    by ``Recent'' and ``Top'' (engagement-ranked) modes.
+
+    \item The system shall allow users to create, edit, delete, and save draft posts
+    on the social feed, with support for text content, images, and links.
+
+    \item The system shall allow users to react to and comment on any post in the
+    feed, with real-time count updates.
+
+    \item The system shall allow users to view and edit their own profile, including
+    profile photo, bio, work experience entries, education history, skills, and
+    featured items (maximum five).
+
+    \item The system shall track profile views and provide each profile owner with
+    an analytics view showing visitor counts over the past 7, 30, and 90 days,
+    along with a list of recent viewers.
+
+    \item The system shall allow users to send, accept, decline, and withdraw
+    connection requests. Accepted connections form a persistent, bidirectional
+    professional network visible on each user's profile.
+
+    \item The system shall display connection suggestions to users based on mutual
+    connections and shared university affiliation.
+
+    \item The system shall provide a unified full-text search interface through which
+    users can search for people, posts, jobs, events, groups, and news by keyword,
+    with filterable result tabs per content type.
+
+    \item The system shall allow alumni and faculty to post job and internship
+    listings specifying role title, description, requirements, and application
+    deadline.
+
+    \item The system shall display job listings in a filterable, sortable list view,
+    with a detail page for each listing.
+
+    \item The system shall allow users to create and browse campus events, with RSVP
+    functionality and a detail view showing date, location, description, and confirmed
+    attendee count.
+
+    \item The system shall allow users to create, join, and leave groups (clubs,
+    departments, study circles), with public and private group types. Private groups
+    require a join request approved by a group administrator.
+
+    \item The system shall allow group administrators to manage member roles
+    (admin, moderator, member), pin posts, post group rules, share file resources
+    with view tracking, and schedule study sessions with RSVP.
+
+    \item The system shall provide real-time direct messaging between any two
+    connected users, and group messaging within shared conversation threads.
+
+    \item The system shall automatically create a dedicated conversation thread
+    for each accepted mentorship request, linking the student and the alumni
+    mentor within the messaging module.
+
+    \item The system shall deliver real-time in-app notifications for events including
+    new connection requests, accepted connections, new messages, post reactions,
+    mentions, event updates, and mentorship activity.
+
+    \item The system shall allow students to send mentorship requests to alumni,
+    specifying their goals and area of guidance sought. Alumni may accept or decline
+    requests subject to their configured maximum mentee capacity.
+
+    \item The system shall allow users to browse and read official university news
+    and announcements published by faculty or administrators, with a detail page
+    per article.
+
+    \item The system shall provide a lost-and-found module where users can post
+    reports of lost or found campus items, including a description, location, and
+    optional photo.
+
+    \item The system shall display campus shuttle route schedules and real-time
+    shuttle location, updated continuously from driver GPS broadcasts.
+
+    \item The system shall allow drivers (driver role exclusively) to broadcast
+    their GPS location via a dedicated interface, which is reflected live on the
+    student-facing shuttle tracker.
+
+    \item The system shall provide an administrator panel through which admins can
+    manage user accounts, assign and change roles, create and revoke invitation
+    tokens (including bulk invitations), resolve content reports, and configure
+    university-wide settings.
+
+    \item The system shall aggregate all of a user's unpublished drafts --- across
+    posts, job listings, news articles, and events --- into a single drafts view
+    accessible only by the author.
+
+    \item The system shall allow users to configure notification preferences,
+    privacy settings (profile visibility, presence visibility, message
+    accessibility), and application appearance (light or dark theme) from a
+    dedicated settings hub.
+
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Non-Functional Requirements}
+% ---------------------------------------------------------------
+
+Non-functional requirements specify the quality attributes and operational constraints
+the UniConnecT design shall satisfy.
+
+\begin{enumerate}[label=\textbf{NFR-\arabic*:}, leftmargin=*, align=left]
+
+    \item \textbf{Usability:} The interface shall be intuitive and learnable, enabling
+    a new student user to complete primary tasks --- registration, OTP verification,
+    profile setup, browsing the feed, and sending a connection request --- without
+    external documentation or guidance.
+
+    \item \textbf{Consistency:} All pages shall adhere to the UniConnecT design system,
+    maintaining a consistent color palette, typography (font weight restricted to 400
+    and 500), spacing scale, border style (0.5px structural borders), and component
+    visual language throughout. No hardcoded color values shall appear outside the
+    defined token set.
+
+    \item \textbf{Responsiveness:} The interface shall render correctly and remain fully
+    usable across three primary breakpoints: mobile (360px--767px), tablet
+    (768px--1023px), and desktop (1024px and above). Navigation shall collapse to a
+    bottom tab bar on mobile; multi-column layouts shall reflow to single-column views.
+
+    \item \textbf{Performance (Perceived):} The feed, dashboard, profile, and listing
+    pages shall use skeleton loading states during data load, ensuring the interface
+    appears immediately responsive and never presents a blank screen to the user.
+
+    \item \textbf{Accessibility:} All text-on-background color combinations in both
+    the dark and light themes shall meet a minimum 4.5:1 contrast ratio (WCAG 2.1
+    Level AA). All interactive elements shall carry visible focus states. All form
+    inputs shall have descriptive labels; icon-only controls shall include tooltips.
+
+    \item \textbf{Feedback and Error Handling:} The design shall include explicit
+    visual states for every user action: button hover, loading, success, and error.
+    Inline validation errors shall appear adjacent to the failing field. All list
+    and feed views shall have a designed empty state rather than a blank area.
+
+    \item \textbf{Role-Based Interface Separation:} The design shall strictly enforce
+    role-aware navigation and page access. The admin panel shall not surface in
+    navigation for non-admin roles. The driver GPS broadcast view shall be accessible
+    only to driver-role users. Students, alumni, and faculty shall each see a
+    navigation set scoped to their role's permitted features.
+
+    \item \textbf{Dual-Theme Support:} The design system shall define both a
+    \textit{Warm Futuristic Dark} default theme (navy surfaces, UIU orange accent,
+    indigo interactive states) and a \textit{Warm Neutral Light} theme. All
+    components shall be designed to render correctly in both themes without
+    design-level modifications per page.
+
+    \item \textbf{Modifiability:} The Figma design system shall use shared component
+    libraries (atoms and molecules) so that any design system change --- color,
+    typography, spacing, border radius --- propagates consistently across all pages
+    without requiring individual page edits.
+
+    \item \textbf{Readability:} Body text shall be set at a minimum of 14px with
+    adequate line-height. Section headings shall establish hierarchy through size
+    and weight differences alone, not color. All UI labels and button text shall use
+    sentence case; no ALL CAPS labels shall appear anywhere in the interface.
+
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Pages / Modules}
+% ---------------------------------------------------------------
+
+The following pages and modules constitute the UniConnecT Figma prototype. Each entry
+represents a distinct screen or logical section of the planned application.
+
+\begin{enumerate}
+    \item \textbf{Landing Page} --- The public entry point of UniConnecT, presenting
+    the platform's value proposition with a hero section and calls to action
+    (``Join Your University Network'', ``Log In'').
+
+    \item \textbf{Registration Page} --- An invitation-token-gated sign-up form
+    collecting the user's full name, email address, and password.
+
+    \item \textbf{OTP Verification Page} --- A code-entry screen for confirming the
+    user's email address using the one-time password sent upon registration.
+
+    \item \textbf{Login Page} --- A secure sign-in form for registered users with
+    inline validation and a ``Forgot Password'' link.
+
+    \item \textbf{Forgot Password / Reset Password Page} --- A two-step recovery
+    flow: the user submits their email, then follows a link to set a new password.
+
+    \item \textbf{Social Feed (Home / Dashboard)} --- The primary authenticated
+    screen displaying a ranked, scrollable feed of community posts, with ``Recent''
+    and ``Top'' sort tabs, a left-side profile summary panel, and a right-side
+    discovery sidebar.
+
+    \item \textbf{Post Detail Page} --- A full-page view of a single post showing
+    the complete content, all reactions, and a threaded comment section.
+
+    \item \textbf{Profile Page} --- Displays a user's public profile: cover photo,
+    avatar, bio, experience, education, skills, featured items, recent activity,
+    and profile analytics. Includes an edit flow for the profile owner.
+
+    \item \textbf{Connections / My Network Page} --- Shows the user's accepted
+    connections, incoming pending requests, sent requests, and a ``People You May
+    Know'' suggestions section.
+
+    \item \textbf{Explore Page} --- A discovery screen for finding new community
+    members, trending content, and activity outside the user's immediate connection
+    network.
+
+    \item \textbf{Search Results Page} --- A unified results screen with filterable
+    tabs for People, Posts, Jobs, Events, Groups, and News.
+
+    \item \textbf{Jobs Page} --- A filterable, sortable listing of job and internship
+    postings within the university network, with a detail page per listing and a
+    posting form for eligible users.
+
+    \item \textbf{Events Page} --- A listing of upcoming campus events with RSVP
+    functionality and a full detail view per event.
+
+    \item \textbf{Groups Page} --- A directory of university groups and clubs, with
+    a detail view per group showing the group feed, members list, file resources,
+    scheduled study sessions, pinned posts, and group rules.
+
+    \item \textbf{Messages Page} --- A real-time messaging interface with a
+    conversation list sidebar and an active chat panel, supporting direct and
+    group conversations as well as dedicated mentorship threads.
+
+    \item \textbf{Notifications Page} --- A chronological list of all in-app
+    notifications for the logged-in user, covering connections, messages, reactions,
+    mentions, and mentorship activity.
+
+    \item \textbf{News Page} --- A listing of official university news and
+    announcements, with a detail view per article including title, body, and
+    publication date.
+
+    \item \textbf{Mentorship Page} --- A module where students browse alumni mentor
+    profiles and submit mentorship requests, and where alumni manage their active
+    mentees, session records, and mentee capacity.
+
+    \item \textbf{Lost \& Found Page} --- A campus utility module for posting and
+    browsing reports of lost or found items, with descriptions, last-known location,
+    and optional photo.
+
+    \item \textbf{Shuttle Tracker Page} --- Displays campus shuttle route schedules
+    and a live shuttle position map updated from driver GPS broadcasts.
+
+    \item \textbf{Driver GPS Broadcast View} --- A minimal, role-restricted interface
+    for transport drivers to broadcast their current GPS location to the platform.
+
+    \item \textbf{Drafts Page} --- A personal page aggregating all of the user's
+    unpublished drafts across posts, job listings, news articles, and events.
+
+    \item \textbf{Settings Page} --- A multi-section hub covering appearance (light
+    / dark theme), account management (deactivation, username), notification
+    preferences, and privacy controls (profile, presence, and message visibility).
+
+    \item \textbf{Admin Panel} --- A role-restricted management interface for
+    administrators covering user management, role assignment, invitation management
+    (individual and bulk), content report resolution, platform statistics, and
+    university configuration.
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Tools and Technologies}
+% ---------------------------------------------------------------
+
+This section covers the design and prototyping tools used for UniConnecT. It describes
+the design process only.
+
+\begin{itemize}
+    \item \textbf{Figma} --- Primary tool for all UI/UX work: wireframing,
+    high-fidelity mockups, interactive prototyping, and the shared component design
+    system. All 24 pages and user flows are designed within Figma.
+
+    \item \textbf{Figma Plugins:}
+        \begin{itemize}
+            \item \textit{Iconify} --- Used to source and insert scalable vector icons
+            (Phosphor Icons and Heroicons sets) directly into Figma frames.
+            \item \textit{Unsplash} --- Used to insert high-quality placeholder
+            photography for profile avatars, event covers, and news thumbnails
+            within mockups.
+            \item \textit{A11y --- Color Contrast Checker} --- Used to verify that
+            all text and UI element color pairings meet WCAG 2.1 Level AA contrast
+            requirements across both dark and light themes.
+            \item \textit{Lorem Ipsum} --- Used to generate placeholder body text
+            for feed posts, news articles, and job descriptions during wireframing.
+        \end{itemize}
+
+    \item \textbf{FigJam} --- Used to create the navigation flow diagram and module
+    architecture diagram, leveraging FigJam's drag-and-drop connector tools and
+    sticky-note layout for clear, readable system diagrams.
+
+    \item \textbf{Canva} --- Used for supplementary graphics including the project
+    cover slide, presentation visuals, and promotional design assets.
+
+    \item \textbf{Google Fonts} --- Typography selections (Inter for UI labels and
+    body text) sourced from Google Fonts and applied within the Figma design system.
+
+    \item \textbf{Coolors} --- Used to explore and finalize the UniConnecT color
+    palette for both the Warm Futuristic Dark theme (navy, UIU orange, indigo) and
+    the Warm Neutral Light theme.
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{System Design / Wireframe}
+% ---------------------------------------------------------------
+
+All visuals in this section are taken from the Figma design prototype. The figures
+below present wireframes and UI sketches for the major pages of UniConnecT, along
+with a navigation flow diagram and module architecture diagram.
+
+\textit{Note: Replace each placeholder filename below with the actual exported PNG
+from Figma before compiling the final PDF. Export frames at 2$\times$ resolution via
+\textbf{File $\rightarrow$ Export} in Figma, and place all PNG files in the same
+folder as this \texttt{.tex} file. Then remove the \texttt{[demo]} option from the
+\texttt{graphicx} package declaration on line 4 to enable real image rendering.}
+
+% --- Landing Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_landing_page.png}
+    \caption{Figma Wireframe --- Landing Page. The public entry screen with a hero
+    section presenting UniConnecT's value proposition, a top navigation bar, and
+    calls to action for new and returning users.}
+    \label{fig:landing}
+\end{figure}
+
+% --- Login Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_login_wireframe.png}
+    \caption{Figma Wireframe --- Login Page. Email and password input form with inline
+    validation states, a ``Forgot Password'' link, and the university domain context
+    displayed in the header.}
+    \label{fig:login}
+\end{figure}
+
+% --- Registration + OTP ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_register_wireframe.png}
+    \caption{Figma Wireframe --- Registration Page. Invitation-token-gated sign-up
+    form collecting name, email, and password, followed by the OTP email verification
+    step.}
+    \label{fig:register}
+\end{figure}
+
+% --- Social Feed / Dashboard ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_feed_dashboard.png}
+    \caption{Figma Wireframe --- Social Feed (Dashboard). The main authenticated
+    screen: ranked post feed in the centre, a profile summary panel on the left, and
+    a discovery/suggestions sidebar on the right. ``Recent'' and ``Top'' feed tabs
+    are shown.}
+    \label{fig:feed}
+\end{figure}
+
+% --- Profile Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_profile_page.png}
+    \caption{Figma Wireframe --- Profile Page. Cover photo, avatar, bio, experience,
+    education, skills, featured items, and profile analytics. Edit controls are
+    visible for the profile owner.}
+    \label{fig:profile}
+\end{figure}
+
+% --- Jobs Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_jobs_page.png}
+    \caption{Figma Wireframe --- Jobs Page. Filterable and sortable listing of
+    university-internal job and internship postings, with a detail panel for the
+    selected listing.}
+    \label{fig:jobs}
+\end{figure}
+
+% --- Events Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_events_page.png}
+    \caption{Figma Wireframe --- Events Page. Campus event listing with RSVP buttons
+    and a detail view showing event date, location, description, and attendee count.}
+    \label{fig:events}
+\end{figure}
+
+% --- Groups Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_groups_page.png}
+    \caption{Figma Wireframe --- Groups Page. Group directory and a group detail view
+    showing the group feed, members list, file resources, study sessions, pinned
+    posts, and group rules.}
+    \label{fig:groups}
+\end{figure}
+
+% --- Messages Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_messages_page.png}
+    \caption{Figma Wireframe --- Messages Page. Real-time messaging interface with a
+    conversation list on the left and an active chat panel on the right, supporting
+    direct messages, group chats, and mentorship threads.}
+    \label{fig:messages}
+\end{figure}
+
+% --- Mentorship Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_mentorship_page.png}
+    \caption{Figma Wireframe --- Mentorship Page. Students browse alumni mentor cards
+    and submit requests; alumni manage active mentees, session records, and mentee
+    capacity.}
+    \label{fig:mentorship}
+\end{figure}
+
+% --- Lost and Found + Shuttle ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_campus_tools.png}
+    \caption{Figma Wireframe --- Campus Tools: Lost \& Found module (left) for
+    posting and browsing campus item reports, and Shuttle Tracker (right) showing
+    live route and shuttle position.}
+    \label{fig:campus}
+\end{figure}
+
+% --- Admin Panel ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_admin_panel.png}
+    \caption{Figma Wireframe --- Admin Panel. Role-restricted management interface
+    covering user management, invitation management, content report resolution,
+    platform statistics, and university configuration.}
+    \label{fig:admin}
+\end{figure}
+
+% --- Navigation Flow Diagram ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth, height=0.68\textheight, keepaspectratio]{figma_navigation_flow.png}
+    \caption{Figma Diagram --- Navigation Flow. Full page-to-page user flow for
+    UniConnecT, covering the unauthenticated path (Landing $\to$ Login / Register
+    $\to$ OTP) and the authenticated paths across all 24 modules, with role-based
+    branching to the Admin Panel and Driver GPS Broadcast View.}
+    \label{fig:navflow}
+\end{figure}
+
+% --- Module Architecture Diagram ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth, height=0.68\textheight, keepaspectratio]{figma_page_architecture.png}
+    \caption{Figma Diagram --- Module Architecture. Logical grouping and connections
+    between UniConnecT's major module clusters: Social (Feed, Profile, Connections,
+    Explore, Search), Professional (Jobs, Events, Mentorship), Community (Groups,
+    News, Messages), Campus Tools (Lost \& Found, Shuttle), and Management (Settings,
+    Drafts, Admin Panel).}
+    \label{fig:architecture}
+\end{figure}
+
+% ---------------------------------------------------------------
+\section{Usability / Design Considerations}
+% ---------------------------------------------------------------
+
+\subsection{Navigation Flow}
+
+UniConnecT uses a persistent top navigation bar on all authenticated pages, providing
+direct access to the five primary sections: Feed, Jobs, Events, Messages, and
+Notifications. A left-side profile summary panel on wider screens offers quick links
+to Profile, Groups, Mentorship, Explore, Lost \& Found, Shuttle, and Drafts. The
+navigation set is role-aware: admin-only controls (Admin Panel) appear only for
+administrator-role users, and the Driver GPS Broadcast View is exclusive to the
+driver role. The unauthenticated shell (Landing, Login, Register, OTP, Forgot
+Password) is entirely separate from the authenticated application and shares no
+navigation elements with it.
+
+\subsection{Responsiveness Across Devices}
+
+The design targets three primary breakpoints: mobile (360px--767px), tablet
+(768px--1023px), and desktop (1024px and above). On mobile, the top navigation bar
+collapses to a bottom tab bar covering the five primary sections, and the three-column
+feed layout (feed + two sidebars) reflows to a single-column view. Job and event card
+grids reflow from three columns on desktop to two on tablet and one on mobile. All
+interactive touch targets are designed at a minimum of 44$\times$44px on mobile to
+meet accessibility touch-target guidelines.
+
+\subsection{Color Consistency and Design System}
+
+UniConnecT is designed with two themes defined in a centralized Figma design system:
+
+\begin{itemize}
+    \item \textbf{Warm Futuristic Dark (Default):} Deep navy background surfaces,
+    UIU orange as the primary brand and interactive accent, and indigo for secondary
+    interactive states. Warm white text tokens are used on all dark surfaces. Coloured
+    surfaces (e.g., orange notification badges) use the matching light token for text.
+
+    \item \textbf{Warm Neutral Light:} Off-white and warm grey surfaces with the same
+    UIU orange accent, designed for users who prefer a light interface. Toggled via the
+    user's theme preference in Settings.
+\end{itemize}
+
+No ad-hoc or hardcoded color values appear anywhere in the design. All fills and
+strokes reference named Figma color styles. Structural borders are 0.5px. All
+buttons use pill-shaped (fully rounded) border radii exclusively.
+
+\subsection{Accessibility Considerations}
+
+\begin{itemize}
+    \item \textbf{Color Contrast:} All text-on-background color pairings in both
+    themes meet a minimum 4.5:1 contrast ratio (WCAG 2.1 Level AA), verified using
+    the A11y Figma plugin during the design process.
+
+    \item \textbf{Typography:} Body text is set at 14px minimum. Font weight is
+    restricted to 400 (regular) and 500 (medium) throughout. Section headings
+    establish hierarchy through size differences, not color or weight extremes.
+
+    \item \textbf{Interactive States:} All buttons, links, form fields, navigation
+    items, and cards include clearly visible hover, focus, and active states, ensuring
+    keyboard and screen-reader users can navigate effectively.
+
+    \item \textbf{Labels and Tooltips:} All form inputs carry visible text labels.
+    Icon-only controls (e.g., reaction buttons, share, bookmark) include tooltips to
+    communicate purpose without relying solely on icon recognition.
+
+    \item \textbf{Empty and Error States:} Every list, feed, and search result view
+    has a designed empty state with a clear message. Every form includes inline error
+    messages positioned adjacent to the failing field rather than at the top of the
+    page only.
+\end{itemize}
+
+\subsection{Key User-Friendly Design Decisions}
+
+\begin{itemize}
+    \item \textbf{Skeleton Loading States:} The feed, profile, jobs, events, and
+    groups pages use skeleton placeholder cards while content loads, ensuring the
+    interface never presents a blank screen and conveys immediate responsiveness.
+
+    \item \textbf{Role-Aware Navigation:} Navigation surfaces adapt automatically
+    based on the logged-in user's role, so students never encounter admin controls
+    and drivers see only their broadcast interface.
+
+    \item \textbf{Progressive Disclosure:} Secondary and advanced actions (post
+    editing options, advanced group settings, mentorship session notes, privacy
+    controls) are revealed via dropdown menus or modals, keeping primary page views
+    uncluttered and focused.
+
+    \item \textbf{Unified Search:} A single persistent search bar in the top
+    navigation queries all content types simultaneously, with tabbed result views
+    for People, Posts, Jobs, Events, Groups, and News --- removing the need for
+    users to navigate to individual sections to search within them.
+
+    \item \textbf{Automatic Mentorship Thread:} When a mentorship request is
+    accepted, a dedicated conversation thread is automatically created and surfaced
+    in the Messages module, eliminating the friction of manually initiating contact
+    after acceptance.
+
+    \item \textbf{Drafts Across Content Types:} A unified Drafts page aggregates
+    all of a user's unpublished content (posts, jobs, news, events) in one place,
+    preventing work from being lost across disconnected creation flows.
+
+    \item \textbf{Consistent Component Language:} Cards, modals, input fields,
+    badges, tabs, and buttons follow a single visual specification across all 24
+    pages of the design, reducing the visual learning curve for new users and
+    ensuring a coherent, professional-quality interface throughout.
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Conclusion}
+% ---------------------------------------------------------------
+
+UniConnecT is a planned private university social networking platform designed to
+address the fragmentation and absence of a dedicated digital community space for
+university students, alumni, faculty, and staff. This Software Requirements
+Specification documents the system's five intended user roles, 29 functional
+requirements spanning social networking, professional development, mentorship, campus
+utilities, real-time communication, and administration, 10 non-functional quality
+requirements, and the full scope of 24 planned pages and modules --- all expressed
+through the UniConnecT Figma design prototype.
+
+The design goals of UniConnecT center on delivering a unified, role-aware, and
+accessible platform that connects every member of the university community in a single
+trusted environment. By grounding the design in a coherent UIU-branded design system
+(Warm Futuristic Dark and Warm Neutral Light themes), a clear multi-role navigation
+architecture, and established WCAG 2.1 accessibility standards, the planned interface
+is intended to provide a modern, student-centric experience that meaningfully bridges
+academic life, professional development, and everyday campus engagement.
+
+This SRS, prepared by Team Mavericks as part of the System Analysis and Design course
+at United International University (UIU), serves as the foundational specification for
+the accompanying Figma prototype and guides all design decisions made throughout the
+project.
+
+% ---------------------------------------------------------------
+\end{document}
