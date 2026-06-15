@@ -1,0 +1,351 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[margin=1in, headheight=15pt]{geometry}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{float}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textit{UNICONNECT}}
+\lhead{\textit{System Analysis and Design --- UIU}}
+\rfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\titleformat{\section}{\large\bfseries}{}{0em}{\thesection.\quad}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{\thesubsection\quad}
+
+\setlist[itemize]{itemsep=2pt, topsep=4pt}
+\setlist[enumerate]{itemsep=2pt, topsep=4pt}
+
+\onehalfspacing
+
+% ---------------------------------------------------------------
+\begin{document}
+
+% ---------------------------------------------------------------
+%  COVER PAGE
+% ---------------------------------------------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+
+    {\LARGE \textbf{Software Requirements Specification (SRS)}}\\[0.6cm]
+    {\large \textit{System Analysis and Design Course Deliverable}}\\[1.2cm]
+
+    \rule{\textwidth}{1pt}\\[0.5cm]
+    {\Huge \textbf{[PROJECT TITLE]}}\\[0.3cm]
+    \rule{\textwidth}{1pt}\\[1.5cm]
+
+    {\large \textbf{Prepared by:}}\\[0.4cm]
+
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Name} & \textbf{Student ID} \\
+        \midrule
+        [TEAM MEMBER NAME 1] & [STUDENT ID 1] \\
+        [TEAM MEMBER NAME 2] & [STUDENT ID 2] \\
+        [TEAM MEMBER NAME 3] & [STUDENT ID 3] \\
+        [TEAM MEMBER NAME 4] & [STUDENT ID 4] \\
+        \bottomrule
+    \end{tabular}\\[2cm]
+
+    {\large \textbf{Course:} System Analysis and Design}\\[0.2cm]
+    {\large \textbf{Institution:} United International University (UIU)}\\[0.2cm]
+    {\large \textbf{Submission Date:} [DATE]}\\[2cm]
+
+    \textit{This document is a design-phase Software Requirements Specification\\
+    prepared in conjunction with a Figma UI/UX prototype.\\
+    It describes the planned system, its requirements, and its design---\\
+    not any implementation or deployed product.}
+
+    \vfill
+\end{titlepage}
+
+% ---------------------------------------------------------------
+\tableofcontents
+\newpage
+
+% ---------------------------------------------------------------
+\section{Introduction}
+% ---------------------------------------------------------------
+
+\subsection{Project Overview}
+
+[PROJECT TITLE] is a [brief one-sentence description of what the system is --- e.g., ``a web-based platform designed to connect university students, alumni, and faculty in a shared digital environment''. Replace this bracket with a clear, concise description of the project]. The system is designed to provide [describe the primary purpose in one or two sentences, focusing on the users and the core value the system offers].
+
+\subsection{Purpose of the System}
+
+The purpose of [PROJECT TITLE] is to [describe the main goal of the system --- e.g., streamline a specific process, connect a specific group of users, or solve a particular problem]. The system aims to provide a unified, user-friendly interface through which users can [list 2--3 primary things the system enables users to do].
+
+\subsection{Problem Statement / Motivation}
+
+Currently, [describe the problem or gap that motivates this project --- e.g., there is no centralized platform where users can do X, existing solutions lack Y, or the manual process of Z is inefficient]. This creates challenges such as [briefly list 2--3 pain points]. [PROJECT TITLE] is proposed to address these issues by offering a modern, well-designed digital solution that simplifies and enhances the experience for all stakeholders.
+
+% ---------------------------------------------------------------
+\section{Project Objectives}
+% ---------------------------------------------------------------
+
+The primary objectives of [PROJECT TITLE] are as follows:
+
+\begin{itemize}
+    \item \textbf{Intuitive Navigation:} Design a clear and consistent navigation structure that allows users to move between pages and features without confusion.
+    \item \textbf{Modern Responsive Interface:} Create a visually consistent UI that adapts appropriately across common screen sizes, including desktop, tablet, and mobile.
+    \item \textbf{User-Friendly Dashboard:} Provide each user role with a dedicated dashboard that surfaces the most relevant information and actions at a glance.
+    \item \textbf{Seamless Page-to-Page Interaction:} Ensure smooth transitions and logical user flows between all pages of the application.
+    \item \textbf{Role-Based Access:} Design distinct interface views and feature sets for different user types (e.g., general users, administrators).
+    \item \textbf{Accessible Design:} Follow accessibility best practices in layout, color contrast, font sizing, and interaction affordances.
+    \item \textbf{[Project-Specific Objective]:} [Add one or more objectives specific to your project topic here.]
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Target Users}
+% ---------------------------------------------------------------
+
+The following user groups are the intended audience for [PROJECT TITLE]:
+
+\begin{itemize}
+    \item \textbf{[Primary User Type] (e.g., Students / General Users):} [Brief description --- who they are and what they will primarily use the system for.]
+    \item \textbf{[Secondary User Type] (e.g., Faculty / Vendors / Content Creators):} [Brief description --- their role in the system and key interactions.]
+    \item \textbf{[Tertiary User Type] (e.g., Alumni / Customers):} [Brief description.]
+    \item \textbf{System Administrator:} The administrator oversees the platform, manages users and content, monitors system activity, and handles configuration and access control.
+    \item \textbf{[Any Additional User Type]:} [Description if applicable.]
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Functional Requirements}
+% ---------------------------------------------------------------
+
+The functional requirements define the specific behaviors and capabilities the system shall provide. Each requirement is labeled with a unique identifier for traceability.
+
+\begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
+    \item The system shall allow new users to create an account by providing their basic information (e.g., name, email address, and password).
+    \item The system shall allow registered users to log in using their credentials and log out securely.
+    \item The system shall validate user input during registration and login and display appropriate error messages for invalid or missing fields.
+    \item The system shall provide a personalized dashboard for each user role upon successful login, displaying relevant summary information and quick-access actions.
+    \item The system shall allow users to view and edit their profile information, including personal details and preferences.
+    \item The system shall provide a search functionality that enables users to locate [content, users, products, or other project-specific entities] by keyword.
+    \item The system shall display [content/products/items] in a browsable, paginated list view with filtering and sorting options.
+    \item The system shall allow users to view a detailed page for any individual [content/product/item].
+    \item The system shall send in-application notifications to users upon relevant events (e.g., new activity, updates, or responses related to the user).
+    \item The system shall provide an administrator panel through which administrators can manage users, oversee content, and monitor platform activity.
+    \item The system shall allow administrators to create, update, and remove [entities relevant to this project, e.g., listings, announcements, categories].
+    \item The system shall support a password recovery workflow allowing users to reset their password via a registered email address.
+    \item \textbf{[Project-Specific FR]:} The system shall [describe a feature specific to your project that is not covered above].
+    \item \textbf{[Project-Specific FR]:} The system shall [describe another project-specific feature].
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Non-Functional Requirements}
+% ---------------------------------------------------------------
+
+Non-functional requirements specify the quality attributes and operational constraints the system's design shall satisfy.
+
+\begin{enumerate}[label=\textbf{NFR-\arabic*:}, leftmargin=*, align=left]
+    \item \textbf{Usability:} The user interface shall be intuitive and learnable, enabling a new user to complete primary tasks (e.g., registration, search, and profile setup) without external guidance.
+    \item \textbf{Consistency:} All pages shall adhere to a unified design system, including consistent color palette, typography, spacing, and component styles throughout the application.
+    \item \textbf{Responsiveness:} The interface shall be designed to render correctly and remain fully usable on screen widths ranging from 360px (mobile) to 1440px (desktop).
+    \item \textbf{Performance (Perceived):} Key pages (e.g., the home page and dashboard) shall be designed to support fast load times; the UI layout shall avoid heavy or blocking elements that delay perceived interactivity.
+    \item \textbf{Accessibility:} The design shall maintain a minimum color contrast ratio of 4.5:1 for body text in accordance with WCAG 2.1 Level AA guidelines. Interactive elements shall have clearly distinguishable focus states.
+    \item \textbf{Feedback \& Error Handling:} The system shall provide clear visual feedback for all user actions (e.g., button states, loading indicators) and display human-readable error messages for failed operations.
+    \item \textbf{Security (Design Level):} The design shall include distinct authenticated and unauthenticated interface states. Sensitive pages (e.g., the admin panel, profile editing) shall only be accessible to authorized user roles.
+    \item \textbf{Modifiability:} The design system shall be structured using reusable components in Figma so that future design changes can be applied consistently across all pages with minimal effort.
+    \item \textbf{Readability:} All body text shall be set at a minimum of 14px, and sufficient line-height and spacing shall be applied to ensure comfortable reading across all pages.
+    \item \textbf{[Project-Specific NFR]:} [Describe a non-functional constraint specific to your project, such as multi-language support, offline-friendly design, or a specific color-theme requirement.]
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Pages / Modules}
+% ---------------------------------------------------------------
+
+The following pages and modules are planned as part of the [PROJECT TITLE] Figma prototype. Each page represents a distinct screen or logical section of the application.
+
+\begin{enumerate}
+    \item \textbf{Landing / Home Page} --- The entry point of the application, presenting an overview of the platform and calls to action (e.g., ``Sign Up'', ``Log In'', ``Explore'').
+    \item \textbf{Registration Page} --- A form-based page through which new users create an account by providing required personal information.
+    \item \textbf{Login Page} --- A secure login form allowing registered users to authenticate with their credentials.
+    \item \textbf{Password Recovery Page} --- A two-step flow for users to request a password reset via their registered email address.
+    \item \textbf{User Dashboard} --- A personalized home screen displayed after login, summarizing relevant activity, key metrics, and quick-access links for the logged-in user.
+    \item \textbf{Profile Page} --- A page displaying a user's public profile information, with options for the profile owner to edit their details.
+    \item \textbf{[Content / Product / Feed] Listing Page} --- A browsable, searchable, and filterable list of [core content entities in the project].
+    \item \textbf{[Content / Product / Item] Detail Page} --- A dedicated detail view for a selected [content entity], displaying all relevant information and available actions.
+    \item \textbf{Search Results Page} --- Displays results matching a user's query, with options to filter and sort results.
+    \item \textbf{Notifications Page} --- A chronological list of all in-app notifications relevant to the logged-in user.
+    \item \textbf{Settings Page} --- Allows users to manage account preferences, notification settings, and other user-configurable options.
+    \item \textbf{Admin Panel} --- A restricted interface for administrators to manage users, content, and platform configuration.
+    \item \textbf{[Project-Specific Page/Module]:} [Name and brief description --- e.g., ``Messaging Module,'' ``Event Calendar Page,'' ``Booking Flow,'' etc.]
+    \item \textbf{[Project-Specific Page/Module]:} [Name and brief description.]
+\end{enumerate}
+
+% ---------------------------------------------------------------
+\section{Tools and Technologies}
+% ---------------------------------------------------------------
+
+This project uses the following design tools and resources. This section covers the design and prototyping process only.
+
+\begin{itemize}
+    \item \textbf{Figma} --- Primary tool for UI/UX design, wireframing, prototyping, and design system creation. All pages, components, and user flows are designed within Figma.
+    \item \textbf{Figma Plugins:}
+        \begin{itemize}
+            \item \textit{Iconify} --- Used to insert scalable vector icons from popular open-source icon sets directly into the Figma canvas.
+            \item \textit{Unsplash} --- Used to source high-quality placeholder images for use in mockups and wireframes.
+            \item \textit{Contrast} (or \textit{A11y - Color Contrast Checker}) --- Used to verify color contrast ratios against WCAG accessibility standards.
+            \item \textit{[Additional Plugin]} --- [Brief description of its role in the design.]
+        \end{itemize}
+    \item \textbf{Canva} --- Used for supplementary graphics, cover visuals, and presentation assets where needed.
+    \item \textbf{Adobe XD} --- [Include only if used; remove this line if not applicable.] Used as a secondary prototyping reference.
+    \item \textbf{Google Fonts} --- Typography selections sourced from Google Fonts (e.g., [Font Name 1], [Font Name 2]) and applied within the Figma design.
+    \item \textbf{Coolors / Adobe Color} --- Used to explore and finalize the application's color palette during the design process.
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{System Design / Wireframe}
+% ---------------------------------------------------------------
+
+All visuals in this section are taken from the Figma design prototype. The figures below present wireframes and UI sketches for the major pages of [PROJECT TITLE], along with a navigation flow diagram illustrating how users move between pages.
+
+\textit{Note to team: Replace each placeholder filename (e.g., \texttt{figma\_login\_wireframe.png}) with the actual exported PNG or JPG file from Figma before compiling the final PDF. Export each frame at 1$\times$ or 2$\times$ resolution from Figma using \textbf{File $\rightarrow$ Export}.}
+
+% --- Landing / Home Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_landing_page.png}
+    \caption{Figma Wireframe --- Landing / Home Page. Displays the primary hero section, navigation bar, and calls to action presented to unauthenticated visitors.}
+    \label{fig:landing}
+\end{figure}
+
+% --- Login Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_login_wireframe.png}
+    \caption{Figma Wireframe --- Login Page. Shows the email and password input fields, form validation states, and the link to the password recovery flow.}
+    \label{fig:login}
+\end{figure}
+
+% --- Registration Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_register_wireframe.png}
+    \caption{Figma Wireframe --- Registration Page. Illustrates the sign-up form with required fields, inline validation feedback, and the registration submission flow.}
+    \label{fig:register}
+\end{figure}
+
+% --- User Dashboard ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_dashboard_wireframe.png}
+    \caption{Figma Wireframe --- User Dashboard. Displays the personalized post-login screen with summary cards, quick-access navigation, and an activity feed for the authenticated user.}
+    \label{fig:dashboard}
+\end{figure}
+
+% --- Profile Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_profile_page.png}
+    \caption{Figma Wireframe --- Profile Page. Shows the user's public profile layout including avatar, bio, and editable information sections.}
+    \label{fig:profile}
+\end{figure}
+
+% --- Content / Feed Listing Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_listing_page.png}
+    \caption{Figma Wireframe --- [Content / Product / Feed] Listing Page. Demonstrates the grid or list layout of core content entities, with search, filter, and sort controls.}
+    \label{fig:listing}
+\end{figure}
+
+% --- Content Detail Page ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_detail_page.png}
+    \caption{Figma Wireframe --- [Content / Product / Item] Detail Page. Presents the full detail view of a selected entity, including all metadata and available user actions.}
+    \label{fig:detail}
+\end{figure}
+
+% --- Admin Panel ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figma_admin_panel.png}
+    \caption{Figma Wireframe --- Admin Panel. Shows the administrator's management interface including user lists, content controls, and platform activity overview.}
+    \label{fig:admin}
+\end{figure}
+
+% --- Navigation Flow Diagram ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figma_navigation_flow.png}
+    \caption{Figma Diagram --- Navigation Flow. Illustrates the full page-to-page user flow, covering both unauthenticated and authenticated paths, and the transitions between all major pages of the application.}
+    \label{fig:navflow}
+\end{figure}
+
+% --- Architecture / Page-Connection Diagram ---
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figma_page_architecture.png}
+    \caption{Figma Diagram --- Page Architecture and Module Connections. Shows how the major modules of the application relate to each other and the logical grouping of pages within each section.}
+    \label{fig:architecture}
+\end{figure}
+
+% ---------------------------------------------------------------
+\section{Usability / Design Considerations}
+% ---------------------------------------------------------------
+
+\subsection{Navigation Flow}
+
+The application follows a clearly structured navigation hierarchy. A persistent top navigation bar is present on all authenticated pages, providing direct access to the primary sections (e.g., Home, Dashboard, [Core Feature], Notifications, Profile). Secondary navigation is handled through sidebar menus or tab bars where relevant, minimizing the depth users need to navigate to reach any feature. The planned prototype defines user flows for both authenticated and unauthenticated states, with clear separation between public-facing pages and protected screens.
+
+\subsection{Responsiveness Across Devices}
+
+The design is planned for three primary breakpoints: mobile (360px--767px), tablet (768px--1023px), and desktop (1024px and above). Layout grids, font sizes, and component spacing are adjusted at each breakpoint to maintain readability and usability. Navigation collapses to a hamburger menu or bottom navigation bar on mobile screens. Cards and grid layouts reflow to single-column views on smaller screens.
+
+\subsection{Color Consistency and Design System}
+
+A centralized design system is established in Figma using shared color styles, text styles, and reusable components (atoms and molecules). The primary color palette consists of [describe your palette briefly, e.g., ``a navy primary, an accent orange, and neutral grey surfaces''] applied consistently across all pages. No ad-hoc colors are used outside the defined palette. This ensures visual coherence and simplifies future design updates.
+
+\subsection{Accessibility Considerations}
+
+The design accounts for accessibility in the following ways:
+\begin{itemize}
+    \item \textbf{Color Contrast:} All text-on-background combinations meet a minimum 4.5:1 contrast ratio (WCAG 2.1 Level AA).
+    \item \textbf{Font Sizing:} Body text is set at no smaller than 14px; primary headings are sufficiently large to establish visual hierarchy without relying solely on color.
+    \item \textbf{Interactive States:} Buttons, links, and form fields include clearly visible hover, focus, and active states so keyboard and screen-reader users can navigate the interface effectively.
+    \item \textbf{Descriptive Labels:} Form inputs and icon-only buttons include descriptive labels or tooltips to communicate their purpose unambiguously.
+\end{itemize}
+
+\subsection{Key User-Friendly Design Decisions}
+
+\begin{itemize}
+    \item \textbf{Minimal Cognitive Load:} Each page is designed to present only the most relevant information and actions, avoiding clutter. Secondary or advanced options are revealed progressively.
+    \item \textbf{Consistent Component Language:} Buttons, cards, modals, and form elements follow a unified visual style across the entire design, reducing the learning curve for new users.
+    \item \textbf{Clear Error and Empty States:} All list views and content pages include designed empty states (for when no data is available) and inline error messages for form validation failures, rather than leaving users without feedback.
+    \item \textbf{Feedback on Action:} Loading indicators, success confirmations, and error alerts are designed into the prototype to communicate system status clearly after every meaningful user action.
+    \item \textbf{[Project-Specific Design Decision]:} [Describe a design choice specific to your project, such as a particular interaction pattern, a custom component, or an accessibility enhancement.]
+\end{itemize}
+
+% ---------------------------------------------------------------
+\section{Conclusion}
+% ---------------------------------------------------------------
+
+[PROJECT TITLE] is a planned [type of application, e.g., web-based social platform / e-commerce interface / service booking system] designed to address [the core problem described in Section 2]. This Software Requirements Specification documents the system's intended users, functional capabilities, non-functional quality attributes, and page-level design scope as expressed through a Figma UI/UX prototype.
+
+The design goals of [PROJECT TITLE] center on delivering an intuitive, consistent, and accessible user experience for [primary user group] and [secondary user group / administrators]. By adhering to a well-defined design system, a clear navigation hierarchy, and established accessibility standards, the planned interface is expected to offer a modern, user-centric product that fulfills the requirements outlined in this document.
+
+This SRS serves as the foundation for the design process. The accompanying Figma prototype translates these requirements into visual screens and interactive flows, enabling the team to validate design decisions and refine the user experience before any further development considerations.
+
+% ---------------------------------------------------------------
+\end{document}
