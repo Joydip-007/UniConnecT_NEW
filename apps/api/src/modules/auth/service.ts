@@ -24,6 +24,7 @@ interface UserRow {
   role: UserRole
   is_verified: boolean
   is_active: boolean
+  is_deleted: boolean
   deactivated_at?: Date | null
 }
 
@@ -114,39 +115,62 @@ export class AuthService {
       validateInvitationForRegistration(invitation, email, role, universityId)
     }
 
-    const existingUser = await findUserByEmail(email, universityId)
+    // Match the GLOBAL `users_email_unique` index here (it ignores `is_deleted`),
+    // not just live rows — otherwise a soft-deleted account slips past this guard
+    // and the INSERT below dies on a duplicate-key violation surfaced as an opaque 500.
+    const existingUser = await db<UserRow>('users')
+      .whereRaw('lower(email) = ?', [email.toLowerCase()])
+      .first()
     if (existingUser) {
+      if (existingUser.is_deleted) {
+        throw new AppError(
+          'This email is linked to a deactivated account. Please contact your university admin to restore access.',
+          409,
+          'ACCOUNT_DEACTIVATED',
+        )
+      }
       throw new AppError('An account already exists for this email', 409, 'CONFLICT')
     }
 
     const passwordHash = data.password ? await bcrypt.hash(data.password, 12) : null
 
-    const user = await db.transaction(async (trx) => {
-      const username = await generateUniqueUsername(trx, universityId, email)
-      const [createdUser] = await trx<UserRow>('users')
-        .insert({
-          university_id: universityId,
-          username,
-          email,
-          password_hash: passwordHash,
-          role,
-          is_verified: false,
+    let user: UserRow
+    try {
+      user = await db.transaction(async (trx) => {
+        const username = await generateUniqueUsername(trx, universityId, email)
+        const [createdUser] = await trx<UserRow>('users')
+          .insert({
+            university_id: universityId,
+            username,
+            email,
+            password_hash: passwordHash,
+            role,
+            is_verified: false,
+          })
+          .returning('*')
+
+        await trx('profiles').insert({
+          user_id: createdUser.id,
+          full_name: data.full_name,
+          department: data.department ?? null,
+          batch_year: data.batch_year ?? null,
         })
-        .returning('*')
 
-      await trx('profiles').insert({
-        user_id: createdUser.id,
-        full_name: data.full_name,
-        department: data.department ?? null,
-        batch_year: data.batch_year ?? null,
+        if (invitation) {
+          await trx('invitations').where({ token: invitation.token }).update({ is_used: true })
+        }
+
+        return createdUser
       })
-
-      if (invitation) {
-        await trx('invitations').where({ token: invitation.token }).update({ is_used: true })
+    } catch (error: unknown) {
+      // Safety net: if a row beat the pre-check (race, or a soft-deleted row the
+      // global unique index still guards), turn the duplicate-key violation into a
+      // clear 409 instead of leaking it as a generic 500.
+      if (isUniqueViolation(error)) {
+        throw new AppError('An account already exists for this email', 409, 'CONFLICT')
       }
-
-      return createdUser
-    })
+      throw error
+    }
 
     const profile = await findUserWithProfile(user.id)
     if (!profile) throw new AppError('User not found', 404, 'NOT_FOUND')
@@ -575,6 +599,10 @@ function toAuthUser(user: UserWithProfileRow) {
 
 async function getInvitation(token: string) {
   return db<InvitationRow>('invitations').where({ token }).first()
+}
+
+function isUniqueViolation(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
 }
 
 function validateInvitationForRegistration(

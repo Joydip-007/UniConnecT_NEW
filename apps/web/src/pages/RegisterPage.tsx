@@ -209,8 +209,14 @@ export default function RegisterPage() {
       if (isAxiosError(err)) {
         const status = err.response?.status
         const code: string = err.response?.data?.code ?? ''
-        if (status === 409 || code === 'CONFLICT') {
-          setServerError('An account already exists for this invitation.')
+        const serverMessage: string = err.response?.data?.error ?? ''
+        if (code === 'ACCOUNT_DEACTIVATED') {
+          setServerError(
+            serverMessage ||
+              'This email is linked to a deactivated account. Please contact your university admin.',
+          )
+        } else if (status === 409 || code === 'CONFLICT') {
+          setServerError(serverMessage || 'An account already exists for this email.')
         } else if (status === 404 || code === 'NOT_FOUND') {
           setServerError('Invitation token is invalid or expired.')
         } else if (status === 422 && code === 'EMAIL_DOMAIN_NOT_ALLOWED') {
