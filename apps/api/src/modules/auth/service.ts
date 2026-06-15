@@ -255,13 +255,21 @@ export class AuthService {
       throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
     }
 
-    if (!user.is_verified) {
-      throw new AppError('Account is not verified', 403, 'ACCOUNT_NOT_VERIFIED')
-    }
-
+    // Password check comes before the verified check so we don't reveal account
+    // existence to someone who supplies the wrong password.
     if (!user.password_hash) throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
     const isPasswordValid = await bcrypt.compare(password, user.password_hash)
     if (!isPasswordValid) throw new AppError('Invalid email or password', 401, 'UNAUTHORIZED')
+
+    if (!user.is_verified) {
+      // Correct password but unverified — resend a fresh OTP so the user can
+      // complete verification immediately from the OTP page.
+      const displayName = user.full_name ?? user.email.split('@')[0]
+      await otpService.revokeOtp(user.id, 'verify')
+      const otp = await otpService.storeOtp(user.id, 'verify')
+      await sendOtpOrThrow(user.email, otp, 'verify', displayName)
+      throw new AppError('Account is not verified', 403, 'ACCOUNT_NOT_VERIFIED')
+    }
 
     // Valid credentials on a self-deactivated account → reactivate it.
     if (!user.is_active && user.deactivated_at) {

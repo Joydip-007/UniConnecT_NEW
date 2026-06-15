@@ -46,7 +46,7 @@ export default function LoginPage() {
         if (status === 401) {
           setError('Invalid email or password')
         } else if (status === 403 && code === 'ACCOUNT_NOT_VERIFIED') {
-          setError('Your account is not verified. Check your email for a verification code.')
+          navigate(PATHS.VERIFY_OTP + '?purpose=verify', { state: { email }, replace: false })
         } else if (!err.response) {
           setError('Cannot reach the server. Make sure the API is running.')
         } else {
