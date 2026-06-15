@@ -123,13 +123,20 @@ export class AuthService {
       .first()
     if (existingUser) {
       if (existingUser.is_deleted) {
-        throw new AppError(
-          'This email is linked to a deactivated account. Please contact your university admin to restore access.',
-          409,
-          'ACCOUNT_DEACTIVATED',
-        )
+        if (!existingUser.is_verified) {
+          // Soft-deleted + never-verified = admin deleted an unverified account and re-invited.
+          // Purge the ghost row so re-registration proceeds cleanly.
+          await db('users').where({ id: existingUser.id }).delete()
+        } else {
+          throw new AppError(
+            'This email is linked to a deactivated account. Please contact your university admin to restore access.',
+            409,
+            'ACCOUNT_DEACTIVATED',
+          )
+        }
+      } else {
+        throw new AppError('An account already exists for this email', 409, 'CONFLICT')
       }
-      throw new AppError('An account already exists for this email', 409, 'CONFLICT')
     }
 
     const passwordHash = data.password ? await bcrypt.hash(data.password, 12) : null
