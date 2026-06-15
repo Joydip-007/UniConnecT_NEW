@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UniConnecT — Team Presentation Guide · Team Mavericks</title>
+<style>
+/* ── Reset & base ───────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #f4f6fb;
+  color: #1a2233;
+  line-height: 1.7;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ─────────────────────────────────────── */
+#sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: #0d1b2e;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  padding: 0 0 32px;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3f5f #0d1b2e;
+  flex-shrink: 0;
+  z-index: 10;
+}
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-track { background: #0d1b2e; }
+#sidebar::-webkit-scrollbar-thumb { background: #2a3f5f; border-radius: 4px; }
+
+.sidebar-logo {
+  padding: 20px 18px 14px;
+  border-bottom: 1px solid #1e3050;
+  margin-bottom: 8px;
+}
+.sidebar-logo .brand {
+  font-size: 15px;
+  font-weight: 800;
+  color: #F05A28;
+  letter-spacing: -0.3px;
+}
+.sidebar-logo .sub {
+  font-size: 10px;
+  color: #6b82a8;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+.toc-link {
+  display: block;
+  padding: 4px 18px;
+  font-size: 11.5px;
+  color: #8ba3c8;
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+.toc-link:hover, .toc-link.active {
+  color: #e8eeff;
+  border-left-color: #F05A28;
+  background: rgba(240,90,40,0.08);
+}
+.toc-sub  { padding-left: 30px; font-size: 11px; color: #5f7a9e; }
+.toc-sub2 { padding-left: 42px; font-size: 10.5px; color: #4a6080; }
+.toc-section-label {
+  padding: 10px 18px 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #3d5470;
+}
+
+/* ── Main content ────────────────────────────────── */
+#main {
+  flex: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 48px 80px;
+  min-width: 0;
+}
+
+/* ── Headings ────────────────────────────────────── */
+h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #0a1628 0%, #1E3A70 55%, #c0440f 100%);
+  padding: 32px 30px 26px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+h1 + p {
+  font-size: 12px;
+  color: #6b82a8;
+  margin-bottom: 4px;
+}
+
+h2 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1E3A70;
+  border-left: 4px solid #F05A28;
+  padding: 8px 0 8px 14px;
+  margin: 40px 0 14px;
+  background: #eef2fc;
+  border-radius: 0 8px 8px 0;
+  scroll-margin-top: 20px;
+}
+
+h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #5B5BD6;
+  margin: 28px 0 10px;
+  scroll-margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1E3A70;
+  margin: 18px 0 6px;
+}
+
+/* ── Contributor section colouring ───────────────── */
+h3[id*="joydip"]   { color: #b84a00; }
+h3[id*="saem"]     { color: #15803d; }
+h3[id*="mahfujur"] { color: #4338ca; }
+h3[id*="monabbur"] { color: #0e7490; }
+h3[id*="nazmul"]   { color: #6d28d9; }
+
+/* ── Paragraphs & lists ──────────────────────────── */
+p { margin: 8px 0 10px; font-size: 14px; }
+ul, ol { margin: 8px 0 10px; padding-left: 22px; }
+li { margin: 4px 0; font-size: 14px; }
+a { color: #5B5BD6; text-decoration: underline; text-underline-offset: 2px; }
+a:hover { color: #F05A28; }
+strong { color: #0d1f3c; font-weight: 700; }
+hr { border: none; border-top: 1.5px solid #e4e9f5; margin: 28px 0; }
+
+/* ── Inline code ─────────────────────────────────── */
+code {
+  background: #eef1f9;
+  color: #c0392b;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 12.5px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  word-break: break-all;
+}
+
+/* ── Code blocks ─────────────────────────────────── */
+pre {
+  background: #0d1b2e;
+  color: #c8d8f5;
+  padding: 16px 18px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  border-left: 4px solid #F05A28;
+  margin: 12px 0 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+/* ── Tables ──────────────────────────────────────── */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0 18px;
+  font-size: 13px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(30,58,112,0.08);
+}
+thead tr { background: #1E3A70; }
+th {
+  color: #fff;
+  text-align: left;
+  padding: 9px 12px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.2px;
+}
+td {
+  border-bottom: 1px solid #e8edf8;
+  padding: 7px 12px;
+  vertical-align: top;
+  word-break: break-word;
+  font-size: 12.5px;
+}
+tr:nth-child(even) td { background: #f5f8ff; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #ebf0ff; transition: background 0.1s; }
+
+/* ── Q&A answers ─────────────────────────────────── */
+blockquote.qa-answer {
+  border-left: 3px solid #5B5BD6;
+  background: #f2f3fc;
+  margin: 4px 0 18px;
+  padding: 10px 16px;
+  border-radius: 0 10px 10px 0;
+  color: #1a2233;
+  font-size: 13.5px;
+}
+blockquote.qa-answer p { margin: 4px 0; font-size: 13.5px; }
+
+/* ── Team roster special table ───────────────────── */
+.team-roster th { background: #F05A28; }
+
+/* ── Metrics table ───────────────────────────────── */
+#project-overview table thead { background: #1E3A70; }
+
+/* ── Scroll-to-top button ────────────────────────── */
+#scrolltop {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 40px;
+  height: 40px;
+  background: #F05A28;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(240,90,40,0.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: background 0.2s;
+}
+#scrolltop:hover { background: #c44014; }
+#scrolltop.visible { display: flex; }
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 900px) {
+  #sidebar { display: none; }
+  #main { padding: 24px 20px 60px; }
+}
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">UniConnecT</div>
+    <div class="sub">Team Mavericks · UIU · Dhaka · 2026–27</div>
+  </div>
+  <div class="toc-section-label">Navigation</div>
+
+<a href="#table-of-contents" class="toc-link " title="Table of Contents">Table of Contents</a>
+<a href="#1-project-overview" class="toc-link " title="1. Project Overview">1. Project Overview</a>
+<a href="#2-system-architecture" class="toc-link " title="2. System Architecture">2. System Architecture</a>
+<a href="#3-tech-stack" class="toc-link " title="3. Tech Stack">3. Tech Stack</a>
+<a href="#4-five-contribution-areas" class="toc-link " title="4. Five Contribution Areas">4. Five Contribution Areas</a>
+<a href="#team-roster" class="toc-link toc-sub" title="Team Roster">Team Roster</a>
+<a href="#contributor-1-joydip-datta-leader-core-architecture-auth-real-time-admin" class="toc-link toc-sub" title="Contributor 1 — Joydip Datta (LEADER): Core Architecture, Auth, Real-time & Admin">Contributor 1 — Joydip Datta (LEADER): Core Archit…</a>
+<a href="#contributor-2-md-saem-ferdous-social-feed-groups-notifications" class="toc-link toc-sub" title="Contributor 2 — Md. Saem Ferdous: Social Feed, Groups & Notifications">Contributor 2 — Md. Saem Ferdous: Social Feed, Gro…</a>
+<a href="#contributor-3-md-mahfujur-rahman-himel-akon-jobs-events-connections-profile-onboarding" class="toc-link toc-sub" title="Contributor 3 — Md. Mahfujur Rahman Himel Akon: Jobs, Events, Connections, Profile & Onboarding">Contributor 3 — Md. Mahfujur Rahman Himel Akon: Jo…</a>
+<a href="#contributor-4-md-monabbur-hosen-bhuiyan-messaging-real-time-presence-push-notifications" class="toc-link toc-sub" title="Contributor 4 — Md. Monabbur Hosen Bhuiyan: Messaging, Real-time Presence & Push Notifications">Contributor 4 — Md. Monabbur Hosen Bhuiyan: Messag…</a>
+<a href="#contributor-5-md-nazmul-hasan-nasim-campus-tools-search-content-sync-settings" class="toc-link toc-sub" title="Contributor 5 — Md. Nazmul Hasan Nasim: Campus Tools, Search, Content-Sync & Settings">Contributor 5 — Md. Nazmul Hasan Nasim: Campus Too…</a>
+<a href="#5-feature-deep-dives" class="toc-link " title="5. Feature Deep-Dives">5. Feature Deep-Dives</a>
+<a href="#51-multi-tenancy" class="toc-link toc-sub" title="5.1 Multi-tenancy">5.1 Multi-tenancy</a>
+<a href="#52-file-upload-presign-flow" class="toc-link toc-sub" title="5.2 File Upload (Presign Flow)">5.2 File Upload (Presign Flow)</a>
+<a href="#53-background-jobs-bull-redis" class="toc-link toc-sub" title="5.3 Background Jobs (Bull + Redis)">5.3 Background Jobs (Bull + Redis)</a>
+<a href="#54-design-system" class="toc-link toc-sub" title="5.4 Design System">5.4 Design System</a>
+<a href="#55-driver-role-shuttle-system" class="toc-link toc-sub" title="5.5 Driver Role & Shuttle System">5.5 Driver Role & Shuttle System</a>
+<a href="#6-database-design" class="toc-link " title="6. Database Design">6. Database Design</a>
+<a href="#7-teacher-qa-bank" class="toc-link " title="7. Teacher Q&A Bank">7. Teacher Q&A Bank</a>
+<a href="#architecture-design" class="toc-link toc-sub" title="Architecture & Design">Architecture & Design</a>
+<a href="#authentication-security" class="toc-link toc-sub" title="Authentication & Security">Authentication & Security</a>
+<a href="#real-time-system" class="toc-link toc-sub" title="Real-time System">Real-time System</a>
+<a href="#background-jobs" class="toc-link toc-sub" title="Background Jobs">Background Jobs</a>
+<a href="#database" class="toc-link toc-sub" title="Database">Database</a>
+<a href="#frontend" class="toc-link toc-sub" title="Frontend">Frontend</a>
+<a href="#deployment-devops" class="toc-link toc-sub" title="Deployment & DevOps">Deployment & DevOps</a>
+<a href="#feature-specific" class="toc-link toc-sub" title="Feature-specific">Feature-specific</a>
+<a href="#testing" class="toc-link toc-sub" title="Testing">Testing</a>
+<a href="#quick-reference-who-owns-what" class="toc-link " title="Quick Reference — Who Owns What">Quick Reference — Who Owns What</a>
+</nav>
+
+<main id="main">
+<h1 id="uniconnect-team-presentation-guide">UniConnecT — Team Presentation Guide</h1><p><strong>Team Mavericks · UIU · Dhaka · 2026–27</strong></p>
+<p><strong>Members:</strong> Joydip Datta (Leader) · Md. Saem Ferdous · Md. Mahfujur Rahman Himel Akon · Md. Monabbur Hosen Bhuiyan · Md. Nazmul Hasan Nasim</p>
+<blockquote class="qa-answer"><p>This document maps every feature to a team contributor, explains how each system works end-to-end, and prepares the team for every question a teacher might ask during the presentation.</p>
+</blockquote><hr>
+<h2 id="table-of-contents">Table of Contents</h2><ol>
+<li><a href="#1-project-overview">Project Overview</a></li>
+<li><a href="#2-system-architecture">System Architecture</a></li>
+<li><a href="#3-tech-stack">Tech Stack</a></li>
+<li><a href="#4-five-contribution-areas">Five Contribution Areas</a></li>
+<li><a href="#5-feature-deep-dives">Feature Deep-Dives (How Everything Works)</a></li>
+<li><a href="#6-database-design">Database Design</a></li>
+<li><a href="#7-teacher-qa-bank">Teacher Q&amp;A Bank</a></li>
+</ol>
+<hr>
+<h2 id="1-project-overview">1. Project Overview</h2><p><strong>UniConnecT</strong> is a private, multi-tenant university social network — think LinkedIn but locked to a single university&#39;s students, alumni, faculty, and admins. Each university gets its own isolated instance (tenant) sharing the same codebase and database cluster.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Backend modules</td>
+<td>21</td>
+</tr>
+<tr>
+<td>Database migrations</td>
+<td>81</td>
+</tr>
+<tr>
+<td>Frontend pages</td>
+<td>30+</td>
+</tr>
+<tr>
+<td>React feature bundles</td>
+<td>22</td>
+</tr>
+<tr>
+<td>Background job queues</td>
+<td>10</td>
+</tr>
+<tr>
+<td>User roles</td>
+<td>student, alumni, faculty, admin, driver</td>
+</tr>
+<tr>
+<td>Lines of backend TypeScript</td>
+<td>~15,000</td>
+</tr>
+<tr>
+<td>Lines of frontend TypeScript/TSX</td>
+<td>~18,000</td>
+</tr>
+</tbody></table>
+<p><strong>Target users:</strong> Students (social feed, events, jobs), Alumni (mentorship, job posting), Faculty/Admin (content moderation, group management), Transport Staff/Driver (GPS shuttle broadcast).</p>
+<hr>
+<h2 id="2-system-architecture">2. System Architecture</h2><pre><code>┌────────────────────────────────────────────────────────────────────────┐
+│                         CLIENT (Browser)                               │
+│  React 18 SPA · Vite 5 · TanStack Query · Zustand · Socket.io client  │
+└─────────────────────────────┬──────────────────────────────────────────┘
+                              │  HTTPS + WSS
+┌─────────────────────────────▼──────────────────────────────────────────┐
+│                     apps/api  (Express + Socket.io)                    │
+│                                                                        │
+│  resolveUniversity → requireAuth → validate(schema) → controller      │
+│                            ↓                                           │
+│                         service                                        │
+│                     ↙          ↘                                       │
+│              Knex ORM         Bull Queues ──→ Workers                 │
+│                 ↓                   ↓                                  │
+│            PostgreSQL           Redis pub/sub                          │
+│              (Neon)          (Socket adapter + cache)                  │
+│                                                                        │
+│  S3 / Cloudflare R2  ←──  presign flow  (files never hit API server)  │
+└────────────────────────────────────────────────────────────────────────┘
+
+Multi-tenancy:  every DB table has university_id UUID FK.
+                No Postgres RLS — isolation enforced in service layer.
+                University resolved from x-university-domain HTTP header.
+
+Monorepo:
+  apps/web      React SPA
+  apps/api      Express backend
+  packages/shared   shared Zod schemas, TypeScript types, socket event constants
+</code></pre>
+<p><strong>Data flow for a typical POST /feed/posts:</strong></p>
+<pre><code>Browser
+  → axios (injects x-university-domain + Authorization: Bearer &lt;token&gt;)
+  → Express router: resolveUniversity → requireAuth → validate(createPostSchema)
+  → feedController.createPost
+  → feedService.createPost            (DB write via Knex)
+  → notificationQueue.add(...)        (Bull enqueue — async, non-blocking)
+  → getIo().to(&#39;uni:&#39;+universityId).emit(&#39;NEW_POST&#39;, post)   (real-time)
+  → sendSuccess(res, post, 201)
+</code></pre>
+<hr>
+<h2 id="3-tech-stack">3. Tech Stack</h2><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Why chosen</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Frontend framework</td>
+<td>React 18 + Vite 5</td>
+<td>Fast HMR, lazy-loading via React.lazy</td>
+</tr>
+<tr>
+<td>Styling</td>
+<td>Tailwind CSS + CSS custom properties</td>
+<td>Utility classes + design tokens without runtime overhead</td>
+</tr>
+<tr>
+<td>State (server)</td>
+<td>TanStack Query v5</td>
+<td>Cache, background refetch, optimistic updates</td>
+</tr>
+<tr>
+<td>State (client)</td>
+<td>Zustand</td>
+<td>Minimal boilerplate, no context drilling</td>
+</tr>
+<tr>
+<td>Real-time</td>
+<td>Socket.io</td>
+<td>Rooms, auto-reconnect, fallback transports</td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>Express + Node.js (TypeScript strict)</td>
+<td>Mature ecosystem, team familiarity</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>PostgreSQL (Neon cloud)</td>
+<td>ACID, full-text search (tsvector/GIN), JSON columns</td>
+</tr>
+<tr>
+<td>Query builder</td>
+<td>Knex</td>
+<td>Migrations + query building without ORM overhead</td>
+</tr>
+<tr>
+<td>Queue/Cache</td>
+<td>Redis + Bull</td>
+<td>Reliable job processing, pub/sub for Socket.io scale</td>
+</tr>
+<tr>
+<td>File storage</td>
+<td>AWS S3 / Cloudflare R2</td>
+<td>Presigned URL pattern; files never pass through API</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>Resend API</td>
+<td>Transactional email for OTPs and notifications</td>
+</tr>
+<tr>
+<td>Deployment</td>
+<td>Azure App Service (API) + Vercel (Web)</td>
+<td>GitHub Actions CI/CD</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="4-five-contribution-areas">4. Five Contribution Areas</h2><blockquote class="qa-answer"><p><strong>Rule:</strong> Leader owns the most cross-cutting, architecturally critical work. Others own well-scoped feature verticals. Every member owns both backend (module) and frontend (feature bundle) for their area.</p>
+</blockquote><h3 id="team-roster">Team Roster</h3><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Name</th>
+<th>Area</th>
+<th>Headline responsibilities</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong>Joydip Datta</strong> <em>(Leader)</em></td>
+<td>Core Architecture, Auth, Real-time &amp; Admin</td>
+<td>Monorepo, multi-tenancy, JWT/OTP auth, Socket.io+Redis, all Bull queues, admin panel, file upload, rate limiting, moderation, drafts, account deletion, design system, CI/CD</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Md. Saem Ferdous</strong></td>
+<td>Social Feed, Groups &amp; Notifications</td>
+<td>Feed + hot_score ranking, post lifecycle, groups, notifications, news, badges, share</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Md. Mahfujur Rahman Himel Akon</strong></td>
+<td>Jobs, Events, Connections, Profile &amp; Onboarding</td>
+<td>Jobs, events, connection graph, full profile suite, onboarding checklist, mentorship + points economy</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Md. Monabbur Hosen Bhuiyan</strong></td>
+<td>Messaging, Presence &amp; Push</td>
+<td>Real-time chat, conversation types, Redis presence, privacy tiers, Web Push</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Md. Nazmul Hasan Nasim</strong></td>
+<td>Campus Tools, Search &amp; Content</td>
+<td>Full-text search, explore, campus (lost-found + shuttle GPS), content-sync (WordPress + Skyvern), settings</td>
+</tr>
+</tbody></table>
+<hr>
+<h3 id="contributor-1-joydip-datta-leader-core-architecture-auth-real-time-admin">Contributor 1 — Joydip Datta (LEADER): Core Architecture, Auth, Real-time &amp; Admin</h3><p><strong>This is the hardest area.</strong> It underpins everything else. Nothing in the project works without this.</p>
+<p><strong>Owned systems:</strong></p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Files / Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Monorepo setup</td>
+<td><code>pnpm-workspace.yaml</code>, <code>package.json</code> root</td>
+</tr>
+<tr>
+<td>Multi-tenancy middleware</td>
+<td><code>apps/api/src/middleware/university.ts</code></td>
+</tr>
+<tr>
+<td>JWT Auth (access + refresh)</td>
+<td><code>apps/api/src/modules/auth/</code> · <code>apps/api/src/services/token.service.ts</code></td>
+</tr>
+<tr>
+<td>OTP verification</td>
+<td><code>apps/api/src/services/otp.service.ts</code></td>
+</tr>
+<tr>
+<td>Invite-based registration</td>
+<td><code>apps/api/src/modules/auth/service.ts</code></td>
+</tr>
+<tr>
+<td>Socket.io + Redis pub/sub</td>
+<td><code>apps/api/src/socket/index.ts</code></td>
+</tr>
+<tr>
+<td>All 10 Bull queues + workers</td>
+<td><code>apps/api/src/queues/</code> · <code>apps/api/src/workers/</code></td>
+</tr>
+<tr>
+<td>Admin module (full)</td>
+<td><code>apps/api/src/modules/admin/</code></td>
+</tr>
+<tr>
+<td>Database schema (001–029)</td>
+<td><code>apps/api/src/database/migrations/001–029_*.ts</code></td>
+</tr>
+<tr>
+<td>Error handling middleware</td>
+<td><code>apps/api/src/middleware/error-handler.ts</code></td>
+</tr>
+<tr>
+<td>Response helpers</td>
+<td><code>apps/api/src/utils/response.ts</code> · <code>errors.ts</code></td>
+</tr>
+<tr>
+<td>Winston logger</td>
+<td><code>apps/api/src/utils/logger.ts</code></td>
+</tr>
+<tr>
+<td>Design system (tokens)</td>
+<td><code>apps/web/src/styles/tokens.css</code></td>
+</tr>
+<tr>
+<td>Theme switcher</td>
+<td><code>apps/web/src/stores/themeStore.ts</code></td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td><code>.github/workflows/</code></td>
+</tr>
+<tr>
+<td>File upload (presigned S3)</td>
+<td><code>apps/api/src/modules/upload/</code> · <code>apps/api/src/services/upload.service.ts</code></td>
+</tr>
+<tr>
+<td>Rate limiting (Redis, per-user)</td>
+<td><code>apps/api/src/middleware/rateLimiter.ts</code></td>
+</tr>
+<tr>
+<td>Moderation (block / mute / report)</td>
+<td><code>apps/api/src/modules/moderation/</code> · migration <code>078</code></td>
+</tr>
+<tr>
+<td>Account deletion requests</td>
+<td><code>apps/api/src/modules/users/</code> (deletion sub-API) · migration <code>079</code></td>
+</tr>
+<tr>
+<td>Drafts (unified cross-domain)</td>
+<td><code>apps/api/src/modules/drafts/</code> · migration <code>064</code> · <code>apps/web/src/features/drafts/</code></td>
+</tr>
+<tr>
+<td>Auth frontend</td>
+<td><code>apps/web/src/features/landing/</code> · <code>LoginPage.tsx</code> · <code>RegisterPage.tsx</code></td>
+</tr>
+<tr>
+<td>Admin frontend</td>
+<td><code>apps/web/src/pages/admin/</code> · <code>apps/web/src/features/</code></td>
+</tr>
+</tbody></table>
+<p><strong>How file upload works (leader must know this cold):</strong></p>
+<p>When a user wants to upload a profile photo or attach a file to a post, the browser first asks our server for a &quot;permission slip&quot; — a pre-signed URL. The server generates this short-lived URL (valid for 5 minutes) and sends it back. The browser then uploads the file directly to Amazon S3 (our cloud storage) using that URL — it never goes through our Express server at all. Once the upload is done, the browser just sends us the file&#39;s public link, and we save that link in the database. This way our server stays fast, never gets overloaded by large files, and we don&#39;t pay for bandwidth twice.</p>
+<pre><code>Presigned S3 PUT URL flow — file bytes never hit the API server:
+  1. Client: POST /api/upload/presign  { filename, contentType }
+  2. API: upload.service.ts → S3.createPresignedPost() → returns { url, fields } (signed, 5 min TTL)
+  3. Client: PUT directly to S3/R2 URL (multipart form, bypasses Express entirely)
+  4. Client: sends resulting public URL to domain endpoint
+             e.g. PATCH /users/me { avatar_url: &#39;https://cdn.../abc.jpg&#39; }
+  5. API: stores URL string in DB — no file bytes ever enter Node.js process
+
+Why this matters: a 10 MB video upload doesn&#39;t block the Express event loop or consume
+Lambda/App Service memory. The API just signs a token and walks away.
+</code></pre>
+<p><strong>How auth works (leader must know this cold):</strong></p>
+<p>UniConnecT is a closed network — you can&#39;t just sign up from the internet. An admin creates an invitation with a specific email and role (e.g. &quot;this email is a student&quot;). The new user uses that invite link, fills in their name and password, and we send them a one-time 6-digit OTP code by email to prove they own the address. Once they verify the OTP, their account is activated.</p>
+<p>After that, every login gives back two tokens: a short-lived <strong>access token</strong> (15 minutes) stored in browser memory, and a long-lived <strong>refresh token</strong> (7 days) stored in an httpOnly cookie that JavaScript can never read. When the access token expires, the browser silently calls <code>/auth/refresh</code>, the server checks the cookie, and issues a new access token — all invisible to the user. If someone steals the access token, it&#39;s useless within 15 minutes. If they steal the cookie, the server can invalidate it in the database.</p>
+<p><strong>Account state scenarios (recently added — Joydip, commits <code>2a48a05</code> &amp; <code>50056c2</code>):</strong></p>
+<p>Before these fixes, certain edge cases caused confusing or broken behaviour. Here is every situation the auth system now handles, in plain words and then technically:</p>
+<p><strong>Scenario 1 — Login with correct password but email never verified.</strong>
+You registered, never typed the OTP, and now try to log in. Old behaviour: blocked with a generic error, OTP already expired — stuck forever. New behaviour: the server sees the password is correct, revokes the old expired OTP, generates a brand new one, sends it to your email right away, and sends back <code>ACCOUNT_NOT_VERIFIED</code> (403). The frontend catches that code and redirects you straight to the OTP page. You verify the fresh code and you&#39;re in.</p>
+<p><strong>Scenario 2 — Re-registering with an email that has a soft-deleted AND unverified account.</strong>
+An admin invited someone, they started registration, never verified, and the admin later deleted that ghost account. The email is still in the database (soft-deleted). If that person tries to register again, the old code would crash with a silent 500 (duplicate key error on the global unique index). New behaviour: the server detects the email row is both <code>is_deleted=true</code> AND <code>is_verified=false</code> (a ghost/abandoned account), hard-deletes that row entirely, and lets registration proceed cleanly.</p>
+<p><strong>Scenario 3 — Re-registering with an email that has a soft-deleted but VERIFIED account.</strong>
+The admin deleted a real, active account (e.g. a student who graduated). That person tries to register fresh. We do NOT allow it — their old data exists and an admin action is needed to restore it properly. The server returns <code>ACCOUNT_DEACTIVATED</code> (409) with the message &quot;Please contact your university admin to restore access.&quot; The frontend shows this message clearly instead of a generic error.</p>
+<p><strong>Scenario 4 — Logging in to a self-deactivated account.</strong>
+A user deliberately deactivated their own account via Settings → Account → Deactivate. Their row has <code>is_active=false</code> AND <code>deactivated_at</code> is set (this is the signal it was self-initiated, not admin-forced). When they log in again with the correct password, the server automatically reactivates the account (<code>is_active=true</code>, <code>deactivated_at=null</code>) and logs them in normally. No admin needed — the user changed their mind.</p>
+<p><strong>Scenario 5 — Logging in to an admin-disabled account.</strong>
+An admin forcibly disabled an account (<code>is_active=false</code>, but <code>deactivated_at</code> is NULL — the signal it was admin-initiated). The server returns the same generic &quot;Invalid email or password&quot; (401) — it deliberately does not say &quot;your account is disabled&quot; to avoid leaking information. Only the admin can re-enable it.</p>
+<pre><code>Registration:
+  POST /auth/register (body: token, email, password, name)
+    → validate invite token exists + email matches
+    → bcrypt.hash(password)
+    → insert user + profile in transaction
+    → otpService.generate(userId, &#39;email_verify&#39;) → store in Redis (TTL 10 min)
+    → emailQueue.add({ to, otp }) → email.worker sends via Resend API
+    → return { message: &#39;OTP sent&#39; }
+
+  POST /auth/verify-otp
+    → otpService.verify(userId, otp, purpose)
+    → set users.is_verified = true
+    → return { accessToken, user }  +  Set-Cookie: refreshToken (httpOnly, 7d)
+
+Login:
+  POST /auth/login
+    → bcrypt.compare(password, hash)
+    → tokenService.signAccess({ userId, universityId, role })   (JWT 15 min)
+    → tokenService.signRefresh()  → 256-bit random → stored in user_sessions
+    → Set-Cookie: refreshToken (httpOnly)
+
+Silent refresh (frontend interceptor):
+  axios 401 interceptor → check localStorage &#39;uc:has_session&#39; sentinel
+  → POST /auth/refresh (cookie sent automatically)
+  → new accessToken → retry original request
+
+Account state decision tree on Login (auth/service.ts):
+  user not found                            → 401 (same message as wrong password — no leaking)
+  is_active=false AND deactivated_at=NULL   → 401 (admin-disabled, generic message)
+  password wrong                            → 401
+  is_verified=false (correct password)      → revoke old OTP → generate fresh OTP → email it
+                                              → 403 ACCOUNT_NOT_VERIFIED
+                                              → frontend navigates to /verify-otp?purpose=verify
+  is_active=false AND deactivated_at SET    → reactivate (is_active=true, deactivated_at=null)
+                                              → login succeeds (self-deactivation = user changed mind)
+  all checks pass                           → issue access token + refresh token → success
+
+Account state decision tree on Register (auth/service.ts):
+  email exists, is_deleted=true, is_verified=false  → hard-delete ghost row → proceed with register
+  email exists, is_deleted=true, is_verified=true   → 409 ACCOUNT_DEACTIVATED (&quot;contact admin&quot;)
+  email exists, is_deleted=false                    → 409 CONFLICT (&quot;account already exists&quot;)
+  race condition duplicate key                      → caught → 409 CONFLICT (no 500 leak)
+</code></pre>
+<p><strong>How moderation &amp; rate limiting work (leader-owned safety layer):</strong></p>
+<p>Moderation gives every user three self-protection tools. If someone is harassing you, you can <strong>block</strong> them — they vanish from your feed and can no longer message you (and you vanish from theirs too). If you just want to stop seeing someone&#39;s posts without them knowing, you <strong>mute</strong> them — it&#39;s one-sided and silent. If someone posts harmful content, you <strong>report</strong> it — that report goes into the admin panel for a faculty/admin to review and act on.</p>
+<p>Rate limiting is a spam prevention layer. Every time someone clicks a button that writes data (posting, blocking, reporting, etc.), our server counts how many times that user has done it in the last time window. If they exceed the limit, we return a &quot;429 Too Many Requests&quot; error. We count by <strong>user ID</strong> rather than IP address — that way a whole university behind a shared WiFi router doesn&#39;t accidentally get blocked together.</p>
+<pre><code>Moderation module (user-level trust &amp; safety, not just admin):
+  POST   /moderation/block/:userId    — hide a user both ways (no posts, no DMs)
+  DELETE /moderation/block/:userId    — unblock
+  POST   /moderation/mute/:userId     — silence a user (you stop seeing them; they don&#39;t know)
+  DELETE /moderation/mute/:userId     — unmute
+  POST   /moderation/report           — file a content/user report → lands in admin queue
+  GET    /moderation/blocks · /mutes  — manage your lists
+  → backed by user_moderation table (migration 078)
+  → admin resolves reports in the admin panel (university_audit_log records the action)
+
+Rate limiting (rateLimiter.ts — Redis sliding counter):
+  key = rl:{prefix}:{subject}   where subject = u:{userId} (authed) or ip:{ip} (anon)
+  → INCR key with a TTL window; reject with 429 (tooManyRequests) over the limit
+  → keyed by USER id, not IP, so a whole university behind one NAT isn&#39;t throttled as one client
+  → writeLimiter guards all mutating routes (block, mute, report, post, etc.)
+  → disabled in NODE_ENV=test (noop) so tests aren&#39;t throttled
+</code></pre>
+<hr>
+<h3 id="contributor-2-md-saem-ferdous-social-feed-groups-notifications">Contributor 2 — Md. Saem Ferdous: Social Feed, Groups &amp; Notifications</h3><p><strong>Owned systems:</strong></p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Files / Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Feed (posts, reactions, comments, polls)</td>
+<td><code>apps/api/src/modules/feed/</code></td>
+</tr>
+<tr>
+<td>Feed ranking (hot_score)</td>
+<td><code>apps/api/src/workers/feed-ranking.worker.ts</code> · migration <code>071</code></td>
+</tr>
+<tr>
+<td>Post lifecycle (draft→scheduled→published→archived)</td>
+<td><code>apps/api/src/workers/post-lifecycle.worker.ts</code> · migration <code>072</code></td>
+</tr>
+<tr>
+<td>Groups (join-request, roles, resources, study sessions)</td>
+<td><code>apps/api/src/modules/groups/</code></td>
+</tr>
+<tr>
+<td>Group digest (weekly Bull cron)</td>
+<td><code>apps/api/src/workers/group-digest.worker.ts</code></td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td><code>apps/api/src/modules/notifications/</code></td>
+</tr>
+<tr>
+<td>News module</td>
+<td><code>apps/api/src/modules/news/</code></td>
+</tr>
+<tr>
+<td>Tags / hashtags</td>
+<td>migration <code>013</code> · <code>preprocessHashtags.ts</code></td>
+</tr>
+<tr>
+<td>Share feature</td>
+<td><code>apps/web/src/features/share/</code></td>
+</tr>
+<tr>
+<td>Badge system</td>
+<td><code>apps/api/src/workers/badge.worker.ts</code></td>
+</tr>
+<tr>
+<td>Feed frontend</td>
+<td><code>apps/web/src/features/feed/</code></td>
+</tr>
+<tr>
+<td>Groups frontend</td>
+<td><code>apps/web/src/features/groups/</code></td>
+</tr>
+<tr>
+<td>Notifications frontend</td>
+<td><code>apps/web/src/features/notifications/</code></td>
+</tr>
+<tr>
+<td>News frontend</td>
+<td><code>apps/web/src/features/news/</code></td>
+</tr>
+</tbody></table>
+<p><strong>How feed ranking works:</strong></p>
+<p>The feed has two modes: <strong>Recent</strong> (newest posts first — simple) and <strong>Top</strong> (most interesting posts first — the hard part). For &quot;Top&quot;, we use a scoring formula inspired by Hacker News. A post that gets 50 reactions in the first hour beats a post that got 50 reactions over a week. The score decays over time — old posts sink down naturally. We store this score in a column called <code>hot_score</code> that a background job recalculates every hour. This way, when you open the feed, the database just sorts by that pre-calculated number — no slow calculation happens while you wait.</p>
+<pre><code>Columns on posts table (migration 071):
+  reaction_count   — incremented transactionally on every reaction write
+  comment_count    — incremented transactionally on every comment write
+  hot_score        — precomputed Hacker News-style score
+
+Hot score formula (feed-ranking.worker.ts):
+  score = (reactions + comments * 2) / ((age_hours + 2) ^ 1.8)
+  
+  → Bull cron runs every hour → recalculates hot_score for all posts
+  → &quot;Top&quot; feed sorts on idx_posts_hot_score index (no subquery cost)
+  → &quot;Recent&quot; feed sorts on created_at DESC
+
+Post lifecycle (post-lifecycle.worker.ts):
+  → Bull cron every minute scans posts
+  → publish_at in past + is_published=false → flip to published + emit SOCKET event
+  → archived_at in past + is_published=true → flip to archived
+  → States: draft (no publish_at, is_published=false)
+             scheduled (publish_at in future)
+             published (is_published=true)
+             archived (archived_at in past)
+</code></pre>
+<p><strong>How groups work:</strong></p>
+<p>Groups work like Facebook groups but for a university. A group can be <strong>public</strong> (anyone can join instantly), <strong>private</strong> (you have to request to join and a group admin approves you), or <strong>restricted</strong> (invitation only). Inside a group, members have different roles — admin, moderator, or regular member — each with different permissions. Groups also support extra features: file links (resources) that members can share, and study sessions where members can RSVP to attend. Posts can be pinned by group admins so important announcements stay at the top.</p>
+<pre><code>Group types: public, private, restricted + system_group flag
+Private join flow:
+  POST /groups/:id/join →
+    if public: insert member immediately
+    if private: insert group_join_requests (status=&#39;pending&#39;)
+               → notify group admins
+  PATCH /groups/:id/join-requests/:reqId (admin only):
+    status=&#39;approved&#39; → insert into group_members
+    status=&#39;rejected&#39; → update join request
+
+Member roles: admin &gt; moderator &gt; member
+Resources: file links stored in group_resources (view tracking via group_resource_views)
+Study sessions: group_study_sessions table + RSVP via group_session_rsvps
+</code></pre>
+<hr>
+<h3 id="contributor-3-md-mahfujur-rahman-himel-akon-jobs-events-connections-profile-onboarding">Contributor 3 — Md. Mahfujur Rahman Himel Akon: Jobs, Events, Connections, Profile &amp; Onboarding</h3><p><strong>Owned systems:</strong></p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Files / Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Jobs (listings, applications, saved)</td>
+<td><code>apps/api/src/modules/jobs/</code></td>
+</tr>
+<tr>
+<td>Events (create, RSVP, group-linked)</td>
+<td><code>apps/api/src/modules/events/</code></td>
+</tr>
+<tr>
+<td>Connections (bidirectional graph)</td>
+<td><code>apps/api/src/modules/connections/</code> · migration <code>051</code></td>
+</tr>
+<tr>
+<td>Profile (extended sections)</td>
+<td><code>apps/api/src/modules/users/</code> (profile sub-API)</td>
+</tr>
+<tr>
+<td>Experience entries</td>
+<td>table <code>profile_experiences</code> · migration <code>053</code></td>
+</tr>
+<tr>
+<td>Education entries</td>
+<td>table <code>profile_education</code> · migration <code>054</code></td>
+</tr>
+<tr>
+<td>Featured items</td>
+<td>table <code>profile_featured</code> · migration <code>055</code></td>
+</tr>
+<tr>
+<td>Profile analytics &amp; viewers</td>
+<td>table <code>profile_views</code> · migration <code>057</code></td>
+</tr>
+<tr>
+<td>Resume export</td>
+<td><code>apps/web/src/features/profile/ResumeExportButton.tsx</code></td>
+</tr>
+<tr>
+<td>Profile vanity URLs</td>
+<td><code>users.username</code> unique per university · migration <code>072</code></td>
+</tr>
+<tr>
+<td>Onboarding checklist &amp; profile progress</td>
+<td><code>GET /users/me/progress</code> · <code>profileProgressSchema</code> · <code>apps/web/src/features/onboarding/</code></td>
+</tr>
+<tr>
+<td>Mentorship module</td>
+<td><code>apps/api/src/modules/mentorship/</code></td>
+</tr>
+<tr>
+<td>Mentorship points economy</td>
+<td><code>POINTS_PER_SESSION=10</code> · <code>POINTS_PER_USD=100</code></td>
+</tr>
+<tr>
+<td>Gift card redemption</td>
+<td><code>mentorship_redemptions</code> table</td>
+</tr>
+<tr>
+<td>Jobs frontend</td>
+<td><code>apps/web/src/features/jobs/</code></td>
+</tr>
+<tr>
+<td>Events frontend</td>
+<td><code>apps/web/src/features/events/</code></td>
+</tr>
+<tr>
+<td>Connections frontend</td>
+<td><code>apps/web/src/features/connections/</code></td>
+</tr>
+<tr>
+<td>Profile frontend</td>
+<td><code>apps/web/src/features/profile/</code></td>
+</tr>
+<tr>
+<td>Mentorship frontend</td>
+<td><code>apps/web/src/features/mentorship/</code></td>
+</tr>
+</tbody></table>
+<p><strong>How connections work:</strong></p>
+<p>Connections are like LinkedIn&#39;s &quot;Connect&quot; feature — both people have to agree. You send a request, the other person accepts, and then you&#39;re connected. We originally had a one-way &quot;follow&quot; system (like Twitter), but replaced it entirely with this two-way connection graph. Why? Because for a professional university network, mutual connections matter — they show trust. Once connected, you can see each other&#39;s profiles, send direct messages, and appear in each other&#39;s &quot;People You May Know&quot; suggestions. The app also detects <strong>mutual connections</strong> — people who are connected to both of you — to help you expand your network.</p>
+<pre><code>Old model: follows table (one-directional, dropped in migration 052)
+New model: connections table (bidirectional LinkedIn-style)
+
+  connections(id, university_id, requester_id, recipient_id, status, note)
+  status: &#39;pending&#39; | &#39;accepted&#39;
+
+Flow:
+  POST /connections/request/:userId
+    → insert connection(requester=me, recipient=target, status=&#39;pending&#39;)
+    → emit CONNECTION_EVENTS.REQUEST_RECEIVED to user:{targetId} room
+
+  POST /connections/:connectionId/accept
+    → update status=&#39;accepted&#39;
+    → emit CONNECTION_EVENTS.ACCEPTED to user:{requesterId} room
+
+  GET /connections/mutual/:userId
+    → find users connected to BOTH me AND target userId
+    → two-hop intersection query
+
+Connection status on profiles:
+  getUser() checks connections table → returns &#39;none&#39; | &#39;pending_sent&#39; |
+  &#39;pending_received&#39; | &#39;connected&#39; so the ConnectButton renders correctly
+</code></pre>
+<p><strong>How mentorship points economy works:</strong></p>
+<p>Students can request mentorship from alumni. Alumni set how many students they can take on at a time (default 3). When a student sends a request with a note explaining what they need, the alumni gets notified and can accept or decline. Once accepted, a private chat thread is automatically created for them to communicate.</p>
+<p>To reward alumni for their time, we have a points system. After each completed mentorship session, the alumnus earns 10 points. When they accumulate enough points, they can redeem them for gift cards (e.g. $10 Amazon card = 1000 points). Admins upload the actual gift card codes and mark redemptions as fulfilled. It&#39;s a lightweight incentive system to keep alumni engaged in helping students.</p>
+<pre><code>Every completed mentorship session → +10 points to mentor (alumni)
+Points can be redeemed for gift cards:
+  gift_cards table: vendor, title, threshold_points, value_usd_cents
+  
+  POST /mentorship/redeem
+    → check user.mentorship_points &gt;= gift_card.threshold_points
+    → deduct points → insert mentorship_redemptions
+    → admin fulfils by adding code_text + marking fulfilled
+
+Capacity: alumni sets max_mentees on profile (default 3)
+  Accept request → count active mentees → reject if at capacity
+</code></pre>
+<p><strong>How onboarding / profile progress works:</strong></p>
+<p>When a new student first logs in, they&#39;re shown an onboarding checklist — a simple to-do list like &quot;Add a profile photo&quot;, &quot;Write a bio&quot;, &quot;Add your experience&quot;, &quot;Make your first post&quot;. Each item links directly to where you need to go to complete it. The backend tracks which steps are done by checking the actual database — if your <code>avatar_url</code> column is empty, <code>hasAvatar</code> is false, and the checklist shows that step as incomplete. As you complete each step, a progress score (0–100) increases. Once you hit 100, the checklist disappears and you&#39;re considered fully onboarded.</p>
+<pre><code>GET /users/me/progress  →  profileProgressSchema (packages/shared)
+  Returns first-run signals that drive the onboarding checklist:
+    profileScore       0–100 weighted completion of profile fields
+    isVerified         email OTP completed
+    hasAvatar / hasBio / hasHeadline   granular per-field flags
+    hasAddedExperience / hasAddedEducation
+    hasMadePost        has published at least one post
+    connectionCount    number of accepted connections
+
+Frontend: OnboardingChecklist.tsx reads these flags and deep-links the user
+  straight to the exact gap (e.g. &quot;Add a bio&quot; → opens EditProfileModal).
+  The checklist disappears once profileScore hits 100.
+</code></pre>
+<hr>
+<h3 id="contributor-4-md-monabbur-hosen-bhuiyan-messaging-real-time-presence-push-notifications">Contributor 4 — Md. Monabbur Hosen Bhuiyan: Messaging, Real-time Presence &amp; Push Notifications</h3><p><strong>Owned systems:</strong></p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Files / Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Messaging (DMs, group chat, mentorship threads)</td>
+<td><code>apps/api/src/modules/messages/</code></td>
+</tr>
+<tr>
+<td>Conversation types (direct, group, mentorship)</td>
+<td><code>conversations.type</code> discriminator</td>
+</tr>
+<tr>
+<td>Presence (Redis-based online status)</td>
+<td><code>apps/api/src/modules/presence/</code></td>
+</tr>
+<tr>
+<td>Privacy tiers for visibility</td>
+<td><code>apps/web/src/features/settings/PrivacySection.tsx</code></td>
+</tr>
+<tr>
+<td>Web Push (VAPID subscriptions)</td>
+<td><code>apps/api/src/modules/push/</code> · migration <code>066</code></td>
+</tr>
+<tr>
+<td>Push worker (fan-out)</td>
+<td><code>apps/api/src/workers/push.worker.ts</code></td>
+</tr>
+<tr>
+<td>Notification digest (Bull cron)</td>
+<td><code>apps/api/src/workers/notification-digest.worker.ts</code></td>
+</tr>
+<tr>
+<td>Pending messages store (offline queue)</td>
+<td><code>apps/web/src/stores/pendingMsgsStore.ts</code></td>
+</tr>
+<tr>
+<td>Socket store</td>
+<td><code>apps/web/src/stores/socketStore.ts</code></td>
+</tr>
+<tr>
+<td>Presence store</td>
+<td><code>apps/web/src/stores/presenceStore.ts</code></td>
+</tr>
+<tr>
+<td>Messages frontend</td>
+<td><code>apps/web/src/features/messages/</code></td>
+</tr>
+<tr>
+<td>Presence frontend</td>
+<td><code>apps/web/src/features/presence/</code></td>
+</tr>
+</tbody></table>
+<p><strong>How real-time messaging works:</strong></p>
+<p>When you open a conversation and type a message, it travels through a persistent WebSocket connection — not a regular HTTP request. This means the other person sees your message appear instantly without refreshing the page. We use Socket.io which organises these connections into &quot;rooms&quot; — a conversation room, a personal room (for your own notifications), and a university-wide room (for feed updates). When your message is sent, the server saves it to the database first, then immediately broadcasts it to everyone in that conversation&#39;s room. If the other person is offline, their next login will load all missed messages from the database. We also handle the case where your internet drops mid-message — messages are buffered locally and flushed when you reconnect.</p>
+<p>There are three types of conversations: <strong>direct</strong> (one-on-one DM), <strong>group</strong> (group chat), and <strong>mentorship</strong> (automatically created when a mentorship request is accepted, linking the student and alumni permanently).</p>
+<pre><code>Socket.io rooms:
+  uni:{universityId}    — broadcast to whole university (feed posts, events)
+  user:{userId}         — personal (notifications, connection requests)
+  conv:{conversationId} — chat messages
+
+Message flow:
+  Client sends: socket.emit(&#39;SEND_MESSAGE&#39;, { convId, content })
+  Server:
+    → verify user is participant in conversation
+    → INSERT into messages table
+    → io.to(&#39;conv:&#39;+convId).emit(&#39;NEW_MESSAGE&#39;, message)
+    → notificationQueue.add() for offline participants
+    
+Offline messages:
+  pendingMsgsStore buffers outgoing messages when socket disconnected
+  → on reconnect, flushes buffer → server deduplicates by client_id
+
+Mentorship conversations:
+  When mentorship request accepted:
+    → INSERT into conversations(type=&#39;mentorship&#39;, mentorship_request_id=X)
+    → Both parties auto-joined to conversation
+    → mentorship_requests.conversation_id FK set
+</code></pre>
+<p><strong>How presence works:</strong></p>
+<p>The green dot next to a user&#39;s name showing they&#39;re &quot;online&quot; is powered entirely by Redis (an in-memory database) — we never write online status to our main PostgreSQL database because it would get millions of tiny writes per day. Instead, when you connect, we increment a counter in Redis. When you open a second tab, the counter goes to 2. Close one tab — counter drops to 1, still online. Close the last tab — counter hits 0, you&#39;re marked offline, and we update your <code>last_seen</code> time in the database once. Every 30 seconds your browser sends a &quot;ping&quot; to keep the Redis counter alive. If we stop receiving pings (e.g. laptop closed), the counter expires automatically and you appear offline. Users can also choose their privacy: show online status to everyone, only connections, or nobody.</p>
+<pre><code>Redis keys:
+  presence:count:{userId}         — socket count (int, TTL refreshed by heartbeat)
+  presence:online:{universityId}  — SET of online user IDs
+
+Connect (0→1 transition):
+  socket.on(&#39;connection&#39;) → registerConnect(userId, universityId)
+  → INCR presence:count:{userId}
+  → if result === 1:  SADD presence:online:{universityId}, userId
+                      → broadcastPresence(userId, &#39;online&#39;)
+                      emit PRESENCE_EVENTS.ONLINE to uni room
+
+Heartbeat:
+  Client emits PRESENCE_EVENTS.PING every 30s
+  → server: EXPIRE presence:count:{userId} 120  (refresh TTL)
+
+Disconnect (1→0 transition):
+  registerDisconnect → DECR count
+  → if result === 0:  SREM online set
+                      UPDATE users.last_seen = now()
+                      emit PRESENCE_EVENTS.OFFLINE
+
+Privacy tiers (OnlineVisibilityTier):
+  everyone | connections_only | nobody
+  → presence.service enforces tier when returning GET /presence
+</code></pre>
+<hr>
+<h3 id="contributor-5-md-nazmul-hasan-nasim-campus-tools-search-content-sync-settings">Contributor 5 — Md. Nazmul Hasan Nasim: Campus Tools, Search, Content-Sync &amp; Settings</h3><p><strong>Owned systems:</strong></p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Files / Location</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Full-text search (GIN indexes)</td>
+<td><code>apps/api/src/modules/search/</code> · migration <code>070</code></td>
+</tr>
+<tr>
+<td>pg_trgm fuzzy search fallback</td>
+<td>migration <code>024</code></td>
+</tr>
+<tr>
+<td>Explore module (trending, discover)</td>
+<td><code>apps/api/src/modules/explore/</code></td>
+</tr>
+<tr>
+<td>Campus module (lost-and-found + shuttle)</td>
+<td><code>apps/api/src/modules/campus/</code></td>
+</tr>
+<tr>
+<td>Shuttle GPS broadcast (driver role)</td>
+<td><code>POST /shuttle/locations</code> · <code>apps/web/src/pages/ShuttleDrivePage.tsx</code></td>
+</tr>
+<tr>
+<td>Content-sync (WordPress + Skyvern)</td>
+<td><code>apps/api/src/modules/content-sync/</code></td>
+</tr>
+<tr>
+<td>Content-sync worker</td>
+<td><code>apps/api/src/workers/content-sync.worker.ts</code></td>
+</tr>
+<tr>
+<td>Skyvern browser-automation fallback</td>
+<td><code>apps/api/src/services/skyvern.service.ts</code></td>
+</tr>
+<tr>
+<td>Settings (notification + privacy JSONB)</td>
+<td><code>apps/api/src/modules/users/</code> (settings sub-API) · migration <code>065</code></td>
+</tr>
+<tr>
+<td>Search frontend</td>
+<td><code>apps/web/src/features/search/</code></td>
+</tr>
+<tr>
+<td>Campus / lost-found / shuttle frontend</td>
+<td><code>apps/web/src/features/lost-found/</code> · <code>shuttle/</code></td>
+</tr>
+<tr>
+<td>Settings frontend</td>
+<td><code>apps/web/src/features/settings/</code></td>
+</tr>
+<tr>
+<td>Content-sync frontend (admin)</td>
+<td><code>apps/web/src/features/content-sync/</code></td>
+</tr>
+</tbody></table>
+<p><strong>How full-text search works:</strong></p>
+<p>When you type &quot;machine learning&quot; in the search bar and results appear in milliseconds, that&#39;s not a simple text comparison — it&#39;s PostgreSQL&#39;s built-in full-text search. Every time a post is written or a profile is updated, the database automatically computes a special compressed representation of all the text (called a <code>tsvector</code>) and stores it in a hidden column. We then build a GIN index on top of it — think of it like a book&#39;s index that maps every word to the pages it appears on. When you search, the query looks up the index directly instead of scanning every row. Results are ranked by relevance — a match in someone&#39;s name counts more than a match buried in their bio. If the main search finds nothing, we fall back to a &quot;fuzzy&quot; search that can handle typos.</p>
+<pre><code>Migration 070 adds STORED generated columns on each searchable table:
+  posts.search_vector   TSVECTOR GENERATED ALWAYS AS (
+    setweight(to_tsvector(&#39;english&#39;, content), &#39;C&#39;)
+  ) STORED
+  
+  profiles.search_vector  TSVECTOR GENERATED ALWAYS AS (
+    setweight(to_tsvector(&#39;simple&#39;, full_name), &#39;A&#39;)  ||
+    setweight(to_tsvector(&#39;english&#39;, COALESCE(headline,&#39;&#39;)), &#39;B&#39;)  ||
+    setweight(to_tsvector(&#39;english&#39;, COALESCE(bio,&#39;&#39;)), &#39;C&#39;)
+  ) STORED
+
+GIN index on each search_vector column → O(1) lookup instead of O(n) scan
+
+Search query:
+  GET /api/v1/search?q=machine+learning&amp;type=posts,users
+  → service builds: WHERE search_vector @@ plainto_tsquery(&#39;english&#39;, ?)
+  → ORDER BY ts_rank(search_vector, query) DESC
+  → fallback: WHERE full_name ILIKE &#39;%?%&#39; (pg_trgm)
+
+Multi-entity search returns typed results:
+  { users: [...], posts: [...], jobs: [...], events: [...], groups: [...] }
+</code></pre>
+<p><strong>How content-sync works:</strong></p>
+<p>Universities often post news and notices on their own websites (usually WordPress). Instead of admin staff manually copying content into UniConnecT, we built an automated importer. An admin pastes in the URL of the university&#39;s WordPress news/events/notices feed, and with one click we pull all recent articles directly from the WordPress API. The articles land in an &quot;Inbox&quot; for the admin to review and publish. We never auto-publish — someone always approves first.</p>
+<p>If the WordPress API isn&#39;t available (some university websites are plain HTML with no API), we have a backup plan: we send a real browser (using Skyvern automation) to visit the website, read the HTML like a human would, extract the content, and bring it back. This is slower (can take a minute) but works on any website. Every import is idempotent — running it twice never creates duplicate articles.</p>
+<pre><code>Admin configures WordPress REST API URLs per category (news/notices/events)
+  PATCH /api/v1/admin/content-sync/config  →  university_settings updated
+
+POST /api/v1/admin/content-sync/run
+  → contentSyncQueue.add({ universityId })
+  → content-sync.worker picks up job:
+      1. Fetch WordPress REST API: GET {url}?per_page={entriesPerSource}
+      2. Parse JSON → extract title, content, date, featured_image
+      3. If WP fetch fails → skyvern.service.ts fallback:
+           Skyvern browser automation: navigate URL, extract DOM, return structured data
+      4. Deduplicate by external_id (idempotent)
+      5. INSERT into news/events table with is_published=false
+      6. Emit CONTENT_SYNC_EVENTS.COMPLETED via socket
+      7. Log run in content_sync_runs table
+
+Admin reviews imported items at GET /api/v1/admin/content-sync/pending
+  → publishes selected items → visible to students
+</code></pre>
+<hr>
+<h2 id="5-feature-deep-dives">5. Feature Deep-Dives</h2><h3 id="51-multi-tenancy">5.1 Multi-tenancy</h3><p>Imagine one app that can serve UIU, BRAC University, and NSU at the same time — each thinking it has its own private social network. That&#39;s multi-tenancy. We use a single database and a single codebase. Every piece of data (every post, every user, every event) has a <code>university_id</code> tag attached to it. When a request comes in from the UIU app, the server reads the <code>x-university-domain: uiu.ac.bd</code> header, looks up UIU&#39;s ID, and from that point every database query automatically includes <code>WHERE university_id = &#39;UIU&#39;s UUID&#39;</code>. It&#39;s physically impossible for a UIU student to accidentally see a BRAC University post because every query is filtered before any data is returned.</p>
+<pre><code>Every domain table: university_id UUID FK + indexed
+Request lifecycle:
+  1. Client sends x-university-domain: uiu.ac.bd header
+  2. resolveUniversity middleware: SELECT * FROM universities WHERE domain = ?
+  3. Sets req.university = { id, name, domain }
+  4. All service calls receive universityId from req.university.id
+     NEVER from req.body (security: prevents tenant hopping)
+
+University data is fully isolated at query level:
+  db(&#39;posts&#39;).where({ university_id: universityId, ... })
+</code></pre>
+<h3 id="52-file-upload-presign-flow">5.2 File Upload (Presign Flow)</h3><p>File bytes never travel through the API server — critical for performance.</p>
+<pre><code>1. Client: POST /api/upload/presign  { filename, contentType }
+2. API: S3.createPresignedPost() → returns { url, fields }  (signed, expires 5 min)
+3. Client: PUT directly to S3/R2 URL (multipart form, bypasses API)
+4. Client: sends the resulting public URL to the domain endpoint
+   e.g. PATCH /users/me { avatar_url: &#39;https://cdn.../abc.jpg&#39; }
+5. API: stores URL in DB — no file bytes ever hit Node.js process
+</code></pre>
+<h3 id="53-background-jobs-bull-redis">5.3 Background Jobs (Bull + Redis)</h3><p>Imagine you post something and the server needs to: send notification emails to your followers, award you a badge, update the leaderboard, and schedule your post to be published tomorrow. Doing all of that while the user waits for the &quot;Post&quot; button to respond would be very slow. Instead, we immediately save the post and respond with success. Then, separately, a queue of background jobs handles all the slow work. Think of it like a restaurant — the waiter takes your order instantly (fast response to you) and passes a ticket to the kitchen (background worker does the actual cooking). We have 10 such queues, each handling a different category of work. If a job fails (e.g. email server is down), it retries automatically up to 3 times.</p>
+<p>10 queues, each with a dedicated worker process (or in-process in production):</p>
+<table>
+<thead>
+<tr>
+<th>Queue</th>
+<th>Trigger</th>
+<th>What worker does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>email</code></td>
+<td>OTP, welcome, password reset</td>
+<td>Sends via Resend API</td>
+</tr>
+<tr>
+<td><code>notification</code></td>
+<td>Post reactions, comments, mentions</td>
+<td>Creates DB notification rows</td>
+</tr>
+<tr>
+<td><code>notification-digest</code></td>
+<td>Daily cron</td>
+<td>Emails unread notification summaries</td>
+</tr>
+<tr>
+<td><code>badge</code></td>
+<td>Points earned, milestones hit</td>
+<td>Awards badges, updates leaderboard</td>
+</tr>
+<tr>
+<td><code>group-digest</code></td>
+<td>Weekly cron</td>
+<td>Sends group activity summary email</td>
+</tr>
+<tr>
+<td><code>mentorship</code></td>
+<td>Request accepted or 48h idle</td>
+<td>Reminder emails + 7-day auto-expiry</td>
+</tr>
+<tr>
+<td><code>push</code></td>
+<td>Notification created</td>
+<td>Web Push fan-out to all user subscriptions</td>
+</tr>
+<tr>
+<td><code>content-sync</code></td>
+<td>Admin triggers</td>
+<td>WordPress fetch → Skyvern fallback</td>
+</tr>
+<tr>
+<td><code>feed-ranking</code></td>
+<td>Hourly cron</td>
+<td>Recomputes hot_score on all posts</td>
+</tr>
+<tr>
+<td><code>post-lifecycle</code></td>
+<td>Every minute cron</td>
+<td>Flips scheduled→published, published→archived</td>
+</tr>
+</tbody></table>
+<h3 id="54-design-system">5.4 Design System</h3><p>Rather than every developer picking their own colours and spacing, we defined one set of named values — &quot;design tokens&quot; — in a single CSS file. Every component in the app uses names like <code>var(--uc-orange)</code> instead of writing the hex code <code>#F05A28</code> directly. This means: (1) if we ever want to rebrand, we change one file and it updates everywhere, (2) dark mode and light mode are just two sets of values for the same names, swapped by a <code>data-theme</code> attribute on the body. The default theme is &quot;Warm Futuristic Dark&quot; — a deep navy background with UIU&#39;s orange as the identity colour and indigo for interactive elements. We enforced strict rules: no raw hex values in components, pill-shaped buttons everywhere, sentence case text, no heavy font weights — so the UI looks consistent no matter who wrote the component.</p>
+<p>Single source of truth: <code>apps/web/src/styles/tokens.css</code></p>
+<pre><code>Two themes: Warm Futuristic Dark (default) + Warm Neutral Light (data-theme=&#39;light&#39;)
+Brand colors:
+  --uc-orange: #F05A28  (UIU identity)
+  --uc-indigo: #5B5BD6  (interactive elements)
+  --uc-navy:   #1E3A70  (accent surfaces)
+
+Surface stacking (no box-shadow, depth via background):
+  --surface-page   #060D1A   (outermost)
+  --surface-card   #0A1628   (cards)
+  --surface-raised #111D35   (modals, dropdowns)
+
+Rules enforced in every component:
+  - No hardcoded hex — always var(--token-name)
+  - Border: 0.5px solid var(--border-*) — never 1px structural
+  - Buttons: border-radius: var(--r-pill) — no sharp corners
+  - Font weight: 400 and 500 only — never 600+
+  - Sentence case everywhere — no ALL CAPS
+</code></pre>
+<h3 id="55-driver-role-shuttle-system">5.5 Driver Role &amp; Shuttle System</h3><p>Students want to know where the university shuttle is right now. The app has a live map that shows the bus moving along its route in real time. Here&#39;s how it works: the driver opens the app on their phone, it picks up their GPS location every 5 seconds and sends it to the server. The server broadcasts this to all students watching the shuttle page. The bus icon moves smoothly on the map. Drivers have a special &quot;driver&quot; role that can only do one thing — broadcast GPS coordinates. They cannot post to the feed, message students, or access anything else. This is the principle of least privilege: you only get access to exactly what you need for your job.</p>
+<p>A minimal-privilege role added specifically for transport staff.</p>
+<pre><code>Migration 073:
+  users.role enum gains &#39;driver&#39;
+  shuttle_routes gains: est_duration_min, cycle_minutes (client-side interpolation params)
+
+Driver flow:
+  ShuttleDrivePage.tsx → navigator.geolocation.watchPosition()
+  → POST /shuttle/locations every 5s  { route_id, lat, lng }
+  → only &#39;driver&#39; role can call this endpoint (requireRole(&#39;driver&#39;))
+  → socket emits SHUTTLE_LOCATION to uni:{universityId} room
+  → ShuttlePage.tsx receives live coords, interpolates bus position on route
+    using est_duration_min + cycle_minutes without needing a real GPS server
+</code></pre>
+<hr>
+<h2 id="6-database-design">6. Database Design</h2><p><strong>81 migrations</strong> building a schema from scratch. Key design decisions:</p>
+<pre><code>UUID primary keys:  id UUID DEFAULT uuid_generate_v4()
+Timestamps:         created_at / updated_at TIMESTAMPTZ DEFAULT now()
+Soft deletes:       is_deleted BOOLEAN DEFAULT false   (never deleted_at)
+Indexes:            every FK column + (university_id, created_at DESC) on high-volume tables
+JSONB columns:      user_settings.notification_preferences, user_settings.privacy_preferences
+Generated columns:  search_vector TSVECTOR GENERATED ALWAYS AS (...) STORED  (migration 070)
+No Postgres RLS:    all isolation via service-layer WHERE university_id = ?
+</code></pre>
+<p><strong>Key schema groups:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Tables</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Core</td>
+<td>universities, university_settings, users, profiles, invitations, user_sessions</td>
+</tr>
+<tr>
+<td>Feed</td>
+<td>posts, comments, reactions, saved_posts, tags, post_tags, polls, poll_votes</td>
+</tr>
+<tr>
+<td>Jobs</td>
+<td>jobs, job_applications</td>
+</tr>
+<tr>
+<td>Events</td>
+<td>events, event_rsvps</td>
+</tr>
+<tr>
+<td>Groups</td>
+<td>groups, group_members, group_join_requests, group_resources, group_study_sessions, group_session_rsvps</td>
+</tr>
+<tr>
+<td>Messaging</td>
+<td>conversations, conversation_participants, messages, message_reads</td>
+</tr>
+<tr>
+<td>Notifications</td>
+<td>notifications, news</td>
+</tr>
+<tr>
+<td>Mentorship</td>
+<td>mentorship_requests, mentorship_sessions, mentorship_feedback, gift_cards, mentorship_redemptions</td>
+</tr>
+<tr>
+<td>Connections</td>
+<td>connections</td>
+</tr>
+<tr>
+<td>Profile</td>
+<td>profile_experiences, profile_education, profile_featured, profile_views</td>
+</tr>
+<tr>
+<td>Campus</td>
+<td>lost_found_items, shuttle_routes, shuttle_schedules, shuttle_locations</td>
+</tr>
+<tr>
+<td>Push</td>
+<td>push_subscriptions</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td>user_settings</td>
+</tr>
+<tr>
+<td>Sync</td>
+<td>content_sync_runs, content_attachments</td>
+</tr>
+<tr>
+<td>Audit</td>
+<td>university_audit_log</td>
+</tr>
+<tr>
+<td>Moderation</td>
+<td>user_moderation, account_deletion_requests</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="7-teacher-qa-bank">7. Teacher Q&amp;A Bank</h2><h3 id="architecture-design">Architecture &amp; Design</h3><p><strong>Q: Why did you choose a monorepo structure?</strong></p>
+<blockquote class="qa-answer"><p>A: We have three packages — <code>apps/web</code>, <code>apps/api</code>, and <code>packages/shared</code>. The shared package contains Zod schemas and TypeScript types that both the frontend and backend use. Without a monorepo, we&#39;d have to publish the shared package to npm or duplicate types. With pnpm workspaces and a monorepo, a single <code>import { createPostSchema } from &#39;@uniconnect/shared&#39;</code> works in both apps. This eliminates schema drift between client and server validation.</p>
+</blockquote><p><strong>Q: How does multi-tenancy work? Can University A see University B&#39;s data?</strong></p>
+<blockquote class="qa-answer"><p>A: No. Every table has a <code>university_id</code> UUID foreign key. The <code>resolveUniversity</code> middleware runs on every request, resolves the university from the <code>x-university-domain</code> header, and sets <code>req.university.id</code>. Every service call then filters by that ID — <code>db(&#39;posts&#39;).where({ university_id: universityId })</code>. We never read <code>university_id</code> from the request body. There is no Postgres Row-Level Security; we chose application-level isolation for simpler debugging.</p>
+</blockquote><p><strong>Q: Why not use an ORM like Prisma or TypeORM?</strong></p>
+<blockquote class="qa-answer"><p>A: We use Knex, which is a query builder, not an ORM. Knex gives us direct control over SQL, handles migrations cleanly with a numbered file system, and doesn&#39;t add the weight of ORM entity mapping. Since we have complex multi-tenant queries with dynamic <code>university_id</code> filters and full-text search using Postgres-specific features like <code>tsvector</code>, raw SQL proximity is valuable. We drop to raw SQL only when Knex genuinely can&#39;t express the query.</p>
+</blockquote><p><strong>Q: How do you ensure the frontend never calls the wrong university&#39;s API?</strong></p>
+<blockquote class="qa-answer"><p>A: The Vite frontend has an environment variable <code>VITE_UNIVERSITY_DOMAIN=uiu.ac.bd</code>. The Axios instance (in <code>apps/web/src/lib/axios.ts</code>) automatically injects <code>x-university-domain: uiu.ac.bd</code> on every HTTP request. On the server, the middleware reads this header and resolves the university — never from any user-controlled body parameter.</p>
+</blockquote><hr>
+<h3 id="authentication-security">Authentication &amp; Security</h3><p><strong>Q: How are JWT tokens stored? Isn&#39;t localStorage insecure?</strong></p>
+<blockquote class="qa-answer"><p>A: The access token (15 min lifetime) is stored in Zustand <code>authStore</code> — memory only. It lives in JavaScript heap, not localStorage, so it&#39;s not accessible to XSS scripts reading <code>localStorage</code>. The refresh token (7 days) is an httpOnly cookie, which JavaScript cannot read at all. <code>localStorage</code> stores only a sentinel flag <code>uc:has_session</code> — a boolean, not a token — so the axios interceptor knows whether to attempt a silent refresh on 401.</p>
+</blockquote><p><strong>Q: What happens when the access token expires?</strong></p>
+<blockquote class="qa-answer"><p>A: The axios interceptor catches every 401 response. If the session sentinel exists in localStorage, it calls <code>POST /auth/refresh</code> — the browser automatically sends the httpOnly refresh cookie. The server validates the refresh token against <code>user_sessions</code> table (prevents reuse), issues a new access token, and the interceptor retries the original request. The user never notices. If the refresh also fails (e.g. token revoked), the user is logged out.</p>
+</blockquote><p><strong>Q: Why do you use an invite token for registration?</strong></p>
+<blockquote class="qa-answer"><p>A: UniConnecT is a private network. Students can&#39;t self-register — they need an invite from an admin. This prevents random external users from joining. The invite contains a pre-set email and role, so a student can&#39;t register with an alumni invitation. Admins can bulk-create invitations via the admin panel.</p>
+</blockquote><p><strong>Q: How does OTP work?</strong></p>
+<blockquote class="qa-answer"><p>A: After register, the server generates a 6-digit OTP, stores it in Redis with a 10-minute TTL keyed to the userId + purpose (e.g. <code>otp:email_verify:{userId}</code>), and sends it via email (Resend API → email queue → email worker). <code>POST /auth/verify-otp</code> checks the Redis key, marks the user verified, and deletes the key. Redis ensures OTPs expire automatically without a cleanup cron.</p>
+</blockquote><p><strong>Q: What happens if a user registered but never verified their email, then tries to log in later?</strong></p>
+<blockquote class="qa-answer"><p>A: Before this fix, they would be stuck — the OTP from registration had already expired (10-minute TTL in Redis) and the login page just showed a generic error with no way forward. Now, when the server sees the password is correct but <code>is_verified = false</code>, it immediately revokes the old expired OTP, generates a fresh 6-digit code, emails it to the user, and responds with <code>ACCOUNT_NOT_VERIFIED</code> (403). The frontend catches that specific error code and navigates the user straight to the OTP verification page with their email pre-filled. They verify the new code and are fully activated. No admin intervention needed.</p>
+</blockquote><p><strong>Q: What if an admin deletes an account and that person tries to re-register?</strong></p>
+<blockquote class="qa-answer"><p>A: It depends on whether the deleted account was ever verified. If the old account was verified (a real person who used the platform), we block re-registration with <code>ACCOUNT_DEACTIVATED</code> (409) and tell them to contact admin — their data exists and needs admin review before restoration. If the deleted account was never verified (a ghost/abandoned invite), we hard-delete that leftover row entirely and let the re-registration proceed cleanly. Without this check, the registration would crash with a silent 500 error because the database&#39;s global unique index on email would reject the duplicate, even for soft-deleted rows.</p>
+</blockquote><p><strong>Q: Can a user reactivate their own deactivated account?</strong></p>
+<blockquote class="qa-answer"><p>A: Yes, if they deactivated it themselves. When a user deactivates their account via Settings, we set <code>is_active = false</code> AND record <code>deactivated_at = now()</code>. That timestamp is the signal it was self-initiated. If they log in again later with the correct password, the server sees <code>deactivated_at</code> is set, understands it was voluntary, and automatically reactivates the account — no admin needed. If an admin disabled the account, <code>deactivated_at</code> stays NULL, so the same login returns the generic 401 — account stays blocked until admin re-enables it.</p>
+</blockquote><p><strong>Q: How are passwords stored?</strong></p>
+<blockquote class="qa-answer"><p>A: Using bcrypt with a cost factor of 12. We never store plaintext passwords. The JWT payload contains only <code>{ userId, universityId, role }</code> — no sensitive data. The <code>JWT_SECRET</code> and <code>JWT_REFRESH_SECRET</code> are separate secrets, so a refresh token cannot be used as an access token.</p>
+</blockquote><p><strong>Q: How do you protect the API from abuse / spam?</strong></p>
+<blockquote class="qa-answer"><p>A: A Redis-backed rate limiter (<code>rateLimiter.ts</code>) guards every mutating route. It uses a sliding counter keyed by <code>rl:{prefix}:{subject}</code> where the subject is the authenticated user id (<code>u:{userId}</code>) when available, falling back to the IP for anonymous routes like login. Keying by user id is deliberate — an entire university sitting behind one NAT IP would otherwise be throttled as a single client. Over the limit returns HTTP 429. It&#39;s a no-op in the test environment so tests aren&#39;t throttled.</p>
+</blockquote><p><strong>Q: How can users protect themselves from harassment?</strong></p>
+<blockquote class="qa-answer"><p>A: The moderation module gives users two tools plus reporting. <strong>Block</strong> (<code>POST /moderation/block/:userId</code>) hides the user both ways — no posts, no DMs in either direction. <strong>Mute</strong> silences a user one-directionally — you stop seeing their content but they aren&#39;t notified. <strong>Report</strong> files a content or user report that lands in the admin review queue. All three are backed by the <code>user_moderation</code> table (migration 078), and admin resolutions are written to <code>university_audit_log</code>.</p>
+</blockquote><hr>
+<h3 id="real-time-system">Real-time System</h3><p><strong>Q: How does Socket.io scale across multiple server instances?</strong></p>
+<blockquote class="qa-answer"><p>A: Socket.io uses a Redis pub/sub adapter. We create two IORedis connections — <code>pubClient</code> and <code>subClient</code> — and pass them to <code>@socket.io/redis-adapter</code>. When any server instance emits <code>io.to(&#39;uni:abc&#39;).emit(...)</code>, the adapter publishes to Redis; the adapter on all other instances receives it and forwards to connected sockets in that room. This allows horizontal scaling without sticky sessions.</p>
+</blockquote><p><strong>Q: How does the client know when to reconnect after a token expires?</strong></p>
+<blockquote class="qa-answer"><p>A: The Socket.io middleware on the server calls <code>tokenService.verifyAccessTokenWithExpiry(token)</code>. If the token is expired (not just invalid), it sends back <code>TOKEN_EXPIRED</code> error. The client socket listens for connection errors, detects <code>TOKEN_EXPIRED</code>, silently refreshes the access token via the HTTP interceptor, then reconnects with the new token.</p>
+</blockquote><p><strong>Q: What are Socket.io rooms used for?</strong></p>
+<blockquote class="qa-answer"><p>A: Three room types: <code>uni:{universityId}</code> for university-wide broadcasts (new posts, events, shuttle locations), <code>user:{userId}</code> for personal events (notification received, connection request, direct message), and <code>conv:{conversationId}</code> for chat messages. When a socket connects, it automatically joins its university room and personal room. It joins conversation rooms only when actively viewing a conversation.</p>
+</blockquote><hr>
+<h3 id="background-jobs">Background Jobs</h3><p><strong>Q: Why use Bull queues instead of just <code>await</code> on async operations?</strong></p>
+<blockquote class="qa-answer"><p>A: HTTP handlers must respond quickly. If sending an email takes 2 seconds, the user waits. With Bull, we enqueue the job (milliseconds), respond to the user, and the worker processes it asynchronously. Bull also provides retry logic, exponential backoff, job persistence in Redis (survives server restart), concurrency control, and job monitoring. A failed email automatically retries three times before giving up.</p>
+</blockquote><p><strong>Q: What happens if the Bull worker crashes mid-job?</strong></p>
+<blockquote class="qa-answer"><p>A: Bull marks the job as <code>active</code> when a worker picks it up. If the worker crashes without completing, Bull moves the job back to <code>waiting</code> after a stall timeout. On restart, the worker picks it up again. This is why our workers are idempotent — re-running them doesn&#39;t duplicate emails or notifications.</p>
+</blockquote><p><strong>Q: How does the feed hot_score work?</strong></p>
+<blockquote class="qa-answer"><p>A: We adapted the Hacker News algorithm. <code>hot_score = (reactions + comments × 2) / (age_hours + 2) ^ 1.8</code>. The denominator grows as the post ages, so older posts decay. Reaction and comment counts are maintained transactionally on every write (not computed at read time). The <code>feed-ranking</code> Bull cron runs hourly and updates <code>hot_score</code>. The &quot;Top&quot; feed then sorts by this pre-computed column using a GIN/btree index — no subquery aggregation at read time.</p>
+</blockquote><hr>
+<h3 id="database">Database</h3><p><strong>Q: Why are there two migration 072 files?</strong></p>
+<blockquote class="qa-answer"><p>A: This was a mistake made during parallel development — two features (<code>post_lifecycle</code> columns and <code>username</code> column) were given the same migration number. Knex runs migrations by filename, so both run, and they don&#39;t conflict functionally. Going forward, we start from <code>077_</code> to avoid re-using any prefix. The lesson: coordinate migration numbering in the team&#39;s task tracker before branching.</p>
+</blockquote><p><strong>Q: Why use generated stored columns for full-text search instead of a separate search index?</strong></p>
+<blockquote class="qa-answer"><p>A: Generated STORED columns compute the <code>tsvector</code> value at write time (INSERT/UPDATE) and persist it in the row. The GIN index is built on this stored value. At read time, the query <code>WHERE search_vector @@ plainto_tsquery(&#39;english&#39;, ?)</code> uses the index — O(log n) not O(n). Alternatives like Elasticsearch add operational complexity (separate cluster, sync pipeline). For our scale, Postgres full-text search is sufficient and has zero additional infrastructure cost.</p>
+</blockquote><p><strong>Q: Why don&#39;t you use Postgres Row Level Security (RLS)?</strong></p>
+<blockquote class="qa-answer"><p>A: RLS would automatically filter by university at the database driver level, which is more secure. We chose application-level filtering because: (1) RLS requires setting a session variable per request which complicates connection pooling, (2) debugging RLS policies is harder than reading service code, (3) our service layer is consistent — every query includes <code>where({ university_id })</code>. For a production system at larger scale, RLS would be the next evolution.</p>
+</blockquote><hr>
+<h3 id="frontend">Frontend</h3><p><strong>Q: Why TanStack Query instead of Redux for server state?</strong></p>
+<blockquote class="qa-answer"><p>A: Redux is general-purpose state — you have to manually handle loading, error, caching, and refetching. TanStack Query is built specifically for server state. It gives us automatic background refetch, stale-while-revalidate caching, pagination, optimistic updates, and request deduplication out of the box. We use Zustand only for truly global client state (auth token, socket connection, theme). The rule is: server data → TanStack Query, UI state → Zustand.</p>
+</blockquote><p><strong>Q: How are routes protected? Can an unauthenticated user access the feed?</strong></p>
+<blockquote class="qa-answer"><p>A: Route components are wrapped in <code>ProtectedRoute</code>, <code>AdminRoute</code>, or <code>GuestRoute</code> (from <code>apps/web/src/router/</code>). <code>ProtectedRoute</code> checks <code>authStore</code> for a valid access token. If none, it redirects to <code>/login</code>. <code>AdminRoute</code> additionally checks <code>role === &#39;admin&#39; || role === &#39;faculty&#39;</code>. <code>GuestRoute</code> redirects logged-in users away from login/register pages.</p>
+</blockquote><p><strong>Q: Why are all pages lazy-loaded?</strong></p>
+<blockquote class="qa-answer"><p>A: <code>React.lazy</code> + <code>Suspense</code> means each page is a separate code chunk loaded only when navigated to. The initial bundle is small — users don&#39;t download the admin panel code if they never visit it. The <code>page()</code> helper in <code>apps/web/src/router/index.tsx</code> wraps <code>React.lazy</code> + <code>Suspense</code> with a loading fallback so every page automatically has a loading state.</p>
+</blockquote><p><strong>Q: How does the real-time notification badge work?</strong></p>
+<blockquote class="qa-answer"><p>A: The <code>notificationsStore</code> (Zustand) holds an <code>unreadCount</code>. On login, it fetches the count from <code>GET /notifications/unread-count</code>. The socket listens on the <code>user:{userId}</code> room for <code>NOTIFICATION_NEW</code> events — each increments <code>unreadCount</code> in the store. The TopNav badge reads this store. When the notifications page is opened, it calls <code>POST /notifications/read-all</code> and resets the count.</p>
+</blockquote><hr>
+<h3 id="deployment-devops">Deployment &amp; DevOps</h3><p><strong>Q: How is the application deployed?</strong></p>
+<blockquote class="qa-answer"><p>A: The backend API is deployed to Azure App Service via GitHub Actions CI/CD triggered on pushes to <code>main</code>. The production start command runs <code>npx pnpm --filter api db:migrate:prod</code> before starting the server, so migrations apply automatically on each deployment. The frontend is deployed to Vercel (configured via <code>vercel.json</code>). The database is hosted on Neon (managed Postgres with branching).</p>
+</blockquote><p><strong>Q: How do Bull workers run in production?</strong></p>
+<blockquote class="qa-answer"><p>A: In development, workers run as a separate process (<code>pnpm --filter api worker</code>) to avoid blocking the HTTP server. In production on Azure App Service (single process constraint), workers run in-process with the API server — the <code>workers/index.ts</code> barrel registers all workers. The queues use Redis (same instance) for durability regardless of whether workers are in-process or separate.</p>
+</blockquote><p><strong>Q: What happens if the database migration fails mid-deploy?</strong></p>
+<blockquote class="qa-answer"><p>A: Knex tracks completed migrations in a <code>knex_migrations</code> table. Each migration is a single transaction — if it fails, it rolls back. The server startup fails early and Azure redeploys to the previous version. We learned this the hard way: migration <code>070</code> added a <code>STORED GENERATED</code> column using <code>array_to_string()</code> which is only <code>STABLE</code>, not <code>IMMUTABLE</code>. Postgres requires <code>IMMUTABLE</code> functions in stored generated columns. The fix was to use <code>to_tsvector()</code> directly (which is immutable) instead of <code>array_to_string()</code>.</p>
+</blockquote><p><strong>Q: How do you manage environment variables across environments?</strong></p>
+<blockquote class="qa-answer"><p>A: <code>apps/api/.env</code> (local, not committed), <code>apps/web/.env</code> (local). Production secrets are managed via Azure App Service configuration for the API and Vercel environment variables for the web. The <code>.env.example</code> file documents every required variable. There is a strict separation: <code>JWT_SECRET</code> and <code>JWT_REFRESH_SECRET</code> are separate so that a compromised refresh token can&#39;t be used as an access token.</p>
+</blockquote><hr>
+<h3 id="feature-specific">Feature-specific</h3><p><strong>Q: How does the content sync avoid re-importing the same article twice?</strong></p>
+<blockquote class="qa-answer"><p>A: Each imported row carries an <code>external_id</code> (the WordPress post ID). Before inserting, the worker queries <code>WHERE university_id = ? AND external_id = ?</code>. If the row exists, it&#39;s skipped (idempotent). This means running the sync twice never duplicates content. The <code>content_attachments</code> table similarly deduplicates by (university_id, source_url, attachable_type, attachable_id).</p>
+</blockquote><p><strong>Q: What is the Skyvern fallback in content sync?</strong></p>
+<blockquote class="qa-answer"><p>A: Some university websites don&#39;t expose a WordPress REST API — they&#39;re plain HTML pages. When the direct WordPress fetch fails, <code>content-sync.worker.ts</code> calls <code>skyvern.service.ts</code>, which uses Skyvern&#39;s browser automation API to navigate to the URL, extract the DOM, and return structured content. Skyvern runs a real Chromium browser, so it can scrape JavaScript-rendered pages. This is significantly slower (30–60s vs 1–2s for REST) so it&#39;s a fallback only.</p>
+</blockquote><p><strong>Q: How does the lost-and-found feature work?</strong></p>
+<blockquote class="qa-answer"><p>A: <code>lost_found_items</code> table with fields: <code>type</code> (lost/found), <code>title</code>, <code>description</code>, <code>category</code>, <code>location</code>, <code>image_url</code>, <code>status</code> (open/claimed), <code>reporter_id</code>. Users post items they lost or found. The campus module&#39;s routes are at <code>/api/v1/campus/lost-found</code>. Claimants contact the reporter via the messaging system. No automated matching — human-driven.</p>
+</blockquote><p><strong>Q: How does the shuttle GPS work for students watching the map?</strong></p>
+<blockquote class="qa-answer"><p>A: <code>ShuttlePage.tsx</code> subscribes to the <code>SHUTTLE_LOCATION</code> socket event on the <code>uni:{universityId}</code> room. When a driver broadcasts their GPS location, all students on the page receive it. Since GPS updates are every 5 seconds and sockets have some latency, the frontend uses <code>est_duration_min</code> and <code>cycle_minutes</code> (stored on the route in migration <code>073</code>) to linearly interpolate the bus position between updates, giving smooth animation.</p>
+</blockquote><p><strong>Q: Can a user delete their account?</strong></p>
+<blockquote class="qa-answer"><p>A: Not directly. Users submit an account deletion request with a reason (<code>POST /users/me/account-deletion-request</code> — migration <code>079</code>). Admins review requests in the admin panel and can approve or deny. This design (requested vs self-service deletion) is intentional for a university setting where student records may have administrative obligations. Users can deactivate their account (<code>POST /users/me/deactivate</code>, sets <code>deactivated_at</code>) which hides them from other users immediately.</p>
+</blockquote><p><strong>Q: How do drafts work across different content types?</strong></p>
+<blockquote class="qa-answer"><p>A: Migration <code>064</code> added <code>is_published</code> + lifecycle columns to posts, jobs, news, and events tables. <code>GET /me/drafts</code> is a UNION query across all four tables, filtered by <code>author_id = me AND is_published = false</code>. The result is a unified list regardless of content type. This is the <code>drafts</code> module — a thin read-only endpoint that surfaces unsaved work across the entire platform.</p>
+</blockquote><p><strong>Q: How do new users know what to do first (onboarding)?</strong></p>
+<blockquote class="qa-answer"><p>A: <code>GET /users/me/progress</code> returns a set of first-run signals validated by <code>profileProgressSchema</code> in <code>packages/shared</code> — a weighted <code>profileScore</code> (0–100), plus granular booleans (<code>hasAvatar</code>, <code>hasBio</code>, <code>hasHeadline</code>, <code>hasAddedExperience</code>, <code>hasAddedEducation</code>, <code>hasMadePost</code>, <code>isVerified</code>) and <code>connectionCount</code>. The <code>OnboardingChecklist</code> component reads these and deep-links the user straight to the exact gap — for example &quot;Add a bio&quot; opens the edit-profile modal. The checklist disappears once <code>profileScore</code> reaches 100. The flags are computed server-side from the actual profile so they can never drift from reality.</p>
+</blockquote><hr>
+<h3 id="testing">Testing</h3><p><strong>Q: How are your integration tests structured?</strong></p>
+<blockquote class="qa-answer"><p>A: <code>apps/api/src/__tests__/setup.ts</code> runs all pending Knex migrations against a test database (separate <code>TEST_DATABASE_URL</code>), seeds four canonical users (admin, faculty, alumni, student) with known credentials, and exports a <code>loginAs(email, password)</code> helper that returns <code>{ accessToken, cookie }</code>. Each test file uses <code>loginAs()</code> to get bearer tokens. All supertest requests must include <code>.set(&#39;x-university-domain&#39;, DOMAIN)</code>. Tests clean up in <code>afterEach</code>/<code>afterAll</code> hooks.</p>
+</blockquote><p><strong>Q: Do you have frontend tests?</strong></p>
+<blockquote class="qa-answer"><p>A: Yes — React Testing Library + Vitest + MSW (Mock Service Worker). MSW intercepts HTTP requests at the network level (not axios mocks) so tests are framework-agnostic and test behavior rather than implementation. Handlers live in <code>src/tests/msw/handlers.ts</code>. Test files are co-located with their components as <code>*.test.tsx</code>.</p>
+</blockquote><hr>
+<h2 id="quick-reference-who-owns-what">Quick Reference — Who Owns What</h2><table>
+<thead>
+<tr>
+<th>If the teacher asks about...</th>
+<th>Talk to...</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>How the JWT / refresh token / auth flow works</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Why we chose this architecture / monorepo</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>How Socket.io scales / real-time events</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Bull queues, background jobs, workers</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Admin panel, user management, audit logs</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>File upload, presigned S3 URL pattern</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Rate limiting / API abuse protection</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Moderation (block / mute / report)</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Account deletion request flow</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Drafts (how posts/jobs/events share drafts)</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Database design decisions (why UUID, no RLS)</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Testing strategy, CI/CD, deployment</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>Design system, tokens, dark/light theme</td>
+<td><strong>Joydip Datta (Leader)</strong></td>
+</tr>
+<tr>
+<td>How the feed works, hot_score algorithm</td>
+<td><strong>Md. Saem Ferdous (2)</strong></td>
+</tr>
+<tr>
+<td>Post scheduling / draft / lifecycle states</td>
+<td><strong>Md. Saem Ferdous (2)</strong></td>
+</tr>
+<tr>
+<td>Groups, join requests, member roles</td>
+<td><strong>Md. Saem Ferdous (2)</strong></td>
+</tr>
+<tr>
+<td>Notifications, news, badges, share</td>
+<td><strong>Md. Saem Ferdous (2)</strong></td>
+</tr>
+<tr>
+<td>Jobs, events, RSVP</td>
+<td><strong>Md. Mahfujur Rahman Himel Akon (3)</strong></td>
+</tr>
+<tr>
+<td>Connections graph, mutual connections</td>
+<td><strong>Md. Mahfujur Rahman Himel Akon (3)</strong></td>
+</tr>
+<tr>
+<td>Profile sections, experience, education</td>
+<td><strong>Md. Mahfujur Rahman Himel Akon (3)</strong></td>
+</tr>
+<tr>
+<td>Onboarding checklist, profile progress</td>
+<td><strong>Md. Mahfujur Rahman Himel Akon (3)</strong></td>
+</tr>
+<tr>
+<td>Mentorship, points economy, gift cards</td>
+<td><strong>Md. Mahfujur Rahman Himel Akon (3)</strong></td>
+</tr>
+<tr>
+<td>Chat messages, conversation types</td>
+<td><strong>Md. Monabbur Hosen Bhuiyan (4)</strong></td>
+</tr>
+<tr>
+<td>Presence system, online status</td>
+<td><strong>Md. Monabbur Hosen Bhuiyan (4)</strong></td>
+</tr>
+<tr>
+<td>Web Push notifications, VAPID</td>
+<td><strong>Md. Monabbur Hosen Bhuiyan (4)</strong></td>
+</tr>
+<tr>
+<td>Privacy settings, visibility tiers</td>
+<td><strong>Md. Monabbur Hosen Bhuiyan (4)</strong></td>
+</tr>
+<tr>
+<td>Full-text search, GIN indexes</td>
+<td><strong>Md. Nazmul Hasan Nasim (5)</strong></td>
+</tr>
+<tr>
+<td>Content sync, WordPress, Skyvern</td>
+<td><strong>Md. Nazmul Hasan Nasim (5)</strong></td>
+</tr>
+<tr>
+<td>Shuttle GPS, lost-and-found, explore</td>
+<td><strong>Md. Nazmul Hasan Nasim (5)</strong></td>
+</tr>
+<tr>
+<td>Settings, notification / privacy preferences</td>
+<td><strong>Md. Nazmul Hasan Nasim (5)</strong></td>
+</tr>
+</tbody></table>
+<hr>
+<p><em>Generated for Team Mavericks · UIU · June 2026</em></p>
+
+</main>
+
+<button id="scrolltop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
+
+<script>
+// Active TOC link tracking
+const links = document.querySelectorAll('.toc-link');
+const headings = Array.from(document.querySelectorAll('h2, h3'));
+const scrolltop = document.getElementById('scrolltop');
+
+function updateToc() {
+  const scrollY = window.scrollY + 80;
+  let active = headings[0];
+  for (const h of headings) {
+    if (h.offsetTop <= scrollY) active = h;
+    else break;
+  }
+  links.forEach(l => l.classList.remove('active'));
+  if (active) {
+    const a = document.querySelector('.toc-link[href="#' + active.id + '"]');
+    if (a) {
+      a.classList.add('active');
+      a.scrollIntoView({ block: 'nearest' });
+    }
+  }
+  scrolltop.classList.toggle('visible', window.scrollY > 400);
+}
+
+window.addEventListener('scroll', updateToc, { passive: true });
+updateToc();
+
+// Smooth scroll for all internal links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.getElementById(a.getAttribute('href').slice(1));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+</script>
+</body>
+</html>

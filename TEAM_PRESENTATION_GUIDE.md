@@ -153,6 +153,8 @@ Browser
 
 **How file upload works (leader must know this cold):**
 
+When a user wants to upload a profile photo or attach a file to a post, the browser first asks our server for a "permission slip" — a pre-signed URL. The server generates this short-lived URL (valid for 5 minutes) and sends it back. The browser then uploads the file directly to Amazon S3 (our cloud storage) using that URL — it never goes through our Express server at all. Once the upload is done, the browser just sends us the file's public link, and we save that link in the database. This way our server stays fast, never gets overloaded by large files, and we don't pay for bandwidth twice.
+
 ```
 Presigned S3 PUT URL flow — file bytes never hit the API server:
   1. Client: POST /api/upload/presign  { filename, contentType }
@@ -167,6 +169,29 @@ Lambda/App Service memory. The API just signs a token and walks away.
 ```
 
 **How auth works (leader must know this cold):**
+
+UniConnecT is a closed network — you can't just sign up from the internet. An admin creates an invitation with a specific email and role (e.g. "this email is a student"). The new user uses that invite link, fills in their name and password, and we send them a one-time 6-digit OTP code by email to prove they own the address. Once they verify the OTP, their account is activated.
+
+After that, every login gives back two tokens: a short-lived **access token** (15 minutes) stored in browser memory, and a long-lived **refresh token** (7 days) stored in an httpOnly cookie that JavaScript can never read. When the access token expires, the browser silently calls `/auth/refresh`, the server checks the cookie, and issues a new access token — all invisible to the user. If someone steals the access token, it's useless within 15 minutes. If they steal the cookie, the server can invalidate it in the database.
+
+**Account state scenarios (recently added — Joydip, commits `2a48a05` & `50056c2`):**
+
+Before these fixes, certain edge cases caused confusing or broken behaviour. Here is every situation the auth system now handles, in plain words and then technically:
+
+**Scenario 1 — Login with correct password but email never verified.**
+You registered, never typed the OTP, and now try to log in. Old behaviour: blocked with a generic error, OTP already expired — stuck forever. New behaviour: the server sees the password is correct, revokes the old expired OTP, generates a brand new one, sends it to your email right away, and sends back `ACCOUNT_NOT_VERIFIED` (403). The frontend catches that code and redirects you straight to the OTP page. You verify the fresh code and you're in.
+
+**Scenario 2 — Re-registering with an email that has a soft-deleted AND unverified account.**
+An admin invited someone, they started registration, never verified, and the admin later deleted that ghost account. The email is still in the database (soft-deleted). If that person tries to register again, the old code would crash with a silent 500 (duplicate key error on the global unique index). New behaviour: the server detects the email row is both `is_deleted=true` AND `is_verified=false` (a ghost/abandoned account), hard-deletes that row entirely, and lets registration proceed cleanly.
+
+**Scenario 3 — Re-registering with an email that has a soft-deleted but VERIFIED account.**
+The admin deleted a real, active account (e.g. a student who graduated). That person tries to register fresh. We do NOT allow it — their old data exists and an admin action is needed to restore it properly. The server returns `ACCOUNT_DEACTIVATED` (409) with the message "Please contact your university admin to restore access." The frontend shows this message clearly instead of a generic error.
+
+**Scenario 4 — Logging in to a self-deactivated account.**
+A user deliberately deactivated their own account via Settings → Account → Deactivate. Their row has `is_active=false` AND `deactivated_at` is set (this is the signal it was self-initiated, not admin-forced). When they log in again with the correct password, the server automatically reactivates the account (`is_active=true`, `deactivated_at=null`) and logs them in normally. No admin needed — the user changed their mind.
+
+**Scenario 5 — Logging in to an admin-disabled account.**
+An admin forcibly disabled an account (`is_active=false`, but `deactivated_at` is NULL — the signal it was admin-initiated). The server returns the same generic "Invalid email or password" (401) — it deliberately does not say "your account is disabled" to avoid leaking information. Only the admin can re-enable it.
 
 ```
 Registration:
@@ -194,9 +219,30 @@ Silent refresh (frontend interceptor):
   axios 401 interceptor → check localStorage 'uc:has_session' sentinel
   → POST /auth/refresh (cookie sent automatically)
   → new accessToken → retry original request
+
+Account state decision tree on Login (auth/service.ts):
+  user not found                            → 401 (same message as wrong password — no leaking)
+  is_active=false AND deactivated_at=NULL   → 401 (admin-disabled, generic message)
+  password wrong                            → 401
+  is_verified=false (correct password)      → revoke old OTP → generate fresh OTP → email it
+                                              → 403 ACCOUNT_NOT_VERIFIED
+                                              → frontend navigates to /verify-otp?purpose=verify
+  is_active=false AND deactivated_at SET    → reactivate (is_active=true, deactivated_at=null)
+                                              → login succeeds (self-deactivation = user changed mind)
+  all checks pass                           → issue access token + refresh token → success
+
+Account state decision tree on Register (auth/service.ts):
+  email exists, is_deleted=true, is_verified=false  → hard-delete ghost row → proceed with register
+  email exists, is_deleted=true, is_verified=true   → 409 ACCOUNT_DEACTIVATED ("contact admin")
+  email exists, is_deleted=false                    → 409 CONFLICT ("account already exists")
+  race condition duplicate key                      → caught → 409 CONFLICT (no 500 leak)
 ```
 
 **How moderation & rate limiting work (leader-owned safety layer):**
+
+Moderation gives every user three self-protection tools. If someone is harassing you, you can **block** them — they vanish from your feed and can no longer message you (and you vanish from theirs too). If you just want to stop seeing someone's posts without them knowing, you **mute** them — it's one-sided and silent. If someone posts harmful content, you **report** it — that report goes into the admin panel for a faculty/admin to review and act on.
+
+Rate limiting is a spam prevention layer. Every time someone clicks a button that writes data (posting, blocking, reporting, etc.), our server counts how many times that user has done it in the last time window. If they exceed the limit, we return a "429 Too Many Requests" error. We count by **user ID** rather than IP address — that way a whole university behind a shared WiFi router doesn't accidentally get blocked together.
 
 ```
 Moderation module (user-level trust & safety, not just admin):
@@ -242,6 +288,8 @@ Rate limiting (rateLimiter.ts — Redis sliding counter):
 
 **How feed ranking works:**
 
+The feed has two modes: **Recent** (newest posts first — simple) and **Top** (most interesting posts first — the hard part). For "Top", we use a scoring formula inspired by Hacker News. A post that gets 50 reactions in the first hour beats a post that got 50 reactions over a week. The score decays over time — old posts sink down naturally. We store this score in a column called `hot_score` that a background job recalculates every hour. This way, when you open the feed, the database just sorts by that pre-calculated number — no slow calculation happens while you wait.
+
 ```
 Columns on posts table (migration 071):
   reaction_count   — incremented transactionally on every reaction write
@@ -266,6 +314,8 @@ Post lifecycle (post-lifecycle.worker.ts):
 ```
 
 **How groups work:**
+
+Groups work like Facebook groups but for a university. A group can be **public** (anyone can join instantly), **private** (you have to request to join and a group admin approves you), or **restricted** (invitation only). Inside a group, members have different roles — admin, moderator, or regular member — each with different permissions. Groups also support extra features: file links (resources) that members can share, and study sessions where members can RSVP to attend. Posts can be pinned by group admins so important announcements stay at the top.
 
 ```
 Group types: public, private, restricted + system_group flag
@@ -313,6 +363,8 @@ Study sessions: group_study_sessions table + RSVP via group_session_rsvps
 
 **How connections work:**
 
+Connections are like LinkedIn's "Connect" feature — both people have to agree. You send a request, the other person accepts, and then you're connected. We originally had a one-way "follow" system (like Twitter), but replaced it entirely with this two-way connection graph. Why? Because for a professional university network, mutual connections matter — they show trust. Once connected, you can see each other's profiles, send direct messages, and appear in each other's "People You May Know" suggestions. The app also detects **mutual connections** — people who are connected to both of you — to help you expand your network.
+
 ```
 Old model: follows table (one-directional, dropped in migration 052)
 New model: connections table (bidirectional LinkedIn-style)
@@ -340,6 +392,10 @@ Connection status on profiles:
 
 **How mentorship points economy works:**
 
+Students can request mentorship from alumni. Alumni set how many students they can take on at a time (default 3). When a student sends a request with a note explaining what they need, the alumni gets notified and can accept or decline. Once accepted, a private chat thread is automatically created for them to communicate.
+
+To reward alumni for their time, we have a points system. After each completed mentorship session, the alumnus earns 10 points. When they accumulate enough points, they can redeem them for gift cards (e.g. $10 Amazon card = 1000 points). Admins upload the actual gift card codes and mark redemptions as fulfilled. It's a lightweight incentive system to keep alumni engaged in helping students.
+
 ```
 Every completed mentorship session → +10 points to mentor (alumni)
 Points can be redeemed for gift cards:
@@ -355,6 +411,8 @@ Capacity: alumni sets max_mentees on profile (default 3)
 ```
 
 **How onboarding / profile progress works:**
+
+When a new student first logs in, they're shown an onboarding checklist — a simple to-do list like "Add a profile photo", "Write a bio", "Add your experience", "Make your first post". Each item links directly to where you need to go to complete it. The backend tracks which steps are done by checking the actual database — if your `avatar_url` column is empty, `hasAvatar` is false, and the checklist shows that step as incomplete. As you complete each step, a progress score (0–100) increases. Once you hit 100, the checklist disappears and you're considered fully onboarded.
 
 ```
 GET /users/me/progress  →  profileProgressSchema (packages/shared)
@@ -394,6 +452,10 @@ Frontend: OnboardingChecklist.tsx reads these flags and deep-links the user
 
 **How real-time messaging works:**
 
+When you open a conversation and type a message, it travels through a persistent WebSocket connection — not a regular HTTP request. This means the other person sees your message appear instantly without refreshing the page. We use Socket.io which organises these connections into "rooms" — a conversation room, a personal room (for your own notifications), and a university-wide room (for feed updates). When your message is sent, the server saves it to the database first, then immediately broadcasts it to everyone in that conversation's room. If the other person is offline, their next login will load all missed messages from the database. We also handle the case where your internet drops mid-message — messages are buffered locally and flushed when you reconnect.
+
+There are three types of conversations: **direct** (one-on-one DM), **group** (group chat), and **mentorship** (automatically created when a mentorship request is accepted, linking the student and alumni permanently).
+
 ```
 Socket.io rooms:
   uni:{universityId}    — broadcast to whole university (feed posts, events)
@@ -420,6 +482,8 @@ Mentorship conversations:
 ```
 
 **How presence works:**
+
+The green dot next to a user's name showing they're "online" is powered entirely by Redis (an in-memory database) — we never write online status to our main PostgreSQL database because it would get millions of tiny writes per day. Instead, when you connect, we increment a counter in Redis. When you open a second tab, the counter goes to 2. Close one tab — counter drops to 1, still online. Close the last tab — counter hits 0, you're marked offline, and we update your `last_seen` time in the database once. Every 30 seconds your browser sends a "ping" to keep the Redis counter alive. If we stop receiving pings (e.g. laptop closed), the counter expires automatically and you appear offline. Users can also choose their privacy: show online status to everyone, only connections, or nobody.
 
 ```
 Redis keys:
@@ -472,6 +536,8 @@ Privacy tiers (OnlineVisibilityTier):
 
 **How full-text search works:**
 
+When you type "machine learning" in the search bar and results appear in milliseconds, that's not a simple text comparison — it's PostgreSQL's built-in full-text search. Every time a post is written or a profile is updated, the database automatically computes a special compressed representation of all the text (called a `tsvector`) and stores it in a hidden column. We then build a GIN index on top of it — think of it like a book's index that maps every word to the pages it appears on. When you search, the query looks up the index directly instead of scanning every row. Results are ranked by relevance — a match in someone's name counts more than a match buried in their bio. If the main search finds nothing, we fall back to a "fuzzy" search that can handle typos.
+
 ```
 Migration 070 adds STORED generated columns on each searchable table:
   posts.search_vector   TSVECTOR GENERATED ALWAYS AS (
@@ -497,6 +563,10 @@ Multi-entity search returns typed results:
 ```
 
 **How content-sync works:**
+
+Universities often post news and notices on their own websites (usually WordPress). Instead of admin staff manually copying content into UniConnecT, we built an automated importer. An admin pastes in the URL of the university's WordPress news/events/notices feed, and with one click we pull all recent articles directly from the WordPress API. The articles land in an "Inbox" for the admin to review and publish. We never auto-publish — someone always approves first.
+
+If the WordPress API isn't available (some university websites are plain HTML with no API), we have a backup plan: we send a real browser (using Skyvern automation) to visit the website, read the HTML like a human would, extract the content, and bring it back. This is slower (can take a minute) but works on any website. Every import is idempotent — running it twice never creates duplicate articles.
 
 ```
 Admin configures WordPress REST API URLs per category (news/notices/events)
@@ -524,7 +594,7 @@ Admin reviews imported items at GET /api/v1/admin/content-sync/pending
 
 ### 5.1 Multi-tenancy
 
-The entire platform serves multiple universities from a single codebase and database.
+Imagine one app that can serve UIU, BRAC University, and NSU at the same time — each thinking it has its own private social network. That's multi-tenancy. We use a single database and a single codebase. Every piece of data (every post, every user, every event) has a `university_id` tag attached to it. When a request comes in from the UIU app, the server reads the `x-university-domain: uiu.ac.bd` header, looks up UIU's ID, and from that point every database query automatically includes `WHERE university_id = 'UIU's UUID'`. It's physically impossible for a UIU student to accidentally see a BRAC University post because every query is filtered before any data is returned.
 
 ```
 Every domain table: university_id UUID FK + indexed
@@ -554,6 +624,8 @@ File bytes never travel through the API server — critical for performance.
 
 ### 5.3 Background Jobs (Bull + Redis)
 
+Imagine you post something and the server needs to: send notification emails to your followers, award you a badge, update the leaderboard, and schedule your post to be published tomorrow. Doing all of that while the user waits for the "Post" button to respond would be very slow. Instead, we immediately save the post and respond with success. Then, separately, a queue of background jobs handles all the slow work. Think of it like a restaurant — the waiter takes your order instantly (fast response to you) and passes a ticket to the kitchen (background worker does the actual cooking). We have 10 such queues, each handling a different category of work. If a job fails (e.g. email server is down), it retries automatically up to 3 times.
+
 10 queues, each with a dedicated worker process (or in-process in production):
 
 | Queue | Trigger | What worker does |
@@ -570,6 +642,8 @@ File bytes never travel through the API server — critical for performance.
 | `post-lifecycle` | Every minute cron | Flips scheduled→published, published→archived |
 
 ### 5.4 Design System
+
+Rather than every developer picking their own colours and spacing, we defined one set of named values — "design tokens" — in a single CSS file. Every component in the app uses names like `var(--uc-orange)` instead of writing the hex code `#F05A28` directly. This means: (1) if we ever want to rebrand, we change one file and it updates everywhere, (2) dark mode and light mode are just two sets of values for the same names, swapped by a `data-theme` attribute on the body. The default theme is "Warm Futuristic Dark" — a deep navy background with UIU's orange as the identity colour and indigo for interactive elements. We enforced strict rules: no raw hex values in components, pill-shaped buttons everywhere, sentence case text, no heavy font weights — so the UI looks consistent no matter who wrote the component.
 
 Single source of truth: `apps/web/src/styles/tokens.css`
 
@@ -594,6 +668,8 @@ Rules enforced in every component:
 ```
 
 ### 5.5 Driver Role & Shuttle System
+
+Students want to know where the university shuttle is right now. The app has a live map that shows the bus moving along its route in real time. Here's how it works: the driver opens the app on their phone, it picks up their GPS location every 5 seconds and sends it to the server. The server broadcasts this to all students watching the shuttle page. The bus icon moves smoothly on the map. Drivers have a special "driver" role that can only do one thing — broadcast GPS coordinates. They cannot post to the feed, message students, or access anything else. This is the principle of least privilege: you only get access to exactly what you need for your job.
 
 A minimal-privilege role added specifically for transport staff.
 
@@ -681,6 +757,15 @@ No Postgres RLS:    all isolation via service-layer WHERE university_id = ?
 
 **Q: How does OTP work?**
 > A: After register, the server generates a 6-digit OTP, stores it in Redis with a 10-minute TTL keyed to the userId + purpose (e.g. `otp:email_verify:{userId}`), and sends it via email (Resend API → email queue → email worker). `POST /auth/verify-otp` checks the Redis key, marks the user verified, and deletes the key. Redis ensures OTPs expire automatically without a cleanup cron.
+
+**Q: What happens if a user registered but never verified their email, then tries to log in later?**
+> A: Before this fix, they would be stuck — the OTP from registration had already expired (10-minute TTL in Redis) and the login page just showed a generic error with no way forward. Now, when the server sees the password is correct but `is_verified = false`, it immediately revokes the old expired OTP, generates a fresh 6-digit code, emails it to the user, and responds with `ACCOUNT_NOT_VERIFIED` (403). The frontend catches that specific error code and navigates the user straight to the OTP verification page with their email pre-filled. They verify the new code and are fully activated. No admin intervention needed.
+
+**Q: What if an admin deletes an account and that person tries to re-register?**
+> A: It depends on whether the deleted account was ever verified. If the old account was verified (a real person who used the platform), we block re-registration with `ACCOUNT_DEACTIVATED` (409) and tell them to contact admin — their data exists and needs admin review before restoration. If the deleted account was never verified (a ghost/abandoned invite), we hard-delete that leftover row entirely and let the re-registration proceed cleanly. Without this check, the registration would crash with a silent 500 error because the database's global unique index on email would reject the duplicate, even for soft-deleted rows.
+
+**Q: Can a user reactivate their own deactivated account?**
+> A: Yes, if they deactivated it themselves. When a user deactivates their account via Settings, we set `is_active = false` AND record `deactivated_at = now()`. That timestamp is the signal it was self-initiated. If they log in again later with the correct password, the server sees `deactivated_at` is set, understands it was voluntary, and automatically reactivates the account — no admin needed. If an admin disabled the account, `deactivated_at` stays NULL, so the same login returns the generic 401 — account stays blocked until admin re-enables it.
 
 **Q: How are passwords stored?**
 > A: Using bcrypt with a cost factor of 12. We never store plaintext passwords. The JWT payload contains only `{ userId, universityId, role }` — no sensitive data. The `JWT_SECRET` and `JWT_REFRESH_SECRET` are separate secrets, so a refresh token cannot be used as an access token.
