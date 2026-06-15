@@ -437,7 +437,6 @@ select:focus-visible {
     height: 56px !important;
     padding: 0 12px !important;
     gap: 8px !important;
-    overflow: hidden;
   }
 
   .topnav-brand-link {
