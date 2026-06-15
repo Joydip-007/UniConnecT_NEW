@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Avatar } from '@/components/Avatar'
 import { api } from '@/lib/axios'
@@ -53,20 +54,31 @@ export function GroupResultCard({ group }: Props) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
         padding: '8px 12px',
         borderBottom: '0.5px solid var(--border-default)',
       }}
     >
-      <Avatar initials={initials} color={color} size={36} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-          {group.name}
+      <Link
+        to={`/groups/${group.id}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          flex: 1,
+          minWidth: 0,
+          textDecoration: 'none',
+        }}
+      >
+        <Avatar initials={initials} color={color} size={36} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+            {group.name}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>
+            {group.type} · {count} members
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>
-          {group.type} · {count} members
-        </div>
-      </div>
+      </Link>
       <button
         onClick={(e) => {
           e.stopPropagation()
@@ -84,6 +96,7 @@ export function GroupResultCard({ group }: Props) {
           cursor: isPending ? 'default' : 'pointer',
           opacity: isPending ? 0.6 : 1,
           flexShrink: 0,
+          marginLeft: 10,
         }}
       >
         {member ? 'Joined' : 'Join'}

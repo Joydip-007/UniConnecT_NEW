@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { highlightMatch } from '@/utils/highlightMatch'
 import type { PostSearchResult } from '../types'
@@ -37,12 +38,14 @@ export function PostResultCard({ post, query }: Props) {
   const initials = getInitials(post.author.fullName)
 
   return (
-    <div
+    <Link
+      to={`/feed/${post.id}`}
       style={{
-        padding: '8px 12px',
-        borderBottom: '0.5px solid var(--border-default)',
         display: 'flex',
         gap: 10,
+        padding: '8px 12px',
+        borderBottom: '0.5px solid var(--border-default)',
+        textDecoration: 'none',
       }}
     >
       <Avatar initials={initials} color={color} size={32} />
@@ -78,6 +81,6 @@ export function PostResultCard({ post, query }: Props) {
           <span>{post.commentCount} comments</span>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }

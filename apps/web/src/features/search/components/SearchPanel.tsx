@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PATHS } from '@/router/paths'
 import { useSearchAll } from '../hooks/useSearchAll'
 import { useSearchPeople } from '../hooks/useSearchPeople'
@@ -185,10 +185,10 @@ export function SearchPanel({ query, onClose }: Props) {
           <div>
             <SectionLabel>Jobs</SectionLabel>
             {allData.jobs.map((j) => (
-              <div key={j.id} style={{ padding: '8px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13 }}>
+              <Link key={j.id} to={`/jobs/${j.id}`} style={{ display: 'block', padding: '8px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13, textDecoration: 'none' }}>
                 <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{j.title}</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{j.company} · {j.location}</div>
-              </div>
+              </Link>
             ))}
             <button style={seeAllLinkStyle} onClick={() => goToSearch('jobs')}>See all job results →</button>
           </div>
@@ -197,10 +197,10 @@ export function SearchPanel({ query, onClose }: Props) {
           <div>
             <SectionLabel>Events</SectionLabel>
             {allData.events.map((ev) => (
-              <div key={ev.id} style={{ padding: '8px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13 }}>
+              <Link key={ev.id} to={`/events/${ev.id}`} style={{ display: 'block', padding: '8px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13, textDecoration: 'none' }}>
                 <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{ev.title}</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{ev.location}</div>
-              </div>
+              </Link>
             ))}
             <button style={seeAllLinkStyle} onClick={() => goToSearch('events')}>See all event results →</button>
           </div>
@@ -252,10 +252,10 @@ export function SearchPanel({ query, onClose }: Props) {
     return (
       <>
         {items.map((j) => (
-          <div key={j.id} style={{ padding: '10px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13 }}>
+          <Link key={j.id} to={`/jobs/${j.id}`} style={{ display: 'block', padding: '10px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13, textDecoration: 'none' }}>
             <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{j.title}</div>
             <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>{j.company} · {j.location} · {j.type}</div>
-          </div>
+          </Link>
         ))}
         {hasMoreJobs && <button style={loadMoreStyle} onClick={() => fetchMoreJobs()}>Load more</button>}
       </>
@@ -269,10 +269,10 @@ export function SearchPanel({ query, onClose }: Props) {
     return (
       <>
         {items.map((ev) => (
-          <div key={ev.id} style={{ padding: '10px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13 }}>
+          <Link key={ev.id} to={`/events/${ev.id}`} style={{ display: 'block', padding: '10px 12px', borderBottom: '0.5px solid var(--border-default)', fontSize: 13, textDecoration: 'none' }}>
             <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{ev.title}</div>
             <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>{ev.location}</div>
-          </div>
+          </Link>
         ))}
         {hasMoreEvents && <button style={loadMoreStyle} onClick={() => fetchMoreEvents()}>Load more</button>}
       </>
@@ -301,34 +301,22 @@ export function SearchPanel({ query, onClose }: Props) {
   }
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 190,
-        }}
-      />
-      {/* Panel */}
-      <div
-        id="search-panel"
-        role="listbox"
-        aria-label="Search results"
-        className="dropdown-enter search-panel-responsive"
-        data-origin="top-center"
-        style={panelStyle}
-      >
-        <div style={tabBarStyle}>
-          {TABS.map(({ key, label }) => (
-            <button key={key} style={tabStyle(tab === key)} onClick={() => setTab(key)}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div style={bodyStyle}>{tabContent[tab]()}</div>
+    <div
+      id="search-panel"
+      role="listbox"
+      aria-label="Search results"
+      className="dropdown-enter search-panel-responsive"
+      data-origin="top-center"
+      style={panelStyle}
+    >
+      <div style={tabBarStyle}>
+        {TABS.map(({ key, label }) => (
+          <button key={key} style={tabStyle(tab === key)} onClick={() => setTab(key)}>
+            {label}
+          </button>
+        ))}
       </div>
-    </>
+      <div style={bodyStyle} onClick={onClose}>{tabContent[tab]()}</div>
+    </div>
   )
 }

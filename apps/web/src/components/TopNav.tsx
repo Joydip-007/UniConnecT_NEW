@@ -108,6 +108,17 @@ export function TopNav() {
   const closePanel = useCallback(() => setPanelOpen(false), [])
 
   useEffect(() => {
+    if (!panelOpen) return
+    function onMouseDown(e: MouseEvent) {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        setPanelOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [panelOpen])
+
+  useEffect(() => {
     if (!menuOpen && !notifOpen && !msgOpen) return
     function onClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
