@@ -201,13 +201,12 @@ export function TopNav() {
       </a>
 
       {/* Center: search */}
-      <div className="topnav-search-slot" style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+      <div className="topnav-search-slot" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
         <div
           ref={searchWrapperRef}
           className="topnav-search-wrap"
-          style={{ minWidth: 200, width: '100%', maxWidth: 400 }}
+          style={{ position: 'relative', minWidth: 200, width: '100%', maxWidth: 400 }}
         >
-          <div style={{ position: 'relative' }}>
           <Search
             size={14}
             style={{
@@ -262,7 +261,6 @@ export function TopNav() {
               boxSizing: 'border-box',
             }}
           />
-          </div>
           {panelOpen && debouncedQuery.length >= 2 && (
             <SearchPanel query={debouncedQuery} onClose={closePanel} />
           )}
