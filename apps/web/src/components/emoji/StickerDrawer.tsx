@@ -190,22 +190,20 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
           flex: 1,
           overflowY: 'auto',
           padding: 8,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 6,
-          alignContent: 'start',
+          columns: 3,
+          columnGap: 6,
         }}
       >
         {activeQuery.isLoading ? (
-          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 24, columnSpan: 'all' } as React.CSSProperties}>
             <Loader2 size={20} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
           </div>
         ) : activeQuery.isError ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
             Stickers aren't available right now
           </div>
         ) : items.length === 0 ? (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
+          <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
             No results
           </div>
         ) : (
@@ -214,7 +212,7 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
               <StickerTile key={item.id} item={item} onSelect={handleSelect} />
             ))}
             {activeQuery.isFetchingNextPage && (
-              <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 8 }}>
                 <Loader2 size={16} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
               </div>
             )}
@@ -261,23 +259,22 @@ function StickerTile({ item, onSelect }: { item: KlipyItem; onSelect: (item: Kli
       title={item.title}
       style={{
         width: '100%',
-        aspectRatio: '1',
+        breakInside: 'avoid',
+        marginBottom: 6,
         background: 'var(--surface-raised)',
         border: '0.5px solid var(--border-subtle)',
         borderRadius: 'var(--r-md)',
         cursor: 'pointer',
         overflow: 'hidden',
-        padding: 4,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        padding: 0,
+        display: 'block',
       }}
     >
       <img
         src={item.previewUrl}
         alt={item.title}
         loading="lazy"
-        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        style={{ width: '100%', height: 'auto', display: 'block' }}
       />
     </button>
   )
