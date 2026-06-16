@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, Eye, MessageSquare, ThumbsUp } from 'lucide-react'
+import { BarChart3, Eye, MessageSquare, Repeat2, ThumbsUp } from 'lucide-react'
 import { getMyAnalytics } from '@/lib/api/users'
 import type { ProfileAnalytics } from '@uniconnect/shared'
 
@@ -54,7 +54,7 @@ export function ProfileAnalytics() {
   // All-zero: the user is new and has no activity yet
   const hasActivity =
     data != null &&
-    (data.profileViews.last30d > 0 || data.postReach.reactions > 0 || data.postReach.comments > 0)
+    (data.profileViews.last30d > 0 || data.postReach.reactions > 0 || data.postReach.comments > 0 || data.postReach.shares > 0)
 
   return (
     <div
@@ -77,7 +77,7 @@ export function ProfileAnalytics() {
 
       {isLoading ? (
         <div style={{ display: 'flex', gap: 10 }}>
-          {[0, 1, 2, 3].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <div
               key={i}
               style={{
@@ -115,6 +115,11 @@ export function ProfileAnalytics() {
             label="Post comments"
             value={data.postReach.comments}
             icon={<MessageSquare size={15} strokeWidth={1.5} />}
+          />
+          <StatBox
+            label="Post shares"
+            value={data.postReach.shares}
+            icon={<Repeat2 size={15} strokeWidth={1.5} />}
           />
         </div>
       )}

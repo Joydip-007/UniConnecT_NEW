@@ -1,11 +1,11 @@
 import { lazy, Suspense, useRef, useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { motion } from 'framer-motion'
-import { CornerDownRight, Smile, Sticker, Trash2, X } from 'lucide-react'
+import { CornerDownRight, Paperclip, Smile, Sticker, Trash2, X } from 'lucide-react'
 import type { AttachmentInput, FeedComment, FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
-import { AttachmentPicker } from '@/components/AttachmentPicker'
+import { AttachmentPicker, type AttachmentPickerHandle } from '@/components/AttachmentPicker'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { PostReactionTrigger } from '@/components/emoji/ReactionBar'
 import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
@@ -218,6 +218,7 @@ export function CommentDrawer({ post, onClose }: Props) {
   const [attachments, setAttachments] = useState<AttachmentInput[]>([])
   const [attachmentsUploading, setAttachmentsUploading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const attachPickerRef = useRef<AttachmentPickerHandle>(null)
   const insertEmoji = useEmojiInsert(inputRef, inputText, setInputText)
 
   const commentsQuery = useComments(post.id, true)
@@ -546,8 +547,10 @@ export function CommentDrawer({ post, onClose }: Props) {
                       overflowY: 'auto',
                     }}
                   />
-                  {/* Attachment picker */}
+                  {/* Attachment chips + hidden input (button rendered in toolbar) */}
                   <AttachmentPicker
+                    ref={attachPickerRef}
+                    hideButton
                     value={attachments}
                     onChange={setAttachments}
                     onUploadingChange={setAttachmentsUploading}
@@ -556,19 +559,30 @@ export function CommentDrawer({ post, onClose }: Props) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
                     <button
                       type="button"
-                      onClick={() => { setShowEmoji((v) => !v); setShowStickers(false) }}
                       title="Emoji"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-tertiary)', display: 'flex' }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => { setShowEmoji((v) => !v); setShowStickers(false) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: showEmoji ? 'var(--uc-indigo)' : 'var(--text-tertiary)', display: 'flex', transition: 'color 150ms' }}
                     >
                       <Smile size={16} strokeWidth={1.5} />
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setShowStickers((v) => !v); setShowEmoji(false) }}
                       title="Stickers"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-tertiary)', display: 'flex' }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => { setShowStickers((v) => !v); setShowEmoji(false) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: showStickers ? 'var(--uc-indigo)' : 'var(--text-tertiary)', display: 'flex', transition: 'color 150ms' }}
                     >
                       <Sticker size={16} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      type="button"
+                      title="Attach file"
+                      onClick={() => attachPickerRef.current?.open()}
+                      disabled={attachmentsUploading}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: attachments.length > 0 ? 'var(--uc-indigo)' : 'var(--text-tertiary)', display: 'flex', transition: 'color 150ms' }}
+                    >
+                      <Paperclip size={16} strokeWidth={1.5} />
                     </button>
                     <button
                       type="button"

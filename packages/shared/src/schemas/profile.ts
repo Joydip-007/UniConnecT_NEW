@@ -48,6 +48,7 @@ export const profileAnalyticsSchema = z.object({
   postReach: z.object({
     reactions: z.number().int().nonnegative(),
     comments: z.number().int().nonnegative(),
+    shares: z.number().int().nonnegative(),
     total: z.number().int().nonnegative(),
   }),
 })

@@ -36,6 +36,13 @@ export const CreatePostSchema = z.object({
       expires_at: z.string().datetime({ offset: true }).nullable().optional(),
     })
     .optional(),
+  hide_reaction_counts: z.boolean().optional(),
+  comments_disabled: z.boolean().optional(),
+  shares_disabled: z.boolean().optional(),
+})
+
+export const SharePostSchema = z.object({
+  caption: z.string().trim().max(500).optional(),
 })
 
 export const UpdatePostSchema = z
@@ -52,6 +59,9 @@ export const UpdatePostSchema = z
     publish_at: z.string().datetime({ offset: true }).nullable().optional(),
     /** Set a future time to auto-archive; null to clear the auto-expiry. */
     expires_at: z.string().datetime({ offset: true }).nullable().optional(),
+    hide_reaction_counts: z.boolean().optional(),
+    comments_disabled: z.boolean().optional(),
+    shares_disabled: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',
@@ -77,6 +87,12 @@ export const PollVoteSchema = z.object({
   message: 'poll_option_id is required',
 })
 
+export const ReactionsQuerySchema = z.object({
+  type: z.enum(['like', 'love', 'care', 'haha', 'wow', 'sad', 'angry']).optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(50).default(20),
+})
+
 export type PostListQuery = z.infer<typeof PostListQuerySchema>
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type CreatePostInput = z.infer<typeof CreatePostSchema>
@@ -84,3 +100,5 @@ export type UpdatePostInput = z.infer<typeof UpdatePostSchema>
 export type ReactionInput = z.infer<typeof ReactionSchema>
 export type CreateCommentInput = z.infer<typeof CreateCommentSchema>
 export type PollVoteInput = z.infer<typeof PollVoteSchema>
+export type SharePostInput = z.infer<typeof SharePostSchema>
+export type ReactionsQuery = z.infer<typeof ReactionsQuerySchema>

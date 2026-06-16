@@ -44,7 +44,16 @@ export interface FeedPost {
   reactionCounts: { like: number; love: number; care: number; haha: number; wow: number; sad: number; angry: number }
   myReaction: 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry' | null
   commentCount: number
+  shareCount: number
   isSaved: boolean
+  /** True when the author has hidden reaction counts from everyone but themselves. */
+  reactionCountsHidden: boolean
+  commentsDisabled: boolean
+  sharesDisabled: boolean
+  /** Non-null when this post is a share/repost of another post. */
+  originalPost: Omit<FeedPost, 'originalPost' | 'poll' | 'jobEmbed' | 'eventEmbed' | 'lostFoundEmbed' | 'attachments'> | null
+  /** ID of the viewer's own share post for the root post, or null if not shared. */
+  myShare: string | null
   poll: FeedPoll | null
   jobEmbed: null
   eventEmbed: null

@@ -25,7 +25,7 @@ import { ReactionBtn } from '@/components/Button'
 import { PostReactionTrigger } from '@/components/emoji/ReactionBar'
 import { ReactionChip } from '@/components/emoji/ReactionChip'
 import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
-import { REACTION_MAP, totalReactions } from '@/components/emoji/reactionConfig'
+import { REACTION_MAP, totalReactions, topReactions } from '@/components/emoji/reactionConfig'
 import type { ReactionKey } from '@/components/emoji/reactionConfig'
 import { ShareMenu } from '@/components/ShareMenu'
 import { ImageLightbox } from '@/components/ImageLightbox'
@@ -37,6 +37,10 @@ import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
 import { useSavePost } from '@/features/feed/hooks/useSavePost'
 import { useDeletePost } from '@/features/feed/hooks/useDeletePost'
 import { useArchivePost } from '@/features/feed/hooks/useArchivePost'
+import { useUnsharePost } from '@/features/feed/hooks/useSharePost'
+import { OriginalPostEmbed } from './OriginalPostEmbed'
+import { ReactionsDialog } from './ReactionsDialog'
+import { SharePostModal } from './SharePostModal'
 import { api } from '@/lib/axios'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -320,11 +324,19 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const [localSaved, setLocalSaved] = useState(post.isSaved)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
+  const [showReactionsDialog, setShowReactionsDialog] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [localShareCount, setLocalShareCount] = useState(post.shareCount)
+  const [myShareId, setMyShareId] = useState<string | null>(post.myShare)
+
+  // Root post ID — for a share card, the root is the original; for originals, it's self
+  const rootPostId = post.originalPost?.id ?? post.id
 
   const reactionMutation = useUpsertReaction(post.id)
   const saveMutation = useSavePost(post.id)
   const deleteMutation = useDeletePost()
   const archiveMutation = useArchivePost()
+  const unshareMutation = useUnsharePost(myShareId ?? '', rootPostId)
 
   function handleDeletePost() {
     const tid = window.setTimeout(() => deleteMutation.mutate(post.id), 5000)
@@ -433,6 +445,17 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
           )}
         </div>
 
+        {/* "X shared Y's post" attribution line for share cards */}
+        {post.originalPost && (
+          <p style={{ margin: '-4px 0 10px', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            shared{' '}
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+              {post.originalPost.author.fullName}
+            </span>
+            's post
+          </p>
+        )}
+
         {/* Body — rendered as markdown */}
         {post.content && (
           <div
@@ -460,12 +483,93 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         {/* Poll */}
         {post.poll && <PollBlock poll={post.poll} postId={post.id} />}
 
-        {/* Reactions bar */}
+        {/* Embedded original post for share cards */}
+        {post.originalPost && (
+          <OriginalPostEmbed post={post.originalPost} />
+        )}
+
+        {/* Count summary bar — Facebook-style */}
+        {((!post.reactionCountsHidden && totalReactions(reactionCounts) > 0) || post.commentCount > 0 || localShareCount > 0) && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: 10,
+              paddingBottom: 6,
+              borderBottom: '0.5px solid var(--border-default)',
+            }}
+          >
+            {/* Left: reaction emoji cluster + total count */}
+            {!post.reactionCountsHidden && totalReactions(reactionCounts) > 0 ? (
+              <button
+                type="button"
+                onClick={() => setShowReactionsDialog(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center' }}>
+                  {topReactions(reactionCounts, 3).map((r, i) => (
+                    <span
+                      key={r.key}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 18,
+                        height: 18,
+                        background: 'var(--surface-raised)',
+                        borderRadius: '50%',
+                        border: '1px solid var(--surface-card)',
+                        marginLeft: i > 0 ? -4 : 0,
+                        zIndex: 3 - i,
+                        position: 'relative',
+                      }}
+                    >
+                      <TwemojiIcon codepoint={r.codepoint} size={12} label={r.label} />
+                    </span>
+                  ))}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 2 }}>
+                  {totalReactions(reactionCounts).toLocaleString()}
+                </span>
+              </button>
+            ) : (
+              <span />
+            )}
+
+            {/* Right: comment count · share count */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {post.commentCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onCommentClick(post.id)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontSize: 12, color: 'var(--text-tertiary)' }}
+                >
+                  {post.commentCount.toLocaleString()} comment{post.commentCount !== 1 ? 's' : ''}
+                </button>
+              )}
+              {localShareCount > 0 && (
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                  {localShareCount.toLocaleString()} share{localShareCount !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Action row */}
         <div
           style={{
-            borderTop: '0.5px solid var(--border-default)',
-            marginTop: 12,
-            paddingTop: 8,
+            marginTop: 4,
+            paddingTop: 4,
             display: 'flex',
             alignItems: 'center',
             gap: 2,
@@ -490,7 +594,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
                 </svg>
               )}
               {myReaction ? REACTION_MAP.get(myReaction)?.label : 'Like'}
-              {totalReactions(reactionCounts) > 0 && (
+              {!post.reactionCountsHidden && totalReactions(reactionCounts) > 0 && (
                 <ReactionChip
                   counts={reactionCounts}
                   myReaction={myReaction}
@@ -500,19 +604,34 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             </ReactionBtn>
           </PostReactionTrigger>
 
-          <ReactionBtn onClick={() => onCommentClick(post.id)}>
-            <MessageCircle size={15} strokeWidth={1.5} />
-            Comment
-            {post.commentCount > 0 && (
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 2 }}>
-                {post.commentCount}
-              </span>
-            )}
-          </ReactionBtn>
+          {!post.commentsDisabled && (
+            <ReactionBtn onClick={() => onCommentClick(post.id)}>
+              <MessageCircle size={15} strokeWidth={1.5} />
+              Comment
+            </ReactionBtn>
+          )}
 
-          <ShareMenu entityType="post" entityId={post.id} title={`${post.author.fullName} on UniConnecT`}>
+          <ShareMenu
+            entityType="post"
+            entityId={post.id}
+            title={`${post.author.fullName} on UniConnecT`}
+            onShareToProfile={post.sharesDisabled ? undefined : () => setShowShareModal(true)}
+            isSharedByMe={!!myShareId}
+            onUnshare={myShareId ? () => {
+              const prevShareId = myShareId
+              const prevCount = localShareCount
+              setMyShareId(null)
+              setLocalShareCount(Math.max(0, localShareCount - 1))
+              unshareMutation.mutate(undefined, {
+                onError: () => {
+                  setMyShareId(prevShareId)
+                  setLocalShareCount(prevCount)
+                },
+              })
+            } : undefined}
+          >
             {({ open, toggle }) => (
-              <ReactionBtn active={open} onClick={toggle}>
+              <ReactionBtn active={open || !!myShareId} onClick={toggle}>
                 <Share2 size={15} strokeWidth={1.5} />
                 Share
               </ReactionBtn>
@@ -546,6 +665,25 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         targetId={post.id}
         targetLabel="this post"
       />
+
+      {showReactionsDialog && (
+        <ReactionsDialog
+          postId={post.id}
+          counts={reactionCounts}
+          onClose={() => setShowReactionsDialog(false)}
+        />
+      )}
+
+      {showShareModal && (
+        <SharePostModal
+          post={post}
+          onClose={() => setShowShareModal(false)}
+          onShared={(shareId) => {
+            setMyShareId(shareId)
+            setLocalShareCount((c) => c + 1)
+          }}
+        />
+      )}
     </article>
   )
 }

@@ -16,6 +16,10 @@ export const POST_LIFECYCLE_EVENTS = {
   PUBLISHED: 'post:published',
   /** A post was archived (manually or via expiry) — open feeds should drop it. */
   ARCHIVED: 'post:archived',
+  /** A user shared (reposted) a post to their profile. */
+  SHARED: 'post:shared',
+  /** A user removed their repost. */
+  UNSHARED: 'post:unshared',
 } as const
 
 export const PRESENCE_EVENTS = {

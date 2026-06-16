@@ -129,6 +129,7 @@ export function MessageInput({ convId, onSendSticker }: MessageInputProps) {
         <button
           type="button"
           aria-label="Emoji"
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={() => { setShowEmoji((v) => !v); setShowStickers(false) }}
           style={{
             flexShrink: 0,
@@ -150,6 +151,7 @@ export function MessageInput({ convId, onSendSticker }: MessageInputProps) {
         <button
           type="button"
           aria-label="Stickers"
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={() => { setShowStickers((v) => !v); setShowEmoji(false) }}
           style={{
             flexShrink: 0,

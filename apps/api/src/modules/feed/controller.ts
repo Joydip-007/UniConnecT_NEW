@@ -9,7 +9,9 @@ import type {
   PaginationQuery,
   PollVoteInput,
   PostListQuery,
+  ReactionsQuery,
   ReactionInput,
+  SharePostInput,
   UpdatePostInput,
 } from './schema'
 
@@ -120,6 +122,21 @@ export const unsavePost = asyncHandler(async (req: Request, res: Response) => {
 export const getTrending = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await feedService.getTrending(context.universityId))
+})
+
+export const sharePost = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await feedService.sharePost(context, getPostIdParam(req), req.body as SharePostInput), 201)
+})
+
+export const unsharePost = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await feedService.unsharePost(context, getPostIdParam(req)))
+})
+
+export const getPostReactions = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await feedService.getPostReactions(context.universityId, getPostIdParam(req), req.query as unknown as ReactionsQuery))
 })
 
 function getAuthContext(req: Request) {

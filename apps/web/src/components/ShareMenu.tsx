@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Link2, Share2, Send } from 'lucide-react'
+import { Link2, Share2, Send, Repeat2 } from 'lucide-react'
 import type { ShareEntityType } from '@uniconnect/shared'
 import { useShareLink } from '@/features/share/hooks/useShareLink'
 
@@ -12,6 +12,11 @@ export interface ShareMenuProps {
   title?: string
   /** Render prop for the trigger. Receives a click handler that toggles the menu. */
   children?: (props: { open: boolean; toggle: () => void }) => React.ReactNode
+  /** When provided, adds "Share to profile" row at the top. */
+  onShareToProfile?: () => void
+  /** When true, "Share to profile" shows a "Remove share" option instead. */
+  isSharedByMe?: boolean
+  onUnshare?: () => void
 }
 
 /**
@@ -19,7 +24,7 @@ export interface ShareMenuProps {
  * and (when supported) Share via… (native sheet). The "Send in a message" row is a
  * reserved slot for the follow-up in-app share — disabled until that ships.
  */
-export function ShareMenu({ entityType, entityId, title, children }: ShareMenuProps) {
+export function ShareMenu({ entityType, entityId, title, children, onShareToProfile, isSharedByMe, onUnshare }: ShareMenuProps) {
   const [open, setOpen] = useState(false)
   const { copy, nativeShare, canNativeShare } = useShareLink(entityType, entityId, title)
 
@@ -110,6 +115,12 @@ export function ShareMenu({ entityType, entityId, title, children }: ShareMenuPr
                   transformOrigin: pos.up ? 'bottom right' : 'top right',
                 }}
               >
+                {onShareToProfile && !isSharedByMe && (
+                  <Row icon={<Repeat2 size={13} strokeWidth={1.5} />} label="Share to profile" onClick={() => { close(); onShareToProfile() }} />
+                )}
+                {isSharedByMe && onUnshare && (
+                  <Row icon={<Repeat2 size={13} strokeWidth={1.5} />} label="Remove share" onClick={() => { close(); onUnshare() }} danger />
+                )}
                 <Row icon={<Link2 size={13} strokeWidth={1.5} />} label="Copy link" onClick={() => { close(); void copy() }} />
                 {canNativeShare && (
                   <Row icon={<Share2 size={13} strokeWidth={1.5} />} label="Share via…" onClick={() => { close(); void nativeShare() }} />
@@ -125,7 +136,7 @@ export function ShareMenu({ entityType, entityId, title, children }: ShareMenuPr
   )
 }
 
-function Row({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick?: () => void; disabled?: boolean }) {
+function Row({ icon, label, onClick, disabled, danger }: { icon: React.ReactNode; label: string; onClick?: () => void; disabled?: boolean; danger?: boolean }) {
   return (
     <button
       type="button"
@@ -145,7 +156,7 @@ function Row({ icon, label, onClick, disabled }: { icon: React.ReactNode; label:
         cursor: disabled ? 'default' : 'pointer',
         fontSize: 13,
         fontWeight: 400,
-        color: disabled ? 'var(--text-tertiary)' : 'var(--text-primary)',
+        color: disabled ? 'var(--text-tertiary)' : danger ? 'var(--uc-red)' : 'var(--text-primary)',
         opacity: disabled ? 0.6 : 1,
         textAlign: 'left',
       }}

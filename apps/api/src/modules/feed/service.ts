@@ -2,9 +2,9 @@ import type { Knex } from 'knex'
 import { FEED_RANKING, POST_LIFECYCLE_EVENTS, type UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { getIo } from '../../socket'
-import { badRequest, forbidden, notFound } from '../../utils/errors'
+import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
-import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, UpdatePostInput } from './schema'
+import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, ReactionsQuery, SharePostInput, UpdatePostInput } from './schema'
 import { notificationsService } from '../notifications/service'
 import { moderationService } from '../moderation/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
@@ -53,9 +53,24 @@ interface PostRow {
   author_role: UserRole
   reaction_counts: unknown
   comment_count: string | number
+  share_count: string | number
   own_reaction: ReactionType | null
   is_saved: boolean | null
   is_connected: number | null
+  original_post_id: string | null
+  hide_reaction_counts: boolean
+  comments_disabled: boolean
+  shares_disabled: boolean
+  // Embedded original post (joined when original_post_id is set)
+  orig_id: string | null
+  orig_content: string | null
+  orig_media_urls: string[] | null
+  orig_created_at: Date | null
+  orig_author_id: string | null
+  orig_author_full_name: string | null
+  orig_author_avatar_url: string | null
+  orig_author_role: UserRole | null
+  my_share_id: string | null
 }
 
 interface CommentRow {
@@ -176,7 +191,7 @@ export class FeedService {
 
     const postIds = rows.map((row) => row.id)
     const [posts, attachmentsMap] = await Promise.all([
-      this.attachPolls(rows.map(toPost), postIds, userId),
+      this.attachPolls(rows.map((r) => toPost(r, userId)), postIds, userId),
       getAttachmentsForMany('post', postIds),
     ])
     const withAttachments = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
@@ -200,7 +215,7 @@ export class FeedService {
 
     const postIds = rows.map((row) => row.id)
     const [posts, attachmentsMap] = await Promise.all([
-      this.attachPolls(rows.map(toPost), postIds, userId),
+      this.attachPolls(rows.map((r) => toPost(r, userId)), postIds, userId),
       getAttachmentsForMany('post', postIds),
     ])
     const withAttachments = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
@@ -227,6 +242,9 @@ export class FeedService {
           group_id: input.group_id ?? null,
           is_published: isPublished,
           publish_at: isScheduled ? publishAt : null,
+          hide_reaction_counts: input.hide_reaction_counts ?? false,
+          comments_disabled: input.comments_disabled ?? false,
+          shares_disabled: input.shares_disabled ?? false,
         })
         .returning<{ id: string }[]>('id')
 
@@ -319,7 +337,7 @@ export class FeedService {
         .catch((error: unknown) => logger.warn('Failed to increment post view count', { error, postId }))
     }
 
-    const [post] = await this.attachPolls([toPost(row)], [row.id], userId)
+    const [post] = await this.attachPolls([toPost(row, userId)], [row.id], userId)
     const attachments = await getAttachmentsFor('post', postId)
     return { ...post, attachments }
   }
@@ -345,6 +363,9 @@ export class FeedService {
           is_published: input.is_published,
           publish_at: publishAt,
           expires_at: expiresAt,
+          hide_reaction_counts: input.hide_reaction_counts,
+          comments_disabled: input.comments_disabled,
+          shares_disabled: input.shares_disabled,
         }),
         updated_at: db.fn.now(),
       })
@@ -456,7 +477,7 @@ export class FeedService {
 
     const postIds = rows.map((row) => row.id)
     const [posts, attachmentsMap] = await Promise.all([
-      this.attachPolls(rows.map(toPost), postIds, userId),
+      this.attachPolls(rows.map((r) => toPost(r, userId)), postIds, userId),
       getAttachmentsForMany('post', postIds),
     ])
     const withAttachments = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
@@ -594,7 +615,10 @@ export class FeedService {
   }
 
   async createComment(context: AuthContext, postId: string, input: CreateCommentInput) {
-    await assertPostInUniversity(postId, context.universityId)
+    const post = await assertPostInUniversity(postId, context.universityId)
+    if (post.comments_disabled) {
+      throw forbidden('Comments are turned off for this post', 'COMMENTS_DISABLED')
+    }
 
     if (input.parent_id) {
       const parent = await db('comments').where({ id: input.parent_id, post_id: postId }).first()
@@ -801,6 +825,103 @@ export class FeedService {
     return posts.map((post) => ({ ...post, poll: pollByPost.get(post.id) ?? null }))
   }
 
+  async sharePost(context: AuthContext, targetPostId: string, input: SharePostInput) {
+    const target = await assertPostInUniversity(targetPostId, context.universityId)
+    if (target.shares_disabled) throw forbidden('Sharing is turned off for this post', 'SHARES_DISABLED')
+
+    // Always share the root original, not the share itself
+    const rootId = await (async () => {
+      const row = await db('posts').select<{ original_post_id: string | null }>('original_post_id').where({ id: targetPostId }).first()
+      return row?.original_post_id ?? targetPostId
+    })()
+
+    // One share per user per root
+    const existing = await db('posts')
+      .where({ author_id: context.userId, original_post_id: rootId, university_id: context.universityId })
+      .whereNull('archived_at')
+      .first()
+    if (existing) throw conflict('You have already shared this post', 'ALREADY_SHARED')
+
+    const shareId = await db.transaction(async (trx) => {
+      const [row] = await trx('posts')
+        .insert({
+          university_id: context.universityId,
+          author_id: context.userId,
+          type: 'post',
+          content: input.caption ?? '',
+          media_urls: [],
+          is_published: true,
+          original_post_id: rootId,
+          hide_reaction_counts: false,
+          comments_disabled: false,
+          shares_disabled: false,
+        })
+        .returning<{ id: string }[]>('id')
+      if (!row) throw badRequest('Share could not be created', 'SHARE_CREATE_FAILED')
+      await trx('posts').where({ id: rootId }).increment('share_count', 1)
+      return row.id
+    })
+
+    const sharePost = await this.getPost(context.universityId, context.userId, shareId, { incrementView: false })
+    const io = getIo()
+    io.to(`uni:${context.universityId}`).emit(POST_LIFECYCLE_EVENTS.SHARED, { postId: rootId, sharePost })
+    io.to(`uni:${context.universityId}`).emit('feed:post:new', { post: sharePost })
+    return sharePost
+  }
+
+  async unsharePost(context: AuthContext, postId: string) {
+    const shareRow = await db('posts')
+      .select<{ id: string; author_id: string; original_post_id: string | null }>('id', 'author_id', 'original_post_id')
+      .where({ id: postId, university_id: context.universityId })
+      .first()
+    if (!shareRow) throw notFound('Post not found', 'POST_NOT_FOUND')
+    if (shareRow.author_id !== context.userId) throw forbidden('Not your share', 'SHARE_FORBIDDEN')
+    if (!shareRow.original_post_id) throw badRequest('This post is not a share', 'NOT_A_SHARE')
+
+    await db.transaction(async (trx) => {
+      await trx('posts').where({ id: postId }).delete()
+      await trx('posts')
+        .where({ id: shareRow.original_post_id! })
+        .whereRaw('share_count > 0')
+        .decrement('share_count', 1)
+    })
+
+    const io = getIo()
+    io.to(`uni:${context.universityId}`).emit(POST_LIFECYCLE_EVENTS.UNSHARED, { postId: shareRow.original_post_id, sharePostId: postId })
+    return { unshared: true }
+  }
+
+  async getPostReactions(universityId: string, postId: string, query: ReactionsQuery) {
+    await assertPostInUniversity(postId, universityId)
+
+    let q = db('reactions')
+      .join('users', 'users.id', 'reactions.user_id')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({ 'reactions.target_id': postId, 'reactions.target_type': 'post' })
+      .select<{ user_id: string; full_name: string; avatar_url: string | null; reaction_type: ReactionType; created_at: Date }[]>(
+        'reactions.user_id',
+        'profiles.full_name',
+        'profiles.avatar_url',
+        'reactions.reaction_type',
+        'reactions.created_at',
+      )
+      .orderBy('reactions.created_at', 'desc')
+      .limit(query.limit)
+
+    if (query.type) q = q.andWhere('reactions.reaction_type', query.type)
+    if (query.cursor) q = q.andWhere('reactions.created_at', '<', new Date(query.cursor))
+
+    const rows = await q
+    const items = rows.map((r) => ({
+      userId: r.user_id,
+      fullName: r.full_name,
+      avatarUrl: r.avatar_url,
+      reactionType: r.reaction_type,
+    }))
+    const nextCursor = rows.length === query.limit ? rows[rows.length - 1].created_at.toISOString() : null
+    return { items, nextCursor }
+  }
+
   async getTrending(universityId: string) {
     const tagRows = await db('tags')
       .join('post_tags', 'post_tags.tag_id', 'tags.id')
@@ -890,6 +1011,14 @@ function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
     .leftJoin<SavedPostRow>('saved_posts', function joinSaved() {
       this.on('saved_posts.post_id', '=', 'posts.id').andOn('saved_posts.user_id', '=', knex.raw('?', [userId]))
     })
+    // Embed original post data when this post is a share
+    .leftJoin('posts as orig_posts', 'orig_posts.id', 'posts.original_post_id')
+    .leftJoin('users as orig_users', 'orig_users.id', 'orig_posts.author_id')
+    .leftJoin('profiles as orig_profiles', 'orig_profiles.user_id', 'orig_users.id')
+    .leftJoin(knex.raw(
+      `posts as my_share_post ON my_share_post.original_post_id = COALESCE(posts.original_post_id, posts.id) AND my_share_post.author_id = ?`,
+      [userId],
+    ))
     .select<PostRow[]>(
       'posts.id',
       'posts.university_id',
@@ -906,12 +1035,26 @@ function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
       'posts.view_count',
       'posts.created_at',
       'posts.updated_at',
+      'posts.original_post_id',
+      'posts.share_count',
+      'posts.hide_reaction_counts',
+      'posts.comments_disabled',
+      'posts.shares_disabled',
       'profiles.full_name as author_full_name',
       'profiles.avatar_url as author_avatar_url',
       'profiles.headline as author_headline',
       'profiles.department as author_department',
       'profiles.batch_year as author_batch_year',
       'users.role as author_role',
+      // Original post embed columns
+      'orig_posts.id as orig_id',
+      'orig_posts.content as orig_content',
+      'orig_posts.media_urls as orig_media_urls',
+      'orig_posts.created_at as orig_created_at',
+      'orig_posts.author_id as orig_author_id',
+      'orig_profiles.full_name as orig_author_full_name',
+      'orig_profiles.avatar_url as orig_author_avatar_url',
+      'orig_users.role as orig_author_role',
       knex.raw(
         `COALESCE(
           (
@@ -934,6 +1077,7 @@ function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
         [userId],
       ),
       knex.raw('saved_posts.user_id IS NOT NULL AS is_saved'),
+      knex.raw('my_share_post.id AS my_share_id'),
       universityId
         ? knex.raw(
             `CASE WHEN posts.author_id IN (
@@ -990,11 +1134,13 @@ function commentSelectQuery(knex: Knex, userId: string) {
 
 async function assertPostInUniversity(postId: string, universityId: string) {
   const post = await db('posts')
-    .select<{ id: string; author_id: string; university_id: string; is_published: boolean }[]>(
+    .select<{ id: string; author_id: string; university_id: string; is_published: boolean; comments_disabled: boolean; shares_disabled: boolean }[]>(
       'id',
       'author_id',
       'university_id',
       'is_published',
+      'comments_disabled',
+      'shares_disabled',
     )
     .where({ id: postId, university_id: universityId })
     .first()
@@ -1072,7 +1218,8 @@ async function getPollVoteCounts(knex: Knex, pollId: string) {
   }
 }
 
-function toPost(row: PostRow) {
+function toPost(row: PostRow, viewerUserId?: string) {
+  const hideReactionCounts = row.hide_reaction_counts && viewerUserId !== row.author_id
   return {
     id: row.id,
     universityId: row.university_id,
@@ -1100,10 +1247,34 @@ function toPost(row: PostRow) {
         batchYear: row.author_batch_year,
       },
     },
-    reactionCounts: normalizeReactionCounts(row.reaction_counts),
+    reactionCounts: hideReactionCounts ? { like: 0, love: 0, care: 0, haha: 0, wow: 0, sad: 0, angry: 0 } : normalizeReactionCounts(row.reaction_counts),
+    reactionCountsHidden: hideReactionCounts,
     commentCount: Number(row.comment_count),
+    shareCount: Number(row.share_count ?? 0),
     myReaction: row.own_reaction,
     isSaved: Boolean(row.is_saved),
+    commentsDisabled: Boolean(row.comments_disabled),
+    sharesDisabled: Boolean(row.shares_disabled),
+    originalPost: row.orig_id
+      ? {
+          id: row.orig_id,
+          content: row.orig_content ?? '',
+          mediaUrls: row.orig_media_urls ?? [],
+          createdAt: row.orig_created_at,
+          author: {
+            id: row.orig_author_id ?? '',
+            fullName: row.orig_author_full_name ?? '',
+            role: row.orig_author_role ?? 'student',
+            profile: {
+              avatarUrl: row.orig_author_avatar_url,
+              headline: null,
+              department: null,
+              batchYear: null,
+            },
+          },
+        }
+      : null,
+    myShare: row.my_share_id ?? null,
   }
 }
 

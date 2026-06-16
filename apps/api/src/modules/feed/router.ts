@@ -13,13 +13,16 @@ import {
   deletePost,
   getComments,
   getPost,
+  getPostReactions,
   getTrending,
   listArchived,
   listPosts,
   removeCommentReaction,
   removeReaction,
   savePost,
+  sharePost,
   unarchivePost,
+  unsharePost,
   unsavePost,
   updatePost,
   votePoll,
@@ -30,7 +33,9 @@ import {
   PaginationQuerySchema,
   PollVoteSchema,
   PostListQuerySchema,
+  ReactionsQuerySchema,
   ReactionSchema,
+  SharePostSchema,
   UpdatePostSchema,
 } from './schema'
 
@@ -59,6 +64,9 @@ feedRouter.delete('/:postId/comments/:commentId/reactions', removeCommentReactio
 feedRouter.post('/:postId/poll/vote', validate(PollVoteSchema), votePoll)
 feedRouter.post('/:postId/save', savePost)
 feedRouter.delete('/:postId/save', unsavePost)
+feedRouter.post('/:postId/share', writeLimiter, validate(SharePostSchema), sharePost)
+feedRouter.delete('/:postId/share', unsharePost)
+feedRouter.get('/:postId/reactions', validateRequest({ query: ReactionsQuerySchema }), getPostReactions)
 
 pollsRouter.use(requireAuth, resolveUniversity)
 pollsRouter.post('/:pollId/vote', validate(PollVoteSchema), votePoll)

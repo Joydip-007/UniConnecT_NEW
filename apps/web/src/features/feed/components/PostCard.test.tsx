@@ -21,6 +21,12 @@ function makePost(content: string): FeedPost {
     myReaction: null,
     reactionCounts: { like: 0, love: 0, care: 0, haha: 0, wow: 0, sad: 0, angry: 0 },
     commentCount: 0,
+    shareCount: 0,
+    reactionCountsHidden: false,
+    commentsDisabled: false,
+    sharesDisabled: false,
+    originalPost: null,
+    myShare: null,
     createdAt: new Date().toISOString(),
     author: {
       id: 'u1',

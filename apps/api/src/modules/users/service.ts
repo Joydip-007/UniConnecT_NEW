@@ -605,7 +605,7 @@ export class UsersService {
     const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     const d90 = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
 
-    const [views7, views30, views90, reactions, comments] = await Promise.all([
+    const [views7, views30, views90, reactions, comments, shares] = await Promise.all([
       db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d7).count<CountRow[]>('*'),
       db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d30).count<CountRow[]>('*'),
       db('profile_views').where('viewed_id', userId).andWhere('profile_views.university_id', universityId).andWhere('viewed_at', '>=', d90).count<CountRow[]>('*'),
@@ -617,6 +617,7 @@ export class UsersService {
         .andWhere('posts.university_id', universityId)
         .count<CountRow[]>('*'),
       db('comments').join('posts', 'posts.id', 'comments.post_id').where('posts.author_id', userId).andWhere('posts.university_id', universityId).count<CountRow[]>('*'),
+      db('posts').where('author_id', userId).andWhere('university_id', universityId).whereNull('archived_at').sum<{ sum: string | null }[]>({ sum: 'share_count' }),
     ])
 
     return {
@@ -628,7 +629,8 @@ export class UsersService {
       postReach: {
         reactions: Number(reactions[0].count) || 0,
         comments: Number(comments[0].count) || 0,
-        total: (Number(reactions[0].count) || 0) + (Number(comments[0].count) || 0),
+        shares: Number(shares[0]?.sum) || 0,
+        total: (Number(reactions[0].count) || 0) + (Number(comments[0].count) || 0) + (Number(shares[0]?.sum) || 0),
       },
     }
   }

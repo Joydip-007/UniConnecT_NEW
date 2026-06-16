@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { Paperclip, X } from 'lucide-react'
 import {
   isAllowedAttachment,
@@ -11,6 +11,10 @@ import { usePresignedUpload } from '@/hooks/usePresignedUpload'
 
 const ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,image/*'
 
+export interface AttachmentPickerHandle {
+  open: () => void
+}
+
 interface Props {
   /** Staged, freshly-uploaded attachments to be submitted with the form. */
   value: AttachmentInput[]
@@ -22,11 +26,13 @@ interface Props {
   /** Bubbles uploading state so the parent can disable submit while files are in flight. */
   onUploadingChange?: (uploading: boolean) => void
   disabled?: boolean
+  /** When true, hides the trigger button — parent controls opening via forwarded ref. */
+  hideButton?: boolean
 }
 
 /** File attachment picker: validates type/size, uploads via the presign flow, and stages
  *  files as `AttachmentInput[]`. Reused by the news/event/job/post composers. */
-export function AttachmentPicker({
+export const AttachmentPicker = forwardRef<AttachmentPickerHandle, Props>(function AttachmentPicker({
   value,
   onChange,
   existing = [],
@@ -34,11 +40,16 @@ export function AttachmentPicker({
   onRemovedIdsChange,
   onUploadingChange,
   disabled,
-}: Props) {
+  hideButton = false,
+}, ref) {
   const inputRef = useRef<HTMLInputElement>(null)
   const { upload } = usePresignedUpload('attachments')
   const [busy, setBusy] = useState(0)
   const [error, setError] = useState<string | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    open: () => inputRef.current?.click(),
+  }))
 
   const keptExisting = existing.filter((a) => !removedIds.includes(a.id))
   const total = keptExisting.length + value.length
@@ -109,33 +120,35 @@ export function AttachmentPicker({
       )}
 
       <input ref={inputRef} type="file" accept={ACCEPT} multiple style={{ display: 'none' }} onChange={handleFiles} />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={disabled || busy > 0 || total >= MAX_ATTACHMENTS_PER_ENTITY}
-        className="interactive-surface"
-        style={{
-          alignSelf: 'flex-start',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '7px 12px',
-          background: 'var(--surface-raised)',
-          border: '0.5px dashed var(--border-hover)',
-          borderRadius: 'var(--r-pill)',
-          color: 'var(--text-secondary)',
-          fontSize: 13,
-          cursor: 'pointer',
-        }}
-      >
-        <Paperclip size={13} strokeWidth={1.5} />
-        {busy > 0 ? 'Uploading…' : total === 0 ? 'Add attachments' : `Add more (${MAX_ATTACHMENTS_PER_ENTITY - total} left)`}
-      </button>
+      {!hideButton && (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={disabled || busy > 0 || total >= MAX_ATTACHMENTS_PER_ENTITY}
+          className="interactive-surface"
+          style={{
+            alignSelf: 'flex-start',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '7px 12px',
+            background: 'var(--surface-raised)',
+            border: '0.5px dashed var(--border-hover)',
+            borderRadius: 'var(--r-pill)',
+            color: 'var(--text-secondary)',
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          <Paperclip size={13} strokeWidth={1.5} />
+          {busy > 0 ? 'Uploading…' : total === 0 ? 'Add attachments' : `Add more (${MAX_ATTACHMENTS_PER_ENTITY - total} left)`}
+        </button>
+      )}
 
       {error && <p style={{ margin: 0, fontSize: 12, color: 'var(--uc-red-l, var(--text-tertiary))' }}>{error}</p>}
     </div>
   )
-}
+})
 
 function Chip({ label, onRemove }: { label: string; onRemove?: () => void }) {
   return (
