@@ -53,6 +53,7 @@ export function AttachmentList({ attachments }: { attachments?: ContentAttachmen
 }
 
 function FileCard({ attachment }: { attachment: ContentAttachment }) {
+  const [downloadAnimationKey, setDownloadAnimationKey] = useState(0)
   const { icon: Icon, color, bg } = getFileStyle(attachment.mimeType)
 
   return (
@@ -61,6 +62,7 @@ function FileCard({ attachment }: { attachment: ContentAttachment }) {
       target="_blank"
       rel="noopener noreferrer"
       download
+      onClick={() => setDownloadAnimationKey((key) => key + 1)}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -126,7 +128,7 @@ function FileCard({ attachment }: { attachment: ContentAttachment }) {
           alignItems: 'center',
         }}
       >
-        <AnimatedIcon animationData={downloadCloudAnimation} size={18} />
+        <AnimatedIcon animationData={downloadCloudAnimation} size={18} playKey={downloadAnimationKey} />
       </div>
     </a>
   )

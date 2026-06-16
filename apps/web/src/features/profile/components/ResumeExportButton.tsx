@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { PublicUserProfile, ProfileExperience, ProfileEducation } from '@uniconnect/shared'
 import { getUserExperience, getUserEducation } from '@/lib/api/users'
@@ -143,6 +144,7 @@ function buildResumeHtml(
 }
 
 export function ResumeExportButton({ user }: Props) {
+  const [downloadAnimationKey, setDownloadAnimationKey] = useState(0)
   const { data: experience = [] } = useQuery<ProfileExperience[]>({
     queryKey: ['profile', 'experience', user.id],
     queryFn: () => getUserExperience(user.id),
@@ -154,6 +156,7 @@ export function ResumeExportButton({ user }: Props) {
   })
 
   function handleExport() {
+    setDownloadAnimationKey((key) => key + 1)
     const html = buildResumeHtml(user, experience, education)
     const win = window.open('', '_blank')
     if (!win) return
@@ -170,7 +173,7 @@ export function ResumeExportButton({ user }: Props) {
       onClick={handleExport}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
     >
-      <AnimatedIcon animationData={downloadCloudAnimation} size={18} />
+      <AnimatedIcon animationData={downloadCloudAnimation} size={18} playKey={downloadAnimationKey} />
       Export resume
     </GhostBtn>
   )

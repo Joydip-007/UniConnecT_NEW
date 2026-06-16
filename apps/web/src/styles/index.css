@@ -71,6 +71,23 @@ select:focus-visible {
   animation: spin 0.7s linear infinite;
 }
 
+/* ── Lottie icons ────────────────────────────────────────────────── */
+.animated-icon {
+  color: inherit;
+}
+
+.animated-icon-current-color svg [fill]:not([fill='none']) {
+  fill: currentColor !important;
+}
+
+.animated-icon-current-color svg :is(path, circle, ellipse, rect, polygon, polyline):not([stroke]) {
+  fill: currentColor !important;
+}
+
+.animated-icon-current-color svg [stroke]:not([stroke='none']) {
+  stroke: currentColor !important;
+}
+
 /* ── Typing dots ──────────────────────────────────────────────────── */
 @keyframes typing-dot-bounce {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
