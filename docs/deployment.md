@@ -234,6 +234,90 @@ VITE_CLOUDFRONT_DOMAIN=dxxx.cloudfront.net
 
 ---
 
+## Sticker Pack Setup
+
+Animated stickers in chat and comments are served from your S3/R2 media bucket — no third-party sticker API required.
+
+### Bucket structure
+
+```
+<AWS_S3_BUCKET>/
+  stickers/
+    manifest.json
+    <pack-id>/
+      <sticker-name>.json   ← Lottie JSON files
+```
+
+### 1. Create `stickers/manifest.json`
+
+Upload a JSON array describing your packs. Each pack lists the filenames of its stickers:
+
+```json
+[
+  {
+    "id": "reactions",
+    "name": "Reactions",
+    "thumbnail": "thumbs-up.json",
+    "stickers": ["thumbs-up.json", "heart.json", "laugh.json"]
+  },
+  {
+    "id": "fun",
+    "name": "Fun",
+    "stickers": ["party.json", "wave.json"]
+  }
+]
+```
+
+- `thumbnail` is optional — falls back to the first sticker in the pack.
+- `stickers` lists filenames relative to the pack folder (e.g. `stickers/reactions/thumbs-up.json`).
+
+### 2. Upload Lottie JSON files
+
+Download free Lottie animations from [lottiefiles.com](https://lottiefiles.com): open any animation → **Download** → **Lottie JSON**. Upload each file to `stickers/<pack-id>/<filename>.json` in your bucket.
+
+```bash
+# Example using AWS CLI
+aws s3 cp thumbs-up.json s3://$AWS_S3_BUCKET/stickers/reactions/thumbs-up.json
+aws s3 cp manifest.json  s3://$AWS_S3_BUCKET/stickers/manifest.json
+```
+
+### 3. Set the environment variable
+
+#### Local (`apps/web/.env`)
+
+```bash
+VITE_STICKER_BUCKET_URL=https://<cloudfront-domain-or-public-bucket-url>
+```
+
+#### Vercel (production / preview)
+
+Add `VITE_STICKER_BUCKET_URL` in the Vercel dashboard under **Project → Settings → Environment Variables**. Set the value to your CloudFront distribution URL (e.g. `https://dxxx.cloudfront.net`).
+
+> The variable must be prefixed `VITE_` to be visible in the browser bundle.
+
+### 4. Set bucket / CloudFront CORS
+
+Ensure `stickers/*` is publicly readable. If serving via CloudFront, add a CORS policy on the S3 bucket that allows `GET` from your app domain:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://uniconnect.app", "https://staging.uniconnect.app"],
+    "AllowedMethods": ["GET"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+### How it works
+
+- `StickerDrawer` fetches `$VITE_STICKER_BUCKET_URL/stickers/manifest.json` once per session (TanStack Query, stale after 1 hour).
+- Individual Lottie JSONs are fetched on demand — thumbnails load immediately, tile previews load on hover, and selected stickers play in the chat bubble via `lottie-react`.
+- If `VITE_STICKER_BUCKET_URL` is not set, the drawer shows a "Set VITE_STICKER_BUCKET_URL to enable stickers" placeholder and no network requests are made.
+
+---
+
 ## Database Migrations in Production
 
 Migrations run as a one-off ECS task before the new API version is promoted. The task definition `uniconnect-migrate` shares the same image and environment as the API but overrides the command to `node dist/db/migrate.js`.
