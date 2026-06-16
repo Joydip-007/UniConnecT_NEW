@@ -79,8 +79,10 @@ export function SearchPanel({ query, onClose }: Props) {
   const panelStyle: React.CSSProperties = {
     position: 'fixed',
     top: 66,
-    left: '50%',
-    transform: 'translateX(-50%)',
+    left: 0,
+    right: 0,
+    marginLeft: 'auto',
+    marginRight: 'auto',
     width: 500,
     maxHeight: 520,
     background: 'var(--surface-card)',
