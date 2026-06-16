@@ -171,7 +171,7 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
           type="text"
           value={rawQuery}
           onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder={`Search ${activeMedia}…`}
+          placeholder="Search KLIPY"
           style={{
             flex: 1,
             background: 'none',
@@ -223,17 +223,29 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
         )}
       </div>
 
-      {/* KLIPY attribution (required by terms) */}
+      {/* KLIPY attribution — required by API terms */}
       <div
         style={{
           padding: '4px 8px',
           borderTop: '0.5px solid var(--border-subtle)',
           display: 'flex',
-          justifyContent: 'flex-end',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Powered by KLIPY</span>
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>Powered by</span>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 500,
+            color: 'var(--text-secondary)',
+            letterSpacing: '0.08em',
+          }}
+        >
+          KLIPY
+        </span>
       </div>
     </div>
   )
@@ -275,10 +287,31 @@ function StickerTile({ item, onSelect }: { item: KlipyItem; onSelect: (item: Kli
 
 export function StickerMessage({ url }: { url: string }) {
   return (
-    <img
-      src={url}
-      alt="sticker"
-      style={{ width: 160, height: 160, objectFit: 'contain', display: 'block' }}
-    />
+    <div style={{ position: 'relative', width: 160, height: 160, display: 'inline-block' }}>
+      <img
+        src={url}
+        alt="sticker"
+        style={{ width: 160, height: 160, objectFit: 'contain', display: 'block' }}
+      />
+      {/* KLIPY watermark — bottom-left, semi-transparent white, per attribution guidelines */}
+      <span
+        style={{
+          position: 'absolute',
+          bottom: 6,
+          left: 6,
+          fontSize: 9,
+          fontWeight: 500,
+          letterSpacing: '0.1em',
+          color: 'rgba(255,255,255,0.85)',
+          background: 'rgba(0,0,0,0.28)',
+          padding: '1px 5px',
+          borderRadius: 3,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        KLIPY
+      </span>
+    </div>
   )
 }
