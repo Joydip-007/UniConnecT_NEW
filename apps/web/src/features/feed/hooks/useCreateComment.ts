@@ -8,6 +8,7 @@ import type { AttachmentInput } from '@uniconnect/shared'
 export interface CreateCommentInput {
   content: string
   parent_id?: string | null
+  media_urls?: string[]
   attachments?: AttachmentInput[]
 }
 

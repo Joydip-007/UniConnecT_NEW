@@ -15,7 +15,7 @@ const StickerDrawer = lazy(() =>
 interface MessageInputProps {
   convId: string
   /** Called when the user selects a sticker — parent sends it as a sticker message */
-  onSendSticker?: (lottieUrl: string) => void
+  onSendSticker?: (url: string) => void
 }
 
 export function MessageInput({ convId, onSendSticker }: MessageInputProps) {

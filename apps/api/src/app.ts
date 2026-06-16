@@ -24,6 +24,7 @@ import { presenceRouter } from './modules/presence'
 import { pushRouter } from './modules/push'
 import { searchRouter } from './modules/search'
 import { exploreRouter } from './modules/explore'
+import { klipyRouter } from './modules/klipy'
 import { uploadRouter } from './modules/upload'
 import { usersRouter } from './modules/users'
 import { errorHandler } from './middleware/error-handler'
@@ -97,6 +98,7 @@ export function createApp() {
   app.use('/api/v1/moderation', moderationRouter)
   app.use('/api/v1/search', searchRouter)
   app.use('/api/v1/explore', exploreRouter)
+  app.use('/api/v1/klipy', klipyRouter)
   app.use('/api/v1', campusRouter)
 
   // Global error handler. Keep this mounted last.

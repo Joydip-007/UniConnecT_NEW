@@ -74,10 +74,17 @@ export const ReactionSchema = z.object({
   message: 'reaction_type is required',
 })
 
-export const CreateCommentSchema = z.object({
-  content: z.string().trim().min(1),
-  parent_id: z.string().uuid().nullable().optional(),
-})
+export const CreateCommentSchema = z
+  .object({
+    content: z.string().trim().optional().default(''),
+    parent_id: z.string().uuid().nullable().optional(),
+    media_urls: z.array(z.string().url()).default([]),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.content && val.media_urls.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Comment must have text or media', path: ['content'] })
+    }
+  })
 
 export const PollVoteSchema = z.object({
   poll_option_id: z.string().uuid().optional(),
@@ -99,6 +106,7 @@ export type CreatePostInput = z.infer<typeof CreatePostSchema>
 export type UpdatePostInput = z.infer<typeof UpdatePostSchema>
 export type ReactionInput = z.infer<typeof ReactionSchema>
 export type CreateCommentInput = z.infer<typeof CreateCommentSchema>
+
 export type PollVoteInput = z.infer<typeof PollVoteSchema>
 export type SharePostInput = z.infer<typeof SharePostSchema>
 export type ReactionsQuery = z.infer<typeof ReactionsQuerySchema>

@@ -1,137 +1,191 @@
-import React, { lazy, Suspense, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Loader2 } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
+import { Loader2, Search } from 'lucide-react'
+import { api } from '@/lib/axios'
+import type { KlipyItem, KlipyListResponse, KlipyMedia } from '@uniconnect/shared'
 
-const LottiePlayer = lazy(() =>
-  import('lottie-react').then((m) => ({ default: m.default })),
-)
+// ── API helpers ───────────────────────────────────────────────────────────────
 
-// ── Manifest types ────────────────────────────────────────────────────────────
-
-interface StickerPack {
-  id: string
-  name: string
-  /** Optional thumbnail shown in the pack strip — falls back to first sticker */
-  thumbnail?: string
-  stickers: string[]  // filenames relative to the pack folder, e.g. "thumbs-up.json"
+async function fetchTrending(media: KlipyMedia, page: number): Promise<KlipyListResponse> {
+  const res = await api.get<{ data: KlipyListResponse }>(`/klipy/${media}/trending`, {
+    params: { page, per_page: 24 },
+  })
+  return res.data.data
 }
 
-// ── Fetch helpers ─────────────────────────────────────────────────────────────
-
-const BASE = (import.meta.env.VITE_STICKER_BUCKET_URL as string | undefined)?.replace(/\/$/, '') ?? ''
-
-function packUrl(packId: string, filename: string) {
-  return `${BASE}/stickers/${packId}/${filename}`
+async function fetchSearch(media: KlipyMedia, q: string, page: number): Promise<KlipyListResponse> {
+  const res = await api.get<{ data: KlipyListResponse }>(`/klipy/${media}/search`, {
+    params: { q, page, per_page: 24 },
+  })
+  return res.data.data
 }
 
-function manifestUrl() {
-  return `${BASE}/stickers/manifest.json`
+async function postShare(media: KlipyMedia, slug: string): Promise<void> {
+  await api.post(`/klipy/${media}/share/${slug}`)
 }
 
-async function fetchManifest(): Promise<StickerPack[]> {
-  if (!BASE) return []
-  const res = await fetch(manifestUrl())
-  if (!res.ok) return []
-  return res.json()
+// ── Hooks ─────────────────────────────────────────────────────────────────────
+
+function useKlipyTrending(media: KlipyMedia) {
+  return useInfiniteQuery({
+    queryKey: ['klipy', media, 'trending'],
+    queryFn: ({ pageParam = 1 }) => fetchTrending(media, pageParam as number),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.hasNext ? last.page + 1 : undefined),
+    staleTime: 1000 * 60 * 5,
+  })
 }
 
-async function fetchLottieJson(url: string): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    return res.json()
-  } catch {
-    return null
-  }
+function useKlipySearch(media: KlipyMedia, q: string) {
+  return useInfiniteQuery({
+    queryKey: ['klipy', media, 'search', q],
+    queryFn: ({ pageParam = 1 }) => fetchSearch(media, q, pageParam as number),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.hasNext ? last.page + 1 : undefined),
+    enabled: q.length > 0,
+    staleTime: 1000 * 60 * 2,
+  })
+}
+
+function useKlipyShare() {
+  return useMutation({
+    mutationFn: ({ media, slug }: { media: KlipyMedia; slug: string }) => postShare(media, slug),
+  })
 }
 
 // ── StickerDrawer ─────────────────────────────────────────────────────────────
 
 interface StickerDrawerProps {
-  onSelect: (lottieUrl: string) => void
+  onSelect: (url: string) => void
   onClose: () => void
 }
 
+const TABS: { label: string; media: KlipyMedia }[] = [
+  { label: 'Stickers', media: 'stickers' },
+  { label: 'GIFs', media: 'gifs' },
+]
+
 export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
-  const [activePack, setActivePack] = useState<string | null>(null)
+  const [activeMedia, setActiveMedia] = useState<KlipyMedia>('stickers')
+  const [rawQuery, setRawQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-  const { data: packs = [], isLoading } = useQuery({
-    queryKey: ['stickers', 'manifest'],
-    queryFn: fetchManifest,
-    staleTime: 1000 * 60 * 60,
-  })
+  const shareMutation = useKlipyShare()
 
-  const currentPack = packs.find((p) => p.id === (activePack ?? packs[0]?.id))
+  const searching = debouncedQuery.length > 0
+  const trendingQuery = useKlipyTrending(activeMedia)
+  const searchQuery = useKlipySearch(activeMedia, debouncedQuery)
+
+  const activeQuery = searching ? searchQuery : trendingQuery
+  const items: KlipyItem[] = (activeQuery.data?.pages ?? []).flatMap((p) => p.items)
+
+  function handleQueryChange(val: string) {
+    setRawQuery(val)
+    if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    debounceTimer.current = setTimeout(() => setDebouncedQuery(val.trim()), 300)
+  }
+
+  function handleTabChange(media: KlipyMedia) {
+    setActiveMedia(media)
+    setRawQuery('')
+    setDebouncedQuery('')
+  }
+
+  const handleSelect = useCallback(
+    (item: KlipyItem) => {
+      shareMutation.mutate({ media: activeMedia, slug: item.slug })
+      onSelect(item.url)
+      onClose()
+    },
+    [activeMedia, shareMutation, onSelect, onClose],
+  )
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const el = e.currentTarget
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 80 && activeQuery.hasNextPage && !activeQuery.isFetchingNextPage) {
+        activeQuery.fetchNextPage()
+      }
+    },
+    [activeQuery],
+  )
 
   return (
     <div
       style={{
         width: 320,
-        maxHeight: 380,
+        maxHeight: 400,
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
       }}
     >
-      {/* Pack strip */}
-      {packs.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 4,
-            padding: '6px 8px',
-            borderBottom: '0.5px solid var(--border-default)',
-            overflowX: 'auto',
-            flexShrink: 0,
-          }}
-        >
-          {packs.map((pack) => {
-            const isActive = (activePack ?? packs[0]?.id) === pack.id
-            const thumbUrl = pack.thumbnail
-              ? packUrl(pack.id, pack.thumbnail)
-              : pack.stickers[0]
-                ? packUrl(pack.id, pack.stickers[0])
-                : null
-            return (
-              <button
-                key={pack.id}
-                type="button"
-                onClick={() => setActivePack(pack.id)}
-                title={pack.name}
-                style={{
-                  flexShrink: 0,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 'var(--r-md)',
-                  border: isActive
-                    ? '1.5px solid var(--uc-indigo)'
-                    : '0.5px solid var(--border-subtle)',
-                  background: 'var(--surface-raised)',
-                  cursor: 'pointer',
-                  padding: 2,
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {thumbUrl ? (
-                  <StickerThumb url={thumbUrl} />
-                ) : (
-                  <span style={{ fontSize: 18 }}>🎭</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Sticker grid */}
+      {/* Tabs */}
       <div
+        style={{
+          display: 'flex',
+          borderBottom: '0.5px solid var(--border-default)',
+          flexShrink: 0,
+        }}
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.media}
+            type="button"
+            onClick={() => handleTabChange(tab.media)}
+            style={{
+              flex: 1,
+              padding: '8px 0',
+              background: 'none',
+              border: 'none',
+              borderBottom: activeMedia === tab.media ? '2px solid var(--uc-orange)' : '2px solid transparent',
+              color: activeMedia === tab.media ? 'var(--uc-orange)' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div
+        style={{
+          padding: '6px 8px',
+          borderBottom: '0.5px solid var(--border-subtle)',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <Search size={14} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        <input
+          type="text"
+          value={rawQuery}
+          onChange={(e) => handleQueryChange(e.target.value)}
+          placeholder={`Search ${activeMedia}…`}
+          style={{
+            flex: 1,
+            background: 'none',
+            border: 'none',
+            outline: 'none',
+            fontSize: 13,
+            color: 'var(--text-primary)',
+          }}
+        />
+      </div>
+
+      {/* Grid */}
+      <div
+        onScroll={handleScroll}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -142,73 +196,57 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
           alignContent: 'start',
         }}
       >
-        {isLoading ? (
+        {activeQuery.isLoading ? (
           <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: 24 }}>
             <Loader2 size={20} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
           </div>
-        ) : !BASE ? (
+        ) : activeQuery.isError ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
-            Set VITE_STICKER_BUCKET_URL to enable stickers
+            Stickers aren't available right now
           </div>
-        ) : packs.length === 0 ? (
+        ) : items.length === 0 ? (
           <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
-            No stickers yet — upload Lottie JSONs to your bucket
+            No results
           </div>
         ) : (
-          currentPack?.stickers.map((filename) => {
-            const url = packUrl(currentPack.id, filename)
-            return (
-              <StickerTile
-                key={url}
-                url={url}
-                onSelect={() => { onSelect(url); onClose() }}
-              />
-            )
-          })
+          <>
+            {items.map((item) => (
+              <StickerTile key={item.id} item={item} onSelect={handleSelect} />
+            ))}
+            {activeQuery.isFetchingNextPage && (
+              <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: 8 }}>
+                <Loader2 size={16} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </>
         )}
+      </div>
+
+      {/* KLIPY attribution (required by terms) */}
+      <div
+        style={{
+          padding: '4px 8px',
+          borderTop: '0.5px solid var(--border-subtle)',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Powered by KLIPY</span>
       </div>
     </div>
   )
 }
 
-// ── StickerThumb — static preview shown in the pack strip ────────────────────
+// ── StickerTile ───────────────────────────────────────────────────────────────
 
-function StickerThumb({ url }: { url: string }) {
-  const [data, setData] = useState<Record<string, unknown> | null>(null)
-
-  React.useEffect(() => {
-    fetchLottieJson(url).then(setData)
-  }, [url])
-
-  if (!data) return <span style={{ fontSize: 16 }}>🎭</span>
-
-  return (
-    <Suspense fallback={<span style={{ fontSize: 16 }}>🎭</span>}>
-      <LottiePlayer animationData={data} loop={false} autoplay={false} style={{ width: 30, height: 30 }} />
-    </Suspense>
-  )
-}
-
-// ── StickerTile — grid cell, plays on hover ──────────────────────────────────
-
-function StickerTile({ url, onSelect }: { url: string; onSelect: () => void }) {
-  const [hovered, setHovered] = useState(false)
-  const [data, setData] = useState<Record<string, unknown> | null>(null)
-
-  async function handleHover() {
-    setHovered(true)
-    if (!data) {
-      const json = await fetchLottieJson(url)
-      if (json) setData(json)
-    }
-  }
-
+function StickerTile({ item, onSelect }: { item: KlipyItem; onSelect: (item: KlipyItem) => void }) {
   return (
     <button
       type="button"
-      onClick={onSelect}
-      onMouseEnter={handleHover}
-      onMouseLeave={() => setHovered(false)}
+      onClick={() => onSelect(item)}
+      title={item.title}
       style={{
         width: '100%',
         aspectRatio: '1',
@@ -216,68 +254,31 @@ function StickerTile({ url, onSelect }: { url: string; onSelect: () => void }) {
         border: '0.5px solid var(--border-subtle)',
         borderRadius: 'var(--r-md)',
         cursor: 'pointer',
+        overflow: 'hidden',
+        padding: 4,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        overflow: 'hidden',
-        padding: 4,
-        transition: 'border-color 150ms',
       }}
     >
-      {hovered && data ? (
-        <Suspense fallback={<div style={{ width: 72, height: 72 }} />}>
-          <LottiePlayer animationData={data} loop autoplay style={{ width: 72, height: 72 }} />
-        </Suspense>
-      ) : (
-        <StaticStickerPreview url={url} />
-      )}
+      <img
+        src={item.previewUrl}
+        alt={item.title}
+        loading="lazy"
+        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+      />
     </button>
   )
 }
 
-function StaticStickerPreview({ url }: { url: string }) {
-  const [data, setData] = useState<Record<string, unknown> | null>(null)
+// ── StickerMessage ────────────────────────────────────────────────────────────
 
-  React.useEffect(() => {
-    fetchLottieJson(url).then(setData)
-  }, [url])
-
-  if (!data) {
-    return (
-      <div style={{
-        width: 72,
-        height: 72,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--text-tertiary)',
-      }}>
-        <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-      </div>
-    )
-  }
-
+export function StickerMessage({ url }: { url: string }) {
   return (
-    <Suspense fallback={<div style={{ width: 72, height: 72 }} />}>
-      <LottiePlayer animationData={data} loop={false} autoplay={false} style={{ width: 72, height: 72 }} />
-    </Suspense>
-  )
-}
-
-// ── StickerMessage — renders a sticker in the chat bubble ────────────────────
-
-export function StickerMessage({ lottieUrl }: { lottieUrl: string }) {
-  const [data, setData] = React.useState<Record<string, unknown> | null>(null)
-
-  React.useEffect(() => {
-    fetchLottieJson(lottieUrl).then(setData)
-  }, [lottieUrl])
-
-  if (!data) return <div style={{ width: 160, height: 160 }} />
-
-  return (
-    <Suspense fallback={<div style={{ width: 160, height: 160 }} />}>
-      <LottiePlayer animationData={data} loop autoplay style={{ width: 160, height: 160 }} />
-    </Suspense>
+    <img
+      src={url}
+      alt="sticker"
+      style={{ width: 160, height: 160, objectFit: 'contain', display: 'block' }}
+    />
   )
 }

@@ -159,6 +159,13 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
               {preprocessHashtags(comment.content)}
             </ReactMarkdown>
           </div>
+          {comment.mediaUrls && comment.mediaUrls.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+              {comment.mediaUrls.map((url) => (
+                <img key={url} src={url} alt="" style={{ maxWidth: 160, maxHeight: 160, borderRadius: 'var(--r-md)', objectFit: 'contain' }} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Action row */}
@@ -637,9 +644,9 @@ export function CommentDrawer({ post, onClose }: Props) {
                     <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 60 }}>
                       <Suspense fallback={null}>
                         <StickerDrawer
-                          onSelect={() => {
+                          onSelect={(url) => {
                             createComment.mutate(
-                              { content: ' ', parent_id: replyTo?.parentId ?? null },
+                              { content: '', media_urls: [url], parent_id: replyTo?.parentId ?? null },
                               { onSuccess: () => { setReplyTo(null); setShowStickers(false) } },
                             )
                           }}

@@ -37,6 +37,10 @@ export function tooManyRequests(message = 'Too many requests', code = 'RATE_LIMI
   return new AppError(message, 429, code)
 }
 
+export function serviceUnavailable(message = 'Service unavailable', code = 'SERVICE_UNAVAILABLE') {
+  return new AppError(message, 503, code)
+}
+
 export function validationError(issues: z.ZodIssue[]) {
   return new AppError(JSON.stringify(issues), 422, 'VALIDATION_ERROR')
 }

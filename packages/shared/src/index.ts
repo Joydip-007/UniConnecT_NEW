@@ -13,6 +13,7 @@ export interface ApiError {
 export type { User, UserProfile, UserRole, ThemePreference } from './types/user'
 export type { FeedPost, FeedPoll, FeedPollOption, FeedPostAuthor, FeedComment } from './types/feed'
 export type { ShareEntityType, PostLifecycleState, PostLifecycleFields } from './types/share'
+export type { KlipyMedia, KlipyItem, KlipyListResponse } from './types/klipy'
 export { getPostLifecycleState } from './types/share'
 export * from './schemas/auth'
 export * from './schemas/users'

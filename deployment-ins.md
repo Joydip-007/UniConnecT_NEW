@@ -127,6 +127,38 @@ R2 → `uniconnect-uploads` → **Settings** → **CORS policy** → paste:
 - Fully S3-compatible — uses the existing `@aws-sdk/client-s3` in the codebase
 - Optional: add a custom domain (`files.uniconnectt.me`) in R2 → Settings → Custom domain
 
+### KLIPY (stickers & GIFs)
+
+Animated stickers and GIFs in chat and comments are served via [KLIPY](https://klipy.com) — a hosted API. The API key stays server-side; the frontend never talks to KLIPY directly.
+
+**1. Create an app + API key**
+
+Go to [partner.klipy.com](https://partner.klipy.com), create an app, and copy the API key. Testing mode is capped at 100 req/hour. Request production access via the Partner Panel once the app is live.
+
+**2. Set the API env var on Azure App Service** (API-side only — key must stay server-side):
+
+| Variable | Value |
+|---|---|
+| `KLIPY_API_KEY` | your KLIPY app API key |
+| `KLIPY_CONTENT_FILTER` | `high` (default; options: `off`, `low`, `medium`, `high`) |
+
+Set these in Azure Portal → App Service → **Settings → Environment variables**, or via the Azure CLI:
+
+```bash
+az webapp config appsettings set \
+  --name uniconnect-api --resource-group uniconnect-rg \
+  --settings KLIPY_API_KEY=<key> KLIPY_CONTENT_FILTER=high
+```
+
+**3. Attribution** — KLIPY's terms require branding in the picker UI. The "Powered by KLIPY" badge is built into `StickerDrawer` — no extra configuration needed.
+
+**How it works:**
+
+- `StickerDrawer` proxies all requests through `GET /api/v1/klipy/:media/trending|search` (`:media` = `stickers` or `gifs`).
+- The proxy injects the API key, `content_filter`, and per-user `customer_id` on every upstream call.
+- When an item is sent, the frontend fires `POST /api/v1/klipy/:media/share/:slug` (fire-and-forget engagement signal).
+- If `KLIPY_API_KEY` is unset, the proxy returns 503 and the picker shows "Stickers aren't available right now".
+
 ---
 
 ## 4 — Azure App Service (Backend API)

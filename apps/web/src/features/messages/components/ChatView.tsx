@@ -285,7 +285,7 @@ function MessageBubble({
 
         {/* Bubble body */}
         {message.contentType === 'sticker' && message.stickerUrl ? (
-          <StickerMessage lottieUrl={message.stickerUrl} />
+          <StickerMessage url={message.stickerUrl} />
         ) : (
           <div
             style={{

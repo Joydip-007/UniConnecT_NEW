@@ -84,6 +84,7 @@ interface CommentRow {
   author_id: string
   parent_id: string | null
   content: string
+  media_urls: string[] | null
   created_at: Date
   updated_at: Date
   author_full_name: string
@@ -655,6 +656,7 @@ export class FeedService {
           author_id: context.userId,
           parent_id: input.parent_id ?? null,
           content: input.content,
+          media_urls: input.media_urls ?? [],
         })
         .returning<{ id: string }[]>('id')
 
@@ -1196,6 +1198,7 @@ function commentSelectQuery(knex: Knex, userId: string) {
       'comments.author_id',
       'comments.parent_id',
       'comments.content',
+      'comments.media_urls',
       'comments.created_at',
       'comments.updated_at',
       'profiles.full_name as author_full_name',
@@ -1383,6 +1386,7 @@ function toComment(row: CommentRow) {
       avatarUrl: row.author_avatar_url,
       headline: row.author_headline,
     },
+    mediaUrls: row.media_urls ?? [],
     reactionCounts: normalizeReactionCounts(row.reaction_counts),
     ownReaction: row.own_reaction,
   }

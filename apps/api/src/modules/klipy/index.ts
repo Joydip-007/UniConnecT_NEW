@@ -1,0 +1,1 @@
+export { klipyRouter } from './router'

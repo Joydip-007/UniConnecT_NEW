@@ -69,6 +69,7 @@ export interface FeedComment {
   authorId: string
   parentId: string | null
   content: string
+  mediaUrls: string[]
   createdAt: string
   updatedAt: string
   author: {

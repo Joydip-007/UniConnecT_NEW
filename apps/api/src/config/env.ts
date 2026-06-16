@@ -32,6 +32,9 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:noreply@uniconnectt.me'),
+  // KLIPY stickers + GIFs proxy
+  KLIPY_API_KEY: z.string().optional(),
+  KLIPY_CONTENT_FILTER: z.enum(['off', 'low', 'medium', 'high']).default('high'),
 })
 
 const parsedEnv = envSchema.parse(process.env)
