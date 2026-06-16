@@ -3,6 +3,8 @@ import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { Loader2, Search } from 'lucide-react'
 import { api } from '@/lib/axios'
 import type { KlipyItem, KlipyListResponse, KlipyMedia } from '@uniconnect/shared'
+import poweredByKlipy from '@/assets/klipy/powered-by-klipy-white.svg'
+import klipyWatermark from '@/assets/klipy/klipy-watermark-light.svg'
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
@@ -224,26 +226,19 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
       {/* KLIPY attribution — required by API terms */}
       <div
         style={{
-          padding: '4px 8px',
+          padding: '5px 8px',
           borderTop: '0.5px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 4,
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 10, color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>Powered by</span>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 500,
-            color: 'var(--text-secondary)',
-            letterSpacing: '0.08em',
-          }}
-        >
-          KLIPY
-        </span>
+        <img
+          src={poweredByKlipy}
+          alt="Powered by KLIPY"
+          style={{ height: 14, width: 'auto', opacity: 0.6 }}
+        />
       </div>
     </div>
   )
@@ -290,25 +285,20 @@ export function StickerMessage({ url }: { url: string }) {
         alt="sticker"
         style={{ width: 160, height: 160, objectFit: 'contain', display: 'block' }}
       />
-      {/* KLIPY watermark — bottom-left, semi-transparent white, per attribution guidelines */}
-      <span
+      {/* KLIPY watermark — bottom-left, official light asset, per attribution guidelines */}
+      <img
+        src={klipyWatermark}
+        alt="KLIPY"
         style={{
           position: 'absolute',
           bottom: 6,
           left: 6,
-          fontSize: 9,
-          fontWeight: 500,
-          letterSpacing: '0.1em',
-          color: 'rgba(255,255,255,0.85)',
-          background: 'rgba(0,0,0,0.28)',
-          padding: '1px 5px',
-          borderRadius: 3,
+          height: 18,
+          width: 'auto',
           pointerEvents: 'none',
           userSelect: 'none',
         }}
-      >
-        KLIPY
-      </span>
+      />
     </div>
   )
 }
