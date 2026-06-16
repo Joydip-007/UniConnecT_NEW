@@ -102,6 +102,82 @@ Browser
 | Email | Resend API | Transactional email for OTPs and notifications |
 | Deployment | Azure App Service (API) + Vercel (Web) | GitHub Actions CI/CD |
 
+### Why Zustand for client state?
+
+Think of Zustand as a lightweight global variables store. The alternative most people know is Redux — but Redux requires you to write "actions", "reducers", and "dispatchers" just to change one value. Zustand lets you do the same thing in a few lines with a normal function call. We use it only for state that truly needs to be global and does not come from the server:
+
+| Store | What it holds | Why global |
+|---|---|---|
+| `authStore` | Access token, current user object | Every page needs to know who is logged in |
+| `notificationsStore` | Unread notification count | TopNav badge needs this without a fetch |
+| `themeStore` | `'dark'` or `'light'` | Every component reads the current theme |
+| `socketStore` | The Socket.io client instance | Shared across all hooks/components |
+| `presenceStore` | Map of `userId → online/offline` | Updated by socket events, read by avatars |
+| `pendingMsgsStore` | Messages buffered while offline | Flushed to server on reconnect |
+
+```
+// Example: authStore (apps/web/src/stores/authStore.ts)
+const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  accessToken: null,
+  setAuth: (user, token) => {
+    set({ user, accessToken: token });
+    localStorage.setItem('uc:has_session', '1');  // sentinel only — not the token
+  },
+  clearAuth: () => {
+    set({ user: null, accessToken: null });
+    localStorage.removeItem('uc:has_session');
+  },
+}));
+
+// Access token lives in JS heap only — NOT in localStorage.
+// localStorage holds only a boolean sentinel so the axios interceptor
+// knows whether to attempt a silent refresh on 401.
+// If the tab is closed, the token is gone — the refresh cookie handles recovery.
+```
+
+**What Zustand does NOT hold:** any data fetched from the API (posts, jobs, profiles, etc.). That is TanStack Query's job.
+
+---
+
+### Why TanStack Query for server state?
+
+TanStack Query (formerly React Query) solves the hardest part of frontend development: keeping data from the server in sync with what the user sees, without writing the same loading/error/cache/refetch boilerplate in every component.
+
+Without it, every component that needs server data has to manually handle: loading spinner, error state, caching so two components don't double-fetch, re-fetching when data goes stale, and updating the UI after a mutation. With TanStack Query, all of this is automatic.
+
+| Problem | Without TanStack Query | With TanStack Query |
+|---|---|---|
+| Two components need the same data | Two separate API calls | Single cached fetch, both components share it |
+| User edits their profile | Manually re-fetch + update state everywhere | `invalidateQueries(['profile'])` — done |
+| Slow API → user sees stale data | Blank screen until response | Shows cached data immediately, refetches in background |
+| Network drops mid-page | Manually handle retry logic | Automatic exponential backoff retry |
+| Optimistic update (like before save) | Complex manual state juggling | Built-in `onMutate` / `onError` rollback |
+
+```
+// Example: fetching posts (apps/web/src/features/feed/hooks/usePosts.ts)
+const { data, isLoading, error } = useQuery({
+  queryKey: ['feed', 'posts', { type, page }],
+  queryFn: () => api.get('/feed/posts', { params: { type, page } }),
+  staleTime: 30_000,       // treat as fresh for 30 seconds — no re-fetch
+  gcTime: 5 * 60 * 1000,  // keep in cache for 5 minutes after component unmounts
+});
+
+// Example: creating a post mutation
+const { mutate } = useMutation({
+  mutationFn: (data) => api.post('/feed/posts', data),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['feed', 'posts'] });
+    // ^ automatically re-fetches every feed query → UI updates everywhere at once
+  },
+});
+
+// Rule enforced across the whole project:
+//   Server data  → useQuery / useMutation (TanStack Query)
+//   UI/auth/socket state → Zustand store
+//   NO useState for anything that comes from the API
+```
+
 ---
 
 ## 4. Five Contribution Areas
@@ -238,6 +314,74 @@ Account state decision tree on Register (auth/service.ts):
   race condition duplicate key                      → caught → 409 CONFLICT (no 500 leak)
 ```
 
+**How the database is handled for Auth (Joydip, leader must know):**
+
+The auth system touches several tables and keeps sensitive data out of the JWT. Here is exactly what lands in the database and why:
+
+```
+Tables involved in auth:
+  users           — stores hashed password (bcrypt, 12 rounds), is_verified, is_active,
+                    deactivated_at, role, username (unique per university)
+  user_sessions   — one row per active refresh token
+                    (token_hash, user_id, expires_at, user_agent, ip_address)
+  invitations     — invite tokens (token, email, role, used_at) — consumed on register
+  university_audit_log — admin actions recorded here (role changes, disables, etc.)
+
+Key design decisions:
+  • Refresh tokens are 256-bit random strings, hashed (SHA-256) before storage —
+    the database never holds the raw token, only the hash.
+    If the DB is breached, stolen hashes cannot be replayed.
+  • Passwords: bcrypt with cost factor 12 → ~250ms per compare — slow enough
+    to make brute-force impractical, fast enough for UX.
+  • JWT payload: only { userId, universityId, role } — no email, no name.
+    Minimises data exposure if a token is decoded client-side.
+  • OTPs are NOT stored in Postgres — they live in Redis with a TTL key:
+      otp:{purpose}:{userId}  → { code: '384920', attempts: 0 }
+    Expiry is automatic via Redis TTL (10 min). No cleanup job needed.
+  • is_deleted = soft delete: the row stays (referenced by posts, comments, etc.)
+    but auth rejects login. The ghost-user logic in Scenario 2 hard-deletes ONLY
+    unverified soft-deleted rows (no content to preserve).
+
+Migration trail for auth:
+  001 — create universities
+  002 — create users (core columns + bcrypt hash)
+  003 — create user_sessions (refresh token store)
+  004 — create invitations
+  067 — add users.deactivated_at (self-deactivation signal)
+  072 — add users.username (per-university unique vanity slug)
+
+ACTUAL QUERIES (file: apps/api/src/modules/auth/service.ts):
+
+  -- Ghost-row detection + hard-delete (line 121–129):
+  const existingUser = await db<UserRow>('users')
+    .whereRaw('lower(email) = ?', [email.toLowerCase()])
+    .first()
+  // if is_deleted AND !is_verified → hard delete so re-registration works:
+  await db('users').where({ id: existingUser.id }).delete()
+
+  -- New user insert inside a transaction (line 146–157):
+  user = await db.transaction(async (trx) => {
+    const [createdUser] = await trx<UserRow>('users')
+      .insert({
+        university_id: universityId,
+        username,
+        email,
+        password_hash: passwordHash,   // bcrypt hash, NOT raw password
+        role,
+        is_verified: false,
+      })
+      .returning('*')
+    await trx('profiles').insert({ user_id: createdUser.id, full_name: name, ... })
+  })
+
+  -- Mark account verified after OTP (line 217):
+  await db('users').where({ id: user.id }).update({ is_verified: true })
+
+  -- Self-deactivated reactivation on next login (line 276):
+  await db('users').where({ id: user.id })
+    .update({ is_active: true, deactivated_at: null })
+```
+
 **How moderation & rate limiting work (leader-owned safety layer):**
 
 Moderation gives every user three self-protection tools. If someone is harassing you, you can **block** them — they vanish from your feed and can no longer message you (and you vanish from theirs too). If you just want to stop seeing someone's posts without them knowing, you **mute** them — it's one-sided and silent. If someone posts harmful content, you **report** it — that report goes into the admin panel for a faculty/admin to review and act on.
@@ -333,6 +477,79 @@ Resources: file links stored in group_resources (view tracking via group_resourc
 Study sessions: group_study_sessions table + RSVP via group_session_rsvps
 ```
 
+**How the database is handled for Feed Ranking (Saem must know):**
+
+The feed ranking system avoids expensive real-time computation by pre-writing scores into the database. Here is the full database picture:
+
+```
+posts table columns relevant to ranking (migration 071):
+  reaction_count   INTEGER NOT NULL DEFAULT 0
+  comment_count    INTEGER NOT NULL DEFAULT 0
+  hot_score        DOUBLE PRECISION NOT NULL DEFAULT 0
+  publish_at       TIMESTAMPTZ          -- scheduled publish
+  archived_at      TIMESTAMPTZ          -- auto-archive deadline
+  is_published     BOOLEAN DEFAULT false
+
+Index that makes "Top" feed fast:
+  CREATE INDEX idx_posts_hot_score ON posts(university_id, hot_score DESC)
+  → ORDER BY hot_score DESC becomes an index scan, not a table scan
+
+How counters stay accurate:
+  → React write (reaction INSERT) runs in a Knex transaction:
+      BEGIN;
+        INSERT INTO reactions (post_id, user_id, type) VALUES (?, ?, ?);
+        UPDATE posts SET reaction_count = reaction_count + 1 WHERE id = ?;
+      COMMIT;
+  → Same for comments (comment_count).
+  → Because it's in the same transaction, count is always consistent —
+    no separate sync job needed, no race condition.
+
+Feed-ranking Bull cron (every hour):
+  → SELECT id, reaction_count, comment_count, created_at FROM posts
+    WHERE is_published = true AND university_id = ?
+  → Computes hot_score in JS: (reactions + comments*2) / ((ageHours+2)^1.8)
+  → Batch UPDATE posts SET hot_score = ? WHERE id = ?
+  → Only updates rows whose score changed by >0.01 (avoids unnecessary I/O)
+
+Post lifecycle Bull cron (every minute):
+  → SELECT id FROM posts WHERE publish_at <= now() AND is_published = false
+  → UPDATE posts SET is_published = true WHERE id IN (...)
+  → Separate query for archiving: archived_at <= now() AND is_published = true
+
+Why store hot_score in DB instead of computing at query time?
+  Computing power(age, 1.8) for every row in every feed request would be
+  O(n) CPU work per request. Storing it means feed load = pure index seek.
+
+ACTUAL QUERIES (file: apps/api/src/modules/feed/service.ts):
+
+  -- Reaction upsert (idempotent — same user reacting again just changes type)
+  -- (line 531–544):
+  await db('reactions')
+    .insert({
+      user_id: context.userId,
+      target_id: postId,
+      target_type: 'post',
+      reaction_type: reactionType,
+    })
+    .onConflict(['user_id', 'target_id', 'target_type'])
+    .merge({ reaction_type: reactionType, created_at: db.fn.now() })
+
+  await syncPostCounters(postId)
+  // syncPostCounters does:
+  //   UPDATE posts
+  //   SET reaction_count = (SELECT COUNT(*) FROM reactions WHERE target_id = postId AND target_type='post'),
+  //       comment_count  = (SELECT COUNT(*) FROM comments WHERE post_id = postId)
+  //   WHERE id = postId
+
+  -- Notify post author (deduplicated — only fires ONCE per actor per post)
+  -- (line 558–561):
+  const [{ count }] = await db('notifications')
+    .where({ user_id: post.author_id, type: 'post_reaction',
+             actor_id: context.userId, reference_id: postId })
+    .count<{ count: string }[]>({ count: '*' })
+  if (Number(count) > 0) return   // skip — already notified
+```
+
 ---
 
 ### Contributor 3 — Md. Mahfujur Rahman Himel Akon: Jobs, Events, Connections, Profile & Onboarding
@@ -388,6 +605,51 @@ Flow:
 Connection status on profiles:
   getUser() checks connections table → returns 'none' | 'pending_sent' |
   'pending_received' | 'connected' so the ConnectButton renders correctly
+
+ACTUAL QUERIES (file: apps/api/src/modules/connections/service.ts):
+
+  -- Check for any existing relationship in EITHER direction before inserting
+  -- (line 68–76):
+  const existing = await db('connections')
+    .where(function () {
+      this.where({ requester_id: currentUserId, addressee_id: targetUserId })
+          .orWhere({ requester_id: targetUserId, addressee_id: currentUserId })
+    })
+    .andWhere('university_id', universityId)
+    .first<ConnectionRow>()
+  // This prevents duplicate rows — one query covers both directions.
+
+  -- Insert a new pending connection (line 82–90):
+  const [connection] = await db('connections')
+    .insert({
+      requester_id: currentUserId,
+      addressee_id: targetUserId,
+      university_id: universityId,
+      note: note ?? null,
+      status: 'pending',
+    })
+    .returning('*')
+
+  -- Accept: flip status to 'accepted' (line 150–153):
+  const [updated] = await db('connections')
+    .where({ id: connectionId })
+    .update({ status: 'accepted', updated_at: db.fn.now() })
+    .returning('*')
+
+  -- Connection status CASE expression injected into every getUser() query
+  -- (file: apps/api/src/modules/search/service.ts, line 176–185):
+  db.raw(`
+    CASE
+      WHEN c.id IS NULL THEN 'none'
+      WHEN c.status = 'accepted' THEN 'connected'
+      WHEN c.requester_id = ? AND c.status = 'pending' THEN 'pending_sent'
+      WHEN c.addressee_id = ? AND c.status = 'pending' THEN 'pending_received'
+      ELSE 'none'
+    END AS "connectionStatus"`,
+    [requesterId, requesterId]
+  )
+  -- This raw CASE runs inside a LEFT JOIN on the connections table so
+  -- the ConnectButton gets the right label in a single query, no extra round-trip.
 ```
 
 **How mentorship points economy works:**
@@ -479,6 +741,44 @@ Mentorship conversations:
     → INSERT into conversations(type='mentorship', mentorship_request_id=X)
     → Both parties auto-joined to conversation
     → mentorship_requests.conversation_id FK set
+
+ACTUAL QUERIES (file: apps/api/src/modules/messages/service.ts):
+
+  -- Privacy gate: DMs only allowed between connected users (line 279–292):
+  const connection = await db('connections')
+    .where(function () {
+      this.where({ requester_id: context.userId, addressee_id: other.userId })
+          .orWhere({ requester_id: other.userId, addressee_id: context.userId })
+    })
+    .andWhere('status', 'accepted')
+    .andWhere('university_id', context.universityId)
+    .first()
+  if (!connection) throw forbidden('You must be connected to message this person')
+
+  -- Save message to DB inside a transaction, then broadcast via Socket.io
+  -- (line 303–317):
+  const messageId = await db.transaction(async (trx) => {
+    const [message] = await trx('messages')
+      .insert({
+        conversation_id: convId,
+        sender_id: context.userId,
+        content: input.content ?? null,
+        media_urls: input.media_urls,
+        reply_to_id: input.reply_to_id ?? null,
+        type: input.type,
+      })
+      .returning<{ id: string }[]>('id')
+    return message.id
+  })
+  // After the transaction commits:
+  io.to(`conv:${convId}`).emit('message:new', mapped)      // real-time delivery
+  io.to(`conv:${convId}`).emit('conversation:updated', ...) // update last-message preview
+
+  -- Edit a message (line 342):
+  await db('messages')
+    .where({ id: msgId, conversation_id: convId })
+    .update({ content: input.content })
+  // Only the sender can edit — checked before this line (sender_id === context.userId)
 ```
 
 **How presence works:**
@@ -560,6 +860,45 @@ Search query:
 
 Multi-entity search returns typed results:
   { users: [...], posts: [...], jobs: [...], events: [...], groups: [...] }
+
+ACTUAL QUERIES (file: apps/api/src/modules/search/service.ts):
+
+  -- People search base query with privacy + moderation filters (line 130–149):
+  const baseQuery = db('profiles as p')
+    .join('users as u', 'u.id', 'p.user_id')
+    .where('u.university_id', universityId)
+    .where('u.is_active', true)
+    // Exclude users who opted out of discovery (privacy JSONB check):
+    .whereNotExists(function () {
+      this.select(db.raw('1'))
+        .from('user_settings')
+        .whereRaw('user_settings.user_id = u.id')
+        .whereRaw("user_settings.privacy_preferences->>'discoverable' = 'false'")
+    })
+    // Exclude blocked users in either direction:
+    .whereNotExists(function () {
+      this.select(db.raw('1'))
+        .from('user_blocks as ub')
+        .whereRaw(
+          '(ub.blocker_id = ? AND ub.blocked_id = u.id) OR ' +
+          '(ub.blocked_id = ? AND ub.blocker_id = u.id)',
+          [requesterId, requesterId],
+        )
+    })
+
+  -- Apply full-text search when query string present (line 151):
+  if (filters.q) applyTextSearch(baseQuery, 'p.search_vector', 'p.full_name', filters.q)
+  // applyTextSearch adds:
+  //   WHERE p.search_vector @@ plainto_tsquery('english', ?)
+  //   OR p.full_name ILIKE '%?%'   (pg_trgm fuzzy fallback)
+
+  -- Order by ts_rank relevance score (line 191):
+  if (filters.q) {
+    applyTextOrder(rowsQuery, 'p.search_vector', 'p.full_name', filters.q, 'p.full_name ASC')
+  }
+  // applyTextOrder adds:
+  //   ORDER BY ts_rank(p.search_vector, plainto_tsquery('english', ?)) DESC
+  // Without a query, falls back to alphabetical: ORDER BY p.full_name ASC
 ```
 
 **How content-sync works:**

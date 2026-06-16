@@ -366,7 +366,12 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
           </div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar initials={getInitials(name)} color={avatarColor(user.id)} size={40} />
+          <Avatar
+            src={user.profile.avatarUrl}
+            initials={getInitials(name)}
+            color={avatarColor(user.id)}
+            size={40}
+          />
           <button
             className="interactive-surface"
             onClick={() => {
@@ -440,7 +445,12 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                 gap: 12,
               }}
             >
-              <Avatar initials={getInitials(name)} color={avatarColor(user.id)} size={40} />
+              <Avatar
+                src={user.profile.avatarUrl}
+                initials={getInitials(name)}
+                color={avatarColor(user.id)}
+                size={40}
+              />
               <div style={{ flex: 1 }}>
                 <p
                   style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}
