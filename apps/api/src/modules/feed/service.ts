@@ -8,7 +8,7 @@ import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuer
 import { notificationsService } from '../notifications/service'
 import { moderationService } from '../moderation/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
-import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
+import { addUserAttachments, getAttachmentsFor, getAttachmentsForMany, removeAttachments } from '../content-sync/attachments'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
 type ReactionType = 'like' | 'love' | 'insightful' | 'celebrate'
@@ -174,8 +174,13 @@ export class FeedService {
       .limit(query.limit)
       .offset(offset)) as PostRow[]
 
-    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId)
-    return { items: posts, total, page: query.page, limit: query.limit }
+    const postIds = rows.map((row) => row.id)
+    const [posts, attachmentsMap] = await Promise.all([
+      this.attachPolls(rows.map(toPost), postIds, userId),
+      getAttachmentsForMany('post', postIds),
+    ])
+    const withAttachments = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
+    return { items: withAttachments, total, page: query.page, limit: query.limit }
   }
 
   async listGroupPosts(universityId: string, userId: string, groupId: string, query: PaginationQuery) {
@@ -193,8 +198,13 @@ export class FeedService {
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as PostRow[]
 
-    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId)
-    return { items: posts, total, page: query.page, limit: query.limit }
+    const postIds = rows.map((row) => row.id)
+    const [posts, attachmentsMap] = await Promise.all([
+      this.attachPolls(rows.map(toPost), postIds, userId),
+      getAttachmentsForMany('post', postIds),
+    ])
+    const withAttachments = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
+    return { items: withAttachments, total, page: query.page, limit: query.limit }
   }
 
   async createPost(context: AuthContext, input: CreatePostInput) {
@@ -444,8 +454,13 @@ export class FeedService {
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as PostRow[]
 
-    const posts = await this.attachPolls(rows.map(toPost), rows.map((row) => row.id), userId)
-    return { items: posts, total, page: query.page, limit: query.limit }
+    const postIds = rows.map((row) => row.id)
+    const [posts, attachmentsMap] = await Promise.all([
+      this.attachPolls(rows.map(toPost), postIds, userId),
+      getAttachmentsForMany('post', postIds),
+    ])
+    const withAttachments = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
+    return { items: withAttachments, total, page: query.page, limit: query.limit }
   }
 
   async deletePost(context: AuthContext, postId: string) {

@@ -20,6 +20,36 @@ interface AttachmentRow {
   download_status: 'pending' | 'done' | 'failed'
 }
 
+/** Batch-fetches attachments for multiple entities of the same type. Returns a map of entityId → attachments. */
+export async function getAttachmentsForMany(
+  entityType: AttachmentEntityType,
+  entityIds: string[],
+): Promise<Map<string, ContentAttachment[]>> {
+  if (entityIds.length === 0) return new Map()
+  const rows = (await db('content_attachments')
+    .where({ entity_type: entityType, download_status: 'done' })
+    .whereIn('entity_id', entityIds)
+    .orderBy('created_at', 'asc')
+    .select(
+      'id',
+      'entity_type',
+      'entity_id',
+      'file_url',
+      'file_name',
+      'mime_type',
+      'size_bytes',
+      'download_status',
+    )) as AttachmentRow[]
+
+  const map = new Map<string, ContentAttachment[]>()
+  for (const row of rows) {
+    const list = map.get(row.entity_id) ?? []
+    list.push(toContentAttachment(row))
+    map.set(row.entity_id, list)
+  }
+  return map
+}
+
 /** Returns successfully-downloaded attachments for an entity, for detail views. */
 export async function getAttachmentsFor(
   entityType: AttachmentEntityType,

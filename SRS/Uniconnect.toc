@@ -8,11 +8,11 @@
 \contentsline {section}{\numberline {5}Non-Functional Requirements}{7}{section.5}%
 \contentsline {section}{\numberline {6}Pages / Modules}{8}{section.6}%
 \contentsline {section}{\numberline {7}Tools and Technologies}{10}{section.7}%
-\contentsline {section}{\numberline {8}System Design / Wireframe}{11}{section.8}%
-\contentsline {section}{\numberline {9}Usability / Design Considerations}{21}{section.9}%
-\contentsline {subsection}{\numberline {9.1}Navigation Flow}{21}{subsection.9.1}%
-\contentsline {subsection}{\numberline {9.2}Responsiveness Across Devices}{22}{subsection.9.2}%
-\contentsline {subsection}{\numberline {9.3}Color Consistency and Design System}{22}{subsection.9.3}%
-\contentsline {subsection}{\numberline {9.4}Accessibility Considerations}{22}{subsection.9.4}%
-\contentsline {subsection}{\numberline {9.5}Key User-Friendly Design Decisions}{23}{subsection.9.5}%
-\contentsline {section}{\numberline {10}Conclusion}{23}{section.10}%
+\contentsline {section}{\numberline {8}System Design / Wireframe}{12}{section.8}%
+\contentsline {section}{\numberline {9}Usability / Design Considerations}{19}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Navigation Flow}{19}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Responsiveness Across Devices}{20}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Color Consistency and Design System}{20}{subsection.9.3}%
+\contentsline {subsection}{\numberline {9.4}Accessibility Considerations}{20}{subsection.9.4}%
+\contentsline {subsection}{\numberline {9.5}Key User-Friendly Design Decisions}{21}{subsection.9.5}%
+\contentsline {section}{\numberline {10}Conclusion}{22}{section.10}%
