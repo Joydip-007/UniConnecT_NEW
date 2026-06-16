@@ -23,7 +23,6 @@ import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { ReactionBtn } from '@/components/Button'
 import { PostReactionTrigger } from '@/components/emoji/ReactionBar'
-import { ReactionChip } from '@/components/emoji/ReactionChip'
 import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
 import { REACTION_MAP, totalReactions, topReactions } from '@/components/emoji/reactionConfig'
 import type { ReactionKey } from '@/components/emoji/reactionConfig'
@@ -320,7 +319,6 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const user = useAuthStore((s) => s.user)
   const [myReaction, setMyReaction] = useState<ReactionKey | null>(post.myReaction as ReactionKey | null)
   const [reactionCounts, setReactionCounts] = useState(post.reactionCounts)
-  const [animateKey, setAnimateKey] = useState<string | null>(null)
   const [localSaved, setLocalSaved] = useState(post.isSaved)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
@@ -354,7 +352,6 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
     if (!removing) nextCounts[key] = (nextCounts[key] ?? 0) + 1
     setMyReaction(removing ? null : key)
     setReactionCounts(nextCounts)
-    if (!removing) setAnimateKey(`${key}-${Date.now()}`)
     reactionMutation.mutate(
       { current: prev, next: key },
       {
@@ -594,13 +591,6 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
                 </svg>
               )}
               {myReaction ? REACTION_MAP.get(myReaction)?.label : 'Like'}
-              {!post.reactionCountsHidden && totalReactions(reactionCounts) > 0 && (
-                <ReactionChip
-                  counts={reactionCounts}
-                  myReaction={myReaction}
-                  animateKey={animateKey}
-                />
-              )}
             </ReactionBtn>
           </PostReactionTrigger>
 
