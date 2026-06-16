@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
+import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import type { FeedPost } from '@uniconnect/shared'
+import { PATHS } from '@/router/paths'
 
 type EmbeddedPost = NonNullable<FeedPost['originalPost']>
 
@@ -40,6 +42,7 @@ export function OriginalPostEmbed({ post }: Props) {
   const TRUNCATE_LIMIT = 200
   const shouldTruncate = post.content.length > TRUNCATE_LIMIT && !expanded
   const displayContent = shouldTruncate ? post.content.slice(0, TRUNCATE_LIMIT) + '…' : post.content
+  const authorProfileUrl = PATHS.PROFILE.replace(':id', post.author.id)
 
   return (
     <div
@@ -52,17 +55,22 @@ export function OriginalPostEmbed({ post }: Props) {
     >
       {/* Header */}
       <div style={{ padding: '10px 12px 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Avatar
-          src={post.author.profile.avatarUrl}
-          initials={getInitials(post.author.fullName)}
-          color={avatarColor(post.author.id)}
-          size={28}
-        />
+        <Link to={authorProfileUrl} style={{ flexShrink: 0, lineHeight: 0 }} aria-label={`View ${post.author.fullName}'s profile`}>
+          <Avatar
+            src={post.author.profile.avatarUrl}
+            initials={getInitials(post.author.fullName)}
+            color={avatarColor(post.author.id)}
+            size={28}
+          />
+        </Link>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+            <Link
+              to={authorProfileUrl}
+              style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
+            >
               {post.author.fullName}
-            </span>
+            </Link>
             <Badge variant={roleBadgeVariant(post.author.role)}>
               {post.author.role.charAt(0).toUpperCase() + post.author.role.slice(1)}
             </Badge>

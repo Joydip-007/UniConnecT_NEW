@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X } from 'lucide-react'
+import { Check, MessageCircle, X } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
@@ -10,6 +11,8 @@ import type { ReactionKey } from '@/components/emoji/reactionConfig'
 import { usePostReactions } from '@/features/feed/hooks/usePostReactions'
 import { useAuthStore } from '@/stores/authStore'
 import { useConnectionAction } from '@/features/connections/hooks/useConnectionAction'
+import { api } from '@/lib/axios'
+import { PATHS } from '@/router/paths'
 
 type TabKey = 'all' | ReactionKey
 
@@ -19,10 +22,35 @@ interface Props {
   onClose: () => void
 }
 
-function UserRow({ userId, fullName, avatarUrl }: { userId: string; fullName: string; avatarUrl: string | null }) {
+function UserRow({
+  userId,
+  fullName,
+  avatarUrl,
+  connectionStatus,
+  connectionId,
+}: {
+  userId: string
+  fullName: string
+  avatarUrl: string | null
+  connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+  connectionId: string | null
+}) {
+  const navigate = useNavigate()
   const me = useAuthStore((s) => s.user)
-  const { send } = useConnectionAction(userId)
+  const { send, accept } = useConnectionAction(userId)
   const isMe = me?.id === userId
+  const profileUrl = PATHS.PROFILE.replace(':id', userId)
+
+  async function handleMessage() {
+    try {
+      const res = await api.post<{ data: { id: string } }>('/conversations', {
+        participantId: userId,
+      })
+      navigate(PATHS.CONVERSATION.replace(':id', res.data.data.id))
+    } catch {
+      navigate(PATHS.MESSAGES)
+    }
+  }
 
   return (
     <div
@@ -33,16 +61,54 @@ function UserRow({ userId, fullName, avatarUrl }: { userId: string; fullName: st
         padding: '8px 16px',
       }}
     >
-      <Avatar
-        src={avatarUrl}
-        initials={getInitials(fullName)}
-        color={avatarColor(userId)}
-        size={36}
-      />
-      <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <Link to={profileUrl} style={{ flexShrink: 0, lineHeight: 0 }} aria-label={`View ${fullName}'s profile`}>
+        <Avatar
+          src={avatarUrl}
+          initials={getInitials(fullName)}
+          color={avatarColor(userId)}
+          size={36}
+        />
+      </Link>
+      <Link
+        to={profileUrl}
+        style={{
+          flex: 1,
+          fontSize: 14,
+          fontWeight: 500,
+          color: 'var(--text-primary)',
+          minWidth: 0,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          textDecoration: 'none',
+        }}
+      >
         {fullName}
-      </span>
-      {!isMe && (
+      </Link>
+      {!isMe && connectionStatus === 'connected' && (
+        <button
+          type="button"
+          onClick={handleMessage}
+          title={`Message ${fullName}`}
+          aria-label={`Message ${fullName}`}
+          style={{
+            flexShrink: 0,
+            width: 34,
+            height: 34,
+            background: 'var(--surface-raised)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: '50%',
+            color: 'var(--uc-indigo-xl)',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MessageCircle size={16} strokeWidth={1.6} />
+        </button>
+      )}
+      {!isMe && connectionStatus === 'none' && (
         <button
           type="button"
           onClick={() => send.mutate(undefined)}
@@ -60,6 +126,45 @@ function UserRow({ userId, fullName, avatarUrl }: { userId: string; fullName: st
           }}
         >
           Connect
+        </button>
+      )}
+      {!isMe && connectionStatus === 'pending_sent' && (
+        <span
+          style={{
+            flexShrink: 0,
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-pill)',
+            padding: '5px 12px',
+            fontSize: 12,
+            color: 'var(--text-tertiary)',
+          }}
+        >
+          Pending
+        </span>
+      )}
+      {!isMe && connectionStatus === 'pending_received' && connectionId && (
+        <button
+          type="button"
+          onClick={() => accept.mutate(connectionId)}
+          disabled={accept.isPending}
+          title={`Accept ${fullName}'s request`}
+          aria-label={`Accept ${fullName}'s request`}
+          style={{
+            flexShrink: 0,
+            width: 34,
+            height: 34,
+            background: 'var(--uc-indigo)',
+            border: 'none',
+            borderRadius: '50%',
+            color: 'var(--uc-indigo-xl)',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: accept.isPending ? 0.6 : 1,
+          }}
+        >
+          <Check size={16} strokeWidth={1.7} />
         </button>
       )}
     </div>
@@ -105,7 +210,14 @@ function TabPanel({ postId, type }: { postId: string; type: TabKey }) {
   return (
     <div>
       {items.map((item) => (
-        <UserRow key={item.userId} userId={item.userId} fullName={item.fullName} avatarUrl={item.avatarUrl} />
+        <UserRow
+          key={item.userId}
+          userId={item.userId}
+          fullName={item.fullName}
+          avatarUrl={item.avatarUrl}
+          connectionStatus={item.connectionStatus}
+          connectionId={item.connectionId}
+        />
       ))}
       <div ref={sentinelRef} style={{ height: 1 }} />
       {isFetchingNextPage && (
@@ -139,19 +251,26 @@ export function ReactionsDialog({ postId, counts, onClose }: Props) {
         style={{ position: 'fixed', inset: 0, zIndex: 1099, background: 'var(--overlay-bg-soft)' }}
         onClick={onClose}
       />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 16,
+          pointerEvents: 'none',
+        }}
+      >
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 8 }}
         transition={{ type: 'tween', duration: 0.18, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
         style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 1100,
           width: 420,
-          maxWidth: 'calc(100vw - 32px)',
+          maxWidth: '100%',
           maxHeight: '80vh',
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-hover)',
@@ -159,6 +278,7 @@ export function ReactionsDialog({ postId, counts, onClose }: Props) {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          pointerEvents: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -234,6 +354,7 @@ export function ReactionsDialog({ postId, counts, onClose }: Props) {
           <TabPanel key={activeTab} postId={postId} type={activeTab} />
         </div>
       </motion.div>
+      </div>
     </AnimatePresence>,
     document.body,
   )

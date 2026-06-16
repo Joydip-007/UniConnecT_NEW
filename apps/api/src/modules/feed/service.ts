@@ -19,6 +19,11 @@ function extractHashtags(content: string): string[] {
   return [...new Set((content.match(/#[\w]+/gi) ?? []).map((t) => t.slice(1).toLowerCase()))].slice(0, 10)
 }
 
+function extractMentions(content: string): string[] {
+  const matches = [...content.matchAll(/\[@[^\]]+\]\(\/profile\/([0-9a-fA-F-]{36})\)/g)]
+  return Array.from(new Set(matches.map((m) => m[1]))).slice(0, 50)
+}
+
 interface AuthContext {
   userId: string
   universityId: string
@@ -311,6 +316,24 @@ export class FeedService {
       const io = getIo()
       io.to(`uni:${context.universityId}`).emit('post:created', post)
       io.to(`uni:${context.universityId}`).emit('feed:post:new', { post })
+
+      const mentions = extractMentions(input.content)
+      if (mentions.length > 0) {
+        const actorName = await notificationsService.getActorName(context.userId)
+        for (const mentionedUserId of mentions) {
+          if (mentionedUserId === context.userId) continue
+          notificationsService
+            .createNotification({
+              userId: mentionedUserId,
+              type: 'mention',
+              actorId: context.userId,
+              referenceId: postId,
+              referenceType: 'post',
+              content: `${actorName} mentioned you in a post`,
+            })
+            .catch((err: unknown) => logger.warn('Failed to create mention notification', { err }))
+        }
+      }
     }
     return post
   }
@@ -649,12 +672,32 @@ export class FeedService {
     io.to(`uni:${context.universityId}`).emit('post:comment', { postId, comment })
     io.to(`uni:${context.universityId}`).emit('feed:comment:new', { postId, comment })
 
+    const mentions = extractMentions(input.content)
+    const mentionedUserIds = new Set(mentions)
+
+    if (mentions.length > 0) {
+      const actorName = await notificationsService.getActorName(context.userId)
+      for (const mentionedUserId of mentions) {
+        if (mentionedUserId === context.userId) continue
+        notificationsService
+          .createNotification({
+            userId: mentionedUserId,
+            type: 'mention',
+            actorId: context.userId,
+            referenceId: postId,
+            referenceType: 'post',
+            content: `${actorName} mentioned you in a comment`,
+          })
+          .catch((err: unknown) => logger.warn('Failed to create mention notification', { err }))
+      }
+    }
+
     // Notify post author (fire-and-forget)
     const postForNotif = await db('posts')
       .select<{ author_id: string }>('author_id')
       .where({ id: postId })
       .first()
-    if (postForNotif && postForNotif.author_id !== context.userId) {
+    if (postForNotif && postForNotif.author_id !== context.userId && !mentionedUserIds.has(postForNotif.author_id)) {
       const actorName = await notificationsService.getActorName(context.userId)
       notificationsService
         .createNotification({
@@ -866,6 +909,25 @@ export class FeedService {
     const io = getIo()
     io.to(`uni:${context.universityId}`).emit(POST_LIFECYCLE_EVENTS.SHARED, { postId: rootId, sharePost })
     io.to(`uni:${context.universityId}`).emit('feed:post:new', { post: sharePost })
+
+    const mentions = extractMentions(input.caption ?? '')
+    if (mentions.length > 0) {
+      const actorName = await notificationsService.getActorName(context.userId)
+      for (const mentionedUserId of mentions) {
+        if (mentionedUserId === context.userId) continue
+        notificationsService
+          .createNotification({
+            userId: mentionedUserId,
+            type: 'mention',
+            actorId: context.userId,
+            referenceId: shareId,
+            referenceType: 'post',
+            content: `${actorName} mentioned you in a shared post`,
+          })
+          .catch((err: unknown) => logger.warn('Failed to create mention notification', { err }))
+      }
+    }
+
     return sharePost
   }
 
@@ -891,19 +953,45 @@ export class FeedService {
     return { unshared: true }
   }
 
-  async getPostReactions(universityId: string, postId: string, query: ReactionsQuery) {
+  async getPostReactions(universityId: string, requesterId: string, postId: string, query: ReactionsQuery) {
     await assertPostInUniversity(postId, universityId)
 
     let q = db('reactions')
       .join('users', 'users.id', 'reactions.user_id')
       .join('profiles', 'profiles.user_id', 'users.id')
+      .leftJoin('connections as c', function () {
+        this.on(function () {
+          this.on('c.requester_id', db.raw('?', [requesterId])).andOn('c.addressee_id', 'users.id')
+        }).orOn(function () {
+          this.on('c.addressee_id', db.raw('?', [requesterId])).andOn('c.requester_id', 'users.id')
+        })
+      })
       .where({ 'reactions.target_id': postId, 'reactions.target_type': 'post' })
-      .select<{ user_id: string; full_name: string; avatar_url: string | null; reaction_type: ReactionType; created_at: Date }[]>(
+      .select<{
+        user_id: string
+        full_name: string
+        avatar_url: string | null
+        reaction_type: ReactionType
+        created_at: Date
+        connection_id: string | null
+        connection_status: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+      }[]>(
         'reactions.user_id',
         'profiles.full_name',
         'profiles.avatar_url',
         'reactions.reaction_type',
         'reactions.created_at',
+        'c.id as connection_id',
+        db.raw(
+          `CASE
+            WHEN c.id IS NULL THEN 'none'
+            WHEN c.status = 'accepted' THEN 'connected'
+            WHEN c.requester_id = ? AND c.status = 'pending' THEN 'pending_sent'
+            WHEN c.addressee_id = ? AND c.status = 'pending' THEN 'pending_received'
+            ELSE 'none'
+          END AS connection_status`,
+          [requesterId, requesterId],
+        ),
       )
       .orderBy('reactions.created_at', 'desc')
       .limit(query.limit)
@@ -917,6 +1005,8 @@ export class FeedService {
       fullName: r.full_name,
       avatarUrl: r.avatar_url,
       reactionType: r.reaction_type,
+      connectionStatus: r.connection_status ?? 'none',
+      connectionId: r.connection_id ?? null,
     }))
     const nextCursor = rows.length === query.limit ? rows[rows.length - 1].created_at.toISOString() : null
     return { items, nextCursor }

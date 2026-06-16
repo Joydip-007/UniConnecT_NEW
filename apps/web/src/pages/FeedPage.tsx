@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { Calendar, FileText, Megaphone, Newspaper, PackageSearch, Rss } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Rss } from 'lucide-react'
 import type { FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { OnboardingChecklist } from '@/features/onboarding'
@@ -10,61 +9,22 @@ import { CreatePost } from '@/features/feed/components/CreatePost'
 import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
 import { ShortcutHelp } from '@/features/feed/components/ShortcutHelp'
-import { usePosts, type FeedFilter } from '@/features/feed/hooks/usePosts'
+import { usePosts } from '@/features/feed/hooks/usePosts'
 import { useFeedSocket } from '@/features/feed/hooks/useFeedSocket'
 import { useFeedShortcuts } from '@/features/feed/hooks/useFeedShortcuts'
 import { SkeletonPost } from '@/components/skeletons/SkeletonPost'
 import { EmptyState } from '@/components/EmptyState'
 
-const EMPTY_BY_FILTER: Record<FeedFilter, { icon: LucideIcon; title: string; description: string }> = {
-  all: {
-    icon: Rss,
-    title: 'Nothing here yet',
-    description: 'Be the first to post something — your campus is quiet right now.',
-  },
-  post: {
-    icon: FileText,
-    title: 'No posts yet',
-    description: 'When students or alumni share something, it lands here. Want to break the silence?',
-  },
-  news: {
-    icon: Newspaper,
-    title: 'No campus news right now',
-    description: 'Faculty announcements and pinned updates will appear here.',
-  },
-  event_promo: {
-    icon: Calendar,
-    title: 'No upcoming events shared',
-    description: 'Club or department events promoted in the feed will appear here.',
-  },
-  announcement: {
-    icon: Megaphone,
-    title: 'No announcements yet',
-    description: 'Official updates from faculty and admins land here.',
-  },
-  lost_found: {
-    icon: PackageSearch,
-    title: 'Nothing reported lost or found',
-    description: 'Items reported on the Lost & found board surface here too.',
-  },
+const EMPTY_FEED = {
+  icon: Rss,
+  title: 'Nothing here yet',
+  description: 'Be the first to post something — your campus is quiet right now.',
 }
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const TABS: { label: string; value: FeedFilter }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Posts', value: 'post' },
-  { label: 'News', value: 'news' },
-  { label: 'Events', value: 'event_promo' },
-]
 
 // ── FeedPage ──────────────────────────────────────────────────────────────────
 
 export default function FeedPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const rawFilter = searchParams.get('type') as FeedFilter | null
-  const filter: FeedFilter =
-    rawFilter !== null && TABS.some((t) => t.value === rawFilter) ? rawFilter : 'all'
   const sort: 'recent' | 'top' = searchParams.get('sort') === 'top' ? 'top' : 'recent'
 
   const universityId = useAuthStore((s) => s.user?.universityId)
@@ -75,7 +35,7 @@ export default function FeedPage() {
   const [editPost, setEditPost] = useState<FeedPost | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = usePosts(filter, sort)
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = usePosts('all', sort)
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -96,28 +56,12 @@ export default function FeedPage() {
 
   const openPost = posts.find((p) => p.id === openPostId) ?? null
 
-  function buildParams(nextFilter: FeedFilter, nextSort: 'recent' | 'top') {
-    const params: Record<string, string> = {}
-    if (nextFilter !== 'all') params.type = nextFilter
-    if (nextSort !== 'recent') params.sort = nextSort
-    return params
-  }
-
-  function setFilter(value: FeedFilter) {
-    setSearchParams(buildParams(value, sort), { replace: true })
-  }
-
   function setSort(value: 'recent' | 'top') {
-    setSearchParams(buildParams(filter, value), { replace: true })
+    setSearchParams(value === 'recent' ? {} : { sort: value }, { replace: true })
   }
 
   useFeedShortcuts({
     onCompose: () => window.dispatchEvent(new CustomEvent('uc:open-create-post', { detail: { instant: true } })),
-    onFilter: (index) => {
-      const tab = TABS[index]
-      if (tab) setFilter(tab.value)
-    },
-    filterCount: TABS.length,
     onToggleHelp: () => setHelpOpen((v) => !v),
     onCloseHelp: () => setHelpOpen(false),
     helpOpen,
@@ -128,48 +72,6 @@ export default function FeedPage() {
       <OnboardingChecklist />
 
       <CreatePost editPost={editPost} onDismissEdit={() => setEditPost(null)} />
-
-      {/* Filter tabs */}
-      <nav
-        role="tablist"
-        aria-label="Feed filter"
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '4px 8px',
-          display: 'flex',
-          gap: 2,
-        }}
-      >
-        {TABS.map(({ label, value }) => {
-          const active = filter === value
-          return (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setFilter(value)}
-              className="feed-filter-tab"
-              style={{
-                flex: 1,
-                padding: '7px 0',
-                fontSize: 13,
-                fontWeight: active ? 500 : 400,
-                borderRadius: 'var(--r-pill)',
-                border: 'none',
-                cursor: 'pointer',
-                background: active ? 'var(--uc-orange-bg)' : 'transparent',
-                color: active ? 'var(--uc-orange-l)' : 'var(--text-secondary)',
-                transition: 'background 150ms, color 150ms',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </nav>
 
       {/* Sort toggle */}
       <div
@@ -230,21 +132,11 @@ export default function FeedPage() {
 
       {/* Empty state */}
       {!isLoading && posts.length === 0 && (
-        (() => {
-          const empty = EMPTY_BY_FILTER[filter]
-          return (
-            <EmptyState
-              icon={empty.icon}
-              title={empty.title}
-              description={empty.description}
-              {...(filter !== 'all'
-                ? {
-                    action: { label: 'Show everything', onClick: () => setFilter('all') },
-                  }
-                : {})}
-            />
-          )
-        })()
+        <EmptyState
+          icon={EMPTY_FEED.icon}
+          title={EMPTY_FEED.title}
+          description={EMPTY_FEED.description}
+        />
       )}
 
       {/* Loading next page */}

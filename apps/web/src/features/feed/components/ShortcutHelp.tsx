@@ -19,7 +19,6 @@ const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
   { keys: ['j'], label: 'Next post' },
   { keys: ['k'], label: 'Previous post' },
   { keys: ['c'], label: 'Compose a post' },
-  { keys: ['1', '2', '3', '4'], label: 'Switch filter tab' },
   { keys: ['?'], label: 'Toggle this cheatsheet' },
   { keys: ['Esc'], label: 'Close cheatsheet' },
 ]

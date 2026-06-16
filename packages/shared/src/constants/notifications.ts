@@ -100,6 +100,7 @@ export const NOTIFICATION_CATEGORY_MAP: Record<string, NotificationCategory> = {
   // feed
   post_reaction: 'feed',
   post_comment: 'feed',
+  mention: 'feed',
   // groups
   group_join_request: 'groups',
   group_join_approved: 'groups',
@@ -129,7 +130,7 @@ export const NOTIFICATION_CATEGORY_META: Record<
   { label: string; description: string }
 > = {
   connections: { label: 'Connections', description: 'Connection requests and acceptances' },
-  feed: { label: 'Feed', description: 'Reactions and comments on your posts' },
+  feed: { label: 'Feed', description: 'Reactions, comments, and mentions on your posts' },
   groups: { label: 'Groups', description: 'Invites, join requests, sessions and pinned updates' },
   mentorship: { label: 'Mentorship', description: 'Mentorship requests, reminders and updates' },
   messages: { label: 'Messages', description: 'New direct and group messages' },

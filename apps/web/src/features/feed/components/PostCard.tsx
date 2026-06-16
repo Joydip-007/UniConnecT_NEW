@@ -41,6 +41,7 @@ import { OriginalPostEmbed } from './OriginalPostEmbed'
 import { ReactionsDialog } from './ReactionsDialog'
 import { SharePostModal } from './SharePostModal'
 import { api } from '@/lib/axios'
+import { PATHS } from '@/router/paths'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -389,6 +390,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const canEdit = user && (user.id === post.author.id || user.role === 'admin')
   const isAnnouncement = post.type === 'announcement' || post.isPinned
   const author = post.author
+  const authorProfileUrl = PATHS.PROFILE.replace(':id', author.id)
 
   return (
     <article
@@ -408,12 +410,17 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
       <div className="feed-post-inner" style={{ padding: '14px 16px 12px' }}>
         {/* Header */}
         <div className="feed-post-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-          <Avatar src={author.profile.avatarUrl} initials={getInitials(author.fullName)} color={avatarColor(author.id)} size={40} />
+          <Link to={authorProfileUrl} style={{ flexShrink: 0, lineHeight: 0 }} aria-label={`View ${author.fullName}'s profile`}>
+            <Avatar src={author.profile.avatarUrl} initials={getInitials(author.fullName)} color={avatarColor(author.id)} size={40} />
+          </Link>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+              <Link
+                to={authorProfileUrl}
+                style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
+              >
                 {author.fullName}
-              </span>
+              </Link>
               <Badge variant={roleBadgeVariant(author.role)}>{roleLabel(author.role)}</Badge>
               {author.profile.department && (
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
@@ -446,9 +453,12 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         {post.originalPost && (
           <p style={{ margin: '-4px 0 10px', fontSize: 12, color: 'var(--text-tertiary)' }}>
             shared{' '}
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+            <Link
+              to={PATHS.PROFILE.replace(':id', post.originalPost.author.id)}
+              style={{ color: 'var(--text-secondary)', fontWeight: 500, textDecoration: 'none' }}
+            >
               {post.originalPost.author.fullName}
-            </span>
+            </Link>
             's post
           </p>
         )}

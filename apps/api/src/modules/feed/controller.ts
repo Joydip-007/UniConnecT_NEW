@@ -136,7 +136,7 @@ export const unsharePost = asyncHandler(async (req: Request, res: Response) => {
 
 export const getPostReactions = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  sendSuccess(res, await feedService.getPostReactions(context.universityId, getPostIdParam(req), req.query as unknown as ReactionsQuery))
+  sendSuccess(res, await feedService.getPostReactions(context.universityId, context.userId, getPostIdParam(req), req.query as unknown as ReactionsQuery))
 })
 
 function getAuthContext(req: Request) {

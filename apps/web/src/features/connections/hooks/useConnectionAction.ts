@@ -9,6 +9,7 @@ export function useConnectionAction(targetUserId: string) {
     qc.invalidateQueries({ queryKey: ['connections'] })
     qc.invalidateQueries({ queryKey: ['explore'] })
     qc.invalidateQueries({ queryKey: ['search'] })
+    qc.invalidateQueries({ queryKey: ['posts', 'reactions'] })
   }
 
   const send = useMutation({

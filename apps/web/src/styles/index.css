@@ -208,14 +208,6 @@ select:focus-visible {
   transform: scale(0.97);
 }
 
-.feed-filter-tab {
-  transition: transform 120ms var(--ease-out-strong), background 150ms ease, color 150ms ease;
-}
-
-.feed-filter-tab:active {
-  transform: scale(0.98);
-}
-
 .topnav-search-input {
   transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
@@ -412,10 +404,6 @@ select:focus-visible {
   .interactive-surface:hover:not(:disabled) {
     background: var(--surface-hover) !important;
     border-color: var(--border-hover) !important;
-  }
-  .feed-filter-tab:hover:not([aria-selected="true"]) {
-    background: var(--surface-raised) !important;
-    color: var(--text-primary) !important;
   }
   .topnav-search-input:hover {
     border-color: var(--border-hover) !important;

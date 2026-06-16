@@ -2,8 +2,6 @@ import { useEffect } from 'react'
 
 interface ShortcutHandlers {
   onCompose: () => void
-  onFilter: (index: number) => void
-  filterCount: number
   onToggleHelp: () => void
   onCloseHelp: () => void
   helpOpen: boolean
@@ -43,8 +41,6 @@ function focusPostByOffset(offset: 1 | -1) {
 
 export function useFeedShortcuts({
   onCompose,
-  onFilter,
-  filterCount,
   onToggleHelp,
   onCloseHelp,
   helpOpen,
@@ -78,21 +74,10 @@ export function useFeedShortcuts({
           e.preventDefault()
           onToggleHelp()
           return
-        case '1':
-        case '2':
-        case '3':
-        case '4': {
-          const idx = Number(e.key) - 1
-          if (idx < filterCount) {
-            e.preventDefault()
-            onFilter(idx)
-          }
-          return
-        }
       }
     }
 
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onCompose, onFilter, filterCount, onToggleHelp, onCloseHelp, helpOpen])
+  }, [onCompose, onToggleHelp, onCloseHelp, helpOpen])
 }

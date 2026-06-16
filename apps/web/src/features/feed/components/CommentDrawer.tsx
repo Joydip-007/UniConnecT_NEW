@@ -1,17 +1,24 @@
-import { lazy, Suspense, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { motion } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
+import rehypeSanitize from 'rehype-sanitize'
+import { Link } from 'react-router-dom'
 import { CornerDownRight, Paperclip, Smile, Sticker, Trash2, X } from 'lucide-react'
 import type { AttachmentInput, FeedComment, FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { AttachmentPicker, type AttachmentPickerHandle } from '@/components/AttachmentPicker'
+import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { preprocessHashtags } from '@/utils/preprocessHashtags'
 import { PostReactionTrigger } from '@/components/emoji/ReactionBar'
 import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
 import { REACTION_MAP } from '@/components/emoji/reactionConfig'
 import type { ReactionKey } from '@/components/emoji/reactionConfig'
 import { useEmojiInsert } from '@/hooks/useEmojiInsert'
+import { useSearchPeople } from '@/features/search'
+import type { UserSearchResult } from '@/features/search/types'
 import { useComments } from '@/features/feed/hooks/useComments'
 import { useCreateComment } from '@/features/feed/hooks/useCreateComment'
 import { useDeleteComment } from '@/features/feed/hooks/useDeleteComment'
@@ -24,13 +31,43 @@ const StickerDrawer = lazy(() =>
   import('@/components/emoji/StickerDrawer').then((m) => ({ default: m.StickerDrawer })),
 )
 
+const markdownComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+    if (href?.startsWith('/')) {
+      return (
+        <Link to={href} style={{ color: 'var(--uc-indigo-xl)', textDecoration: 'none', fontWeight: 500 }}>
+          {children}
+        </Link>
+      )
+    }
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--uc-indigo-xl)' }}>
+        {children}
+      </a>
+    )
+  },
+}
+
+function detectMention(value: string, caret: number) {
+  const beforeCaret = value.slice(0, caret)
+  const match = beforeCaret.match(/(^|\s)@([^\s@]{0,40})$/)
+  if (!match) return null
+  const query = match[2] ?? ''
+  return { query, start: caret - query.length - 1, end: caret }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 // ── CommentItem ───────────────────────────────────────────────────────────────
 
 interface CommentItemProps {
   comment: FeedComment
   postId: string
   isReply?: boolean
-  onReply: (parentId: string, authorName: string) => void
+  onReply: (parentId: string, authorName: string, authorId: string) => void
 }
 
 function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemProps) {
@@ -44,6 +81,7 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
   const [reactionCounts, setReactionCounts] = useState(comment.reactionCounts)
 
   const canDelete = user && (user.id === comment.authorId || user.role === 'admin')
+  const authorProfileUrl = PATHS.PROFILE.replace(':id', comment.authorId)
 
   function handleReactionSelect(key: ReactionKey) {
     const prev = myReaction
@@ -71,11 +109,14 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
 
   return (
     <div style={{ display: 'flex', gap: 8, marginLeft: isReply ? 40 : 0 }}>
-      <Avatar
-        initials={getInitials(comment.author.fullName)}
-        color={avatarColor(comment.authorId)}
-        size={32}
-      />
+      <Link to={authorProfileUrl} style={{ flexShrink: 0, lineHeight: 0 }} aria-label={`View ${comment.author.fullName}'s profile`}>
+        <Avatar
+          src={comment.author.avatarUrl}
+          initials={getInitials(comment.author.fullName)}
+          color={avatarColor(comment.authorId)}
+          size={32}
+        />
+      </Link>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -93,14 +134,17 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
               flexWrap: 'wrap',
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+            <Link
+              to={authorProfileUrl}
+              style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
+            >
               {comment.author.fullName}
-            </span>
+            </Link>
             <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
               {formatDistanceToNow(parseISO(comment.createdAt), { addSuffix: true })}
             </span>
           </div>
-          <p
+          <div
             style={{
               margin: 0,
               fontSize: 13,
@@ -111,8 +155,10 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
               wordBreak: 'break-word',
             }}
           >
-            {comment.content}
-          </p>
+            <ReactMarkdown rehypePlugins={[rehypeSanitize]} components={markdownComponents}>
+              {preprocessHashtags(comment.content)}
+            </ReactMarkdown>
+          </div>
         </div>
 
         {/* Action row */}
@@ -144,7 +190,7 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
           </PostReactionTrigger>
 
           {!isReply && (
-            <ActionBtn onClick={() => onReply(comment.id, comment.author.fullName)}>
+            <ActionBtn onClick={() => onReply(comment.id, comment.author.fullName, comment.authorId)}>
               <CornerDownRight size={11} strokeWidth={1.5} />
               Reply
             </ActionBtn>
@@ -211,8 +257,11 @@ interface Props {
 
 export function CommentDrawer({ post, onClose }: Props) {
   const user = useAuthStore((s) => s.user)
-  const [replyTo, setReplyTo] = useState<{ parentId: string; authorName: string } | null>(null)
+  const [replyTo, setReplyTo] = useState<{ parentId: string; authorName: string; authorId: string } | null>(null)
   const [inputText, setInputText] = useState('')
+  const [mentionCandidate, setMentionCandidate] = useState<{ query: string; start: number; end: number } | null>(null)
+  const [mentionIndex, setMentionIndex] = useState(0)
+  const [selectedMentions, setSelectedMentions] = useState<Array<{ id: string; fullName: string }>>([])
   const [showEmoji, setShowEmoji] = useState(false)
   const [showStickers, setShowStickers] = useState(false)
   const [attachments, setAttachments] = useState<AttachmentInput[]>([])
@@ -223,12 +272,30 @@ export function CommentDrawer({ post, onClose }: Props) {
 
   const commentsQuery = useComments(post.id, true)
   const createComment = useCreateComment(post.id)
+  const mentionQuery = useSearchPeople(mentionCandidate?.query ?? '', 6, {
+    enabled: Boolean(mentionCandidate && mentionCandidate.query.length >= 2),
+  })
 
   const comments = commentsQuery.data?.pages.flatMap((p) => p.items) ?? []
+  const mentionOptions = mentionQuery.data?.pages.flatMap((p) => p.items) ?? []
+  const postAuthorProfileUrl = PATHS.PROFILE.replace(':id', post.author.id)
 
-  function handleReply(parentId: string, authorName: string) {
-    setReplyTo({ parentId, authorName })
+  useEffect(() => {
+    setMentionIndex(0)
+  }, [mentionCandidate?.query])
+
+  function handleReply(parentId: string, authorName: string, authorId: string) {
+    setReplyTo({ parentId, authorName, authorId })
     setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  function linkSelectedMentions(content: string) {
+    return [...selectedMentions]
+      .sort((a, b) => b.fullName.length - a.fullName.length)
+      .reduce((result, mention) => {
+        const pattern = new RegExp(`(^|\\s)@${escapeRegExp(mention.fullName)}(?=$|\\s|[.,!?])`, 'g')
+        return result.replace(pattern, `$1[@${mention.fullName}](${PATHS.PROFILE.replace(':id', mention.id)})`)
+      }, content)
   }
 
   function handleSend() {
@@ -236,7 +303,7 @@ export function CommentDrawer({ post, onClose }: Props) {
     if ((!content && attachments.length === 0) || createComment.isPending || attachmentsUploading) return
     createComment.mutate(
       {
-        content: content || ' ',
+        content: content ? linkSelectedMentions(content) : ' ',
         parent_id: replyTo?.parentId ?? null,
         attachments: attachments.length > 0 ? attachments : undefined,
       },
@@ -244,6 +311,8 @@ export function CommentDrawer({ post, onClose }: Props) {
         onSuccess: () => {
           setInputText('')
           setReplyTo(null)
+          setMentionCandidate(null)
+          setSelectedMentions([])
           setAttachments([])
         },
       },
@@ -251,6 +320,28 @@ export function CommentDrawer({ post, onClose }: Props) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionCandidate && mentionCandidate.query.length >= 2 && mentionOptions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setMentionIndex((i) => (i + 1) % mentionOptions.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setMentionIndex((i) => (i - 1 + mentionOptions.length) % mentionOptions.length)
+        return
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault()
+        insertMention(mentionOptions[mentionIndex] ?? mentionOptions[0])
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMentionCandidate(null)
+        return
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -259,9 +350,39 @@ export function CommentDrawer({ post, onClose }: Props) {
 
   function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     setInputText(e.target.value)
+    setMentionCandidate(detectMention(e.target.value, e.target.selectionStart))
     const el = e.target
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+  }
+
+  function handleInputSelect() {
+    const el = inputRef.current
+    if (!el) return
+    setMentionCandidate(detectMention(inputText, el.selectionStart))
+  }
+
+  function insertMention(person: UserSearchResult | undefined) {
+    if (!person || !mentionCandidate) return
+    const mentionText = `@${person.fullName} `
+    const nextText = `${inputText.slice(0, mentionCandidate.start)}${mentionText}${inputText.slice(mentionCandidate.end)}`
+    const nextCaret = mentionCandidate.start + mentionText.length
+    setInputText(nextText)
+    setSelectedMentions((prev) => (
+      prev.some((m) => m.id === person.id)
+        ? prev
+        : [...prev, { id: person.id, fullName: person.fullName }]
+    ))
+    setMentionCandidate(null)
+    setMentionIndex(0)
+    setTimeout(() => {
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(nextCaret, nextCaret)
+      el.style.height = 'auto'
+      el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+    }, 0)
   }
 
   return (
@@ -311,22 +432,28 @@ export function CommentDrawer({ post, onClose }: Props) {
             gap: 10,
           }}
         >
-          <Avatar
-            initials={getInitials(post.author.fullName)}
-            color={avatarColor(post.author.id)}
-            size={32}
-          />
+          <Link to={postAuthorProfileUrl} style={{ flexShrink: 0, lineHeight: 0 }} aria-label={`View ${post.author.fullName}'s profile`}>
+            <Avatar
+              src={post.author.profile.avatarUrl}
+              initials={getInitials(post.author.fullName)}
+              color={avatarColor(post.author.id)}
+              size={32}
+            />
+          </Link>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p
+            <Link
+              to={postAuthorProfileUrl}
               style={{
                 margin: '0 0 3px',
                 fontSize: 13,
                 fontWeight: 500,
                 color: 'var(--text-primary)',
+                textDecoration: 'none',
+                display: 'inline-block',
               }}
             >
               {post.author.fullName}
-            </p>
+            </Link>
             {post.content && (
               <p
                 style={{
@@ -456,7 +583,13 @@ export function CommentDrawer({ post, onClose }: Props) {
                 }}
               >
                 <CornerDownRight size={12} strokeWidth={1.5} />
-                Replying to {replyTo.authorName}
+                Replying to{' '}
+                <Link
+                  to={PATHS.PROFILE.replace(':id', replyTo.authorId)}
+                  style={{ color: 'var(--text-secondary)', fontWeight: 500, textDecoration: 'none' }}
+                >
+                  {replyTo.authorName}
+                </Link>
                 <button
                   type="button"
                   onClick={() => setReplyTo(null)}
@@ -479,6 +612,7 @@ export function CommentDrawer({ post, onClose }: Props) {
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <Avatar
+                src={user.profile.avatarUrl}
                 initials={getInitials(user.profile.fullName)}
                 color={avatarColor(user.id)}
                 size={32}
@@ -518,17 +652,106 @@ export function CommentDrawer({ post, onClose }: Props) {
 
                 <div
                   style={{
+                    position: 'relative',
                     background: 'var(--surface-raised)',
                     border: '0.5px solid var(--border-default)',
                     borderRadius: 'var(--r-md)',
                     padding: '8px 12px',
                   }}
                 >
+                  {mentionCandidate && mentionCandidate.query.length >= 2 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 'calc(100% + 6px)',
+                        zIndex: 70,
+                        background: 'var(--surface-card)',
+                        border: '0.5px solid var(--border-hover)',
+                        borderRadius: 'var(--r-md)',
+                        overflow: 'hidden',
+                        boxShadow: 'var(--shadow-lg)',
+                        maxHeight: 240,
+                        overflowY: 'auto',
+                      }}
+                    >
+                      {mentionQuery.isFetching && mentionOptions.length === 0 ? (
+                        <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                          Searching…
+                        </div>
+                      ) : mentionOptions.length === 0 ? (
+                        <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                          No people found
+                        </div>
+                      ) : (
+                        mentionOptions.map((person, index) => (
+                          <button
+                            key={person.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              insertMention(person)
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 9,
+                              width: '100%',
+                              padding: '8px 10px',
+                              background: index === mentionIndex ? 'var(--surface-hover)' : 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                            }}
+                          >
+                            <Avatar
+                              src={person.avatarUrl}
+                              initials={getInitials(person.fullName)}
+                              color={avatarColor(person.id)}
+                              size={30}
+                            />
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                              <span
+                                style={{
+                                  display: 'block',
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                  color: 'var(--text-primary)',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {person.fullName}
+                              </span>
+                              {(person.headline || person.department) && (
+                                <span
+                                  style={{
+                                    display: 'block',
+                                    fontSize: 11,
+                                    color: 'var(--text-tertiary)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {person.headline ?? person.department}
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                   <textarea
                     ref={inputRef}
                     value={inputText}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
+                    onClick={handleInputSelect}
+                    onKeyUp={handleInputSelect}
                     placeholder="Write a comment…"
                     rows={1}
                     style={{

@@ -7,6 +7,8 @@ export interface ReactionUser {
   fullName: string
   avatarUrl: string | null
   reactionType: ReactionKey
+  connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
+  connectionId: string | null
 }
 
 interface ReactionsPage {
