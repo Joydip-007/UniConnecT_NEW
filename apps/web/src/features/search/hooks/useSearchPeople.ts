@@ -17,7 +17,7 @@ export function useSearchPeople(
   // Accept either a plain string (legacy: q only) or a filters object
   const filters: PeopleSearchParams = typeof params === 'string' ? { q: params } : params
   const enabled =
-    ((!!filters.q && filters.q.length >= 2) ||
+    (typeof filters.q === 'string' ||
       !!(filters.role || filters.department || filters.batch)) &&
     (options.enabled ?? true)
 

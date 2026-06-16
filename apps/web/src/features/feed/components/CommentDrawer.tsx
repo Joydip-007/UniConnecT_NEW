@@ -51,7 +51,7 @@ const markdownComponents = {
 
 function detectMention(value: string, caret: number) {
   const beforeCaret = value.slice(0, caret)
-  const match = beforeCaret.match(/(^|\s)@([^\s@]{0,40})$/)
+  const match = beforeCaret.match(/(^|\s)@([^@\n]{0,40})$/)
   if (!match) return null
   const query = match[2] ?? ''
   return { query, start: caret - query.length - 1, end: caret }
@@ -273,7 +273,7 @@ export function CommentDrawer({ post, onClose }: Props) {
   const commentsQuery = useComments(post.id, true)
   const createComment = useCreateComment(post.id)
   const mentionQuery = useSearchPeople(mentionCandidate?.query ?? '', 6, {
-    enabled: Boolean(mentionCandidate && mentionCandidate.query.length >= 2),
+    enabled: Boolean(mentionCandidate),
   })
 
   const comments = commentsQuery.data?.pages.flatMap((p) => p.items) ?? []
@@ -320,7 +320,7 @@ export function CommentDrawer({ post, onClose }: Props) {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (mentionCandidate && mentionCandidate.query.length >= 2 && mentionOptions.length > 0) {
+    if (mentionCandidate && mentionOptions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         setMentionIndex((i) => (i + 1) % mentionOptions.length)
@@ -659,7 +659,7 @@ export function CommentDrawer({ post, onClose }: Props) {
                     padding: '8px 12px',
                   }}
                 >
-                  {mentionCandidate && mentionCandidate.query.length >= 2 && (
+                  {mentionCandidate && (
                     <div
                       style={{
                         position: 'absolute',
