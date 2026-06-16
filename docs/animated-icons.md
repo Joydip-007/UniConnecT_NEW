@@ -72,6 +72,27 @@ var(--uc-orange-l)
 var(--uc-red)
 ```
 
+This is theme-safe. The app sets different values for these tokens under `:root[data-theme='dark']` and `:root[data-theme='light']`, so an animated icon using `currentColor` automatically changes when the user switches theme. Do not create separate light-mode and dark-mode Lottie files for a normal one-color action icon.
+
+Good theme-safe pattern:
+
+```tsx
+<div style={{ color: 'var(--text-tertiary)' }}>
+  <AnimatedIcon animationData={downloadAnimation} size={18} playKey={downloadAnimationKey} />
+</div>
+```
+
+Avoid hard-coded colors unless there is a strong product reason:
+
+```tsx
+<AnimatedIcon
+  animationData={downloadAnimation}
+  size={18}
+  playKey={downloadAnimationKey}
+  style={{ color: '#000000' }}
+/>
+```
+
 If a Lottie asset is intentionally multi-color and should keep its original colors, opt out:
 
 ```tsx
