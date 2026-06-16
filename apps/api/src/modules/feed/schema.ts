@@ -6,7 +6,7 @@ const removedAttachmentIdsField = z.array(z.string().uuid()).optional()
 
 export const PostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'news', 'event_promo'])
 export const CreatePostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'event_promo'])
-export const ReactionTypeSchema = z.enum(['like', 'love', 'insightful', 'celebrate'])
+export const ReactionTypeSchema = z.enum(['like', 'love', 'care', 'haha', 'wow', 'sad', 'angry'])
 
 export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),

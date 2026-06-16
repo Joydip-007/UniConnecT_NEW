@@ -3,9 +3,12 @@ import { api } from '@/lib/axios'
 import type { FeedComment } from '@uniconnect/shared'
 import { commentsQueryKey, type CommentsData, type CommentsPage } from './useComments'
 
+import type { AttachmentInput } from '@uniconnect/shared'
+
 export interface CreateCommentInput {
   content: string
   parent_id?: string | null
+  attachments?: AttachmentInput[]
 }
 
 export function useCreateComment(postId: string) {

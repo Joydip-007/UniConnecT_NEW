@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { Loader2, RotateCcw } from 'lucide-react'
@@ -7,6 +7,11 @@ import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { usePendingMsgsStore, type PendingMsg } from '@/stores/pendingMsgsStore'
 import { seedColor, initials } from '../utils'
+import { MessageMiniReactionBar } from '@/components/emoji/ReactionBar'
+import { MessageReactionGroup } from '@/components/emoji/ReactionChip'
+import { StickerMessage } from '@/components/emoji/StickerDrawer'
+import type { MessageReactionKey } from '@/components/emoji/reactionConfig'
+import { useUpsertMessageReaction, useRemoveMessageReaction, useMessageReactions } from '../hooks/useMessageReactions'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +36,8 @@ export interface Message {
   sentAt: string
   isDeleted: boolean
   replyTo: ReplyContext | null
+  contentType?: 'text' | 'sticker'
+  stickerUrl?: string | null
 }
 
 export interface MessagesPage {
@@ -106,6 +113,8 @@ function DateDivider({ label }: { label: string }) {
 function MessageBubble({
   message,
   isOwn,
+  convId,
+  myUserId,
   status,
   onRetry,
   showAvatar = true,
@@ -113,14 +122,34 @@ function MessageBubble({
 }: {
   message: Message
   isOwn: boolean
+  convId: string
+  myUserId?: string
   status?: 'sending' | 'error'
   onRetry?: () => void
-  /** Suppress avatar for consecutive same-sender messages (use spacer instead) */
   showAvatar?: boolean
-  /** Suppress sender name for consecutive same-sender messages */
   showName?: boolean
 }) {
+  const [hovered, setHovered] = useState(false)
   const timeLabel = format(safeParse(message.sentAt), 'HH:mm')
+  const isPending = !message.id || message.id.startsWith('pending-')
+
+  const { data: reactions } = useMessageReactions(convId, message.id)
+  const upsertReaction = useUpsertMessageReaction(convId, message.id)
+  const removeReaction = useRemoveMessageReaction(convId, message.id)
+
+  const myReaction = myUserId && reactions
+    ? (Object.entries(reactions).find(([, users]) =>
+        users.some((u) => u.userId === myUserId),
+      )?.[0] as MessageReactionKey | undefined) ?? null
+    : null
+
+  function handleReactionSelect(key: MessageReactionKey) {
+    if (myReaction === key) {
+      removeReaction.mutate()
+    } else {
+      upsertReaction.mutate(key)
+    }
+  }
 
   if (message.isDeleted) {
     return (
@@ -150,6 +179,8 @@ function MessageBubble({
 
   return (
     <div
+      onMouseEnter={() => !isPending && setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex',
         flexDirection: isOwn ? 'row-reverse' : 'row',
@@ -158,8 +189,25 @@ function MessageBubble({
         padding: '2px 0',
         opacity: status === 'sending' ? 0.6 : 1,
         transition: 'opacity 150ms',
+        position: 'relative',
       }}
     >
+      {/* Mini reaction bar — appears on hover */}
+      {hovered && !isPending && (
+        <div
+          style={{
+            position: 'absolute',
+            top: -38,
+            ...(isOwn ? { right: 36 } : { left: 36 }),
+            zIndex: 40,
+          }}
+        >
+          <MessageMiniReactionBar
+            onSelect={handleReactionSelect}
+            myReaction={myReaction}
+          />
+        </div>
+      )}
       {/* Avatar — only for others; spacer when suppressed to keep bubble alignment */}
       {!isOwn && (
         showAvatar
@@ -236,29 +284,43 @@ function MessageBubble({
         )}
 
         {/* Bubble body */}
-        <div
-          style={{
-            padding: '8px 12px',
-            borderRadius: isOwn
-              ? 'var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg)'
-              : 'var(--r-lg) var(--r-lg) var(--r-lg) var(--r-sm)',
-            background: isOwn ? 'var(--uc-indigo-bg)' : 'var(--surface-raised)',
-            border: `0.5px solid ${
-              status === 'error'
-                ? 'var(--uc-red-bdr)'
-                : isOwn
-                  ? 'var(--uc-indigo-bdr)'
-                  : 'var(--border-default)'
-            }`,
-            fontSize: 13,
-            fontWeight: 400,
-            color: 'var(--text-primary)',
-            lineHeight: 1.55,
-            wordBreak: 'break-word',
-          }}
-        >
-          {message.body}
-        </div>
+        {message.contentType === 'sticker' && message.stickerUrl ? (
+          <StickerMessage lottieUrl={message.stickerUrl} />
+        ) : (
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: isOwn
+                ? 'var(--r-lg) var(--r-lg) var(--r-sm) var(--r-lg)'
+                : 'var(--r-lg) var(--r-lg) var(--r-lg) var(--r-sm)',
+              background: isOwn ? 'var(--uc-indigo-bg)' : 'var(--surface-raised)',
+              border: `0.5px solid ${
+                status === 'error'
+                  ? 'var(--uc-red-bdr)'
+                  : isOwn
+                    ? 'var(--uc-indigo-bdr)'
+                    : 'var(--border-default)'
+              }`,
+              fontSize: 13,
+              fontWeight: 400,
+              color: 'var(--text-primary)',
+              lineHeight: 1.55,
+              wordBreak: 'break-word',
+              fontFamily: `inherit, var(--font-emoji)`,
+            }}
+          >
+            {message.body}
+          </div>
+        )}
+
+        {/* Reaction chips below bubble */}
+        {reactions && myUserId && (
+          <MessageReactionGroup
+            reactions={reactions}
+            myUserId={myUserId}
+            onReactionClick={handleReactionSelect}
+          />
+        )}
 
         {/* Timestamp + sending spinner */}
         <div
@@ -563,6 +625,8 @@ export function ChatView({ convId }: { convId: string }) {
             <MessageBubble
               message={msg}
               isOwn={msg.senderId === myUserId}
+              convId={convId}
+              myUserId={myUserId}
               showAvatar={!isContinuation}
               showName={!isContinuation}
             />
@@ -576,6 +640,8 @@ export function ChatView({ convId }: { convId: string }) {
           key={p.tempId}
           message={pendingToMessage(p)}
           isOwn
+          convId={convId}
+          myUserId={myUserId}
           status={p.status}
           onRetry={p.status === 'error' ? () => retryPending(p.tempId) : undefined}
         />

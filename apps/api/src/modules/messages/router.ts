@@ -12,13 +12,16 @@ import {
   listConversations,
   listMessages,
   markRead,
+  removeMessageReaction,
   updateConversation,
   updateMessage,
+  upsertMessageReaction,
 } from './controller'
 import {
   CreateConversationSchema,
   CreateMessageSchema,
   MessageListQuerySchema,
+  MessageReactionSchema,
   UpdateConversationSchema,
   UpdateMessageSchema,
 } from './schema'
@@ -36,4 +39,6 @@ messagesRouter.get('/:convId/messages', validateRequest({ query: MessageListQuer
 messagesRouter.post('/:convId/messages', validate(CreateMessageSchema), createMessage)
 messagesRouter.patch('/:convId/messages/:msgId', validate(UpdateMessageSchema), updateMessage)
 messagesRouter.delete('/:convId/messages/:msgId', deleteMessage)
+messagesRouter.post('/:convId/messages/:msgId/reactions', writeLimiter, validate(MessageReactionSchema), upsertMessageReaction)
+messagesRouter.delete('/:convId/messages/:msgId/reactions', removeMessageReaction)
 messagesRouter.post('/:convId/read', markRead)

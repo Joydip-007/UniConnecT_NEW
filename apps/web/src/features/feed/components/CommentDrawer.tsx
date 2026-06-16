@@ -1,15 +1,28 @@
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { motion } from 'framer-motion'
-import { CornerDownRight, ThumbsUp, Trash2, X } from 'lucide-react'
-import type { FeedComment, FeedPost } from '@uniconnect/shared'
+import { CornerDownRight, Smile, Sticker, Trash2, X } from 'lucide-react'
+import type { AttachmentInput, FeedComment, FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
+import { AttachmentPicker } from '@/components/AttachmentPicker'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { PostReactionTrigger } from '@/components/emoji/ReactionBar'
+import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
+import { REACTION_MAP } from '@/components/emoji/reactionConfig'
+import type { ReactionKey } from '@/components/emoji/reactionConfig'
+import { useEmojiInsert } from '@/hooks/useEmojiInsert'
 import { useComments } from '@/features/feed/hooks/useComments'
 import { useCreateComment } from '@/features/feed/hooks/useCreateComment'
 import { useDeleteComment } from '@/features/feed/hooks/useDeleteComment'
 import { useUpsertCommentReaction } from '@/features/feed/hooks/useUpsertCommentReaction'
+
+const EmojiPicker = lazy(() =>
+  import('@/components/emoji/EmojiPicker').then((m) => ({ default: m.EmojiPicker })),
+)
+const StickerDrawer = lazy(() =>
+  import('@/components/emoji/StickerDrawer').then((m) => ({ default: m.StickerDrawer })),
+)
 
 // ── CommentItem ───────────────────────────────────────────────────────────────
 
@@ -25,21 +38,27 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
   const deleteComment = useDeleteComment(postId)
   const reactionMutation = useUpsertCommentReaction(postId, comment.id)
 
-  const [localLiked, setLocalLiked] = useState(comment.ownReaction === 'like')
-  const [likeCount, setLikeCount] = useState(comment.reactionCounts.like)
+  const [myReaction, setMyReaction] = useState<ReactionKey | null>(
+    comment.ownReaction as ReactionKey | null,
+  )
+  const [reactionCounts, setReactionCounts] = useState(comment.reactionCounts)
 
   const canDelete = user && (user.id === comment.authorId || user.role === 'admin')
 
-  function handleLike() {
-    const wasLiked = localLiked
-    setLocalLiked(!wasLiked)
-    setLikeCount((c) => (wasLiked ? c - 1 : c + 1))
+  function handleReactionSelect(key: ReactionKey) {
+    const prev = myReaction
+    const removing = prev === key
+    const counts = { ...reactionCounts }
+    if (prev) counts[prev] = Math.max(0, (counts[prev] ?? 0) - 1)
+    if (!removing) counts[key] = (counts[key] ?? 0) + 1
+    setMyReaction(removing ? null : key)
+    setReactionCounts(counts)
     reactionMutation.mutate(
-      { wasLiked },
+      { current: prev, next: key },
       {
         onError: () => {
-          setLocalLiked(wasLiked)
-          setLikeCount((c) => (wasLiked ? c + 1 : c - 1))
+          setMyReaction(prev)
+          setReactionCounts(reactionCounts)
         },
       },
     )
@@ -97,15 +116,32 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
         </div>
 
         {/* Action row */}
-        <div style={{ display: 'flex', gap: 12, marginTop: 4, paddingLeft: 4, flexWrap: 'wrap' }}>
-          <ActionBtn
-            active={localLiked}
-            activeColor="var(--uc-indigo-xl)"
-            onClick={handleLike}
-          >
-            <ThumbsUp size={11} strokeWidth={1.5} />
-            {likeCount > 0 ? likeCount : 'Like'}
-          </ActionBtn>
+        <div style={{ display: 'flex', gap: 12, marginTop: 4, paddingLeft: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+          <PostReactionTrigger onSelect={handleReactionSelect}>
+            <ActionBtn
+              active={Boolean(myReaction)}
+              activeColor="var(--uc-indigo-xl)"
+              onClick={() => handleReactionSelect(myReaction ?? 'like')}
+            >
+              {myReaction ? (
+                <TwemojiIcon
+                  codepoint={REACTION_MAP.get(myReaction)?.codepoint ?? '1f44d'}
+                  size={11}
+                  label={REACTION_MAP.get(myReaction)?.label}
+                />
+              ) : (
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z" />
+                  <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+                </svg>
+              )}
+              {myReaction
+                ? REACTION_MAP.get(myReaction)?.label
+                : Object.values(reactionCounts).some(Boolean)
+                ? Object.values(reactionCounts).reduce((a, b) => a + b, 0)
+                : 'Like'}
+            </ActionBtn>
+          </PostReactionTrigger>
 
           {!isReply && (
             <ActionBtn onClick={() => onReply(comment.id, comment.author.fullName)}>
@@ -177,7 +213,12 @@ export function CommentDrawer({ post, onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const [replyTo, setReplyTo] = useState<{ parentId: string; authorName: string } | null>(null)
   const [inputText, setInputText] = useState('')
+  const [showEmoji, setShowEmoji] = useState(false)
+  const [showStickers, setShowStickers] = useState(false)
+  const [attachments, setAttachments] = useState<AttachmentInput[]>([])
+  const [attachmentsUploading, setAttachmentsUploading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const insertEmoji = useEmojiInsert(inputRef, inputText, setInputText)
 
   const commentsQuery = useComments(post.id, true)
   const createComment = useCreateComment(post.id)
@@ -191,13 +232,18 @@ export function CommentDrawer({ post, onClose }: Props) {
 
   function handleSend() {
     const content = inputText.trim()
-    if (!content || createComment.isPending) return
+    if ((!content && attachments.length === 0) || createComment.isPending || attachmentsUploading) return
     createComment.mutate(
-      { content, parent_id: replyTo?.parentId ?? null },
+      {
+        content: content || ' ',
+        parent_id: replyTo?.parentId ?? null,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      },
       {
         onSuccess: () => {
           setInputText('')
           setReplyTo(null)
+          setAttachments([])
         },
       },
     )
@@ -436,62 +482,118 @@ export function CommentDrawer({ post, onClose }: Props) {
                 color={avatarColor(user.id)}
                 size={32}
               />
-              <div
-                style={{
-                  flex: 1,
-                  background: 'var(--surface-raised)',
-                  border: '0.5px solid var(--border-default)',
-                  borderRadius: 'var(--r-md)',
-                  padding: '8px 12px',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  gap: 8,
-                }}
-              >
-                <textarea
-                  ref={inputRef}
-                  value={inputText}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Write a comment…"
-                  rows={1}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Emoji picker popover */}
+                {showEmoji && (
+                  <div style={{ position: 'relative', marginBottom: 6 }}>
+                    <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 60 }}>
+                      <Suspense fallback={null}>
+                        <EmojiPicker
+                          onSelect={(e) => { insertEmoji(e); setShowEmoji(false) }}
+                          onClose={() => setShowEmoji(false)}
+                        />
+                      </Suspense>
+                    </div>
+                  </div>
+                )}
+                {/* Sticker drawer popover */}
+                {showStickers && (
+                  <div style={{ position: 'relative', marginBottom: 6 }}>
+                    <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 60 }}>
+                      <Suspense fallback={null}>
+                        <StickerDrawer
+                          onSelect={() => {
+                            createComment.mutate(
+                              { content: ' ', parent_id: replyTo?.parentId ?? null },
+                              { onSuccess: () => { setReplyTo(null); setShowStickers(false) } },
+                            )
+                          }}
+                          onClose={() => setShowStickers(false)}
+                        />
+                      </Suspense>
+                    </div>
+                  </div>
+                )}
+
+                <div
                   style={{
-                    flex: 1,
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    resize: 'none',
-                    color: 'var(--text-primary)',
-                    fontSize: 13,
-                    fontWeight: 400,
-                    fontFamily: 'inherit',
-                    lineHeight: 1.6,
-                    minHeight: 20,
-                    maxHeight: 120,
-                    overflowY: 'auto',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleSend}
-                  disabled={!inputText.trim() || createComment.isPending}
-                  className="press-feedback"
-                  style={{
-                    background: 'var(--uc-indigo)',
-                    border: 'none',
-                    borderRadius: 'var(--r-pill)',
-                    padding: '5px 12px',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    opacity: !inputText.trim() || createComment.isPending ? 0.4 : 1,
-                    transition: 'opacity 150ms',
+                    background: 'var(--surface-raised)',
+                    border: '0.5px solid var(--border-default)',
+                    borderRadius: 'var(--r-md)',
+                    padding: '8px 12px',
                   }}
                 >
-                  {createComment.isPending ? '…' : 'Send'}
-                </button>
+                  <textarea
+                    ref={inputRef}
+                    value={inputText}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Write a comment…"
+                    rows={1}
+                    style={{
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      resize: 'none',
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      fontWeight: 400,
+                      fontFamily: `inherit, var(--font-emoji)`,
+                      lineHeight: 1.6,
+                      minHeight: 20,
+                      maxHeight: 120,
+                      overflowY: 'auto',
+                    }}
+                  />
+                  {/* Attachment picker */}
+                  <AttachmentPicker
+                    value={attachments}
+                    onChange={setAttachments}
+                    onUploadingChange={setAttachmentsUploading}
+                  />
+                  {/* Toolbar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => { setShowEmoji((v) => !v); setShowStickers(false) }}
+                      title="Emoji"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-tertiary)', display: 'flex' }}
+                    >
+                      <Smile size={16} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowStickers((v) => !v); setShowEmoji(false) }}
+                      title="Stickers"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-tertiary)', display: 'flex' }}
+                    >
+                      <Sticker size={16} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSend}
+                      disabled={(!inputText.trim() && attachments.length === 0) || createComment.isPending || attachmentsUploading}
+                      className="press-feedback"
+                      style={{
+                        marginLeft: 'auto',
+                        background: 'var(--uc-indigo)',
+                        border: 'none',
+                        borderRadius: 'var(--r-pill)',
+                        padding: '5px 12px',
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        opacity: ((!inputText.trim() && attachments.length === 0) || createComment.isPending || attachmentsUploading) ? 0.4 : 1,
+                        transition: 'opacity 150ms',
+                      }}
+                    >
+                      {createComment.isPending ? '…' : 'Send'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

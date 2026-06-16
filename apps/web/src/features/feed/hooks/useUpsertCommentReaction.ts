@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import type { FeedComment } from '@uniconnect/shared'
+import type { ReactionKey } from '@/components/emoji/reactionConfig'
 import { commentsQueryKey, type CommentsData, type CommentsPage } from './useComments'
 
 function patchComment(
@@ -17,28 +18,34 @@ function patchComment(
   }))
 }
 
+interface UpsertCommentReactionVars {
+  current: ReactionKey | null
+  next: ReactionKey
+}
+
 export function useUpsertCommentReaction(postId: string, commentId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ wasLiked }: { wasLiked: boolean }) =>
-      wasLiked
+    mutationFn: ({ current, next }: UpsertCommentReactionVars) =>
+      current === next
         ? api.delete(`/posts/${postId}/comments/${commentId}/reactions`).then((r) => r.data)
-        : api.post(`/posts/${postId}/comments/${commentId}/reactions`, { reaction_type: 'like' }).then((r) => r.data),
-    onMutate: async ({ wasLiked }) => {
+        : api
+            .post(`/posts/${postId}/comments/${commentId}/reactions`, { reaction_type: next })
+            .then((r) => r.data),
+    onMutate: async ({ current, next }) => {
+      const removing = current === next
       await queryClient.cancelQueries({ queryKey: commentsQueryKey(postId) })
       const snapshot = queryClient.getQueryData<CommentsData>(commentsQueryKey(postId))
       queryClient.setQueryData<CommentsData>(commentsQueryKey(postId), (old) => {
         if (!old) return old
         return {
           ...old,
-          pages: patchComment(old.pages, commentId, (c) => ({
-            ...c,
-            ownReaction: wasLiked ? null : ('like' as const),
-            reactionCounts: {
-              ...c.reactionCounts,
-              like: wasLiked ? c.reactionCounts.like - 1 : c.reactionCounts.like + 1,
-            },
-          })),
+          pages: patchComment(old.pages, commentId, (c) => {
+            const counts = { ...c.reactionCounts }
+            if (current) counts[current] = Math.max(0, (counts[current] ?? 0) - 1)
+            if (!removing) counts[next] = (counts[next] ?? 0) + 1
+            return { ...c, ownReaction: removing ? null : next, reactionCounts: counts }
+          }),
         }
       })
       return { snapshot }

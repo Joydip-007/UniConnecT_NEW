@@ -11,7 +11,7 @@ import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queu
 import { addUserAttachments, getAttachmentsFor, getAttachmentsForMany, removeAttachments } from '../content-sync/attachments'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
-type ReactionType = 'like' | 'love' | 'insightful' | 'celebrate'
+type ReactionType = 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry'
 
 // ── Hashtag helpers ───────────────────────────────────────────────────────────
 
@@ -1041,7 +1041,7 @@ async function getReactionCounts(targetId: string, targetType: 'post' | 'comment
       counts[row.reaction_type] = Number(row.count)
       return counts
     },
-    { like: 0, love: 0, insightful: 0, celebrate: 0 },
+    { like: 0, love: 0, care: 0, haha: 0, wow: 0, sad: 0, angry: 0 },
   )
 }
 
@@ -1141,8 +1141,11 @@ function normalizeReactionCounts(value: unknown) {
   return {
     like: Number(source.like ?? 0),
     love: Number(source.love ?? 0),
-    insightful: Number(source.insightful ?? 0),
-    celebrate: Number(source.celebrate ?? 0),
+    care: Number(source.care ?? 0),
+    haha: Number(source.haha ?? 0),
+    wow: Number(source.wow ?? 0),
+    sad: Number(source.sad ?? 0),
+    angry: Number(source.angry ?? 0),
   }
 }
 

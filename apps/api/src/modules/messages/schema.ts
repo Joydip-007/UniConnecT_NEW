@@ -1,6 +1,10 @@
 import { z } from 'zod'
 
-export const MessageTypeSchema = z.enum(['text', 'image', 'file', 'system'])
+export const MessageTypeSchema = z.enum(['text', 'image', 'file', 'system', 'sticker'])
+export const MessageReactionTypeSchema = z.enum(['like', 'love', 'care', 'haha', 'wow', 'angry'])
+export const MessageReactionSchema = z.object({ reaction_type: MessageReactionTypeSchema })
+export type MessageReactionType = z.infer<typeof MessageReactionTypeSchema>
+export type MessageReactionInput = z.infer<typeof MessageReactionSchema>
 
 export const CreateConversationSchema = z
   .object({
@@ -48,16 +52,23 @@ export const CreateMessageSchema = z
     reply_to_id: z.string().uuid().nullable().optional(),
     replyToId: z.string().uuid().nullable().optional(),
     type: MessageTypeSchema.default('text'),
+    sticker_url: z.string().url().nullable().optional(),
   })
   .transform((value) => ({
     content: value.content ?? value.body,
     media_urls: value.media_urls.length > 0 ? value.media_urls : (value.mediaUrls ?? []),
     reply_to_id: value.reply_to_id ?? value.replyToId,
     type: value.type,
+    sticker_url: value.sticker_url ?? null,
   }))
-  .refine((value) => Boolean(value.content) || value.media_urls.length > 0 || value.type === 'system', {
-    message: 'Message content or media is required',
-  })
+  .refine(
+    (value) =>
+      Boolean(value.content) ||
+      value.media_urls.length > 0 ||
+      value.type === 'system' ||
+      value.type === 'sticker',
+    { message: 'Message content or media is required' },
+  )
 
 export const UpdateMessageSchema = z
   .object({

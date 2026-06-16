@@ -1,25 +1,52 @@
+import { useState } from 'react'
 import { Download, File, FileImage, FileText, Film, Music, Archive } from 'lucide-react'
 import type { ContentAttachment } from '@uniconnect/shared'
+import { MediaGrid } from '@/features/feed/components/MediaGrid'
+import { ImageLightbox } from '@/components/ImageLightbox'
 
-/** Renders downloadable file attachment cards on posts and content pages. */
+/** Renders attachment images inline (like a photo grid) and files as download cards. */
 export function AttachmentList({ attachments }: { attachments?: ContentAttachment[] }) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const ready = (attachments ?? []).filter((a) => a.fileUrl)
   if (ready.length === 0) return null
 
+  const media = ready.filter((a) => a.mimeType?.startsWith('image/') || a.mimeType?.startsWith('video/'))
+  const files = ready.filter((a) => !a.mimeType?.startsWith('image/') && !a.mimeType?.startsWith('video/'))
+  const imageUrls = media.map((a) => a.fileUrl!)
+
   return (
-    <div
-      style={{
-        marginTop: 10,
-        marginBottom: 4,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-      }}
-    >
-      {ready.map((attachment) => (
-        <FileCard key={attachment.id} attachment={attachment} />
-      ))}
-    </div>
+    <>
+      {/* Image/video attachments render inline */}
+      {media.length > 0 && (
+        <>
+          <MediaGrid urls={imageUrls} onOpen={setLightboxIndex} />
+          {lightboxIndex !== null && (
+            <ImageLightbox
+              images={imageUrls}
+              startIndex={lightboxIndex}
+              onClose={() => setLightboxIndex(null)}
+            />
+          )}
+        </>
+      )}
+
+      {/* Non-image files render as download cards */}
+      {files.length > 0 && (
+        <div
+          style={{
+            marginTop: 10,
+            marginBottom: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          {files.map((attachment) => (
+            <FileCard key={attachment.id} attachment={attachment} />
+          ))}
+        </div>
+      )}
+    </>
   )
 }
 

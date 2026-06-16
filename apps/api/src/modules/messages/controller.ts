@@ -7,6 +7,7 @@ import type {
   CreateConversationInput,
   CreateMessageInput,
   MessageListQuery,
+  MessageReactionInput,
   UpdateConversationInput,
   UpdateMessageInput,
 } from './schema'
@@ -97,3 +98,25 @@ function getMessageIdParam(req: Request) {
   const value = req.params.msgId
   return Array.isArray(value) ? value[0] : value
 }
+
+export const upsertMessageReaction = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { reaction_type } = req.body as MessageReactionInput
+  const reactions = await messagesService.upsertMessageReaction(
+    context,
+    getConversationIdParam(req),
+    getMessageIdParam(req),
+    reaction_type,
+  )
+  sendSuccess(res, reactions)
+})
+
+export const removeMessageReaction = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const reactions = await messagesService.removeMessageReaction(
+    context,
+    getConversationIdParam(req),
+    getMessageIdParam(req),
+  )
+  sendSuccess(res, reactions)
+})

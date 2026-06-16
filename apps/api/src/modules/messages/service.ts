@@ -418,6 +418,55 @@ export class MessagesService {
 
     return this.getConversation(context, conversationId)
   }
+
+  async upsertMessageReaction(context: AuthContext, convId: string, msgId: string, reactionType: string) {
+    const message = await db('messages').where({ id: msgId, conversation_id: convId }).first()
+    if (!message) throw notFound('Message not found')
+
+    await db('message_reactions')
+      .insert({
+        message_id: msgId,
+        user_id: context.userId,
+        university_id: context.universityId,
+        reaction_type: reactionType,
+      })
+      .onConflict(['message_id', 'user_id'])
+      .merge({ reaction_type: reactionType })
+
+    const reactions = await this.getMessageReactions(msgId)
+    getIo().to(`conv:${convId}`).emit('message:reaction', { messageId: msgId, reactions })
+    return reactions
+  }
+
+  async removeMessageReaction(context: AuthContext, convId: string, msgId: string) {
+    const message = await db('messages').where({ id: msgId, conversation_id: convId }).first()
+    if (!message) throw notFound('Message not found')
+
+    await db('message_reactions').where({ message_id: msgId, user_id: context.userId }).delete()
+
+    const reactions = await this.getMessageReactions(msgId)
+    getIo().to(`conv:${convId}`).emit('message:reaction', { messageId: msgId, reactions })
+    return reactions
+  }
+
+  async getMessageReactions(msgId: string) {
+    const rows = await db('message_reactions')
+      .join('users', 'users.id', 'message_reactions.user_id')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where('message_reactions.message_id', msgId)
+      .select(
+        'message_reactions.reaction_type',
+        'message_reactions.user_id',
+        'profiles.full_name as user_full_name',
+      )
+
+    const grouped: Record<string, { userId: string; fullName: string }[]> = {}
+    for (const row of rows) {
+      if (!grouped[row.reaction_type]) grouped[row.reaction_type] = []
+      grouped[row.reaction_type].push({ userId: row.user_id, fullName: row.user_full_name })
+    }
+    return grouped
+  }
 }
 
 export const messagesService = new MessagesService()

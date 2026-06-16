@@ -143,3 +143,14 @@ html[data-theme] body {
     transition: none;
   }
 }
+
+/* ── Emoji & reactions ─────────────────────────────────────────────────────── */
+:root {
+  --font-emoji: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+}
+
+@keyframes uc-reaction-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.28); }
+  100% { transform: scale(1); }
+}

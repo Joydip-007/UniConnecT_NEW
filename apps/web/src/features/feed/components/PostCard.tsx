@@ -14,7 +14,6 @@ import {
   MessageCircle,
   MoreVertical,
   Share2,
-  ThumbsUp,
   Trash2,
   Pencil,
 } from 'lucide-react'
@@ -23,6 +22,11 @@ import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { ReactionBtn } from '@/components/Button'
+import { PostReactionTrigger } from '@/components/emoji/ReactionBar'
+import { ReactionChip } from '@/components/emoji/ReactionChip'
+import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
+import { REACTION_MAP, totalReactions } from '@/components/emoji/reactionConfig'
+import type { ReactionKey } from '@/components/emoji/reactionConfig'
 import { ShareMenu } from '@/components/ShareMenu'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { AttachmentList } from '@/features/content-sync'
@@ -310,8 +314,9 @@ export interface PostCardProps {
 
 export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const user = useAuthStore((s) => s.user)
-  const [localLike, setLocalLike] = useState(post.myReaction === 'like')
-  const [localLikeCount, setLocalLikeCount] = useState(post.reactionCounts.like)
+  const [myReaction, setMyReaction] = useState<ReactionKey | null>(post.myReaction as ReactionKey | null)
+  const [reactionCounts, setReactionCounts] = useState(post.reactionCounts)
+  const [animateKey, setAnimateKey] = useState<string | null>(null)
   const [localSaved, setLocalSaved] = useState(post.isSaved)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
@@ -329,13 +334,23 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
     })
   }
 
-  function handleLike() {
-    const wasLiked = localLike
-    setLocalLike(!wasLiked)
-    setLocalLikeCount((c) => (wasLiked ? c - 1 : c + 1))
+  function handleReactionSelect(key: ReactionKey) {
+    const prev = myReaction
+    const removing = prev === key
+    const nextCounts = { ...reactionCounts }
+    if (prev) nextCounts[prev] = Math.max(0, (nextCounts[prev] ?? 0) - 1)
+    if (!removing) nextCounts[key] = (nextCounts[key] ?? 0) + 1
+    setMyReaction(removing ? null : key)
+    setReactionCounts(nextCounts)
+    if (!removing) setAnimateKey(`${key}-${Date.now()}`)
     reactionMutation.mutate(
-      { wasLiked },
-      { onError: () => { setLocalLike(wasLiked); setLocalLikeCount((c) => (wasLiked ? c + 1 : c - 1)) } },
+      { current: prev, next: key },
+      {
+        onError: () => {
+          setMyReaction(prev)
+          setReactionCounts(reactionCounts)
+        },
+      },
     )
   }
 
@@ -456,15 +471,34 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             gap: 2,
           }}
         >
-          <ReactionBtn active={localLike} onClick={handleLike}>
-            <ThumbsUp size={15} strokeWidth={1.5} />
-            Like
-            {localLikeCount > 0 && (
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 2 }}>
-                {localLikeCount}
-              </span>
-            )}
-          </ReactionBtn>
+          <PostReactionTrigger onSelect={handleReactionSelect}>
+            <ReactionBtn
+              active={Boolean(myReaction)}
+              onClick={() => handleReactionSelect(myReaction ?? 'like')}
+              style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+            >
+              {myReaction ? (
+                <TwemojiIcon
+                  codepoint={REACTION_MAP.get(myReaction)?.codepoint ?? '1f44d'}
+                  size={15}
+                  label={REACTION_MAP.get(myReaction)?.label}
+                />
+              ) : (
+                <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z" />
+                  <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+                </svg>
+              )}
+              {myReaction ? REACTION_MAP.get(myReaction)?.label : 'Like'}
+              {totalReactions(reactionCounts) > 0 && (
+                <ReactionChip
+                  counts={reactionCounts}
+                  myReaction={myReaction}
+                  animateKey={animateKey}
+                />
+              )}
+            </ReactionBtn>
+          </PostReactionTrigger>
 
           <ReactionBtn onClick={() => onCommentClick(post.id)}>
             <MessageCircle size={15} strokeWidth={1.5} />

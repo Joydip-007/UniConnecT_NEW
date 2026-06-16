@@ -41,8 +41,8 @@ export interface FeedPost {
   archivedAt: string | null
   expiresAt: string | null
   viewCount: number
-  reactionCounts: { like: number; love: number; insightful: number; celebrate: number }
-  myReaction: 'like' | 'love' | 'insightful' | 'celebrate' | null
+  reactionCounts: { like: number; love: number; care: number; haha: number; wow: number; sad: number; angry: number }
+  myReaction: 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry' | null
   commentCount: number
   isSaved: boolean
   poll: FeedPoll | null
@@ -68,7 +68,7 @@ export interface FeedComment {
     avatarUrl: string | null
     headline: string | null
   }
-  reactionCounts: { like: number; love: number; insightful: number; celebrate: number }
-  ownReaction: 'like' | 'love' | 'insightful' | 'celebrate' | null
+  reactionCounts: { like: number; love: number; care: number; haha: number; wow: number; sad: number; angry: number }
+  ownReaction: 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry' | null
   replies: FeedComment[]
 }

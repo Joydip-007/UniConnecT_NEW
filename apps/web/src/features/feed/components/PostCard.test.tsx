@@ -19,7 +19,7 @@ function makePost(content: string): FeedPost {
     isSaved: false,
     viewCount: 0,
     myReaction: null,
-    reactionCounts: { like: 0, love: 0, insightful: 0, celebrate: 0 },
+    reactionCounts: { like: 0, love: 0, care: 0, haha: 0, wow: 0, sad: 0, angry: 0 },
     commentCount: 0,
     createdAt: new Date().toISOString(),
     author: {

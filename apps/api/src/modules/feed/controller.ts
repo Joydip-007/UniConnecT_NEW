@@ -89,7 +89,7 @@ export const deleteComment = asyncHandler(async (req: Request, res: Response) =>
 
 export const addCommentReaction = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  const { reaction_type } = req.body as { reaction_type: 'like' | 'love' | 'insightful' | 'celebrate' }
+  const { reaction_type } = req.body as { reaction_type: 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry' }
   sendSuccess(res, await feedService.upsertCommentReaction(context, getPostIdParam(req), getCommentIdParam(req), reaction_type))
 })
 
