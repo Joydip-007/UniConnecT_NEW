@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { Download } from 'lucide-react'
 import type { PublicUserProfile, ProfileExperience, ProfileEducation } from '@uniconnect/shared'
 import { getUserExperience, getUserEducation } from '@/lib/api/users'
 import { GhostBtn } from '@/components/Button'
+import { AnimatedIcon } from '@/components/AnimatedIcon'
+import downloadCloudAnimation from '@/assets/lottie/icons8-download-from-the-cloud-50.json'
 
 interface Props {
   user: PublicUserProfile
@@ -169,7 +170,7 @@ export function ResumeExportButton({ user }: Props) {
       onClick={handleExport}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
     >
-      <Download size={14} strokeWidth={1.5} />
+      <AnimatedIcon animationData={downloadCloudAnimation} size={18} />
       Export resume
     </GhostBtn>
   )

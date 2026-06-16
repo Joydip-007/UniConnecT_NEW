@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Download, File, FileImage, FileText, Film, Music, Archive } from 'lucide-react'
+import { File, FileImage, FileText, Film, Music, Archive } from 'lucide-react'
 import type { ContentAttachment } from '@uniconnect/shared'
 import { MediaGrid } from '@/features/feed/components/MediaGrid'
 import { ImageLightbox } from '@/components/ImageLightbox'
+import { AnimatedIcon } from '@/components/AnimatedIcon'
+import downloadCloudAnimation from '@/assets/lottie/icons8-download-from-the-cloud-50.json'
 
 /** Renders attachment images inline (like a photo grid) and files as download cards. */
 export function AttachmentList({ attachments }: { attachments?: ContentAttachment[] }) {
@@ -124,7 +126,7 @@ function FileCard({ attachment }: { attachment: ContentAttachment }) {
           alignItems: 'center',
         }}
       >
-        <Download size={15} strokeWidth={1.5} />
+        <AnimatedIcon animationData={downloadCloudAnimation} size={18} />
       </div>
     </a>
   )

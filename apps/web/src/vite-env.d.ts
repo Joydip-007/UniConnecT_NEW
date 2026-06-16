@@ -5,6 +5,11 @@ declare module '*.svg' {
   export default src
 }
 
+declare module '*.json' {
+  const value: object
+  export default value
+}
+
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
   readonly VITE_SOCKET_URL: string
