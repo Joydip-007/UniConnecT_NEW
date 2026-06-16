@@ -6,52 +6,46 @@ const LottiePlayer = lazy(() =>
   import('lottie-react').then((m) => ({ default: m.default })),
 )
 
+// ── Manifest types ────────────────────────────────────────────────────────────
+
 interface StickerPack {
   id: string
   name: string
-  thumbnailUrl: string
+  /** Optional thumbnail shown in the pack strip — falls back to first sticker */
+  thumbnail?: string
+  stickers: string[]  // filenames relative to the pack folder, e.g. "thumbs-up.json"
 }
 
-interface Sticker {
-  id: string
-  lottieUrl: string
-  thumbnailUrl: string
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+
+const BASE = (import.meta.env.VITE_STICKER_BUCKET_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+
+function packUrl(packId: string, filename: string) {
+  return `${BASE}/stickers/${packId}/${filename}`
 }
 
-const LOTTIEFILES_API = 'https://lottiefiles.com/api/v1'
+function manifestUrl() {
+  return `${BASE}/stickers/manifest.json`
+}
 
-async function fetchPacks(): Promise<StickerPack[]> {
-  const key = import.meta.env.VITE_LOTTIEFILES_API_KEY as string | undefined
-  if (!key) return []
-  const res = await fetch(`${LOTTIEFILES_API}/sticker-packs`, {
-    headers: { Authorization: `Bearer ${key}` },
-  })
+async function fetchManifest(): Promise<StickerPack[]> {
+  if (!BASE) return []
+  const res = await fetch(manifestUrl())
   if (!res.ok) return []
-  const json = await res.json()
-  // LottieFiles returns { data: { sticker_packs: [...] } }
-  const packs = json?.data?.sticker_packs ?? json?.data ?? []
-  return packs.map((p: Record<string, unknown>) => ({
-    id: String(p.id),
-    name: String(p.name ?? ''),
-    thumbnailUrl: String(p.thumbnail_url ?? p.thumbnailUrl ?? ''),
-  }))
+  return res.json()
 }
 
-async function fetchPackStickers(packId: string): Promise<Sticker[]> {
-  const key = import.meta.env.VITE_LOTTIEFILES_API_KEY as string | undefined
-  if (!key) return []
-  const res = await fetch(`${LOTTIEFILES_API}/sticker-packs/${packId}`, {
-    headers: { Authorization: `Bearer ${key}` },
-  })
-  if (!res.ok) return []
-  const json = await res.json()
-  const stickers = json?.data?.stickers ?? []
-  return stickers.map((s: Record<string, unknown>) => ({
-    id: String(s.id),
-    lottieUrl: String(s.lottie_url ?? s.lottieUrl ?? ''),
-    thumbnailUrl: String(s.thumbnail_url ?? s.thumbnailUrl ?? ''),
-  }))
+async function fetchLottieJson(url: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
 }
+
+// ── StickerDrawer ─────────────────────────────────────────────────────────────
 
 interface StickerDrawerProps {
   onSelect: (lottieUrl: string) => void
@@ -61,20 +55,13 @@ interface StickerDrawerProps {
 export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
   const [activePack, setActivePack] = useState<string | null>(null)
 
-  const { data: packs = [], isLoading: packsLoading } = useQuery({
-    queryKey: ['stickers', 'packs'],
-    queryFn: fetchPacks,
+  const { data: packs = [], isLoading } = useQuery({
+    queryKey: ['stickers', 'manifest'],
+    queryFn: fetchManifest,
     staleTime: 1000 * 60 * 60,
   })
 
-  const { data: stickers = [], isLoading: stickersLoading } = useQuery({
-    queryKey: ['stickers', 'pack', activePack],
-    queryFn: () => fetchPackStickers(activePack!),
-    enabled: Boolean(activePack),
-    staleTime: 1000 * 60 * 60,
-  })
-
-  const currentPackId = activePack ?? packs[0]?.id ?? null
+  const currentPack = packs.find((p) => p.id === (activePack ?? packs[0]?.id))
 
   return (
     <div
@@ -102,34 +89,44 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
             flexShrink: 0,
           }}
         >
-          {packs.map((pack) => (
-            <button
-              key={pack.id}
-              type="button"
-              onClick={() => setActivePack(pack.id)}
-              title={pack.name}
-              style={{
-                flexShrink: 0,
-                width: 36,
-                height: 36,
-                borderRadius: 'var(--r-md)',
-                border:
-                  (activePack ?? packs[0]?.id) === pack.id
+          {packs.map((pack) => {
+            const isActive = (activePack ?? packs[0]?.id) === pack.id
+            const thumbUrl = pack.thumbnail
+              ? packUrl(pack.id, pack.thumbnail)
+              : pack.stickers[0]
+                ? packUrl(pack.id, pack.stickers[0])
+                : null
+            return (
+              <button
+                key={pack.id}
+                type="button"
+                onClick={() => setActivePack(pack.id)}
+                title={pack.name}
+                style={{
+                  flexShrink: 0,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 'var(--r-md)',
+                  border: isActive
                     ? '1.5px solid var(--uc-indigo)'
                     : '0.5px solid var(--border-subtle)',
-                background: 'var(--surface-raised)',
-                cursor: 'pointer',
-                padding: 2,
-                overflow: 'hidden',
-              }}
-            >
-              {pack.thumbnailUrl ? (
-                <img src={pack.thumbnailUrl} alt={pack.name} width={32} height={32} style={{ objectFit: 'contain' }} />
-              ) : (
-                <span style={{ fontSize: 18 }}>🎭</span>
-              )}
-            </button>
-          ))}
+                  background: 'var(--surface-raised)',
+                  cursor: 'pointer',
+                  padding: 2,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {thumbUrl ? (
+                  <StickerThumb url={thumbUrl} />
+                ) : (
+                  <span style={{ fontSize: 18 }}>🎭</span>
+                )}
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -145,57 +142,64 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
           alignContent: 'start',
         }}
       >
-        {packsLoading || (stickersLoading && currentPackId) ? (
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              display: 'flex',
-              justifyContent: 'center',
-              padding: 24,
-            }}
-          >
-            <Loader2 size={20} className="animate-spin" style={{ color: 'var(--text-tertiary)' }} />
+        {isLoading ? (
+          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center', padding: 24 }}>
+            <Loader2 size={20} style={{ color: 'var(--text-tertiary)', animation: 'spin 1s linear infinite' }} />
           </div>
-        ) : stickers.length === 0 && !import.meta.env.VITE_LOTTIEFILES_API_KEY ? (
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              textAlign: 'center',
-              padding: 24,
-              color: 'var(--text-tertiary)',
-              fontSize: 13,
-            }}
-          >
-            Set VITE_LOTTIEFILES_API_KEY to enable stickers
+        ) : !BASE ? (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
+            Set VITE_STICKER_BUCKET_URL to enable stickers
+          </div>
+        ) : packs.length === 0 ? (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
+            No stickers yet — upload Lottie JSONs to your bucket
           </div>
         ) : (
-          stickers.map((sticker) => (
-            <StickerTile
-              key={sticker.id}
-              sticker={sticker}
-              onSelect={() => { onSelect(sticker.lottieUrl); onClose() }}
-            />
-          ))
+          currentPack?.stickers.map((filename) => {
+            const url = packUrl(currentPack.id, filename)
+            return (
+              <StickerTile
+                key={url}
+                url={url}
+                onSelect={() => { onSelect(url); onClose() }}
+              />
+            )
+          })
         )}
       </div>
     </div>
   )
 }
 
-function StickerTile({ sticker, onSelect }: { sticker: Sticker; onSelect: () => void }) {
+// ── StickerThumb — static preview shown in the pack strip ────────────────────
+
+function StickerThumb({ url }: { url: string }) {
+  const [data, setData] = useState<Record<string, unknown> | null>(null)
+
+  React.useEffect(() => {
+    fetchLottieJson(url).then(setData)
+  }, [url])
+
+  if (!data) return <span style={{ fontSize: 16 }}>🎭</span>
+
+  return (
+    <Suspense fallback={<span style={{ fontSize: 16 }}>🎭</span>}>
+      <LottiePlayer animationData={data} loop={false} autoplay={false} style={{ width: 30, height: 30 }} />
+    </Suspense>
+  )
+}
+
+// ── StickerTile — grid cell, plays on hover ──────────────────────────────────
+
+function StickerTile({ url, onSelect }: { url: string; onSelect: () => void }) {
   const [hovered, setHovered] = useState(false)
-  const [lottieData, setLottieData] = useState<Record<string, unknown> | null>(null)
-  const [loadError, setLoadError] = useState(false)
+  const [data, setData] = useState<Record<string, unknown> | null>(null)
 
   async function handleHover() {
     setHovered(true)
-    if (!lottieData && !loadError && sticker.lottieUrl) {
-      try {
-        const res = await fetch(sticker.lottieUrl)
-        if (res.ok) setLottieData(await res.json())
-      } catch {
-        setLoadError(true)
-      }
+    if (!data) {
+      const json = await fetchLottieJson(url)
+      if (json) setData(json)
     }
   }
 
@@ -220,33 +224,53 @@ function StickerTile({ sticker, onSelect }: { sticker: Sticker; onSelect: () => 
         transition: 'border-color 150ms',
       }}
     >
-      {hovered && lottieData ? (
-        <Suspense fallback={<img src={sticker.thumbnailUrl} alt="sticker" width={72} height={72} style={{ objectFit: 'contain' }} />}>
-          <LottiePlayer animationData={lottieData} loop autoplay style={{ width: 72, height: 72 }} />
+      {hovered && data ? (
+        <Suspense fallback={<div style={{ width: 72, height: 72 }} />}>
+          <LottiePlayer animationData={data} loop autoplay style={{ width: 72, height: 72 }} />
         </Suspense>
       ) : (
-        <img
-          src={sticker.thumbnailUrl}
-          alt="sticker"
-          width={72}
-          height={72}
-          style={{ objectFit: 'contain' }}
-        />
+        <StaticStickerPreview url={url} />
       )}
     </button>
   )
 }
 
-/** Renders a sticker message in chat — 160×160 autoplay loop, no bubble */
+function StaticStickerPreview({ url }: { url: string }) {
+  const [data, setData] = useState<Record<string, unknown> | null>(null)
+
+  React.useEffect(() => {
+    fetchLottieJson(url).then(setData)
+  }, [url])
+
+  if (!data) {
+    return (
+      <div style={{
+        width: 72,
+        height: 72,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text-tertiary)',
+      }}>
+        <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+      </div>
+    )
+  }
+
+  return (
+    <Suspense fallback={<div style={{ width: 72, height: 72 }} />}>
+      <LottiePlayer animationData={data} loop={false} autoplay={false} style={{ width: 72, height: 72 }} />
+    </Suspense>
+  )
+}
+
+// ── StickerMessage — renders a sticker in the chat bubble ────────────────────
+
 export function StickerMessage({ lottieUrl }: { lottieUrl: string }) {
   const [data, setData] = React.useState<Record<string, unknown> | null>(null)
 
   React.useEffect(() => {
-    if (!lottieUrl) return
-    fetch(lottieUrl)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => null)
+    fetchLottieJson(lottieUrl).then(setData)
   }, [lottieUrl])
 
   if (!data) return <div style={{ width: 160, height: 160 }} />
