@@ -26,6 +26,7 @@ import { ReactionBtn } from '@/components/Button'
 import { ShareMenu } from '@/components/ShareMenu'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { AttachmentList } from '@/features/content-sync'
+import { MediaGrid } from './MediaGrid'
 import { ReportModal } from '@/features/moderation'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
@@ -436,32 +437,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         )}
 
         {/* Media grid */}
-        {post.mediaUrls.length > 0 && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: post.mediaUrls.length === 1 ? '1fr' : '1fr 1fr',
-              gap: 3,
-              marginBottom: 12,
-              borderRadius: 'var(--r-md)',
-              overflow: 'hidden',
-            }}
-          >
-            {post.mediaUrls.slice(0, 4).map((url, i) => (
-              <img
-                key={i}
-                src={url}
-                alt={`Photo ${i + 1}`}
-                loading="lazy"
-                role="button"
-                tabIndex={0}
-                onClick={() => setLightboxIndex(i)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLightboxIndex(i) } }}
-                style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', cursor: 'zoom-in' }}
-              />
-            ))}
-          </div>
-        )}
+        <MediaGrid urls={post.mediaUrls} onOpen={setLightboxIndex} />
 
         {/* File attachments (shown on the post-detail view) */}
         <AttachmentList attachments={post.attachments} />
