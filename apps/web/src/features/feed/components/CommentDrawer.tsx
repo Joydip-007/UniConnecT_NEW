@@ -30,6 +30,7 @@ const EmojiPicker = lazy(() =>
 const StickerDrawer = lazy(() =>
   import('@/components/emoji/StickerDrawer').then((m) => ({ default: m.StickerDrawer })),
 )
+import { StickerMessage } from '@/components/emoji/StickerDrawer'
 
 const markdownComponents = {
   p: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
@@ -162,7 +163,7 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
           {comment.mediaUrls && comment.mediaUrls.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
               {comment.mediaUrls.map((url) => (
-                <img key={url} src={url} alt="" style={{ maxWidth: 160, maxHeight: 160, borderRadius: 'var(--r-md)', objectFit: 'contain' }} />
+                <StickerMessage key={url} url={url} />
               ))}
             </div>
           )}
