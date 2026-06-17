@@ -4,6 +4,7 @@ dist/
 *.tsbuildinfo
 .vercel
 .claude/worktrees/
+.DS_Store
 
 # Generated knowledge graph — rebuildable via `graphify update .`, regenerated
 # on every commit/branch-switch by the background hook (so it churns endlessly
