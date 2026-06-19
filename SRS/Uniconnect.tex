@@ -12,6 +12,10 @@
 \usepackage{fancyhdr}
 \usepackage{xcolor}
 \usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{colortbl}
 
 \hypersetup{
     colorlinks=true,
@@ -131,13 +135,29 @@ logistical --- into a single, well-designed digital space.
 \section{Project Objectives}
 % ---------------------------------------------------------------
 
-The primary objectives of UniConnecT are as follows:
+The primary objectives of UniConnecT are grouped below by theme.
+
+\subsection{Social and Community Objectives}
 
 \begin{itemize}
     \item \textbf{Unified Campus Social Feed:} Provide a community-driven social feed
     where students, alumni, and faculty can post, react, comment on, and share content
     relevant to their university.
 
+    \item \textbf{Campus Events Management:} Enable creation, browsing, and RSVP for
+    campus events so the community stays informed and engaged in university life.
+
+    \item \textbf{Groups and Clubs:} Support the creation and management of university
+    groups (clubs, departments, study circles) with dedicated feeds, file resources,
+    study sessions, member roles, and group rules.
+
+    \item \textbf{Real-Time Messaging:} Provide direct and group messaging for
+    communication between connected community members and within mentorship relationships.
+\end{itemize}
+
+\subsection{Professional and Career Development Objectives}
+
+\begin{itemize}
     \item \textbf{Alumni--Student Mentorship:} Design a structured mentorship module
     enabling students to discover alumni mentors and request guidance on academic and
     career development.
@@ -146,20 +166,14 @@ The primary objectives of UniConnecT are as follows:
     where alumni and faculty can post opportunities and students can browse and apply,
     all within a trusted institutional network.
 
-    \item \textbf{Campus Events Management:} Enable creation, browsing, and RSVP for
-    campus events so the community stays informed and engaged in university life.
-
     \item \textbf{Professional Connection Network:} Implement a bidirectional
     LinkedIn-style connection system allowing members to build and grow a verified
     university professional network.
+\end{itemize}
 
-    \item \textbf{Groups and Clubs:} Support the creation and management of university
-    groups (clubs, departments, study circles) with dedicated feeds, file resources,
-    study sessions, member roles, and group rules.
+\subsection{Campus Utility and Technical Objectives}
 
-    \item \textbf{Real-Time Messaging:} Provide direct and group messaging for
-    communication between connected community members and within mentorship relationships.
-
+\begin{itemize}
     \item \textbf{Campus Utilities:} Integrate practical campus tools --- a
     lost-and-found item tracking module and a real-time shuttle schedule and location
     tracker --- directly into the platform.
@@ -180,35 +194,568 @@ The primary objectives of UniConnecT are as follows:
 The following user groups are the intended audience for UniConnecT. All users belong to
 a single university community; the platform does not allow cross-university interaction.
 
+\subsection{Students}
+
+The primary users of the platform. Students use UniConnecT to browse and post on the
+social feed, build connections with peers and alumni, discover jobs and internships,
+join groups and clubs, RSVP for events, request mentorship from alumni, access campus
+news, save drafts, report lost items, and track shuttle locations.
+
+\subsection{Alumni}
+
+Graduated members of the university who maintain access to the platform after leaving.
+Alumni can post job and internship opportunities, offer mentorship to current students,
+engage with the social feed, participate in groups, and stay professionally connected
+to the university community.
+
+\subsection{Faculty}
+
+Academic staff members who use the platform to publish announcements and news, engage
+with students and alumni, create and manage events, and participate in group
+discussions. Faculty may also act in a moderation capacity within their
+department-level groups.
+
+\subsection{System Administrators}
+
+University administrators who oversee the platform's operation. Administrators manage
+user accounts and roles, issue and revoke invitation tokens, moderate reported content,
+configure university-wide settings, and monitor platform activity through a dedicated
+admin panel. All administrative actions are recorded in an audit log.
+
+\subsection{Transport Drivers}
+
+A least-privilege role assigned exclusively to campus shuttle and transport staff.
+Drivers interact only with a dedicated GPS broadcast view to transmit live shuttle
+location data to the platform. They have no access to the broader social application.
+
+% ---------------------------------------------------------------
+\section{Benchmark Analysis}
+% ---------------------------------------------------------------
+
+Benchmark analysis evaluates UniConnecT against the five platforms that occupy the
+closest competitive space: purpose-built university alumni and community engagement
+SaaS products. Unlike general social networks, these platforms are specifically sold
+to higher-education institutions --- making them the most relevant frame of reference
+for positioning UniConnecT's value and identifying remaining market gaps.
+
+
+\subsection{Competitor Overview}
+
 \begin{itemize}
-    \item \textbf{Students:} The primary users of the platform. Students use UniConnecT
-    to browse and post on the social feed, build connections with peers and alumni,
-    discover jobs and internships, join groups and clubs, RSVP for events, request
-    mentorship from alumni, access campus news, save drafts, report lost items, and
-    track shuttle locations.
+    \item \textbf{PeopleGrove} (Direct) --- A career-success and mentoring platform
+    deployed at 500+ universities primarily in the USA. PeopleGrove excels at
+    structured alumni-to-student career advising and job referral workflows. However,
+    it does not offer a general social feed, real-time messaging, campus utilities,
+    or university news. Pricing is custom and expensive, making it inaccessible to
+    South Asian institutions operating on tighter budgets.
 
-    \item \textbf{Alumni:} Graduated members of the university who maintain access to
-    the platform after leaving. Alumni can post job and internship opportunities, offer
-    mentorship to current students, engage with the social feed, participate in groups,
-    and stay professionally connected to the university community.
+    \item \textbf{Graduway} (Direct) --- An alumni community and engagement platform
+    used by 2,750+ institutions globally. Graduway focuses on alumni directory
+    management, mentorship matching, and fundraising pipelines. It is predominantly
+    alumni-facing and does not serve current students, faculty, or transport staff as
+    first-class actors. It lacks a social feed, real-time chat, and any campus
+    utility layer. Enterprise pricing makes it prohibitive for emerging-market
+    universities.
 
-    \item \textbf{Faculty:} Academic staff members who use the platform to publish
-    announcements and news, engage with students and alumni, create and manage events,
-    and participate in group discussions. Faculty may also act in a moderation capacity
-    within their department-level groups.
+    \item \textbf{Almabase} (SaaS) --- A fundraising and events management SaaS for
+    alumni associations, priced at approximately \$3,000 per year. Almabase covers
+    alumni directories, giving campaigns, and event ticketing but provides no student
+    social networking, job board, mentorship economy, or campus utilities.
+    Its feature surface is narrow relative to its cost.
 
-    \item \textbf{System Administrators:} University administrators who oversee the
-    platform's operation. Administrators manage user accounts and roles, issue and
-    revoke invitation tokens, moderate reported content, configure university-wide
-    settings, and monitor platform activity through a dedicated admin panel. All
-    administrative actions are recorded in an audit log.
+    \item \textbf{AlumnForce} (SaaS) --- A private social network for alumni
+    associations, originating in Europe. AlumnForce offers alumni directories, a
+    jobs board, and some social feed functionality, but the platform is alumni-only
+    --- current students and faculty are not integrated as participants. Real-time
+    messaging is limited. Pricing is quote-based and typically enterprise-tier,
+    with little published transparency.
 
-    \item \textbf{Transport Driver:} A least-privilege role assigned exclusively to
-    campus shuttle and transport staff. Drivers interact only with a dedicated GPS
-    broadcast view to transmit live shuttle location data to the platform. They have
-    no access to the broader social application.
+    \item \textbf{Hivebrite} (SaaS) --- A community-building and branding platform
+    serving alumni networks, nonprofits, and professional associations. Hivebrite
+    offers events, a directory, a jobs board, and a community feed, but it is not
+    university-specific --- any organisation can adopt it. It carries no campus
+    utility features and no institutional governance layer tailored to the
+    university context. Pricing is enterprise-only with no self-serve tier.
 \end{itemize}
 
+\subsection{Feature Comparison Matrix}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{4.5cm} p{1.45cm} p{1.5cm} p{1.45cm} p{1.55cm} p{1.45cm} p{1.55cm}}
+\toprule
+\textbf{Feature}
+  & \textbf{People-Grove}
+  & \textbf{Gradu-way}
+  & \textbf{Alma-base}
+  & \textbf{Alumn-Force}
+  & \textbf{Hive-brite}
+  & \textbf{Uni-ConnecT} \\
+\midrule
+Students as first-class users   & Partial & No      & No      & No      & No      & \textbf{Yes} \\
+Faculty \& admin roles          & No      & No      & No      & No      & No      & \textbf{Yes} \\
+University invite verification  & Yes     & Yes     & Yes     & Yes     & Partial & \textbf{Yes} \\
+Social feed (posts/reactions)   & No      & Partial & No      & Partial & Yes     & \textbf{Yes} \\
+Real-time messaging             & Partial & No      & No      & Partial & Partial & \textbf{Yes} \\
+Structured mentorship flow      & Yes     & Yes     & Partial & Partial & Partial & \textbf{Yes} \\
+Points / reward economy         & No      & No      & No      & No      & No      & \textbf{Yes} \\
+Integrated job board            & Yes     & Partial & Partial & Yes     & Yes     & \textbf{Yes} \\
+Campus events management        & No      & Yes     & Yes     & Yes     & Yes     & \textbf{Yes} \\
+University news \& content sync & No      & No      & No      & No      & No      & \textbf{Yes} \\
+Lost \& found module            & No      & No      & No      & No      & No      & \textbf{Yes} \\
+Live shuttle GPS tracking       & No      & No      & No      & No      & No      & \textbf{Yes} \\
+Multi-tenant SaaS architecture  & Yes     & Yes     & Yes     & Yes     & Yes     & \textbf{Yes} \\
+Role-based audit log            & No      & No      & No      & No      & No      & \textbf{Yes} \\
+Affordable / transparent pricing & No     & No      & Partial & No      & No      & \textbf{Yes} \\
+\bottomrule
+\end{tabular}
+\caption{Feature comparison of UniConnecT against direct university-community competitors.}
+\end{table}
+
+\subsection{Key Differentiators}
+
+The matrix reveals that existing platforms cluster into two problem spaces:
+alumni engagement tools (Graduway, Almabase, AlumnForce) and generic community
+platforms (Hivebrite) --- with PeopleGrove the closest competitor on the mentorship
+dimension. UniConnecT holds an exclusive position across four dimensions that no
+single competitor addresses:
+
+\begin{itemize}
+    \item \textbf{Whole-community coverage:} UniConnecT is the only platform where
+    students, alumni, faculty, administrators, and transport drivers all participate
+    as first-class, role-differentiated actors. Every competitor targets alumni as
+    the primary user and treats students as secondary or absent.
+
+    \item \textbf{Integrated mentorship economy:} While PeopleGrove and Graduway
+    offer mentorship matching, none implement a points-based reward economy with gift
+    card redemption, session logging, or alumni capacity enforcement. UniConnecT
+    creates mutual incentive on both sides of the mentorship relationship.
+
+    \item \textbf{Campus utility layer:} Lost-and-found management and live shuttle
+    GPS tracking (driver broadcast + client-side route interpolation) are absent from
+    every benchmarked platform. These features make UniConnecT indispensable for
+    day-to-day campus life, not just career development.
+
+    \item \textbf{South Asia pricing accessibility:} All five competitors use
+    enterprise or custom pricing models opaque to budget-constrained South Asian
+    universities. UniConnecT's transparent, affordable subscription (\$500/month)
+    is specifically designed for the 54+ private universities in Bangladesh and
+    comparable institutions across the region.
+\end{itemize}
+\clearpage
+% ---------------------------------------------------------------
+\section{Gap Analysis}
+% ---------------------------------------------------------------
+
+Gap analysis identifies the unmet needs within the existing landscape of tools used
+by university communities and maps each gap to a concrete UniConnecT feature.
+
+\subsection{Identified Gaps in Existing Solutions}
+
+\begin{enumerate}
+
+    \item \textbf{No verified, university-bound social space.} Students and alumni use
+    general platforms (Instagram, Facebook) for campus discourse. These are public,
+    unverified, and carry no institutional accountability. Misinformation, spam, and
+    off-topic content are endemic.
+
+    \item \textbf{Weak alumni-to-student mentorship pipelines.} Career services
+    departments at most universities manage mentorship through spreadsheets and email.
+    There is no structured platform to match mentees with mentors, track session
+    progress, or reward alumni participation.
+
+    \item \textbf{Fragmented professional discovery.} Job and internship postings are
+    scattered across notice boards, department WhatsApp groups, and external portals.
+    No platform consolidates alumni-posted opportunities scoped to the university.
+
+    \item \textbf{Undigitised campus utility services.} Lost-and-found is managed via
+    physical boards or informal group chats. Shuttle schedules are static PDFs. Live
+    vehicle tracking, item reporting, and claim workflows have no digital home.
+
+    \item \textbf{No unified campus news and announcements.} Faculty announcements,
+    club events, and administrative notices travel through multiple disconnected
+    channels (email, Facebook, WhatsApp). Students miss critical information.
+
+    \item \textbf{Absent governance and audit trail.} General platforms offer no
+    institutional moderation layer. Administrators cannot manage roles, issue verified
+    invitation tokens, or maintain a tamper-evident log of platform actions.
+
+\end{enumerate}
+
+\subsection{How UniConnecT Addresses the Gaps}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{p{0.4cm} p{5.0cm} X}
+\toprule
+\textbf{\#} & \textbf{Gap} & \textbf{UniConnecT Resolution} \\
+\midrule
+1 & Unverified social space        & Invite-token registration + \texttt{university\_id}--scoped data; all content is institution-bound. \\
+2 & No mentorship pipeline         & Dedicated mentorship module with request/accept flow, session logs, points economy, and alumni capacity control. \\
+3 & Fragmented job discovery       & Alumni-authored job board with role-gated posting, application tracking, and university-scoped visibility. \\
+4 & Undigitised campus utilities   & Lost-\&-found CRUD module + shuttle module with driver GPS broadcast and client-side route interpolation. \\
+5 & Siloed news and announcements  & Unified news module fed by admin-authored posts and auto-imported WordPress/external content via the content-sync engine. \\
+6 & No governance or audit trail   & Admin panel with invitation management, role assignment, content reporting, and \texttt{university\_audit\_log}. \\
+\bottomrule
+\end{tabularx}
+\caption{Mapping of identified gaps to UniConnecT features.}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth, keepaspectratio]{diagrams/use_case_diagram.png}
+    \caption{Use-case diagram for UniConnecT. Three actor groups ---
+    Student/Alumni, Staff/Faculty, and Admin --- interact with core use cases
+    including Register/Login, Post/View Feed, Send Message, Browse Jobs,
+    Post Job/Opportunity, Manage Events, Publish Announcement, and Manage Users.
+    Lines indicate association relationships between actors and the use cases
+    they are permitted to invoke within the system boundary.}
+    \label{fig:use_case}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth, keepaspectratio]{diagrams/context_diagram.png}
+    \caption{System context diagram (Level 0 DFD). UniConnecT occupies the central
+    node. Five external entities interact with the system: Student (Posts, Profile,
+    Jobs), Alumni (Jobs, Mentorship, News), Staff/Faculty (Announcements, Events),
+    Admin (Settings, Analytics), and University (License, Reports). Data flows on
+    each edge represent the primary information exchanged between each entity and
+    the platform.}
+    \label{fig:context}
+\end{figure}
+\clearpage
+% ---------------------------------------------------------------
+\section{Feasibility Analysis}
+% ---------------------------------------------------------------
+
+Feasibility analysis examines whether UniConnecT is viable from market, technical,
+and financial perspectives within the two-year horizon of the project.
+
+\subsection{Market Analysis}
+
+\textbf{Total addressable market.}
+Bangladesh has 54 approved private universities (UGC data, 2025) with a combined
+active student enrolment exceeding 600,000. Each university operates at least one
+administrative domain and runs independent communication channels. There is currently
+no university-specific SaaS social platform serving this market.
+
+\textbf{Serviceable addressable market.}
+Of the 54 private universities, approximately 30 have active digital presences,
+dedicated IT departments, and the budget infrastructure compatible with a SaaS
+subscription model. The serviceable market is therefore $\approx30$ universities in
+the first two years.
+
+\textbf{Serviceable obtainable market (2-year target).}
+A conservative penetration rate of 33\% of the serviceable market yields a two-year
+target of 10 university deployments. At a per-university subscription of
+\$500 per month, the obtainable annual recurring revenue at full Year~2 capacity is
+\$60,000 USD.
+
+\textbf{Pricing rationale.}
+The subscription covers hosting (Azure App Service + Neon PostgreSQL + Redis), cloud
+storage (Cloudflare R2), email delivery (Resend), and ongoing maintenance. At
+\$500/month, the break-even unit cost per deployment is below \$200/month at 10+
+active tenants, yielding a healthy gross margin above 60\%.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth, keepaspectratio]{diagrams/dfd.png}
+    \caption{Data flow diagram (Level~1) for UniConnecT. Shows how data originates
+    from five actor types (Student, Alumni, Faculty, Staff, Admin), flows through six
+    processing modules (User Auth, Post \& Feed, Job, Messaging, Events \& Groups,
+    Admin Panel), and is persisted in six data stores (User DB, Post Feed DB, Job DB,
+    Message DB, Events DB, Admin DB). Arrows indicate the direction of data movement
+    between actors, processes, and stores.}
+    \label{fig:dfd}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\textwidth, keepaspectratio]{diagrams/activity.png}
+    \caption{Activity diagram illustrating a student's end-to-end job application
+    journey on UniConnecT. The flow begins at Login, proceeds to the Job Board
+    (gated by a Session Valid decision), allows the user to Filter by Role or
+    Browse Featured listings, view job details, and then branches on interest:
+    saving the job or preparing and submitting an application, which concludes
+    with a system confirmation and notification.}
+    \label{fig:activity}
+\end{figure}
+
+\subsection{Cash Flow and NPV Analysis}
+
+The financial model below projects costs and revenues over a 24-month window
+(July 2026 --- June 2028) using a discount rate of \textbf{10\% per annum}, which
+approximates the opportunity cost of capital for an early-stage software project.
+
+\textbf{Assumptions:}
+\begin{itemize}
+    \item Development team: 4 members × 6 months at \$2,000/month each = \$48,000
+    total initial investment (Year~0, already incurred in development).
+    \item Operating costs Year~1: hosting \$3,600 + marketing \$2,400 +
+    maintenance support \$6,000 = \$12,000.
+    \item Operating costs Year~2: hosting \$7,200 + marketing \$4,800 +
+    maintenance support \$8,000 = \$20,000.
+    \item Universities onboarded: 4 in Year~1, scaling to 12 by end of Year~2.
+    \item Average subscription: \$500/month per university.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{p{5.5cm} r r r}
+\toprule
+\textbf{Item} & \textbf{Year 0} & \textbf{Year 1} & \textbf{Year 2} \\
+              & \textbf{(\$USD)} & \textbf{(\$USD)} & \textbf{(\$USD)} \\
+\midrule
+\textit{Inflows} & & & \\
+\quad Subscription revenue        & ---     & 24,000  & 72,000  \\
+\midrule
+\textit{Outflows} & & & \\
+\quad Initial development cost    & (48,000) & ---    & ---     \\
+\quad Operating costs             & ---      & (12,000) & (20,000) \\
+\midrule
+\textbf{Net cash flow}            & \textbf{(48,000)} & \textbf{12,000} & \textbf{52,000} \\
+\midrule
+Discount factor $(1.10)^{n}$      & 1.0000  & 1.1000  & 1.2100  \\
+Present value of net cash flow    & (48,000.00) & 10,909.09 & 42,975.21 \\
+\midrule
+\textbf{Cumulative NPV}           & \textbf{(48,000.00)} & \textbf{(37,090.91)} & \textbf{+5,884.30} \\
+\bottomrule
+\end{tabular}
+\caption{Two-year cash flow projection and NPV calculation (discount rate 10\%).}
+\end{table}
+
+\textbf{Net Present Value (NPV):}
+
+\[
+\text{NPV} = -48{,}000 + \frac{12{,}000}{(1.10)^{1}} + \frac{52{,}000}{(1.10)^{2}}
+= -48{,}000 + 10{,}909.09 + 42{,}975.21 = \mathbf{\$5{,}884.30}
+\]
+
+Since NPV $> 0$, the project generates a positive return within the two-year window at
+the assumed 10\% discount rate. Payback is achieved during Year~2 as cumulative
+discounted cash flows cross break-even at approximately Month~21.
+
+\textbf{Sensitivity note.} The NPV is sensitive to university acquisition rate.
+Signing just 2 additional universities in Year~1 (6 total instead of 4) raises
+Year~1 revenue by \$12,000 and improves NPV to approximately \$16,800 --- a 185\%
+increase in project value, underscoring the leverage of early client acquisition.
+
+% ---------------------------------------------------------------
+\section{MoSCoW Model}
+% ---------------------------------------------------------------
+
+The MoSCoW model categorises all UniConnecT features by priority to guide
+development sequencing. The model reflects the current state of the implemented
+codebase and was validated against stakeholder requirements.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth, keepaspectratio]{diagrams/moscow.png}
+    \caption{MoSCoW prioritisation matrix for UniConnecT. The four quadrants (Must
+    Have, Should Have, Could Have, Won't Have) map each feature to its delivery
+    commitment for the current release. Features in the Must Have quadrant were
+    treated as hard scope; their absence would render the platform non-functional for
+    the target university community.}
+    \label{fig:moscow}
+\end{figure}
+
+\subsection{Must Have}
+
+These features are non-negotiable and are fully implemented in the current release.
+Without them, the platform cannot operate as a university social network.
+
+\begin{itemize}
+    \item \textbf{Invite-token registration with email OTP verification} --- ensures
+    only verified university members can join.
+    \item \textbf{JWT authentication with silent refresh} --- stateless, secure session
+    management with 15-minute access tokens and 7-day refresh cookies.
+    \item \textbf{Role-based access control} (student, alumni, faculty, admin, driver)
+    --- each role sees and can perform only what the university authorises.
+    \item \textbf{Social feed} (create, react, comment, share posts) --- the core
+    engagement surface of the platform.
+    \item \textbf{Real-time messaging} (direct, group, mentorship threads) ---
+    Socket.io powered, scaled via Redis pub/sub.
+    \item \textbf{User profiles with experience, education, and skills} --- foundation
+    of professional identity on the platform.
+    \item \textbf{University-scoped data isolation} --- multi-tenant architecture;
+    every DB row carries \texttt{university\_id}; no cross-university data leakage.
+    \item \textbf{Admin panel} (user management, invitations, content reports) ---
+    universities cannot operate the platform without institutional governance.
+    \item \textbf{Notifications} (in-app + Web Push) --- users must be informed of
+    relevant activity in real time.
+\end{itemize}
+
+\subsection{Should Have}
+
+These features significantly enhance the value proposition and are implemented in the
+current release, though the platform would still function at a basic level without them.
+
+\begin{itemize}
+    \item \textbf{Job and internship board} --- alumni-posted opportunities scoped to
+    the university; application tracking for students.
+    \item \textbf{Events management} with RSVP --- creation, browsing, and attendance
+    tracking for campus events.
+    \item \textbf{Groups and clubs} --- private/public groups with member roles,
+    resources, study sessions, pinned posts, and group rules.
+    \item \textbf{Mentorship module} --- request/accept flow, session logging, points
+    economy, alumni capacity enforcement, gift card redemption.
+    \item \textbf{Full-text search} --- Postgres generated \texttt{search\_vector}
+    columns across profiles, posts, jobs, events, and groups.
+    \item \textbf{University news feed} with content-sync engine --- auto-import
+    from WordPress/external CMS with admin review workflow.
+    \item \textbf{Connections (LinkedIn-style)} --- bidirectional connection graph
+    replacing the old follow model.
+    \item \textbf{Profile analytics} (7/30/90-day view counts, viewer list) ---
+    professional insight into profile reach.
+\end{itemize}
+
+\subsection{Could Have}
+
+These features add value but were treated as stretch goals. A subset is implemented;
+the remainder is scoped for future iterations.
+
+\begin{itemize}
+    \item \textbf{Draft posts across content types} --- save-and-resume authoring
+    for posts, jobs, events, and news articles. \textit{(Implemented.)}
+    \item \textbf{Explore page} with trending tags and suggested users.
+    \textit{(Implemented.)}
+    \item \textbf{Resume export} from profile data to a downloadable PDF.
+    \textit{(Implemented.)}
+    \item \textbf{Dark/light theme toggle} with user preference persistence.
+    \textit{(Implemented.)}
+    \item \textbf{Presence indicators} --- real-time online/offline status with
+    privacy tier controls. \textit{(Implemented.)}
+    \item \textbf{Group digest email} (weekly summary of group activity via Bull cron).
+    \textit{(Implemented.)}
+    \item \textbf{Mobile-responsive design} --- full Tailwind CSS responsive layout.
+    \textit{(Implemented.)}
+    \item \textbf{Skyvern browser-automation fallback} for content sync when WordPress
+    REST API is unavailable. \textit{(Implemented.)}
+\end{itemize}
+
+\subsection{Won't Have (This Release)}
+
+These features were explicitly deferred to avoid scope creep. They remain on the
+long-term product roadmap.
+
+\begin{itemize}
+    \item \textbf{Native mobile applications} (iOS / Android) --- the current release
+    is a progressive web app only; native apps require a separate development cycle.
+    \item \textbf{Video calling or live streaming} --- real-time video would require
+    WebRTC infrastructure and per-stream bandwidth cost modelling beyond current scope.
+    \item \textbf{AI-powered feed curation} --- machine learning recommendations
+    require training data volume only achievable after several months of live usage.
+    \item \textbf{Cross-university alumni network} --- multi-university interaction
+    conflicts with the institution-bound privacy model and requires a governance
+    redesign.
+    \item \textbf{Integrated payment gateway} --- monetised mentorship sessions and
+    paid events are deferred pending legal and financial compliance review.
+    \item \textbf{User self-deletion} --- account deletion is admin-mediated
+    (request-with-reason workflow) to preserve audit integrity and data retention
+    compliance.
+\end{itemize}
+\clearpage
+% ---------------------------------------------------------------
+\section{Kano Model}
+% ---------------------------------------------------------------
+
+The Kano model classifies UniConnecT features by the nature of their relationship
+to user satisfaction. It distinguishes between features that users expect as
+table-stakes (Basic), features where more is always better (Performance), and
+features that unexpectedly delight users when present (Excitement).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.88\textwidth, keepaspectratio]{diagrams/kano.png}
+    \caption{Kano model overview for UniConnecT, organised as three feature categories.
+    \textit{Basic Needs} (must-be quality): user registration/login, profile creation,
+    and basic feed viewing --- their absence causes immediate dissatisfaction.
+    \textit{Performance Needs}: search \& filter, message delivery speed, and platform
+    load time --- satisfaction scales linearly with quality.
+    \textit{Delighters}: AI-powered career match, alumni mentorship matching, smart
+    feed curation, and gamified networking --- unexpected features that create strong
+    positive reactions when discovered.}
+    \label{fig:kano}
+\end{figure}
+
+\subsection{Basic (Must-Be) Quality Features}
+
+These features are taken for granted when present; their absence causes immediate
+dissatisfaction and platform rejection. They are threshold requirements, not
+differentiators.
+
+\begin{itemize}
+    \item \textbf{Secure login and session management} --- users expect authentication
+    to simply work. Any failure here (token leaks, silent logouts) destroys trust
+    immediately.
+    \item \textbf{Fast page loads and responsive UI} --- users expect sub-2-second
+    render times on any device. Slowness is a hygiene failure.
+    \item \textbf{Reliable notification delivery} --- missing a job offer notification
+    or mentorship acceptance is an unacceptable failure, not a missing feature.
+    \item \textbf{Data privacy and access isolation} --- users expect their content to
+    be visible only to their university community. A cross-tenant data leak would
+    terminate the product.
+    \item \textbf{Mobile-readable layout} --- the majority of students access platforms
+    on mobile. A desktop-only layout would exclude a large fraction of the user base.
+    \item \textbf{Profile completeness} --- name, photo, role, and department are
+    expected to be present and editable. An incomplete identity layer undermines trust
+    in every other interaction.
+\end{itemize}
+
+\subsection{Performance Quality Features}
+
+These features directly scale satisfaction with the quality of their implementation.
+The better the feature works, the happier the user; degraded performance causes
+proportional dissatisfaction.
+
+\begin{itemize}
+    \item \textbf{Feed relevance and ranking} --- a chronological feed is baseline;
+    the HN-style \texttt{hot\_score} ranking algorithm and ``Top'' feed sort increase
+    satisfaction linearly as relevance improves.
+    \item \textbf{Search accuracy and speed} --- the quality of full-text search
+    (Postgres GIN-indexed \texttt{search\_vector} with tsvector weighting A/B/C) maps
+    directly to how quickly users find peers, jobs, or content.
+    \item \textbf{Mentorship match quality} --- the usefulness of the mentorship
+    module scales with how well students can discover the right mentor by field,
+    seniority, and availability.
+    \item \textbf{Job board coverage} --- the more alumni post opportunities, the more
+    valuable the board. Coverage is the primary performance dimension of this feature.
+    \item \textbf{Message delivery latency} --- real-time chat satisfaction correlates
+    directly with message round-trip latency. Sub-100ms delivery (Redis pub/sub, local
+    Socket.io) feels instant; anything above 500ms feels broken.
+    \item \textbf{Content sync freshness} --- the news module's value scales with how
+    recently the WordPress importer has run. Stale news is worse than no news.
+\end{itemize}
+
+\subsection{Excitement (Delighter) Features}
+
+These features are not anticipated by users. When discovered, they generate strong
+positive reactions and become key advocates of the platform. Their absence causes no
+dissatisfaction.
+
+\begin{itemize}
+    \item \textbf{Points-based mentorship economy with gift card redemption} --- alumni
+    earn redeemable points for mentorship sessions. No university platform offers this;
+    users who discover it are strongly motivated to participate.
+    \item \textbf{Live shuttle GPS tracking} --- students discovering real-time bus
+    location on a campus social app is wholly unexpected and immediately useful.
+    \item \textbf{Resume PDF export from profile} --- turning the platform profile
+    into a downloadable resume surprises users accustomed to maintaining separate CVs.
+    \item \textbf{Skyvern-powered news auto-import} --- administrators discover that
+    the platform automatically harvests university news from external CMS sources via
+    browser automation when the standard API is unavailable.
+    \item \textbf{Profile view analytics} (7/30/90-day viewer list) --- users do not
+    expect to see who has viewed their profile. Discovering this feature creates
+    immediate engagement loops and motivates profile completion.
+    \item \textbf{Presigned S3 upload flow} --- file attachments upload directly from
+    the browser to cloud storage with zero server-side byte handling. Users experience
+    this as surprising speed; developers appreciate the architectural elegance.
+\end{itemize}
+\clearpage
 % ---------------------------------------------------------------
 \section{Functional Requirements}
 % ---------------------------------------------------------------
@@ -216,6 +763,8 @@ a single university community; the platform does not allow cross-university inte
 The functional requirements define the specific behaviors and capabilities the
 UniConnecT system shall provide. Each requirement is labeled with a unique identifier
 for traceability.
+
+\subsection{Authentication and Account Management}
 
 \begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
 
@@ -234,6 +783,13 @@ for traceability.
     \item The system shall validate all user input during registration and login,
     displaying clear inline error messages for missing or invalid fields.
 
+\end{enumerate}
+
+\subsection{Social Feed and Content Management}
+
+\begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
+\setcounter{enumi}{5}
+
     \item The system shall display a personalized social feed upon login, showing
     posts, reactions, and activity from the user's university community, sortable
     by ``Recent'' and ``Top'' (engagement-ranked) modes.
@@ -243,6 +799,13 @@ for traceability.
 
     \item The system shall allow users to react to and comment on any post in the
     feed, with real-time count updates.
+
+\end{enumerate}
+
+\subsection{Profiles, Connections, and Search}
+
+\begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
+\setcounter{enumi}{8}
 
     \item The system shall allow users to view and edit their own profile, including
     profile photo, bio, work experience entries, education history, skills, and
@@ -263,6 +826,13 @@ for traceability.
     users can search for people, posts, jobs, events, groups, and news by keyword,
     with filterable result tabs per content type.
 
+\end{enumerate}
+
+\subsection{Jobs, Events, and Groups}
+
+\begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
+\setcounter{enumi}{13}
+
     \item The system shall allow alumni and faculty to post job and internship
     listings specifying role title, description, requirements, and application
     deadline.
@@ -282,6 +852,13 @@ for traceability.
     (admin, moderator, member), pin posts, post group rules, share file resources
     with view tracking, and schedule study sessions with RSVP.
 
+\end{enumerate}
+
+\subsection{Messaging, Notifications, and Mentorship}
+
+\begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
+\setcounter{enumi}{18}
+
     \item The system shall provide real-time direct messaging between any two
     connected users, and group messaging within shared conversation threads.
 
@@ -296,6 +873,13 @@ for traceability.
     \item The system shall allow students to send mentorship requests to alumni,
     specifying their goals and area of guidance sought. Alumni may accept or decline
     requests subject to their configured maximum mentee capacity.
+
+\end{enumerate}
+
+\subsection{Campus Utilities, Administration, and Settings}
+
+\begin{enumerate}[label=\textbf{FR-\arabic*:}, leftmargin=*, align=left]
+\setcounter{enumi}{22}
 
     \item The system shall allow users to browse and read official university news
     and announcements published by faculty or administrators, with a detail page
@@ -328,12 +912,15 @@ for traceability.
 
 \end{enumerate}
 
+\clearpage
 % ---------------------------------------------------------------
 \section{Non-Functional Requirements}
 % ---------------------------------------------------------------
 
 Non-functional requirements specify the quality attributes and operational constraints
 the UniConnecT design shall satisfy.
+
+\subsection{Usability, Performance, and Responsiveness}
 
 \begin{enumerate}[label=\textbf{NFR-\arabic*:}, leftmargin=*, align=left]
 
@@ -367,6 +954,13 @@ the UniConnecT design shall satisfy.
     Inline validation errors shall appear adjacent to the failing field. All list
     and feed views shall have a designed empty state rather than a blank area.
 
+\end{enumerate}
+
+\subsection{Access Control, Theming, and Maintainability}
+
+\begin{enumerate}[label=\textbf{NFR-\arabic*:}, leftmargin=*, align=left]
+\setcounter{enumi}{6}
+
     \item \textbf{Role-Based Interface Separation:} The design shall strictly enforce
     role-aware navigation and page access. The admin panel shall not surface in
     navigation for non-admin roles. The driver GPS broadcast view shall be accessible
@@ -391,12 +985,15 @@ the UniConnecT design shall satisfy.
 
 \end{enumerate}
 
+\clearpage
 % ---------------------------------------------------------------
 \section{Pages / Modules}
 % ---------------------------------------------------------------
 
 The following pages and modules constitute the UniConnecT Figma prototype. Each entry
 represents a distinct screen or logical section of the planned application.
+
+\subsection{Public and Authentication Pages}
 
 \begin{enumerate}
     \item \textbf{Landing Page} --- The public entry point of UniConnecT, presenting
@@ -414,7 +1011,12 @@ represents a distinct screen or logical section of the planned application.
 
     \item \textbf{Forgot Password / Reset Password Page} --- A two-step recovery
     flow: the user submits their email, then follows a link to set a new password.
+\end{enumerate}
 
+\subsection{Core Social and Professional Pages}
+
+\begin{enumerate}
+\setcounter{enumi}{5}
     \item \textbf{Social Feed (Home / Dashboard)} --- The primary authenticated
     screen displaying a ranked, scrollable feed of community posts, with ``Recent''
     and ``Top'' sort tabs, a left-side profile summary panel, and a right-side
@@ -464,7 +1066,12 @@ represents a distinct screen or logical section of the planned application.
     \item \textbf{Mentorship Page} --- A module where students browse alumni mentor
     profiles and submit mentorship requests, and where alumni manage their active
     mentees, session records, and mentee capacity.
+\end{enumerate}
 
+\subsection{Campus Utility Pages}
+
+\begin{enumerate}
+\setcounter{enumi}{18}
     \item \textbf{Lost \& Found Page} --- A campus utility module for posting and
     browsing reports of lost or found items, with descriptions, last-known location,
     and optional photo.
@@ -474,7 +1081,12 @@ represents a distinct screen or logical section of the planned application.
 
     \item \textbf{Driver GPS Broadcast View} --- A minimal, role-restricted interface
     for transport drivers to broadcast their current GPS location to the platform.
+\end{enumerate}
 
+\subsection{Settings and Administration Pages}
+
+\begin{enumerate}
+\setcounter{enumi}{21}
     \item \textbf{Drafts Page} --- A personal page aggregating all of the user's
     unpublished drafts across posts, job listings, news articles, and events.
 
@@ -495,6 +1107,8 @@ represents a distinct screen or logical section of the planned application.
 This section covers the design and prototyping tools used for UniConnecT. It describes
 the design process only.
 
+\subsection{Design and Prototyping Tools}
+
 \begin{itemize}
     \item \textbf{Figma} --- Primary tool for all UI/UX work: wireframing,
     high-fidelity mockups, interactive prototyping, and the shared component design
@@ -510,14 +1124,16 @@ the design process only.
             \item \textit{A11y --- Color Contrast Checker} --- Used to verify that
             all text and UI element color pairings meet WCAG 2.1 Level AA contrast
             requirements across both dark and light themes.
-            \item \textit{Lorem Ipsum} --- Used to generate placeholder body text
-            for feed posts, news articles, and job descriptions during wireframing.
         \end{itemize}
 
     \item \textbf{FigJam} --- Used to create the navigation flow diagram and module
     architecture diagram, leveraging FigJam's drag-and-drop connector tools and
     sticky-note layout for clear, readable system diagrams.
+\end{itemize}
 
+\subsection{Supporting and Auxiliary Tools}
+
+\begin{itemize}
     \item \textbf{Canva} --- Used for supplementary graphics including the project
     cover slide, presentation visuals, and promotional design assets.
 
@@ -537,7 +1153,7 @@ All visuals in this section are taken from the Figma design prototype. The figur
 below present wireframes and UI sketches for the major pages of UniConnecT, along
 with a navigation flow diagram and module architecture diagram.
 
-
+\subsection{Authentication and Public Pages}
 
 % --- Landing Page ---
 \begin{figure}[H]
@@ -568,6 +1184,8 @@ with a navigation flow diagram and module architecture diagram.
     step.}
     \label{fig:register}
 \end{figure}
+
+\subsection{Core Social and Professional Wireframes}
 
 % --- Social Feed / Dashboard ---
 \begin{figure}[H]
@@ -639,13 +1257,16 @@ with a navigation flow diagram and module architecture diagram.
     \label{fig:mentorship}
 \end{figure}
 
+\subsection{Campus Utilities and Administration}
+
 % --- Lost and Found + Shuttle ---
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth, height=0.68\textheight, keepaspectratio]{figma_campus_tools.png}
-    \caption{Figma Wireframe --- Campus Tools: Lost \& Found module (left) for
-    posting and browsing campus item reports, and Shuttle Tracker (right) showing
-    live route and shuttle position.}
+    \caption{Figma Wireframe --- Shuttle Tracker. The UIU Shuttle Service screen
+    lists available shuttle routes (Kuril Shuttle, Notun Bazar Shuttle, Aftab Nagar
+    Shuttle) on the left panel, with a live interactive map of the Dhaka route network
+    on the right. Students can track real-time shuttle positions directly from this view.}
     \label{fig:campus}
 \end{figure}
 
@@ -659,14 +1280,16 @@ with a navigation flow diagram and module architecture diagram.
     \label{fig:admin}
 \end{figure}
 
+\subsection{System Architecture Diagrams}
+
 % --- Navigation Flow Diagram ---
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth, height=0.68\textheight, keepaspectratio]{figma_navigation_flow.png}
-    \caption{Figma Diagram --- Navigation Flow. Full page-to-page user flow for
-    UniConnecT, covering the unauthenticated path (Landing $\to$ Login / Register
-    $\to$ OTP) and the authenticated paths across all 24 modules, with role-based
-    branching to the Admin Panel and Driver GPS Broadcast View.}
+    \caption{Figma Wireframe --- University Network (Connections) Page. Displays the
+    user's Following and Followers tabs, a ``People You May Know'' section with
+    mutual-connection counts and Connect actions, and a right-side panel for searching
+    connections by name or major and discovering suggested groups.}
     \label{fig:navflow}
 \end{figure}
 
@@ -674,14 +1297,14 @@ with a navigation flow diagram and module architecture diagram.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth, height=0.68\textheight, keepaspectratio]{figma_page_architecture.png}
-    \caption{Figma Diagram --- Module Architecture. Logical grouping and connections
-    between UniConnecT's major module clusters: Social (Feed, Profile, Connections,
-    Explore, Search), Professional (Jobs, Events, Mentorship), Community (Groups,
-    News, Messages), Campus Tools (Lost \& Found, Shuttle), and Management (Settings,
-    Drafts, Admin Panel).}
+    \caption{Figma Wireframe --- Explore Page. Surfaces community-wide discovery
+    content: a Scholars \& Faculty spotlight with connection actions, Upcoming Events
+    with dates and venues, and Career Opportunities pulled from the job board. Filter
+    tabs (All, People, Posts, Groups, Events, Jobs) and a right-side panel showing
+    Recent Searches and Suggested Groups complete the discovery experience.}
     \label{fig:architecture}
 \end{figure}
-
+\clearpage
 % ---------------------------------------------------------------
 \section{Usability / Design Considerations}
 % ---------------------------------------------------------------
