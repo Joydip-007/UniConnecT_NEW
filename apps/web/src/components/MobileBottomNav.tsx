@@ -144,7 +144,7 @@ export function MobileBottomNav() {
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: 100,
+          zIndex: 'var(--z-nav)',
           background: 'var(--surface-card)',
           borderTop: '0.5px solid var(--border-default)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -251,7 +251,7 @@ export function MobileBottomNav() {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 200,
+            zIndex: 'var(--z-modal)',
             background: 'var(--overlay-bg)',
             display: 'flex',
             alignItems: 'flex-end',

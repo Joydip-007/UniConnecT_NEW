@@ -8,7 +8,7 @@ export function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
         position: 'fixed',
         top: 20,
         right: 20,
-        zIndex: 9999,
+        zIndex: 'var(--z-toast)',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,

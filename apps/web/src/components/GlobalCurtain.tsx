@@ -16,7 +16,7 @@ export function GlobalCurtain() {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 9997,
+        zIndex: 'var(--z-banner)',
         pointerEvents: 'none',
         background: targetColor ?? 'transparent',
         transformOrigin: 'top',
