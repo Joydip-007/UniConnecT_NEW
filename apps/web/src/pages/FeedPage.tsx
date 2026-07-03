@@ -10,6 +10,7 @@ import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
 import { ShortcutHelp } from '@/features/feed/components/ShortcutHelp'
 import { CaughtUpFooter } from '@/features/feed/components/CaughtUpFooter'
+import { shouldShowCaughtUp } from '@/features/feed/utils/shouldShowCaughtUp'
 import { usePosts } from '@/features/feed/hooks/usePosts'
 import { useFeedSocket } from '@/features/feed/hooks/useFeedSocket'
 import { useFeedShortcuts } from '@/features/feed/hooks/useFeedShortcuts'
@@ -149,7 +150,9 @@ export default function FeedPage() {
       )}
 
       {/* Caught-up end state */}
-      {!isLoading && !isFetchingNextPage && !hasNextPage && posts.length > 0 && <CaughtUpFooter />}
+      {shouldShowCaughtUp({ isLoading, isFetchingNextPage, hasNextPage, postCount: posts.length }) && (
+        <CaughtUpFooter />
+      )}
 
       {/* Intersection sentinel */}
       <div ref={sentinelRef} style={{ height: 1 }} />
