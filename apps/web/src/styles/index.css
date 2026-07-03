@@ -234,6 +234,21 @@ select:focus-visible {
   border-color: var(--uc-indigo) !important;
 }
 
+.topnav-search-wrap {
+  max-width: 400px;
+  transition: max-width var(--dur-med) var(--ease-out-strong);
+}
+
+.topnav-search-wrap:focus-within {
+  max-width: 520px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topnav-search-wrap {
+    transition: none;
+  }
+}
+
 .search-section-label {
   padding: 8px 12px 2px;
   font-size: 11px;

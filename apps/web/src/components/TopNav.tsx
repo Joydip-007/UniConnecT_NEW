@@ -87,8 +87,10 @@ export function TopNav() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery)
   const [compactSearch, setCompactSearch] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchWrapperRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
   const msgRef = useRef<HTMLDivElement>(null)
@@ -100,6 +102,17 @@ export function TopNav() {
     debounceRef.current = setTimeout(() => setDebouncedQuery(searchQuery), 400)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchQuery])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -213,7 +226,7 @@ export function TopNav() {
         <div
           ref={searchWrapperRef}
           className="topnav-search-wrap"
-          style={{ position: 'relative', minWidth: 200, width: '100%', maxWidth: 400 }}
+          style={{ position: 'relative', minWidth: 200, width: '100%' }}
         >
           <Search
             size={14}
@@ -228,6 +241,7 @@ export function TopNav() {
             }}
           />
           <input
+            ref={searchInputRef}
             className="topnav-search-input"
             type="text"
             role="combobox"
@@ -244,8 +258,10 @@ export function TopNav() {
               else setPanelOpen(false)
             }}
             onFocus={() => {
+              setSearchFocused(true)
               if (searchQuery.length >= 2) setPanelOpen(true)
             }}
+            onBlur={() => setSearchFocused(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && searchQuery.trim().length >= 2) {
                 navigate(`${PATHS.EXPLORE}?q=${encodeURIComponent(searchQuery.trim())}`, { replace: true })
@@ -262,13 +278,33 @@ export function TopNav() {
               background: 'var(--surface-raised)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--r-pill)',
-              padding: '0 14px 0 34px',
+              padding: compactSearch ? '0 14px 0 34px' : '0 44px 0 34px',
               fontSize: 13,
               color: 'var(--text-primary)',
               outline: 'none',
               boxSizing: 'border-box',
             }}
           />
+          {!compactSearch && searchQuery.length === 0 && !searchFocused && (
+            <kbd
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: 10,
+                fontWeight: 400,
+                color: 'var(--text-tertiary)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-sm)',
+                padding: '1px 5px',
+                background: 'var(--surface-card)',
+                pointerEvents: 'none',
+              }}
+            >
+              {navigator.platform?.includes('Mac') ? '⌘K' : 'Ctrl K'}
+            </kbd>
+          )}
           <AnimatePresence>
             {panelOpen && debouncedQuery.length >= 2 && (
               <SearchPanel query={debouncedQuery} onClose={closePanel} />
