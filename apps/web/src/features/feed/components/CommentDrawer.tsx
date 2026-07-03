@@ -679,7 +679,6 @@ export function CommentDrawer({ post, onClose }: Props) {
                         border: '0.5px solid var(--border-hover)',
                         borderRadius: 'var(--r-md)',
                         overflow: 'hidden',
-                        boxShadow: 'var(--shadow-lg)',
                         maxHeight: 240,
                         overflowY: 'auto',
                       }}

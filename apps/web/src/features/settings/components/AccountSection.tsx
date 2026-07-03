@@ -296,7 +296,7 @@ function UsernamePanel() {
       text: reason === 'reserved' ? 'This username is reserved.' : 'That username is taken.',
       color: 'var(--uc-red)',
     }
-  } else if (isAvailable) status = { text: 'Available', color: 'var(--uc-green, #2e9e5b)' }
+  } else if (isAvailable) status = { text: 'Available', color: 'var(--uc-mint)' }
 
   return (
     <div>
@@ -320,7 +320,7 @@ function UsernamePanel() {
             aria-label="Username"
           />
           {isAvailable && (
-            <span style={{ position: 'absolute', right: 12, color: 'var(--uc-green, #2e9e5b)', lineHeight: 0 }}>
+            <span style={{ position: 'absolute', right: 12, color: 'var(--uc-mint)', lineHeight: 0 }}>
               <Check size={16} strokeWidth={2} />
             </span>
           )}
