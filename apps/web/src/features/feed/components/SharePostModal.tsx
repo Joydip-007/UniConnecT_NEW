@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FeedPost } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
+import { Modal } from '@/components/Modal'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useAuthStore } from '@/stores/authStore'
 import { OriginalPostEmbed } from './OriginalPostEmbed'
@@ -47,57 +45,11 @@ export function SharePostModal({ post, onClose, onShared }: Props) {
     })
   }
 
-  return createPortal(
-    <AnimatePresence>
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 1099, background: 'var(--overlay-bg-soft)' }}
-        onClick={onClose}
-      />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.97, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.97, y: 8 }}
-        transition={{ type: 'tween', duration: 0.18, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 1100,
-          width: 480,
-          maxWidth: 'calc(100vw - 32px)',
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-hover)',
-          borderRadius: 'var(--r-lg)',
-          overflow: 'hidden',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '14px 16px',
-            borderBottom: '0.5px solid var(--border-default)',
-          }}
-        >
-          <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Share post
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', display: 'flex' }}
-          >
-            <X size={18} strokeWidth={1.5} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div style={{ padding: '14px 16px' }}>
-          {/* Sharer identity */}
-          {user && (
+  return (
+    <Modal isOpen onClose={onClose} title="Share post" maxWidth={480}>
+      <div>
+        {/* Sharer identity */}
+        {user && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <Avatar
                 src={user.profile.avatarUrl}
@@ -132,9 +84,8 @@ export function SharePostModal({ post, onClose, onShared }: Props) {
             }}
           />
 
-          {/* Original post preview */}
-          <OriginalPostEmbed post={embedPost as NonNullable<FeedPost['originalPost']>} />
-        </div>
+        {/* Original post preview */}
+        <OriginalPostEmbed post={embedPost as NonNullable<FeedPost['originalPost']>} />
 
         {/* Footer */}
         <div
@@ -165,8 +116,7 @@ export function SharePostModal({ post, onClose, onShared }: Props) {
             {shareMutation.isPending ? 'Sharing…' : 'Share now'}
           </button>
         </div>
-      </motion.div>
-    </AnimatePresence>,
-    document.body,
+      </div>
+    </Modal>
   )
 }
