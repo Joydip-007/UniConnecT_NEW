@@ -1,18 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow, parseISO } from 'date-fns'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/axios'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { Avatar } from '@/components/Avatar'
+import { popoverIn, listStagger, listItem } from '@/lib/motion'
 import {
   NOTIF_QUERY_KEY,
   type Notification,
 } from '@/features/notifications/hooks/useNotificationsSocket'
-
-const DROPDOWN_SPRING = { type: 'tween' as const, duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
-const ROW_SPRING = { type: 'tween' as const, duration: 0.18, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,7 +32,15 @@ function getInitials(name: string) {
 
 // ── NotificationRow ────────────────────────────────────────────────────────────
 
-function NotificationRow({ notif, onNavigate }: { notif: Notification; onNavigate: () => void }) {
+function NotificationRow({
+  notif,
+  onNavigate,
+  reduced,
+}: {
+  notif: Notification
+  onNavigate: () => void
+  reduced: boolean
+}) {
   const actor = notif.actor ?? { id: notif.id, fullName: 'UniConnecT', avatarUrl: null }
   const color = seedColor(actor.id)
   const initials = getInitials(actor.fullName)
@@ -45,10 +51,10 @@ function NotificationRow({ notif, onNavigate }: { notif: Notification; onNavigat
       onClick={onNavigate}
       className={notif.refUrl ? 'row-hover-bg' : undefined}
       layout
-      initial={{ opacity: 0, x: 8 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -8 }}
-      transition={ROW_SPRING}
+      variants={reduced ? undefined : listItem}
+      initial={reduced ? false : undefined}
+      exit={reduced ? undefined : { opacity: 0, x: -8 }}
+      transition={popoverIn.exitTransition}
       style={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -122,6 +128,7 @@ interface Props {
 }
 
 export function NotificationDropdown({ onClose }: Props) {
+  const reduced = useReducedMotion()
   const queryClient = useQueryClient()
   const clearNotificationCount = useNotificationsStore((s) => s.clearNotificationCount)
   const navigate = useNavigate()
@@ -154,10 +161,10 @@ export function NotificationDropdown({ onClose }: Props) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96, y: -4 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96, y: -4 }}
-      transition={DROPDOWN_SPRING}
+      initial={reduced ? false : popoverIn.initial}
+      animate={popoverIn.animate}
+      exit={reduced ? undefined : popoverIn.exit}
+      transition={popoverIn.transition}
       style={{
         position: 'absolute',
         top: 'calc(100% + 8px)',
@@ -257,15 +264,22 @@ export function NotificationDropdown({ onClose }: Props) {
             </p>
           </div>
         ) : (
-          <AnimatePresence initial={false}>
-            {notifications.map((n) => (
-              <NotificationRow
-                key={n.id}
-                notif={n}
-                onNavigate={() => handleItemClick(n)}
-              />
-            ))}
-          </AnimatePresence>
+          <motion.div
+            variants={reduced ? undefined : listStagger(20)}
+            initial={reduced ? false : 'initial'}
+            animate="animate"
+          >
+            <AnimatePresence initial={false}>
+              {notifications.map((n) => (
+                <NotificationRow
+                  key={n.id}
+                  notif={n}
+                  onNavigate={() => handleItemClick(n)}
+                  reduced={!!reduced}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
       </div>
     </motion.div>

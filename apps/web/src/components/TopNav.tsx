@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bell, Check, LogOut, MessageSquare, Monitor, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
@@ -13,6 +13,7 @@ import { SearchPanel } from '@/features/search'
 import { PATHS } from '@/router/paths'
 import { BrandLogo } from '@/components/BrandLogo'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { popoverIn } from '@/lib/motion'
 
 const iconBtnStyle: React.CSSProperties = {
   position: 'relative',
@@ -70,6 +71,7 @@ function BadgeCount({ count }: { count: number }) {
 }
 
 export function TopNav() {
+  const reduced = useReducedMotion()
   const { user, clearAuth } = useAuthStore()
   const { messageCount, notificationCount } = useNotificationsStore()
   const themeMode = useThemeStore((s) => s.mode)
@@ -261,9 +263,11 @@ export function TopNav() {
               boxSizing: 'border-box',
             }}
           />
-          {panelOpen && debouncedQuery.length >= 2 && (
-            <SearchPanel query={debouncedQuery} onClose={closePanel} />
-          )}
+          <AnimatePresence>
+            {panelOpen && debouncedQuery.length >= 2 && (
+              <SearchPanel query={debouncedQuery} onClose={closePanel} />
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -339,10 +343,10 @@ export function TopNav() {
             <motion.div
               role="menu"
               aria-label="Profile menu"
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ type: 'tween', duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
+              initial={reduced ? false : popoverIn.initial}
+              animate={popoverIn.animate}
+              exit={reduced ? undefined : popoverIn.exit}
+              transition={popoverIn.transition}
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 8px)',

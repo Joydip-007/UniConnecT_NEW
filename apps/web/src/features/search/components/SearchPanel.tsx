@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion, useReducedMotion } from 'framer-motion'
+import { popoverIn } from '@/lib/motion'
 import { PATHS } from '@/router/paths'
 import { useSearchAll } from '../hooks/useSearchAll'
 import { useSearchPeople } from '../hooks/useSearchPeople'
@@ -46,6 +48,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function SearchPanel({ query, onClose }: Props) {
+  const reduced = useReducedMotion()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('all')
 
@@ -303,13 +306,18 @@ export function SearchPanel({ query, onClose }: Props) {
   }
 
   return (
-    <div
+    <motion.div
       id="search-panel"
       role="listbox"
       aria-label="Search results"
-      className="dropdown-enter search-panel-responsive"
+      className="search-panel-responsive"
       data-origin="top-center"
-      style={panelStyle}
+      layout
+      initial={reduced ? false : popoverIn.initial}
+      animate={popoverIn.animate}
+      exit={reduced ? undefined : popoverIn.exit}
+      transition={popoverIn.transition}
+      style={{ ...panelStyle, transformOrigin: 'top center' }}
     >
       <div style={tabBarStyle}>
         {TABS.map(({ key, label }) => (
@@ -319,6 +327,6 @@ export function SearchPanel({ query, onClose }: Props) {
         ))}
       </div>
       <div style={bodyStyle} onClick={onClose}>{tabContent[tab]()}</div>
-    </div>
+    </motion.div>
   )
 }
