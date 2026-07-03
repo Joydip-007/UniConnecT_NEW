@@ -1,10 +1,13 @@
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   MapPin,
   CheckCircle2,
   Circle,
   Lock,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -14,6 +17,8 @@ import { PATHS } from '@/router/paths'
 import type { UserRole } from '@uniconnect/shared/types'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { ConnectButton } from '@/features/connections'
+import { listStagger, listItem, DUR, EASE_OUT_EXPO } from '@/lib/motion'
+import { useToastStore } from '@/stores/toastStore'
 
 // ── Local types ──────────────────────────────────────────
 
@@ -157,71 +162,105 @@ function SkeletonLine({ width = '100%', height = 12 }: { width?: string | number
   )
 }
 
-function PersonRow({ user, isLast = false }: { user: SuggestedUser; isLast?: boolean }) {
+function PersonRow({
+  user,
+  isLast = false,
+  onDismiss,
+}: {
+  user: SuggestedUser
+  isLast?: boolean
+  onDismiss: (id: string) => void
+}) {
   const navigate = useNavigate()
   const initials = getInitials(user.profile.fullName)
   const color = avatarColor(user.id)
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 0',
-        borderBottom: isLast ? 'none' : '0.5px solid var(--border-default)',
-      }}
+    <motion.div
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
+      style={{ overflow: 'hidden' }}
+      className="person-row"
     >
-      <button
-        onClick={() => navigate(PATHS.PROFILE.replace(':id', user.id))}
-        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
-        aria-label={`View ${user.profile.fullName}'s profile`}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '8px 0',
+          borderBottom: isLast ? 'none' : '0.5px solid var(--border-default)',
+        }}
       >
-        <Avatar initials={initials} color={color} size={36} />
-      </button>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
         <button
           onClick={() => navigate(PATHS.PROFILE.replace(':id', user.id))}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-            display: 'block',
-            width: '100%',
-            textAlign: 'left',
-          }}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+          aria-label={`View ${user.profile.fullName}'s profile`}
         >
-          <div
+          <Avatar initials={initials} color={color} size={36} />
+        </button>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <button
+            onClick={() => navigate(PATHS.PROFILE.replace(':id', user.id))}
             style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              lineHeight: 1.3,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
             }}
           >
-            {user.profile.fullName}
-          </div>
-        </button>
-        <Badge variant={roleBadgeVariant(user.role)} className="mt-0.5">
-          {roleLabel(user.role)}
-        </Badge>
-      </div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'var(--text-primary)',
+                lineHeight: 1.3,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {user.profile.fullName}
+            </div>
+          </button>
+          <Badge variant={roleBadgeVariant(user.role)} className="mt-0.5">
+            {roleLabel(user.role)}
+          </Badge>
+        </div>
 
-      <div style={{ flexShrink: 0 }}>
-        <ConnectButton
-          targetUserId={user.id}
-          targetName={user.profile.fullName}
-          connectionStatus={user.connectionStatus ?? 'none'}
-          connectionId={user.connectionId ?? null}
-          size="sm"
-        />
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <ConnectButton
+            targetUserId={user.id}
+            targetName={user.profile.fullName}
+            connectionStatus={user.connectionStatus ?? 'none'}
+            connectionId={user.connectionId ?? null}
+            size="sm"
+          />
+          <button
+            type="button"
+            onClick={() => onDismiss(user.id)}
+            aria-label={`Hide suggestion for ${user.profile.fullName}`}
+            className="person-row-dismiss"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 4,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-tertiary)',
+              flexShrink: 0,
+            }}
+          >
+            <X size={13} />
+          </button>
+        </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -427,6 +466,15 @@ function TrendingTagStrip({ tags }: { tags: TrendingTag[] }) {
 
 export function RightSidebar() {
   const navigate = useNavigate()
+  const prefersReducedMotion = useReducedMotion()
+  const showToast = useToastStore((s) => s.show)
+
+  // Dismissed suggestions are client-side only — they reset on refetch/reload,
+  // there's no server-side "hide this suggestion" concept.
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+
+  const [justCompleted, setJustCompleted] = useState(false)
+  const wasIncompleteRef = useRef(false)
 
   const { data: suggestions, isLoading: loadingSuggestions } = useQuery({
     queryKey: ['users', 'suggestions'],
@@ -471,8 +519,43 @@ export function RightSidebar() {
     progress != null &&
     (progress.profileScore < 100 || !progress.hasMadePost || progress.connectionCount < 10 || !progress.isVerified)
 
+  // Completion moment: catch the true→false transition and hold a final
+  // "all set" state for a beat before the widget animates out.
+  useEffect(() => {
+    if (progress == null) return
+    if (wasIncompleteRef.current && !progressIncomplete) {
+      setJustCompleted(true)
+      const t = setTimeout(() => setJustCompleted(false), 2000)
+      return () => clearTimeout(t)
+    }
+    wasIncompleteRef.current = progressIncomplete
+  }, [progressIncomplete, progress])
+
+  const visibleSuggestions = (suggestions ?? []).filter((u) => !dismissed.has(u.id))
+
+  function handleDismiss(userId: string) {
+    setDismissed((prev) => new Set(prev).add(userId))
+    showToast({
+      message: 'Suggestion hidden',
+      onUndo: () =>
+        setDismissed((prev) => {
+          const next = new Set(prev)
+          next.delete(userId)
+          return next
+        }),
+    })
+  }
+
+  const suggestionsEmpty = !loadingSuggestions && visibleSuggestions.length === 0
+  const eventsEmpty = !loadingEvents && (!events || events.length === 0)
+  const progressWidgetVisible = loadingProgress || (progressIncomplete && progress) || justCompleted
+  const showBothEmptyFallback = suggestionsEmpty && eventsEmpty && !progressWidgetVisible
+
   return (
-    <aside
+    <motion.aside
+      variants={listStagger(40)}
+      initial={prefersReducedMotion ? false : 'initial'}
+      animate="animate"
       style={{
         width: 272,
         flexShrink: 0,
@@ -487,126 +570,172 @@ export function RightSidebar() {
       }}
       className="rail-scroll"
     >
-      {/* Your progress — hero widget when incomplete, hidden when done */}
-      {loadingProgress ? (
-        <Widget>
-          <SectionHeader title="Your progress" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <SkeletonLine width={14} height={14} />
-                <SkeletonLine width="60%" />
+      {/* Your progress — hero widget when incomplete, one last "complete" moment, then hidden */}
+      <AnimatePresence initial={false}>
+        {loadingProgress ? (
+          <motion.div key="progress-loading" variants={listItem} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+            <Widget>
+              <SectionHeader title="Your progress" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <SkeletonLine width={14} height={14} />
+                    <SkeletonLine width="60%" />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Widget>
-      ) : progressIncomplete && progress ? (
-        <Widget>
-          <SectionHeader title="Your progress" />
-          <div>
-            {(
-              [
-                {
-                  icon: progress.profileScore === 100 ? CheckCircle2 : Circle,
-                  label: 'Profile complete',
-                  state: progress.profileScore === 100 ? 'done' : 'in-progress',
-                  progress: progress.profileScore,
-                  total: 100,
-                },
-                {
-                  icon: progress.hasMadePost ? CheckCircle2 : Circle,
-                  label: 'First post',
-                  state: progress.hasMadePost ? 'done' : 'in-progress',
-                },
-                {
-                  icon: progress.connectionCount >= 10 ? CheckCircle2 : Circle,
-                  label: '10 connections',
-                  state: progress.connectionCount >= 10 ? 'done' : 'in-progress',
-                  progress: Math.min(progress.connectionCount, 10),
-                  total: 10,
-                },
-                {
-                  icon: progress.isVerified ? CheckCircle2 : Lock,
-                  label: 'Get verified',
-                  state: progress.isVerified ? 'done' : 'locked',
-                },
-              ] as BadgeProgressItem[]
-            ).map((item) => (
-              <BadgeProgressRow key={item.label} item={item} />
-            ))}
-          </div>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
-            Finish your profile to unlock the campus directory.
-          </p>
-        </Widget>
-      ) : null}
-
-      {/* People you may know — flat section */}
-      <Section>
-        <SectionHeader
-          title="People you may know"
-          onSeeAll={() => navigate(PATHS.EXPLORE + '?type=people')}
-        />
-
-        {loadingSuggestions ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[0, 1, 2].map((i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-raised)', flexShrink: 0 }} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <SkeletonLine width="60%" />
-                  <SkeletonLine width="40%" height={10} />
-                </div>
+            </Widget>
+          </motion.div>
+        ) : justCompleted && progress ? (
+          <motion.div
+            key="progress-complete"
+            variants={listItem}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
+            style={{ overflow: 'hidden' }}
+          >
+            <Widget>
+              <SectionHeader title="Your progress" />
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--uc-mint)', margin: 0, padding: '8px 0' }}>
+                All set — profile complete 🎉
+              </p>
+            </Widget>
+          </motion.div>
+        ) : progressIncomplete && progress ? (
+          <motion.div key="progress-incomplete" variants={listItem} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+            <Widget>
+              <SectionHeader title="Your progress" />
+              <div>
+                {(
+                  [
+                    {
+                      icon: progress.profileScore === 100 ? CheckCircle2 : Circle,
+                      label: 'Profile complete',
+                      state: progress.profileScore === 100 ? 'done' : 'in-progress',
+                      progress: progress.profileScore,
+                      total: 100,
+                    },
+                    {
+                      icon: progress.hasMadePost ? CheckCircle2 : Circle,
+                      label: 'First post',
+                      state: progress.hasMadePost ? 'done' : 'in-progress',
+                    },
+                    {
+                      icon: progress.connectionCount >= 10 ? CheckCircle2 : Circle,
+                      label: '10 connections',
+                      state: progress.connectionCount >= 10 ? 'done' : 'in-progress',
+                      progress: Math.min(progress.connectionCount, 10),
+                      total: 10,
+                    },
+                    {
+                      icon: progress.isVerified ? CheckCircle2 : Lock,
+                      label: 'Get verified',
+                      state: progress.isVerified ? 'done' : 'locked',
+                    },
+                  ] as BadgeProgressItem[]
+                ).map((item) => (
+                  <BadgeProgressRow key={item.label} item={item} />
+                ))}
               </div>
-            ))}
-          </div>
-        ) : suggestions && suggestions.length > 0 ? (
-          <div>
-            {suggestions.slice(0, 3).map((user, i, arr) => (
-              <PersonRow key={user.id} user={user} isLast={i === arr.length - 1} />
-            ))}
-          </div>
-        ) : (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
-            No suggestions right now.
-          </p>
-        )}
-      </Section>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
+                Finish your profile to unlock the campus directory.
+              </p>
+            </Widget>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
-      {/* Upcoming events — flat section with leading divider */}
-      <Section withTopDivider>
-        <SectionHeader
-          title="Upcoming events"
-          onSeeAll={() => navigate(PATHS.EVENTS)}
-        />
+      {/* People you may know — flat section, hidden entirely when empty */}
+      {!suggestionsEmpty && (
+        <motion.div variants={listItem}>
+          <Section>
+            <SectionHeader
+              title="People you may know"
+              onSeeAll={() => navigate(PATHS.EXPLORE + '?type=people')}
+            />
 
-        {loadingEvents ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[0, 1, 2].map((i) => (
-              <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 10 }}>
-                <div style={{ width: 38, height: 46, borderRadius: 'var(--r-sm)', background: 'var(--surface-raised)', flexShrink: 0 }} />
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 }}>
-                  <SkeletonLine width="80%" />
-                  <SkeletonLine width="50%" height={10} />
-                </div>
+            {loadingSuggestions ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface-raised)', flexShrink: 0 }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <SkeletonLine width="60%" />
+                      <SkeletonLine width="40%" height={10} />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : events && events.length > 0 ? (
-          <div>
-            {events.slice(0, 3).map((event, i, arr) => (
-              <EventMini key={event.id} event={event} isLast={i === arr.length - 1} />
-            ))}
-          </div>
-        ) : (
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>
-            No upcoming events.
-          </p>
-        )}
-      </Section>
+            ) : (
+              <div>
+                <AnimatePresence initial={false}>
+                  {visibleSuggestions.slice(0, 3).map((user, i, arr) => (
+                    <PersonRow
+                      key={user.id}
+                      user={user}
+                      isLast={i === arr.length - 1}
+                      onDismiss={handleDismiss}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+          </Section>
+        </motion.div>
+      )}
+
+      {/* Upcoming events — flat section with leading divider, hidden entirely when empty */}
+      {!eventsEmpty && (
+        <motion.div variants={listItem}>
+          <Section withTopDivider>
+            <SectionHeader
+              title="Upcoming events"
+              onSeeAll={() => navigate(PATHS.EVENTS)}
+            />
+
+            {loadingEvents ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[0, 1, 2].map((i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: 10 }}>
+                    <div style={{ width: 38, height: 46, borderRadius: 'var(--r-sm)', background: 'var(--surface-raised)', flexShrink: 0 }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4 }}>
+                      <SkeletonLine width="80%" />
+                      <SkeletonLine width="50%" height={10} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>
+                {(events ?? []).slice(0, 3).map((event, i, arr) => (
+                  <EventMini key={event.id} event={event} isLast={i === arr.length - 1} />
+                ))}
+              </div>
+            )}
+          </Section>
+        </motion.div>
+      )}
+
+      {/* Both suggestions and events empty, and no progress widget — avoid a blank rail */}
+      {showBothEmptyFallback && (
+        <motion.div variants={listItem}>
+          <Widget>
+            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)', margin: 0 }}>
+              Your campus is warming up
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0', lineHeight: 1.5 }}>
+              Suggestions and events will appear here as your university comes online.
+            </p>
+          </Widget>
+        </motion.div>
+      )}
 
       {/* Trending tags — borderless strip, no card chrome */}
-      {trendingTags && trendingTags.length > 0 && <TrendingTagStrip tags={trendingTags} />}
-    </aside>
+      {trendingTags && trendingTags.length > 0 && (
+        <motion.div variants={listItem}>
+          <TrendingTagStrip tags={trendingTags} />
+        </motion.div>
+      )}
+    </motion.aside>
   )
 }

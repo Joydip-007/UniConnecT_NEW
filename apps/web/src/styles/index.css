@@ -288,6 +288,24 @@ select:focus-visible {
   background-color: var(--border-hover);
 }
 
+/* ── Person row dismiss button — reveal on row hover ─────────────────
+   Hidden by default, fades in when the row is hovered (pointer devices
+   only, so it stays reachable on touch without a hover state). */
+.person-row-dismiss {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+@media (hover: hover) {
+  .person-row:hover .person-row-dismiss {
+    opacity: 1;
+  }
+}
+@media (hover: none) {
+  .person-row-dismiss {
+    opacity: 1;
+  }
+}
+
 /* ── Messages two-panel layout ────────────────────────────── */
 
 /* Sidebar on /messages (list view): 320px desktop, full-width mobile */
