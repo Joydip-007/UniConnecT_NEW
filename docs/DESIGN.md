@@ -220,6 +220,17 @@ A dark-first palette anchored to UIU's institutional orange, with a Warm Neutral
 ### Decorative
 - **Indigo Dot** (`#5B5BD64D` ≈ 30% alpha indigo): The dot-pattern color in the profile mini-card cover. Used exactly once in the system, as a `radial-gradient` against `--surface-raised`. Not a structural color; do not use as a fill, border, or text.
 
+### Role tokens
+Platform-global identity markers for the five user roles — student, alumni, faculty, admin, driver. Each family provides four tokens: the base color, plus `-text` (legible-on-card glyph and tooltip tone), `-bg` (tinted card background), and `-bdr` (border for cards). Student, alumni, and faculty alias the core color families (indigo, amber, cyan) so they track theme overrides automatically; admin and red-orange and driver slate-gray are standalone and re-declared in light mode for AA contrast on white. Role colors decorate identity only — never use on buttons, links, or CTAs.
+
+| Family | Base | `-text` | `-bg` | `-bdr` | Notes |
+|---|---|---|---|---|---|
+| Student | `--uc-indigo` | `--uc-indigo-l` | `--uc-indigo-bg` | `--uc-indigo-bdr` | Aliases core indigo family; auto-updates in both themes. |
+| Alumni | `--uc-amber` | `--uc-amber-l` | `--uc-amber-bg` | `--uc-amber-bdr` | Aliases core amber family; auto-updates in both themes. |
+| Faculty | `--uc-cyan` | `#67E8F9` (dark) / `#0E7490` (light) | `--uc-cyan-bg` | `--uc-cyan-bdr` | Cyan base aliases; text darkened in light mode for AA. |
+| Admin | `#E8543F` (dark) / `#B93A28` (light) | `#F58A78` (dark) / `#9C2F1F` (light) | `rgba(…, 0.10)` | `rgba(…, 0.28)` | Red-orange identity; fully re-declared in light mode. |
+| Driver | `#8B99AD` (dark) / `#52617A` (light) | `#B7C3D4` (dark) / `#43506A` (light) | `rgba(…, 0.10)` | `rgba(…, 0.08/0.22)` | Slate-gray walled-garden role; fully re-declared. |
+
 ### Named Rules
 
 **The Self / Network Rule.** Orange marks the user themselves (their identity, their content, their actions). Indigo marks the system and their peers. The two accents are not interchangeable. If you're about to put indigo on a "you saved this" affordance, or orange on a "peer suggestion", stop and pick again. Mixing the roles defeats the legibility the palette exists to deliver.
