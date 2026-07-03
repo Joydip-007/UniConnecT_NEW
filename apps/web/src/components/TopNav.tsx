@@ -66,9 +66,17 @@ const menuItemStyle: React.CSSProperties = {
   textAlign: 'left',
 }
 
-function BadgeCount({ count }: { count: number }) {
+function BadgeCount({ count, animate }: { count: number; animate: boolean }) {
   if (count <= 0) return null
-  return <span style={badgeStyle} aria-hidden="true">{count > 99 ? '99+' : count}</span>
+  return (
+    <span
+      key={count}
+      style={animate ? { ...badgeStyle, animation: 'uc-reaction-pop 320ms var(--ease-out-strong)' } : badgeStyle}
+      aria-hidden="true"
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
 }
 
 export function TopNav() {
@@ -339,7 +347,7 @@ export function TopNav() {
             aria-haspopup="dialog"
           >
             <MessageSquare size={16} />
-            <BadgeCount count={messageCount} />
+            <BadgeCount count={messageCount} animate={!reduced} />
           </button>
           <AnimatePresence>
             {msgOpen && <MessagesPopup onClose={() => setMsgOpen(false)} />}
@@ -359,7 +367,7 @@ export function TopNav() {
             aria-expanded={notifOpen}
           >
             <Bell size={16} />
-            <BadgeCount count={notificationCount} />
+            <BadgeCount count={notificationCount} animate={!reduced} />
           </button>
           <AnimatePresence>
             {notifOpen && <NotificationDropdown onClose={() => setNotifOpen(false)} />}
@@ -438,7 +446,15 @@ export function TopNav() {
                       style={{ ...menuItemStyle, justifyContent: 'space-between' }}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Icon size={14} />
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            transition: reduced ? undefined : 'transform var(--dur-med) var(--ease-out-strong)',
+                            transform: checked ? 'rotate(0deg) scale(1)' : 'rotate(-30deg) scale(0.92)',
+                          }}
+                        >
+                          <Icon size={14} />
+                        </span>
                         {label}
                       </span>
                       {checked && <Check size={14} style={{ color: 'var(--uc-indigo-l)' }} />}
