@@ -68,7 +68,7 @@ export function setupSocket(httpServer: HttpServer, redisClient: Redis) {
       .catch((error) => logger.warn('presence connect failed', { error }))
 
     socket.on(PRESENCE_EVENTS.PING, () => {
-      void refreshHeartbeat(user.userId).catch(() => {})
+      void refreshHeartbeat(user.userId, user.universityId).catch(() => {})
     })
 
     socket.on('disconnect', () => {

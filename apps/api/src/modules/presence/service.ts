@@ -21,15 +21,19 @@ export async function registerConnect(userId: string, universityId: string): Pro
   await redis.expire(countKey(userId), PRESENCE_TTL_SECONDS)
   if (n === 1) {
     await redis.sadd(onlineSetKey(universityId), userId)
+    await redis.expire(onlineSetKey(universityId), PRESENCE_TTL_SECONDS)
     return true
   }
   return false
 }
 
-export async function refreshHeartbeat(userId: string): Promise<void> {
+export async function refreshHeartbeat(userId: string, universityId: string): Promise<void> {
   await ensureRedis()
   // Only refresh if the key still exists (a live socket); never resurrect a 0 count.
   await redis.expire(countKey(userId), PRESENCE_TTL_SECONDS)
+  // Refresh the set's own TTL too, so a crashed process without a clean disconnect
+  // can't leave stale members in it forever — worst case it expires and gets rebuilt.
+  await redis.expire(onlineSetKey(universityId), PRESENCE_TTL_SECONDS)
 }
 
 /** Returns the last-seen timestamp when this was the user's last socket (1→0 transition), else null. */
