@@ -1,8 +1,9 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, useReducedMotion } from 'framer-motion'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 import { useCountUp } from '@/hooks/useCountUp'
+import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import {
   Home,
   Compass,
@@ -178,7 +179,7 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, onClick }: CampusToo
 // ── LeftSidebar ──────────────────────────────────────────
 
 export function LeftSidebar() {
-  const navigate = useNavigate()
+  const navigate = useViewTransitionNavigate()
   const { pathname } = useLocation()
   const { user } = useAuthStore()
   const { messageCount } = useNotificationsStore()

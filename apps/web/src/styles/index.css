@@ -743,3 +743,11 @@ select:focus-visible {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 220ms;
+    animation-timing-function: var(--ease-out-strong);
+  }
+}
