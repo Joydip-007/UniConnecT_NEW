@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { drawerIn, overlayIn } from '@/lib/motion'
@@ -12,7 +12,6 @@ interface DrawerProps {
 }
 
 export function Drawer({ isOpen, onClose, title, children, height = '70dvh' }: DrawerProps) {
-  const panelRef = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
 
   useEffect(() => {
@@ -51,7 +50,6 @@ export function Drawer({ isOpen, onClose, title, children, height = '70dvh' }: D
           }}
         >
           <motion.div
-            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-label={title}

@@ -50,6 +50,16 @@ describe('Modal', () => {
     expect(first).toBeInTheDocument()
   })
 
+  it('pulls focus back into the panel when it has escaped', async () => {
+    setup()
+    const [closeBtn] = screen.getAllByRole('button')
+    ;(document.activeElement as HTMLElement | null)?.blur?.()
+    document.body.focus()
+    expect(document.activeElement).toBe(document.body)
+    await userEvent.tab()
+    expect(document.activeElement).toBe(closeBtn)
+  })
+
   it('locks body scroll while open', () => {
     setup()
     expect(document.body.style.overflow).toBe('hidden')

@@ -27,7 +27,7 @@ describe('toastStore', () => {
     useToastStore.getState().show({ message: 'Dismissed', onUndo })
     expect(useToastStore.getState().toasts[0].onUndo).toBe(onUndo)
     vi.advanceTimersByTime(3500)
-    expect(useToastStore.getState().toasts).toHaveLength(1) // still visible at the non-undo default
+    expect(useToastStore.getState().toasts).toHaveLength(1) // still visible past the 3500ms non-undo TTL — undo toasts get 6000ms
     vi.advanceTimersByTime(2500)
     expect(useToastStore.getState().toasts).toHaveLength(0)
   })

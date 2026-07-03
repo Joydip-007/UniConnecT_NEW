@@ -31,7 +31,14 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
       const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
       if (items.length === 0) return
       const idx = items.indexOf(document.activeElement as HTMLElement)
-      if (e.shiftKey && idx <= 0) {
+      if (idx === -1) {
+        e.preventDefault()
+        if (e.shiftKey) {
+          items[items.length - 1].focus()
+        } else {
+          items[0].focus()
+        }
+      } else if (e.shiftKey && idx <= 0) {
         e.preventDefault()
         items[items.length - 1].focus()
       } else if (!e.shiftKey && idx === items.length - 1) {
