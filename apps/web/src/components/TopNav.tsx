@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bell, Check, LogOut, MessageSquare, Monitor, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
@@ -13,6 +13,8 @@ import { SearchPanel } from '@/features/search'
 import { PATHS } from '@/router/paths'
 import { BrandLogo } from '@/components/BrandLogo'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { popoverIn } from '@/lib/motion'
+import { useScrollDirection } from '@/hooks/useScrollDirection'
 
 const iconBtnStyle: React.CSSProperties = {
   position: 'relative',
@@ -64,12 +66,22 @@ const menuItemStyle: React.CSSProperties = {
   textAlign: 'left',
 }
 
-function BadgeCount({ count }: { count: number }) {
+function BadgeCount({ count, animate }: { count: number; animate: boolean }) {
   if (count <= 0) return null
-  return <span style={badgeStyle} aria-hidden="true">{count > 99 ? '99+' : count}</span>
+  return (
+    <span
+      key={count}
+      style={animate ? { ...badgeStyle, animation: 'uc-reaction-pop 320ms var(--ease-out-strong)' } : badgeStyle}
+      aria-hidden="true"
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
 }
 
 export function TopNav() {
+  const reduced = useReducedMotion()
+  const scrollDir = useScrollDirection()
   const { user, clearAuth } = useAuthStore()
   const { messageCount, notificationCount } = useNotificationsStore()
   const themeMode = useThemeStore((s) => s.mode)
@@ -83,8 +95,10 @@ export function TopNav() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery)
   const [compactSearch, setCompactSearch] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchWrapperRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
   const msgRef = useRef<HTMLDivElement>(null)
@@ -96,6 +110,17 @@ export function TopNav() {
     debounceRef.current = setTimeout(() => setDebouncedQuery(searchQuery), 400)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [searchQuery])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -173,16 +198,20 @@ export function TopNav() {
 
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const color = user ? avatarColor(user.id) : 'var(--uc-indigo)'
+  const hidden = scrollDir === 'down' && !menuOpen && !notifOpen && !msgOpen && !panelOpen && !searchFocused
 
   return (
     <header
       className="topnav-shell"
+      data-hidden={hidden || undefined}
       style={{
         position: 'sticky',
         top: 0,
-        zIndex: 50,
+        zIndex: 'var(--z-nav)',
         height: 60,
-        background: 'var(--surface-card)',
+        background: 'var(--overlay-bg-strong)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '0.5px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
@@ -205,7 +234,7 @@ export function TopNav() {
         <div
           ref={searchWrapperRef}
           className="topnav-search-wrap"
-          style={{ position: 'relative', minWidth: 200, width: '100%', maxWidth: 400 }}
+          style={{ position: 'relative', minWidth: 200, width: '100%' }}
         >
           <Search
             size={14}
@@ -220,6 +249,7 @@ export function TopNav() {
             }}
           />
           <input
+            ref={searchInputRef}
             className="topnav-search-input"
             type="text"
             role="combobox"
@@ -236,8 +266,10 @@ export function TopNav() {
               else setPanelOpen(false)
             }}
             onFocus={() => {
+              setSearchFocused(true)
               if (searchQuery.length >= 2) setPanelOpen(true)
             }}
+            onBlur={() => setSearchFocused(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && searchQuery.trim().length >= 2) {
                 navigate(`${PATHS.EXPLORE}?q=${encodeURIComponent(searchQuery.trim())}`, { replace: true })
@@ -254,16 +286,38 @@ export function TopNav() {
               background: 'var(--surface-raised)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--r-pill)',
-              padding: '0 14px 0 34px',
+              padding: compactSearch ? '0 14px 0 34px' : '0 44px 0 34px',
               fontSize: 13,
               color: 'var(--text-primary)',
               outline: 'none',
               boxSizing: 'border-box',
             }}
           />
-          {panelOpen && debouncedQuery.length >= 2 && (
-            <SearchPanel query={debouncedQuery} onClose={closePanel} />
+          {!compactSearch && searchQuery.length === 0 && !searchFocused && (
+            <kbd
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: 10,
+                fontWeight: 400,
+                color: 'var(--text-tertiary)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-sm)',
+                padding: '1px 5px',
+                background: 'var(--surface-card)',
+                pointerEvents: 'none',
+              }}
+            >
+              {navigator.platform?.includes('Mac') ? '⌘K' : 'Ctrl K'}
+            </kbd>
           )}
+          <AnimatePresence>
+            {panelOpen && debouncedQuery.length >= 2 && (
+              <SearchPanel query={debouncedQuery} onClose={closePanel} />
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -293,7 +347,7 @@ export function TopNav() {
             aria-haspopup="dialog"
           >
             <MessageSquare size={16} />
-            <BadgeCount count={messageCount} />
+            <BadgeCount count={messageCount} animate={!reduced} />
           </button>
           <AnimatePresence>
             {msgOpen && <MessagesPopup onClose={() => setMsgOpen(false)} />}
@@ -313,7 +367,7 @@ export function TopNav() {
             aria-expanded={notifOpen}
           >
             <Bell size={16} />
-            <BadgeCount count={notificationCount} />
+            <BadgeCount count={notificationCount} animate={!reduced} />
           </button>
           <AnimatePresence>
             {notifOpen && <NotificationDropdown onClose={() => setNotifOpen(false)} />}
@@ -339,10 +393,10 @@ export function TopNav() {
             <motion.div
               role="menu"
               aria-label="Profile menu"
-              initial={{ opacity: 0, scale: 0.96, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ type: 'tween', duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
+              initial={reduced ? false : popoverIn.initial}
+              animate={popoverIn.animate}
+              exit={reduced ? undefined : popoverIn.exit}
+              transition={popoverIn.transition}
               style={{
                 position: 'absolute',
                 top: 'calc(100% + 8px)',
@@ -392,7 +446,15 @@ export function TopNav() {
                       style={{ ...menuItemStyle, justifyContent: 'space-between' }}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Icon size={14} />
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            transition: reduced ? undefined : 'transform var(--dur-med) var(--ease-out-strong)',
+                            transform: checked ? 'rotate(0deg) scale(1)' : 'rotate(-30deg) scale(0.92)',
+                          }}
+                        >
+                          <Icon size={14} />
+                        </span>
                         {label}
                       </span>
                       {checked && <Check size={14} style={{ color: 'var(--uc-indigo-l)' }} />}

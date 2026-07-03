@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { drawerIn, overlayIn } from '@/lib/motion'
@@ -11,22 +11,54 @@ interface DrawerProps {
   height?: string
 }
 
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+
 export function Drawer({ isOpen, onClose, title, children, height = '70dvh' }: DrawerProps) {
   const reduced = useReducedMotion()
+  const panelRef = useRef<HTMLDivElement>(null)
 
+  // Escape + Tab trap
   useEffect(() => {
     if (!isOpen) return
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const items = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
+      if (items.length === 0) return
+      const idx = items.indexOf(document.activeElement as HTMLElement)
+      if (idx === -1) {
+        e.preventDefault()
+        if (e.shiftKey) {
+          items[items.length - 1].focus()
+        } else {
+          items[0].focus()
+        }
+      } else if (e.shiftKey && idx <= 0) {
+        e.preventDefault()
+        items[items.length - 1].focus()
+      } else if (!e.shiftKey && idx === items.length - 1) {
+        e.preventDefault()
+        items[0].focus()
+      }
     }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
+  // Scroll lock + initial focus
+  useEffect(() => {
+    if (!isOpen) return
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    document.addEventListener('keydown', onKeyDown)
+    const first = panelRef.current?.querySelector<HTMLElement>(FOCUSABLE)
+    first?.focus()
     return () => {
       document.body.style.overflow = prevOverflow
-      document.removeEventListener('keydown', onKeyDown)
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   if (typeof document === 'undefined') return null
 
@@ -50,6 +82,7 @@ export function Drawer({ isOpen, onClose, title, children, height = '70dvh' }: D
           }}
         >
           <motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
             aria-label={title}

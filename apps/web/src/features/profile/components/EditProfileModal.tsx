@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, KeyboardEvent } from 'react'
+import { useRef, useState, KeyboardEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Camera, X } from 'lucide-react'
 import type { User, UserProfile } from '@uniconnect/shared'
@@ -6,6 +6,7 @@ import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { usePresignedUpload } from '@/hooks/usePresignedUpload'
 import { Avatar } from '@/components/Avatar'
+import { Modal } from '@/components/Modal'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
@@ -230,7 +231,6 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 // ── EditProfileModal ───────────────────────────────────────────────────────────
 
 export function EditProfileModal({ onClose }: Props) {
-  const overlayRef = useRef<HTMLDivElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const updateProfile = useAuthStore((s) => s.updateProfile)
@@ -264,16 +264,6 @@ export function EditProfileModal({ onClose }: Props) {
   // Derived state to match original template references
   const uploading: UploadSlot | null = avatarUpload.uploading ? 'avatar' : coverUpload.uploading ? 'cover' : null
   const uploadError: UploadSlot | null = avatarUpload.error ? 'avatar' : coverUpload.error ? 'cover' : null
-
-  // ── Keyboard close ─────────────────────────────────────────────────────────
-
-  useEffect(() => {
-    function onKey(e: globalThis.KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
 
   // ── Image upload ───────────────────────────────────────────────────────────
 
@@ -338,10 +328,6 @@ export function EditProfileModal({ onClose }: Props) {
     },
   })
 
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!fullName.trim()) return
@@ -354,71 +340,7 @@ export function EditProfileModal({ onClose }: Props) {
   const initials = getInitials(fullName || user.profile.fullName)
 
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--overlay-bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 200,
-        padding: '24px 16px',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 480,
-          maxHeight: 'calc(100dvh - 48px)',
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-strong)',
-          borderRadius: 'var(--r-xl)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        {/* ── Header ────────────────────────────────────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '18px 20px 14px',
-            borderBottom: '0.5px solid var(--border-default)',
-            flexShrink: 0,
-          }}
-        >
-          <h2
-            style={{
-              margin: 0,
-              fontSize: 16,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-            }}
-          >
-            Edit profile
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 4,
-              color: 'var(--text-tertiary)',
-              lineHeight: 0,
-            }}
-          >
-            <X size={18} strokeWidth={1.5} />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onClose} title="Edit profile" maxWidth={480}>
         {/* ── Scrollable body ────────────────────────────────────────────── */}
         <form
           id="edit-profile-form"
@@ -850,8 +772,7 @@ export function EditProfileModal({ onClose }: Props) {
             {saveMutation.isPending ? 'Saving…' : 'Save changes'}
           </PrimaryBtn>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

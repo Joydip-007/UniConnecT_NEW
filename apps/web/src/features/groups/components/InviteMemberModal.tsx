@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
+import { Modal } from '@/components/Modal'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import type { Group } from '../types'
 
@@ -42,14 +42,6 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
     return () => clearTimeout(id)
   }, [search])
 
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   const { data, isLoading } = useQuery<UsersResponse>({
     queryKey: ['groups', 'invite-search', group.id, debounced, group.allowedRole],
     enabled: debounced.length > 0,
@@ -80,54 +72,8 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
   const results = data?.items ?? []
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--overlay-bg-soft)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 70,
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          width: '100%',
-          maxWidth: 440,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div
-          style={{
-            padding: '14px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '0.5px solid var(--border-default)',
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Invite a member
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-            aria-label="Close"
-          >
-            <X size={16} strokeWidth={1.5} />
-          </button>
-        </div>
-
-        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <Modal isOpen onClose={onClose} title="Invite a member" maxWidth={440}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <input
             value={search}
             onChange={(e) => {
@@ -227,7 +173,6 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
             {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
           </PrimaryBtn>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

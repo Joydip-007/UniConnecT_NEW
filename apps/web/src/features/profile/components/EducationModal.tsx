@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X } from 'lucide-react'
 import type { ProfileEducation } from '@uniconnect/shared'
 import { createEducation, deleteEducation, updateEducation } from '@/lib/api/users'
+import { Modal } from '@/components/Modal'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 
 const inputBase: React.CSSProperties = {
@@ -48,7 +48,6 @@ interface Props {
 }
 
 export function EducationModal({ userId, entry, onClose }: Props) {
-  const overlayRef = useRef<HTMLDivElement>(null)
   const qc = useQueryClient()
   const isEdit = !!entry
 
@@ -60,12 +59,6 @@ export function EducationModal({ userId, entry, onClose }: Props) {
   const [current, setCurrent] = useState(!entry?.endYear && !!entry)
   const [grade, setGrade] = useState(entry?.grade ?? '')
   const [description, setDescription] = useState(entry?.description ?? '')
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['profile', 'education', userId] })
 
@@ -99,34 +92,7 @@ export function EducationModal({ userId, entry, onClose }: Props) {
   const busy = saveMutation.isPending || deleteMutation.isPending
 
   return (
-    <div
-      ref={overlayRef}
-      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
-      style={{
-        position: 'fixed', inset: 0, background: 'var(--overlay-bg)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 210, padding: '24px 16px',
-      }}
-      role="dialog"
-      aria-modal
-      aria-labelledby="edu-modal-title"
-    >
-      <div
-        style={{
-          width: '100%', maxWidth: 480, maxHeight: 'calc(100dvh - 48px)',
-          background: 'var(--surface-card)', border: '0.5px solid var(--border-strong)',
-          borderRadius: 'var(--r-xl)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 14px', borderBottom: '0.5px solid var(--border-default)', flexShrink: 0 }}>
-          <h2 id="edu-modal-title" style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)' }}>
-            {isEdit ? 'Edit education' : 'Add education'}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', lineHeight: 0 }}>
-            <X size={18} strokeWidth={1.5} />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onClose} title={isEdit ? 'Edit education' : 'Add education'} maxWidth={480}>
         <form
           id="edu-form"
           onSubmit={handleSubmit}
@@ -195,7 +161,6 @@ export function EducationModal({ userId, entry, onClose }: Props) {
             {saveMutation.isPending ? 'Saving…' : 'Save'}
           </PrimaryBtn>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

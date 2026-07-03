@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { usePresignedUpload } from '@/hooks/usePresignedUpload'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { Modal } from '@/components/Modal'
 import {
   MAX_IMAGES,
   MAX_IMG_BYTES,
@@ -19,7 +20,6 @@ interface PostItemModalProps {
 }
 
 export function PostItemModal({ onClose }: PostItemModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
   const imgInputRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
 
@@ -30,10 +30,6 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
   const [contactInfo, setContactInfo] = useState('')
   const [images, setImages] = useState<UploadedImage[]>([])
   const { upload: uploadImage, uploading: uploadingImg } = usePresignedUpload('lost-found')
-
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
-  }
 
   async function handleImgChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -104,57 +100,7 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
     !submitMutation.isPending
 
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--overlay-media)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 200,
-        padding: '16px',
-        overflowY: 'auto',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 460,
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-strong)',
-          borderRadius: 'var(--r-xl)',
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-          margin: 'auto',
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Report item
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 4,
-              color: 'var(--text-tertiary)',
-              lineHeight: 0,
-            }}
-          >
-            <X size={18} strokeWidth={1.5} />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onClose} title="Report item" maxWidth={460}>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Type toggle */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -398,7 +344,6 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
             </PrimaryBtn>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

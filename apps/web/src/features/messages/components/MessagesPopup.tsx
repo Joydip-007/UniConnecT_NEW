@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MessageCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { api } from '@/lib/axios'
 import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
 import { PATHS } from '@/router/paths'
+import { popoverIn } from '@/lib/motion'
 import { NewConversationModal } from './NewConversationModal'
 import type { Conversation } from '../types'
 import { seedColor, initials, relativeTime } from '../utils'
@@ -18,6 +19,7 @@ interface MessagesPopupProps {
 }
 
 export function MessagesPopup({ onClose }: MessagesPopupProps) {
+  const reduced = useReducedMotion()
   const navigate = useNavigate()
   const [newOpen, setNewOpen] = useState(false)
 
@@ -54,10 +56,10 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Messages"
-        initial={{ opacity: 0, scale: 0.97, y: -6 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.97, y: -6 }}
-        transition={{ type: 'tween', duration: 0.14, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
+        initial={reduced ? false : popoverIn.initial}
+        animate={popoverIn.animate}
+        exit={reduced ? undefined : popoverIn.exit}
+        transition={popoverIn.transition}
         style={{
           position: 'absolute',
           top: 'calc(100% + 8px)',

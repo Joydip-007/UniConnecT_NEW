@@ -32,6 +32,7 @@ import { AttachmentList } from '@/features/content-sync'
 import { MediaGrid } from './MediaGrid'
 import { ReportModal } from '@/features/moderation'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
 import { useSavePost } from '@/features/feed/hooks/useSavePost'
 import { useDeletePost } from '@/features/feed/hooks/useDeletePost'
@@ -318,6 +319,7 @@ export interface PostCardProps {
 
 export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const user = useAuthStore((s) => s.user)
+  const viewTransitionNavigate = useViewTransitionNavigate()
   const [myReaction, setMyReaction] = useState<ReactionKey | null>(post.myReaction as ReactionKey | null)
   const [reactionCounts, setReactionCounts] = useState(post.reactionCounts)
   const [localSaved, setLocalSaved] = useState(post.isSaved)
@@ -434,9 +436,24 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
                 {author.profile.headline}
               </p>
             )}
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+            <button
+              type="button"
+              onClick={() => viewTransitionNavigate(PATHS.POST_DETAIL.replace(':id', post.id))}
+              className="post-timestamp-link"
+              aria-label="View post"
+              style={{
+                margin: '2px 0 0',
+                padding: 0,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                color: 'var(--text-tertiary)',
+                textAlign: 'left',
+              }}
+            >
               {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
-            </p>
+            </button>
           </div>
           {user && (
             <ThreeDotMenu
@@ -473,6 +490,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               color: 'var(--text-primary)',
               lineHeight: 1.72,
               marginBottom: 12,
+              overflowWrap: 'anywhere',
             }}
           >
             <ReactMarkdown rehypePlugins={[rehypeSanitize]} components={markdownComponents}>

@@ -1,4 +1,5 @@
 import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { Modal } from '@/components/Modal'
 import { formatUsdCents } from '../constants'
 import type { GiftCard } from '../hooks/useGiftCards'
 
@@ -20,58 +21,18 @@ export function RedemptionModal({
   const remaining = balance - card.thresholdPoints
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--overlay-bg-strong)',
-        padding: 16,
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel()
-      }}
-    >
-      <div
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: 24,
-          width: '100%',
-          maxWidth: 440,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 18,
-        }}
-      >
-        <div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 11,
-              fontWeight: 500,
-              color: 'var(--text-secondary)',
-            }}
-          >
-            Confirm redemption
-          </p>
-          <p
-            style={{
-              margin: '6px 0 0',
-              fontSize: 18,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-            }}
-          >
-            {card.title}
-          </p>
-        </div>
+    <Modal isOpen onClose={onCancel} title="Confirm redemption" maxWidth={440}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 18,
+            fontWeight: 500,
+            color: 'var(--text-primary)',
+          }}
+        >
+          {card.title}
+        </p>
 
         <div
           style={{
@@ -112,7 +73,7 @@ export function RedemptionModal({
           </OrangeBtn>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 

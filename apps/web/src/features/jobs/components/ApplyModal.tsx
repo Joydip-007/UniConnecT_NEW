@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { CheckCircle2, FileText, Upload, X } from 'lucide-react'
+import { CheckCircle2, FileText, Upload } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { GhostBtn, MintBtn } from '@/components/Button'
+import { Modal } from '@/components/Modal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,6 @@ function blurBorder(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>)
 // ── ApplyModal ────────────────────────────────────────────────────────────────
 
 export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Props) {
-  const overlayRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [uploadState, setUploadState] = useState<UploadState>('idle')
@@ -124,89 +124,26 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
     applyMutation.mutate()
   }
 
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--overlay-bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 200,
-        padding: '0 16px',
-      }}
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={submitted ? 'Application submitted' : `Apply for ${jobTitle}`}
+      maxWidth={440}
     >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-strong)',
-          borderRadius: 'var(--r-xl)',
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
-      >
-        {/* ── Modal header ─────────────────────────────────────────────── */}
-        <div
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <p
           style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 12,
+            margin: '-16px 0 0',
+            fontSize: 13,
+            fontWeight: 400,
+            color: 'var(--text-secondary)',
           }}
         >
-          <div>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: 16,
-                fontWeight: 500,
-                color: 'var(--text-primary)',
-                lineHeight: 1.4,
-              }}
-            >
-              {submitted ? 'Application submitted' : `Apply for ${jobTitle}`}
-            </h2>
-            <p
-              style={{
-                margin: '3px 0 0',
-                fontSize: 13,
-                fontWeight: 400,
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {company}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 4,
-              color: 'var(--text-tertiary)',
-              flexShrink: 0,
-              lineHeight: 0,
-            }}
-          >
-            <X size={18} strokeWidth={1.5} />
-          </button>
-        </div>
+          {company}
+        </p>
 
         {/* ── Success state ─────────────────────────────────────────────── */}
         {submitted ? (
@@ -483,6 +420,6 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
           100% { transform: translateX(150%); }
         }
       `}</style>
-    </div>
+    </Modal>
   )
 }

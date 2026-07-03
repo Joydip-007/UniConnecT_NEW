@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Search, Users, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { Modal } from '@/components/Modal'
 import { api } from '@/lib/axios'
 import { seedColor, initials } from '../utils'
 
@@ -196,8 +197,6 @@ interface Props {
 export function NewConversationModal({ onClose }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const dialogRef = useRef<HTMLDivElement>(null)
 
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
@@ -215,35 +214,6 @@ export function NewConversationModal({ onClose }: Props) {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300)
     return () => clearTimeout(t)
   }, [query])
-
-  // Escape key to close + focus trap
-  useEffect(() => {
-    const prevFocus = document.activeElement as HTMLElement | null
-    dialogRef.current?.focus()
-
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') { onClose(); return }
-      if (e.key !== 'Tab' || !dialogRef.current) return
-      const focusable = Array.from(
-        dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
-        )
-      ).filter((el) => !el.closest('[aria-hidden]'))
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus() }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus() }
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('keydown', onKey)
-      prevFocus?.focus()
-    }
-  }, [onClose])
 
   // User search
   const { data: searchData, isFetching: isSearching } = useQuery({
@@ -302,10 +272,6 @@ export function NewConversationModal({ onClose }: Props) {
     )
   }
 
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
-  }
-
   const canCreate =
     selectedUsers.length > 0 &&
     (!isGroup || groupName.trim().length > 0) &&
@@ -314,71 +280,8 @@ export function NewConversationModal({ onClose }: Props) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--overlay-bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 200,
-        padding: '0 16px',
-      }}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="new-conv-modal-title"
-        tabIndex={-1}
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-strong)',
-          borderRadius: 'var(--r-xl)',
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          outline: 'none',
-        }}
-      >
-        {/* ── Header ───────────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2
-            id="new-conv-modal-title"
-            style={{
-              margin: 0,
-              fontSize: 16,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-            }}
-          >
-            New conversation
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 8,
-              margin: -8,
-              color: 'var(--text-tertiary)',
-              lineHeight: 0,
-              flexShrink: 0,
-            }}
-          >
-            <X size={18} strokeWidth={1.5} />
-          </button>
-        </div>
-
+    <Modal isOpen onClose={onClose} title="New conversation" maxWidth={440}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* ── Selected chips ────────────────────────────────────────────────── */}
         {selectedUsers.length > 0 && (
           <div
@@ -535,6 +438,6 @@ export function NewConversationModal({ onClose }: Props) {
           </PrimaryBtn>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

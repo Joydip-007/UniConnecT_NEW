@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import {
   Bell,
   BookOpen,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
+import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { PATHS } from '@/router/paths'
 
 interface MoreItem {
@@ -39,7 +40,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',')
 
 export function MobileBottomNav() {
-  const navigate = useNavigate()
+  const navigate = useViewTransitionNavigate()
   const { pathname } = useLocation()
   const user = useAuthStore((s) => s.user)
   const { messageCount, notificationCount } = useNotificationsStore()
@@ -144,7 +145,7 @@ export function MobileBottomNav() {
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: 100,
+          zIndex: 'var(--z-nav)',
           background: 'var(--surface-card)',
           borderTop: '0.5px solid var(--border-default)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -251,7 +252,7 @@ export function MobileBottomNav() {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 200,
+            zIndex: 'var(--z-modal)',
             background: 'var(--overlay-bg)',
             display: 'flex',
             alignItems: 'flex-end',

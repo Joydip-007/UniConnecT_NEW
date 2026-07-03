@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
+import { Modal } from '@/components/Modal'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { ImageUploadField } from '@/components/ImageUploadField'
 import { useAuthStore } from '@/stores/authStore'
@@ -41,14 +41,6 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
 
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
   const createMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -77,56 +69,8 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
   const canSubmit = name.trim().length > 0 && description.trim().length > 0 && !createMutation.isPending
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'var(--overlay-bg-soft)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 70,
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          width: '100%',
-          maxWidth: 480,
-          maxHeight: '90dvh',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div
-          style={{
-            padding: '14px 18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '0.5px solid var(--border-default)',
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Create a group
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
-            aria-label="Close"
-          >
-            <X size={16} strokeWidth={1.5} />
-          </button>
-        </div>
-
-        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <Modal isOpen onClose={onClose} title="Create a group" maxWidth={480}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Field label="Name">
             <input
               value={name}
@@ -242,8 +186,7 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
             {createMutation.isPending ? 'Creating…' : 'Create group'}
           </PrimaryBtn>
         </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

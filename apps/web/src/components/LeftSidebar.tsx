@@ -1,5 +1,9 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { motion, useReducedMotion } from 'framer-motion'
+import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
+import { useCountUp } from '@/hooks/useCountUp'
+import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import {
   Home,
   Compass,
@@ -40,18 +44,20 @@ interface NavItemProps {
 }
 
 function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, onClick }: NavItemProps) {
+  const reduced = useReducedMotion()
   return (
     <button
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
       className="nav-sidebar-item press-feedback"
       style={{
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         gap: 10,
         width: '100%',
         padding: '8px 10px',
-        background: isActive ? 'var(--uc-indigo-bg)' : 'transparent',
+        background: 'transparent',
         border: 'none',
         borderRadius: 'var(--r-sm)',
         cursor: 'pointer',
@@ -61,46 +67,62 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, o
         textAlign: 'left',
       }}
     >
-      <div style={{ position: 'relative', flexShrink: 0, lineHeight: 0 }}>
-        <Icon size={17} />
-        {hasDot && (
-          <div
-            style={{
-              position: 'absolute',
-              top: -2,
-              right: -3,
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: 'var(--uc-orange)',
-              border: '1.5px solid var(--surface-card)',
-            }}
-          />
-        )}
-      </div>
-
-      <span style={{ flex: 1 }}>{label}</span>
-
-      {badge != null && badge > 0 && (
-        <span
+      {isActive && (
+        <motion.div
+          layoutId="nav-active-pill"
+          transition={{ duration: reduced ? 0 : DUR.med, ease: EASE_OUT_EXPO }}
           style={{
-            minWidth: 18,
-            height: 18,
-            borderRadius: 'var(--r-pill)',
-            background: 'var(--uc-indigo)',
-            color: 'var(--text-primary)',
-            fontSize: 10,
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 4px',
-            lineHeight: 1,
+            position: 'absolute',
+            inset: 0,
+            background: 'var(--uc-indigo-bg)',
+            borderRadius: 'var(--r-sm)',
+            zIndex: 0,
           }}
-        >
-          {badge > 99 ? '99+' : badge}
-        </span>
+        />
       )}
+
+      <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+        <div className="nav-item-icon" style={{ position: 'relative', flexShrink: 0, lineHeight: 0 }}>
+          <Icon size={17} />
+          {hasDot && (
+            <div
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -3,
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: 'var(--uc-orange)',
+                border: '1.5px solid var(--surface-card)',
+              }}
+            />
+          )}
+        </div>
+
+        <span style={{ flex: 1 }}>{label}</span>
+
+        {badge != null && badge > 0 && (
+          <span
+            style={{
+              minWidth: 18,
+              height: 18,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--uc-indigo)',
+              color: 'var(--text-primary)',
+              fontSize: 10,
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              lineHeight: 1,
+            }}
+          >
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
+      </span>
     </button>
   )
 }
@@ -157,7 +179,7 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, onClick }: CampusToo
 // ── LeftSidebar ──────────────────────────────────────────
 
 export function LeftSidebar() {
-  const navigate = useNavigate()
+  const navigate = useViewTransitionNavigate()
   const { pathname } = useLocation()
   const { user } = useAuthStore()
   const { messageCount } = useNotificationsStore()
@@ -182,6 +204,9 @@ export function LeftSidebar() {
   const deptLabel = [dept, batch].filter(Boolean).join(' · ')
 
   const profilePath = user ? PATHS.PROFILE.replace(':id', user.id) : PATHS.FEED
+
+  const connectionsShown = useCountUp(profileData?.stats.connections ?? 0)
+  const pendingShown = useCountUp(profileData?.stats.pendingReceived ?? 0)
 
   const navGroups: Array<{
     groupLabel: string
@@ -243,7 +268,21 @@ export function LeftSidebar() {
       className="rail-scroll"
     >
       {/* Profile mini-card */}
+      <button
+        onClick={() => navigate(profilePath)}
+        aria-label="View my profile"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          width: '100%',
+          textAlign: 'left',
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
       <div
+        className="interactive-surface"
         style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
@@ -300,8 +339,8 @@ export function LeftSidebar() {
           {/* Connection stats */}
           <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
             {[
-              { label: 'connections', value: profileData?.stats.connections ?? 0 },
-              { label: 'pending', value: profileData?.stats.pendingReceived ?? 0 },
+              { label: 'connections', value: connectionsShown },
+              { label: 'pending', value: pendingShown },
             ].map(({ label, value }) => (
               <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
@@ -313,6 +352,7 @@ export function LeftSidebar() {
           </div>
         </div>
       </div>
+      </button>
 
       {/* Nav list — grouped, no card chrome */}
       <nav style={{ padding: '2px 2px', flexShrink: 0 }}>

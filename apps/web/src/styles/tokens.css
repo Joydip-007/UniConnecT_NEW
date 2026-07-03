@@ -88,6 +88,8 @@
   --dur-slow: 300ms;
 
   /* ── Z-index ──────────────────────────────────────── */
+  /* Leaflet map panes use their own 200–700 scale internally — never place
+     a token-stacked element inside the map container. */
   --z-nav:     50;
   --z-popover: 100;
   --z-modal:   200;

@@ -167,14 +167,6 @@ select:focus-visible {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.dropdown-enter {
-  animation: dropdown-in 150ms var(--ease-out-strong) both;
-}
-
-.dropdown-enter[data-origin="top-right"]    { transform-origin: top right; }
-.dropdown-enter[data-origin="top-left"]     { transform-origin: top left; }
-.dropdown-enter[data-origin="top-center"]   { transform-origin: top center; }
-
 @keyframes modal-panel-in {
   from { opacity: 0; transform: scale(0.97) translateY(8px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
@@ -234,6 +226,21 @@ select:focus-visible {
   border-color: var(--uc-indigo) !important;
 }
 
+.topnav-search-wrap {
+  max-width: 400px;
+  transition: max-width var(--dur-med) var(--ease-out-strong);
+}
+
+.topnav-search-wrap:focus-within {
+  max-width: 520px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topnav-search-wrap {
+    transition: none;
+  }
+}
+
 .search-section-label {
   padding: 8px 12px 2px;
   font-size: 11px;
@@ -271,6 +278,24 @@ select:focus-visible {
 }
 .rail-scroll:hover::-webkit-scrollbar-thumb {
   background-color: var(--border-hover);
+}
+
+/* ── Person row dismiss button — reveal on row hover ─────────────────
+   Hidden by default, fades in when the row is hovered (pointer devices
+   only, so it stays reachable on touch without a hover state). */
+.person-row-dismiss {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+@media (hover: hover) {
+  .person-row:hover .person-row-dismiss {
+    opacity: 1;
+  }
+}
+@media (hover: none) {
+  .person-row-dismiss {
+    opacity: 1;
+  }
 }
 
 /* ── Messages two-panel layout ────────────────────────────── */
@@ -418,6 +443,8 @@ select:focus-visible {
   .nav-sidebar-item:hover:not([aria-current="page"]) {
     background: var(--surface-hover) !important;
   }
+  .nav-sidebar-item:hover .nav-item-icon { transform: translateX(1px); }
+  .nav-sidebar-item:hover { color: var(--text-primary); }
   .interactive-surface:hover:not(:disabled) {
     background: var(--surface-hover) !important;
     border-color: var(--border-hover) !important;
@@ -425,6 +452,13 @@ select:focus-visible {
   .topnav-search-input:hover {
     border-color: var(--border-hover) !important;
   }
+}
+
+.nav-sidebar-item .nav-item-icon {
+  transition: transform var(--dur-fast) var(--ease-out-strong), color var(--dur-fast) var(--ease-out-strong);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-sidebar-item .nav-item-icon { transition: none; }
 }
 
 /* ── Mobile bottom nav ──────────────────────────────────────────────── */
@@ -435,6 +469,16 @@ select:focus-visible {
 .feed-post-card {
   content-visibility: auto;
   contain-intrinsic-size: 0 420px;
+}
+
+.topnav-shell {
+  transition: transform var(--dur-slow) var(--ease-drawer);
+}
+.topnav-shell[data-hidden] {
+  transform: translateY(-100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .topnav-shell { transition: none; }
 }
 
 @media (max-width: 767px) {
@@ -690,4 +734,22 @@ select:focus-visible {
 @keyframes livePulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 220ms;
+    animation-timing-function: var(--ease-out-strong);
+  }
+}
+
+/* ── Post timestamp link affordance ────────────────────────────────────── */
+.post-timestamp-link {
+  text-decoration: none;
+}
+
+.post-timestamp-link:hover,
+.post-timestamp-link:focus-visible {
+  text-decoration: underline;
 }
