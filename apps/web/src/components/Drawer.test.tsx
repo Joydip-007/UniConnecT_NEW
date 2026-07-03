@@ -20,4 +20,28 @@ describe('Drawer', () => {
     await userEvent.click(screen.getByTestId('drawer-backdrop'))
     expect(onClose).toHaveBeenCalledTimes(2)
   })
+
+  it('traps Tab focus inside the panel', async () => {
+    render(
+      <Drawer isOpen onClose={vi.fn()} title="Comments">
+        <button>First</button>
+        <button>Second</button>
+      </Drawer>,
+    )
+    const second = screen.getByText('Second')
+    second.focus()
+    await userEvent.tab()
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+  })
+
+  it('pulls focus into the panel when focus is outside', async () => {
+    render(
+      <Drawer isOpen onClose={vi.fn()} title="Comments">
+        <button>Only</button>
+      </Drawer>,
+    )
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await userEvent.tab()
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true)
+  })
 })
