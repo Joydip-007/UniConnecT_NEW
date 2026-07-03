@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Search, Users, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
-import { Badge } from '@/components/Badge'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { Modal } from '@/components/Modal'
 import { api } from '@/lib/axios'
@@ -39,15 +39,6 @@ interface UsersPage {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-type BadgeVariant = 'dept' | 'alumni' | 'neutral'
-
-const ROLE_BADGE: Record<UserResult['role'], BadgeVariant> = {
-  student: 'dept',
-  alumni: 'alumni',
-  faculty: 'neutral',
-  admin: 'neutral',
-}
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -104,6 +95,7 @@ function UserResultRow({
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <RoleBadge role={user.role} size={13} />
           <span
             style={{
               fontSize: 13,
@@ -116,7 +108,6 @@ function UserResultRow({
           >
             {user.fullName}
           </span>
-          <Badge variant={ROLE_BADGE[user.role]}>{user.role}</Badge>
         </div>
         {subtitle && (
           <p
