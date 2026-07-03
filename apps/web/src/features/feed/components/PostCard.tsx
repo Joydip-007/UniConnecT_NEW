@@ -20,7 +20,7 @@ import {
 import type { FeedPost, FeedPoll } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
-import { Badge } from '@/components/Badge'
+import { RoleBadge } from '@/components/RoleBadge'
 import { ReactionBtn } from '@/components/Button'
 import { PostReactionTrigger } from '@/components/emoji/ReactionBar'
 import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
@@ -43,20 +43,6 @@ import { ReactionsDialog } from './ReactionsDialog'
 import { SharePostModal } from './SharePostModal'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function roleBadgeVariant(role: FeedPost['author']['role']): 'dept' | 'alumni' | 'neutral' {
-  if (role === 'student') return 'dept'
-  if (role === 'alumni') return 'alumni'
-  return 'neutral'
-}
-
-function roleLabel(role: FeedPost['author']['role']): string {
-  if (role === 'faculty') return 'Faculty'
-  if (role === 'admin') return 'Admin'
-  return role.charAt(0).toUpperCase() + role.slice(1)
-}
 
 // ── PinnedBar ─────────────────────────────────────────────────────────────────
 
@@ -417,13 +403,13 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
           </Link>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+              <RoleBadge role={author.role} size={15} />
               <Link
                 to={authorProfileUrl}
                 style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
               >
                 {author.fullName}
               </Link>
-              <Badge variant={roleBadgeVariant(author.role)}>{roleLabel(author.role)}</Badge>
               {author.profile.department && (
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                   · {author.profile.department}

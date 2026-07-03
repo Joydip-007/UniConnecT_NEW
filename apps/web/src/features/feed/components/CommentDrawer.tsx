@@ -8,6 +8,7 @@ import { CornerDownRight, Paperclip, Smile, Sticker, Trash2, X } from 'lucide-re
 import type { AttachmentInput, FeedComment, FeedPost } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { AttachmentPicker, type AttachmentPickerHandle } from '@/components/AttachmentPicker'
 import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
@@ -135,6 +136,7 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
               flexWrap: 'wrap',
             }}
           >
+            <RoleBadge role={comment.author.role} size={13} />
             <Link
               to={authorProfileUrl}
               style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
