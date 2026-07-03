@@ -433,6 +433,8 @@ select:focus-visible {
   .nav-sidebar-item:hover:not([aria-current="page"]) {
     background: var(--surface-hover) !important;
   }
+  .nav-sidebar-item:hover .nav-item-icon { transform: translateX(1px); }
+  .nav-sidebar-item:hover { color: var(--text-primary); }
   .interactive-surface:hover:not(:disabled) {
     background: var(--surface-hover) !important;
     border-color: var(--border-hover) !important;
@@ -440,6 +442,13 @@ select:focus-visible {
   .topnav-search-input:hover {
     border-color: var(--border-hover) !important;
   }
+}
+
+.nav-sidebar-item .nav-item-icon {
+  transition: transform var(--dur-fast) var(--ease-out-strong), color var(--dur-fast) var(--ease-out-strong);
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-sidebar-item .nav-item-icon { transition: none; }
 }
 
 /* ── Mobile bottom nav ──────────────────────────────────────────────── */
