@@ -69,6 +69,7 @@ export function ConnectionCard({ connection }: Props) {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {user?.role && <RoleBadge role={user.role as UserRole} size={14} />}
           <Link
             to={PATHS.PROFILE.replace(':id', userId)}
             style={{ textDecoration: 'none' }}
@@ -84,7 +85,6 @@ export function ConnectionCard({ connection }: Props) {
               {fullName}
             </span>
           </Link>
-          {user?.role && <RoleBadge role={user.role as UserRole} size={14} />}
         </div>
         {(user?.headline || user?.department) && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
