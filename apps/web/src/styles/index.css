@@ -437,6 +437,16 @@ select:focus-visible {
   contain-intrinsic-size: 0 420px;
 }
 
+.topnav-shell {
+  transition: transform var(--dur-slow) var(--ease-drawer);
+}
+.topnav-shell[data-hidden] {
+  transform: translateY(-100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .topnav-shell { transition: none; }
+}
+
 @media (max-width: 767px) {
   .topnav-shell {
     height: 56px !important;

@@ -14,6 +14,7 @@ import { PATHS } from '@/router/paths'
 import { BrandLogo } from '@/components/BrandLogo'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { popoverIn } from '@/lib/motion'
+import { useScrollDirection } from '@/hooks/useScrollDirection'
 
 const iconBtnStyle: React.CSSProperties = {
   position: 'relative',
@@ -72,6 +73,7 @@ function BadgeCount({ count }: { count: number }) {
 
 export function TopNav() {
   const reduced = useReducedMotion()
+  const scrollDir = useScrollDirection()
   const { user, clearAuth } = useAuthStore()
   const { messageCount, notificationCount } = useNotificationsStore()
   const themeMode = useThemeStore((s) => s.mode)
@@ -175,16 +177,20 @@ export function TopNav() {
 
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const color = user ? avatarColor(user.id) : 'var(--uc-indigo)'
+  const hidden = scrollDir === 'down' && !menuOpen && !notifOpen && !msgOpen && !panelOpen
 
   return (
     <header
       className="topnav-shell"
+      data-hidden={hidden || undefined}
       style={{
         position: 'sticky',
         top: 0,
-        zIndex: 50,
+        zIndex: 'var(--z-nav)',
         height: 60,
-        background: 'var(--surface-card)',
+        background: 'var(--overlay-bg-strong)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '0.5px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
