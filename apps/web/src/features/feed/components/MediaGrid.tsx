@@ -99,7 +99,7 @@ export function MediaGrid({ urls, onOpen }: Props) {
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'rgba(0,0,0,0.55)',
+                    background: 'var(--overlay-media)',
                     border: 'none',
                     cursor: 'pointer',
                     display: 'flex',
@@ -178,7 +178,7 @@ function Slot({ url, index, onOpen, aspectRatio, maxHeight, fill }: SlotProps) {
             width: 48,
             height: 48,
             borderRadius: '50%',
-            background: 'rgba(0,0,0,0.55)',
+            background: 'var(--overlay-media)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

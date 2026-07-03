@@ -473,6 +473,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               color: 'var(--text-primary)',
               lineHeight: 1.72,
               marginBottom: 12,
+              overflowWrap: 'anywhere',
             }}
           >
             <ReactMarkdown rehypePlugins={[rehypeSanitize]} components={markdownComponents}>
