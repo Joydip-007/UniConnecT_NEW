@@ -44,7 +44,7 @@ export function Drawer({ isOpen, onClose, title, children, height = '70dvh' }: D
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 'var(--z-modal)' as unknown as number,
+            zIndex: 'var(--z-modal)',
             background: 'var(--overlay-bg-soft)',
             display: 'flex',
             alignItems: 'flex-end',

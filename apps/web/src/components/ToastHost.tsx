@@ -21,7 +21,7 @@ export function ToastHost() {
         bottom: 20,
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 'var(--z-toast)' as unknown as number,
+        zIndex: 'var(--z-toast)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',

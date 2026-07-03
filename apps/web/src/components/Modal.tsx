@@ -72,7 +72,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 'var(--z-modal)' as unknown as number,
+            zIndex: 'var(--z-modal)',
             background: 'var(--overlay-bg)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
