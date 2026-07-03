@@ -3,6 +3,7 @@ import { TopNav } from '@/components/TopNav'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { RightSidebar } from '@/components/RightSidebar'
 import { MobileBottomNav } from '@/components/MobileBottomNav'
+import { ToastHost } from '@/components/ToastHost'
 import { LandingFooter } from '@/features/landing/components/LandingFooter'
 import { useAuthStore } from '@/stores/authStore'
 import { useSocketStore } from '@/stores/socketStore'
@@ -41,6 +42,7 @@ export function FeedLayout() {
       )}
       <TopNav />
       <MobileBottomNav />
+      <ToastHost />
       <div className="feed-layout-grid">
         <div className="feed-layout-left">
           <LeftSidebar />
