@@ -9,6 +9,7 @@ import { CreatePost } from '@/features/feed/components/CreatePost'
 import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
 import { ShortcutHelp } from '@/features/feed/components/ShortcutHelp'
+import { CaughtUpFooter } from '@/features/feed/components/CaughtUpFooter'
 import { usePosts } from '@/features/feed/hooks/usePosts'
 import { useFeedSocket } from '@/features/feed/hooks/useFeedSocket'
 import { useFeedShortcuts } from '@/features/feed/hooks/useFeedShortcuts'
@@ -146,6 +147,9 @@ export default function FeedPage() {
           <SkeletonPost />
         </>
       )}
+
+      {/* Caught-up end state */}
+      {!isLoading && !isFetchingNextPage && !hasNextPage && posts.length > 0 && <CaughtUpFooter />}
 
       {/* Intersection sentinel */}
       <div ref={sentinelRef} style={{ height: 1 }} />
