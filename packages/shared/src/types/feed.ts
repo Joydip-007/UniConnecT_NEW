@@ -77,6 +77,7 @@ export interface FeedComment {
     fullName: string
     avatarUrl: string | null
     headline: string | null
+    role: UserRole
   }
   reactionCounts: { like: number; love: number; care: number; haha: number; wow: number; sad: number; angry: number }
   ownReaction: 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry' | null
