@@ -18,7 +18,7 @@ const bannerStyle: React.CSSProperties = {
   top: 0,
   left: 0,
   right: 0,
-  zIndex: 'var(--z-banner)' as unknown as number,
+  zIndex: 'var(--z-banner)',
   background: 'var(--surface-raised)',
   borderBottom: '0.5px solid var(--border-default)',
   padding: '7px 16px',

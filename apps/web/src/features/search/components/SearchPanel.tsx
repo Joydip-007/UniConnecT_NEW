@@ -311,7 +311,6 @@ export function SearchPanel({ query, onClose }: Props) {
       role="listbox"
       aria-label="Search results"
       className="search-panel-responsive"
-      data-origin="top-center"
       layout
       initial={reduced ? false : popoverIn.initial}
       animate={popoverIn.animate}

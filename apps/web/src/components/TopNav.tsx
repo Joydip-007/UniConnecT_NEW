@@ -198,7 +198,7 @@ export function TopNav() {
 
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const color = user ? avatarColor(user.id) : 'var(--uc-indigo)'
-  const hidden = scrollDir === 'down' && !menuOpen && !notifOpen && !msgOpen && !panelOpen
+  const hidden = scrollDir === 'down' && !menuOpen && !notifOpen && !msgOpen && !panelOpen && !searchFocused
 
   return (
     <header

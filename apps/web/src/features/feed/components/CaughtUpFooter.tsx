@@ -8,6 +8,7 @@ export function CaughtUpFooter() {
 
   return (
     <motion.div
+      role="status"
       initial={reduced ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: DUR.slow, ease: EASE_OUT_EXPO }}
