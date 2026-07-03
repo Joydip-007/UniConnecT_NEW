@@ -1,11 +1,20 @@
+import { useCallback } from 'react'
 import { BookOpen } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { AlumniView, StudentView, ToastContainer, useToast } from '@/features/mentorship'
+import { useToastStore } from '@/stores/toastStore'
+import { AlumniView, StudentView } from '@/features/mentorship'
+import type { AddToast } from '@/features/mentorship'
 import { MentorshipTab } from '@/pages/admin/MentorshipTab'
 
 export default function MentorshipPage() {
   const role = useAuthStore((s) => s.user?.role)
-  const { toasts, addToast } = useToast()
+  const show = useToastStore((s) => s.show)
+  const addToast = useCallback<AddToast>(
+    (message, type = 'success') => {
+      show({ message, type })
+    },
+    [show],
+  )
 
   if (role === 'admin') {
     return (
@@ -61,8 +70,6 @@ export default function MentorshipPage() {
 
   return (
     <div>
-      <ToastContainer toasts={toasts} />
-
       <div style={{ marginBottom: 20 }}>
         <h1
           style={{

@@ -66,10 +66,4 @@ export interface MentorshipSession {
   updatedAt: string
 }
 
-export interface ToastItem {
-  id: string
-  message: string
-  type: 'success' | 'error' | 'info'
-}
-
-export type AddToast = (message: string, type?: ToastItem['type']) => void
+export type AddToast = (message: string, type?: 'success' | 'error' | 'info') => void
