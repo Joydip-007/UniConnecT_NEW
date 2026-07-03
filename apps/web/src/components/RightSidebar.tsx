@@ -394,7 +394,7 @@ function TrendingTagStrip({ tags }: { tags: TrendingTag[] }) {
           paddingLeft: 2,
         }}
       >
-        trending now
+        Trending now
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {tags.map((tag) => (

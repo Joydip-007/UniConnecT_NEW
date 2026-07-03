@@ -23,6 +23,13 @@
 
   --uc-navy:          #1E3A70;
 
+  /* ── Tenant accent — per-university identity slot.
+     Defaults to UIU orange; later set at runtime from university_settings. */
+  --tenant-accent:     #F05A28;
+  --tenant-accent-l:   #F5845A;
+  --tenant-accent-bg:  rgba(240, 90, 40, 0.10);
+  --tenant-accent-bdr: rgba(240, 90, 40, 0.28);
+
   /* ── Semantic ─────────────────────────────────────── */
   --uc-cyan:          #06B6D4;
   --uc-cyan-bg:       rgba(6, 182, 212, 0.10);
@@ -30,6 +37,12 @@
   --uc-mint:          #10B981;
   --uc-mint-bg:       rgba(16, 185, 129, 0.10);
   --uc-mint-bdr:      rgba(16, 185, 129, 0.28);
+
+  --uc-amber:         #F5A623;
+  --uc-amber-l:       #FFC15E;
+  --uc-amber-bg:      rgba(245, 166, 35, 0.10);
+  --uc-amber-bdr:     rgba(245, 166, 35, 0.28);
+
   --uc-red:           #E11D48;
   --uc-red-bg:        rgba(225, 29, 72, 0.08);
   --uc-red-bdr:       rgba(225, 29, 72, 0.25);
@@ -69,6 +82,18 @@
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer:        cubic-bezier(0.32, 0.72, 0, 1);
 
+  /* ── Duration ─────────────────────────────────────── */
+  --dur-fast: 150ms;
+  --dur-med:  200ms;
+  --dur-slow: 300ms;
+
+  /* ── Z-index ──────────────────────────────────────── */
+  --z-nav:     50;
+  --z-popover: 100;
+  --z-modal:   200;
+  --z-toast:   300;
+  --z-banner:  400;
+
   /* ── Type ─────────────────────────────────────────── */
   --font-display: 'Satoshi', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
@@ -106,6 +131,17 @@
   --uc-mint:          #047857;
   --uc-mint-bg:       rgba(4, 120, 87, 0.10);
   --uc-mint-bdr:      rgba(4, 120, 87, 0.25);
+
+  --uc-amber:         #B45309;
+  --uc-amber-l:       #92400E;
+  --uc-amber-bg:      rgba(180, 83, 9, 0.10);
+  --uc-amber-bdr:     rgba(180, 83, 9, 0.28);
+
+  --tenant-accent:     #D44A1F;
+  --tenant-accent-l:   #A8391A;
+  --tenant-accent-bg:  rgba(212, 74, 31, 0.10);
+  --tenant-accent-bdr: rgba(212, 74, 31, 0.28);
+
   --uc-red:           #BE123C;
   --uc-red-bg:        rgba(190, 18, 60, 0.08);
   --uc-red-bdr:       rgba(190, 18, 60, 0.22);

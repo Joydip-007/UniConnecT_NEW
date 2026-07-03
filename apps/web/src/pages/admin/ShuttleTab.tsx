@@ -63,7 +63,7 @@ function blankEditor(): EditorState {
   return {
     routeId: null,
     name: '',
-    color: '#5B5BD6',
+    color: 'var(--uc-indigo)',
     isActive: true,
     scheduleType: 'fixed',
     outboundTimes: '',

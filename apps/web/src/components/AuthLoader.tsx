@@ -12,12 +12,14 @@ interface MeResponse {
   data: User
 }
 
+// id/universityId must match devMocks.ts's DEV_PROFILE and screenshot.cjs's DEV_USER_ID —
+// ProfilePage computes `isOwnProfile` by comparing this id to the fetched profile's id.
 const DEV_MOCK_USER: User = {
-  id: 'dev-00000000-0000-0000-0000-000000000001',
+  id: '11111111-1111-4111-8111-111111111111',
   username: 'devuser',
   email: 'dev@uiu.ac.bd',
   role: 'student',
-  universityId: 'dev-00000000-0000-0000-0000-000000000002',
+  universityId: '22222222-2222-4222-8222-222222222222',
   isVerified: true,
   themePreference: 'dark',
   profile: {

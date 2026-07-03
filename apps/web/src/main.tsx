@@ -10,7 +10,9 @@ import App from './App'
 
 // DEV-only: when running the design-verification flow (?dev-auth=1) without a
 // backend, stub the read endpoints so data pages render real UI for screenshots.
-if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev-auth') === '1') {
+const isScreenshotMode =
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev-auth') === '1'
+if (isScreenshotMode) {
   const { installDevMocks } = await import('@/lib/devMocks')
   installDevMocks()
 }
@@ -22,7 +24,9 @@ createRoot(document.getElementById('root')!).render(
         <AuthLoader>
           <App />
         </AuthLoader>
-        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+        {/* Suppressed in screenshot mode — its floating toggle button (bottom-right)
+            otherwise gets captured in design-verification screenshots. */}
+        {import.meta.env.DEV && !isScreenshotMode && <ReactQueryDevtools initialIsOpen={false} />}
       </QueryClientProvider>
     </RootErrorBoundary>
   </StrictMode>,

@@ -105,7 +105,7 @@ export function MediaGrid({ urls, onOpen }: Props) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fff',
+                    color: 'var(--on-accent)',
                     fontSize: 22,
                     fontWeight: 500,
                   }}
@@ -156,7 +156,7 @@ function Slot({ url, index, onOpen, aspectRatio, maxHeight, fill }: SlotProps) {
   }
 
   const el = video ? (
-    <div style={{ ...wrapStyle, background: '#000' }}>
+    <div style={{ ...wrapStyle, background: '#000' }} /* intentional: media letterbox is theme-invariant black */>
       <video
         src={url}
         muted
