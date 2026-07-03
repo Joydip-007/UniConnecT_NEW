@@ -14,6 +14,10 @@ import { api } from '@/lib/axios'
  */
 
 const DEV_PROFILE: PublicUserProfile & { visibility?: Record<string, unknown> } = {
+  // Must match AuthLoader's DEV_MOCK_USER.id (and screenshot.cjs's DEV_USER_ID)
+  // so `isOwnProfile` (authUser.id === user.id) is true on the profile screenshot —
+  // otherwise the page renders as if viewing a stranger (Connect button, gated sections).
+  // Kept as a real UUID because publicUserProfileSchema.id is `z.string().uuid()`.
   id: '11111111-1111-4111-8111-111111111111',
   username: 'devuser',
   email: 'dev@uiu.ac.bd',
@@ -54,8 +58,27 @@ const DEV_PROFILE: PublicUserProfile & { visibility?: Record<string, unknown> } 
 function resolveMockBody(url: string): unknown | null {
   if (/\/users\/by-username\/[^/]+$/.test(url)) return { data: DEV_PROFILE }
   if (/\/users\/me\/analytics$/.test(url))
-    return { data: { profileViews: { last7d: 18, last30d: 64, last90d: 142 }, postReach: { reactions: 23, comments: 7, total: 30 } } }
+    return {
+      data: {
+        profileViews: { last7d: 18, last30d: 64, last90d: 142 },
+        postReach: { reactions: 23, comments: 7, shares: 4, total: 34 },
+      },
+    }
   if (/\/users\/me\/viewers$/.test(url)) return { data: { items: [], total: 0, page: 1 } }
+  if (/\/users\/me\/progress$/.test(url))
+    return {
+      data: {
+        profileScore: 70,
+        hasMadePost: false,
+        connectionCount: 0,
+        isVerified: true,
+        hasAddedExperience: false,
+        hasAddedEducation: false,
+        hasAvatar: false,
+        hasBio: true,
+        hasHeadline: true,
+      },
+    }
   if (/\/users\/[^/]+\/experience$/.test(url)) return { data: [] }
   if (/\/users\/[^/]+\/education$/.test(url)) return { data: [] }
   if (/\/users\/[^/]+\/featured$/.test(url)) return { data: [] }

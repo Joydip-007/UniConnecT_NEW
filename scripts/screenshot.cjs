@@ -4,7 +4,9 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-const DEV_USER_ID = 'dev-00000000-0000-0000-0000-000000000001';
+// Must match AuthLoader.tsx's DEV_MOCK_USER.id and devMocks.ts's DEV_PROFILE.id —
+// ProfilePage's isOwnProfile check compares this against the fetched profile's id.
+const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 
 // Route map — add new entries as pages are built in Figma
 const ROUTES = {
