@@ -49,7 +49,7 @@ export function StudySessionsTab({ groupId, currentUserId }: Props) {
         <>
           {upcoming.length > 0 && (
             <section>
-              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Upcoming</p>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)' }}>Upcoming</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {upcoming.map((s) => (
                   <SessionCard
@@ -65,7 +65,7 @@ export function StudySessionsTab({ groupId, currentUserId }: Props) {
           )}
           {past.length > 0 && (
             <section>
-              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Past</p>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)' }}>Past</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {past.map((s) => (
                   <SessionCard

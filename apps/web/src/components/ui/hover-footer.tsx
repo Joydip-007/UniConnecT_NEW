@@ -100,7 +100,6 @@ export const TextHoverEffect = ({
           fontSize: '5.5rem',
           fontWeight: 500,
           letterSpacing: '-0.04em',
-          textTransform: 'uppercase',
           opacity: hovered ? 1 : 0,
           transition: 'opacity 0.35s ease',
         }}
@@ -122,7 +121,6 @@ export const TextHoverEffect = ({
           fontSize: '5.5rem',
           fontWeight: 500,
           letterSpacing: '-0.04em',
-          textTransform: 'uppercase',
         }}
         initial={{ strokeDashoffset: 1000, strokeDasharray: 1000 }}
         animate={{ strokeDashoffset: 0, strokeDasharray: 1000 }}
@@ -146,7 +144,6 @@ export const TextHoverEffect = ({
           fontSize: '5.5rem',
           fontWeight: 500,
           letterSpacing: '-0.04em',
-          textTransform: 'uppercase',
         }}
       >
         {text}

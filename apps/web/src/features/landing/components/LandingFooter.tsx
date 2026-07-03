@@ -48,8 +48,7 @@ function FooterColumnHeader({ children }: { children: React.ReactNode }) {
         margin: '0 0 20px',
         fontSize: 12,
         fontWeight: 500,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
+        letterSpacing: '0.02em',
         color: 'var(--text-secondary)',
       }}
     >

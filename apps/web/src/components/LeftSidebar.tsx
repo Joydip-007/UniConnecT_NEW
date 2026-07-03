@@ -362,7 +362,7 @@ export function LeftSidebar() {
             letterSpacing: '0.04em',
           }}
         >
-          campus tools
+          Campus tools
         </div>
 
         <CampusTool
