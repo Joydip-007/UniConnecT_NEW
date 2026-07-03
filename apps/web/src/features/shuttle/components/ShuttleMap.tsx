@@ -190,6 +190,11 @@ export function ShuttleMap({
   const [tileMode, setTileMode] = useState<TileMode>('street')
   const tile = TILE_LAYERS[tileMode]
 
+  const tenantAccent =
+    typeof window !== 'undefined'
+      ? getComputedStyle(document.documentElement).getPropertyValue('--tenant-accent').trim() || '#F05A28'
+      : '#F05A28'
+
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
       {/* Tile toggle */}
@@ -246,7 +251,7 @@ export function ShuttleMap({
           <CircleMarker
             center={[userLocation.lat, userLocation.lng]}
             radius={6}
-            pathOptions={{ color: '#F05A28', fillColor: '#F05A28', fillOpacity: 0.9, weight: 2 }}
+            pathOptions={{ color: tenantAccent, fillColor: tenantAccent, fillOpacity: 0.9, weight: 2 }}
           >
             <Popup>You are here</Popup>
           </CircleMarker>

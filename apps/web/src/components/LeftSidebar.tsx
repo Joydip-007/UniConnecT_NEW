@@ -275,7 +275,7 @@ export function LeftSidebar() {
               marginBottom: 8,
               display: 'inline-block',
               borderRadius: '50%',
-              background: 'var(--uc-orange)',
+              background: 'var(--tenant-accent)',
               padding: 1.5,
               lineHeight: 0,
             }}
