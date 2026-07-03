@@ -524,6 +524,7 @@ export function RightSidebar() {
   useEffect(() => {
     if (progress == null) return
     if (wasIncompleteRef.current && !progressIncomplete) {
+      wasIncompleteRef.current = false
       setJustCompleted(true)
       const t = setTimeout(() => setJustCompleted(false), 2000)
       return () => clearTimeout(t)
@@ -571,7 +572,7 @@ export function RightSidebar() {
       className="rail-scroll"
     >
       {/* Your progress — hero widget when incomplete, one last "complete" moment, then hidden */}
-      <AnimatePresence initial={false}>
+      <AnimatePresence>
         {loadingProgress ? (
           <motion.div key="progress-loading" variants={listItem} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
             <Widget>
