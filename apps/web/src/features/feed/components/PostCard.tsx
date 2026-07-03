@@ -439,6 +439,8 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             <button
               type="button"
               onClick={() => viewTransitionNavigate(PATHS.POST_DETAIL.replace(':id', post.id))}
+              className="post-timestamp-link"
+              aria-label="View post"
               style={{
                 margin: '2px 0 0',
                 padding: 0,

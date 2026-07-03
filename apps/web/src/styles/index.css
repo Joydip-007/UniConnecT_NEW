@@ -751,3 +751,13 @@ select:focus-visible {
     animation-timing-function: var(--ease-out-strong);
   }
 }
+
+/* ── Post timestamp link affordance ────────────────────────────────────── */
+.post-timestamp-link {
+  text-decoration: none;
+}
+
+.post-timestamp-link:hover,
+.post-timestamp-link:focus-visible {
+  text-decoration: underline;
+}
