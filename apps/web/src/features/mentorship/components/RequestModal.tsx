@@ -26,8 +26,13 @@ export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) 
     onSuccess: () => onSuccess(alumni.fullName),
   })
 
+  const handleClose = () => {
+    if (mutation.isPending) return
+    onClose()
+  }
+
   return (
-    <Modal isOpen onClose={onClose} title={alumni.fullName} maxWidth={480}>
+    <Modal isOpen onClose={handleClose} title={alumni.fullName} maxWidth={480}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar initials={getInitials(alumni.fullName)} color={avatarColor(alumni.id)} size={40} />
