@@ -1,5 +1,5 @@
 import { GraduationCap } from 'lucide-react'
-import { usePaths, useToday, useLearningStats, StreakBanner } from '@/features/learning'
+import { usePaths, useToday, useLearningStats, StreakBanner, TodayCard } from '@/features/learning'
 import { EmptyState } from '@/components/EmptyState'
 
 function Skeleton({ height }: { height: number }) {
@@ -57,19 +57,11 @@ export default function LearnPage() {
         ) : today && today.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {today.map((entry) => (
-              <div
+              <TodayCard
                 key={entry.unit.id}
-                style={{
-                  background: 'var(--surface-card)',
-                  border: '0.5px solid var(--border-default)',
-                  borderRadius: 'var(--r-lg)',
-                  padding: 16,
-                }}
-              >
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {entry.unit.title}
-                </p>
-              </div>
+                entry={entry}
+                pathTitle={paths?.find((p) => p.id === entry.pathId)?.title}
+              />
             ))}
           </div>
         ) : (
