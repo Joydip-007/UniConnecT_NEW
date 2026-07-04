@@ -1,5 +1,5 @@
 import { GraduationCap } from 'lucide-react'
-import { usePaths, useToday, useLearningStats } from '@/features/learning'
+import { usePaths, useToday, useLearningStats, StreakBanner } from '@/features/learning'
 import { EmptyState } from '@/components/EmptyState'
 
 function Skeleton({ height }: { height: number }) {
@@ -42,23 +42,9 @@ export default function LearnPage() {
       <div style={{ marginBottom: 20 }}>
         {statsLoading ? (
           <Skeleton height={72} />
-        ) : (
-          <div
-            style={{
-              background: 'var(--surface-card)',
-              border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--r-lg)',
-              padding: 16,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-              {stats ? `${stats.currentStreak}-day streak` : 'No streak yet'}
-            </p>
-          </div>
-        )}
+        ) : stats ? (
+          <StreakBanner stats={stats} />
+        ) : null}
       </div>
 
       {/* Today section */}
