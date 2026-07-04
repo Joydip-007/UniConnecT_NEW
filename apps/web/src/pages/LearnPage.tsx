@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { GraduationCap } from 'lucide-react'
-import { usePaths, useToday, useLearningStats, StreakBanner, TodayCard, QuizModal } from '@/features/learning'
+import { motion, useReducedMotion } from 'framer-motion'
+import {
+  usePaths, useToday, useLearningStats, StreakBanner, TodayCard, QuizModal, PathCard, PathDetailModal,
+} from '@/features/learning'
 import type { LearningUnit } from '@/features/learning'
 import { EmptyState } from '@/components/EmptyState'
+import { listStagger, listItem } from '@/lib/motion'
 
 function Skeleton({ height }: { height: number }) {
   return (
@@ -22,6 +26,8 @@ export default function LearnPage() {
   const { data: today, isLoading: todayLoading } = useToday()
   const { data: paths, isLoading: pathsLoading } = usePaths()
   const [quizUnit, setQuizUnit] = useState<LearningUnit | null>(null)
+  const [selectedPathId, setSelectedPathId] = useState<string | null>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   return (
     <div>
@@ -87,26 +93,22 @@ export default function LearnPage() {
         {pathsLoading ? (
           <Skeleton height={200} />
         ) : paths && paths.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <motion.div
+            variants={listStagger()}
+            initial={prefersReducedMotion ? false : 'initial'}
+            animate="animate"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+              gap: 12,
+            }}
+          >
             {paths.map((path) => (
-              <div
-                key={path.id}
-                style={{
-                  background: 'var(--surface-card)',
-                  border: '0.5px solid var(--border-default)',
-                  borderRadius: 'var(--r-lg)',
-                  padding: 16,
-                }}
-              >
-                <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {path.title}
-                </p>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-                  {path.description}
-                </p>
-              </div>
+              <motion.div key={path.id} variants={listItem}>
+                <PathCard path={path} onOpen={setSelectedPathId} />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         ) : (
           <EmptyState
             icon={GraduationCap}
@@ -115,6 +117,12 @@ export default function LearnPage() {
           />
         )}
       </div>
+
+      <PathDetailModal
+        pathId={selectedPathId}
+        open={!!selectedPathId}
+        onClose={() => setSelectedPathId(null)}
+      />
     </div>
   )
 }
