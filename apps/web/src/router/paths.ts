@@ -34,6 +34,8 @@ export const PATHS = {
 
   MENTORSHIP: '/mentorship',
 
+  LEARN: '/learn',
+
   SHUTTLE: '/shuttle',
   SHUTTLE_DRIVE: '/shuttle/drive',
 
