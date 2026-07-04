@@ -135,14 +135,22 @@ export async function enroll(pathId: string, userId: string, universityId: strin
       return updated
     }
 
-    const [created] = await trx('skill_path_enrollments')
-      .insert({
-        path_id: pathId,
-        user_id: userId,
-        university_id: universityId,
-        status: 'active',
-      })
-      .returning('*')
+    let created
+    try {
+      ;[created] = await trx('skill_path_enrollments')
+        .insert({
+          path_id: pathId,
+          user_id: userId,
+          university_id: universityId,
+          status: 'active',
+        })
+        .returning('*')
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505') {
+        throw conflict('Already enrolled')
+      }
+      throw error
+    }
 
     await trx('learning_stats')
       .insert({ user_id: userId, university_id: universityId })
@@ -421,11 +429,11 @@ export async function listUserBadges(userId: string) {
     id: r.id,
     name: r.name,
     description: r.description,
-    icon_url: r.icon_url,
+    iconUrl: r.icon_url,
     category: r.category,
     points: r.points,
-    skill_path_id: r.skill_path_id,
-    awarded_at: r.awarded_at,
+    skillPathId: r.skill_path_id,
+    awardedAt: r.awarded_at,
     isShowcased: r.is_showcased,
     rarity: rarityFor(holderCountByBadge.get(r.id) ?? 0),
   }))

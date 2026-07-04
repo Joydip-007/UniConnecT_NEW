@@ -31,7 +31,13 @@ badgeQueue.process(async (job) => {
     const already = await db('user_badges').where({ user_id: userId, badge_id: badge.id }).first()
     if (already) continue
 
-    await db('user_badges').insert({ user_id: userId, badge_id: badge.id })
+    const inserted = await db('user_badges')
+      .insert({ user_id: userId, badge_id: badge.id })
+      .onConflict(['user_id', 'badge_id'])
+      .ignore()
+      .returning('id')
+
+    if (inserted.length === 0) continue
 
     const io = getIo()
     io.to(`user:${userId}`).emit('badge:earned', {
