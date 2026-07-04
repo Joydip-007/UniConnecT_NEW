@@ -5,13 +5,7 @@ import { LandingFooter } from '@/features/landing/components/LandingFooter'
 
 export default function AboutPage() {
   return (
-    <div
-      style={{
-        background: 'var(--surface-page)',
-        overflowX: 'hidden',
-        minHeight: '100dvh',
-      }}
-    >
+    <div style={{ background: 'var(--surface-page)', overflowX: 'hidden', minHeight: '100dvh' }}>
       <header>
         <LandingNav />
       </header>

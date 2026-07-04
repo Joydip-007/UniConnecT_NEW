@@ -1,96 +1,89 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BrandLogo } from '@/components/BrandLogo'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { ThemeToggleButton } from '@/components/ThemeToggleButton'
 import { PATHS } from '@/router/paths'
 
+const HOME_PATH = '/'
+
 const NAV_LINKS = [
-  { label: 'Features',     href: '#features' },
+  { label: 'Features', href: '#features' },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Universities', href: '#universities' },
-  { label: 'Story',        href: PATHS.ABOUT },
-  { label: 'Pricing',      href: '#pricing' },
-]
+  { label: 'About', href: PATHS.ABOUT },
+  { label: 'Pricing', href: '#pricing' },
+] as const
 
 export function LandingNav() {
-  const navRef   = useRef<HTMLElement>(null)
+  const navRef = useRef<HTMLElement>(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => {
       if (!navRef.current) return
-      if (window.scrollY > 12) {
-        navRef.current.classList.add('nav-scrolled')
-      } else {
-        navRef.current.classList.remove('nav-scrolled')
-      }
+      navRef.current.classList.toggle('nav-scrolled', window.scrollY > 12)
     }
+
+    onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  /* In-page anchors smooth-scroll; route links navigate. Honor prefers-reduced-motion. */
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
+
   function handleLinkClick(href: string) {
     setMenuOpen(false)
+
     if (!href.startsWith('#')) {
       navigate(href)
       return
     }
+
+    if (location.pathname !== HOME_PATH) {
+      navigate(`${HOME_PATH}${href}`)
+      return
+    }
+
     const target = document.querySelector(href)
     if (!target) return
+
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
   }
 
   return (
     <>
-      <nav
-        ref={navRef}
-        className="uc-landing-nav"
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          height: 66,
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 52px',
-          gap: 36,
-          borderBottom: '0.5px solid var(--border-default)',
-        }}
-      >
-        {/* Logo */}
-        <a
-          href="/"
-          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
-        >
+      <nav ref={navRef} className="uc-landing-nav">
+        <Link to={HOME_PATH} className="uc-nav-brand" aria-label="UniConnecT home">
           <BrandLogo height={34} />
-        </a>
+          <span className="uc-nav-brand-copy">
+            <span className="uc-nav-brand-kicker">UniConnecT</span>
+            <span className="uc-nav-brand-note">Private campus network</span>
+          </span>
+        </Link>
 
-        {/* Center nav links — hidden on mobile via CSS */}
-        <div className="uc-nav-center-links" style={{ display: 'flex', gap: 26, marginLeft: 'auto', marginRight: 'auto' }}>
-          {NAV_LINKS.map(({ label, href }) => (
+        <div className="uc-nav-center-links">
+          {NAV_LINKS.map(({ href, label }) => (
             <a
               key={label}
               href={href}
-              onClick={(e) => { e.preventDefault(); handleLinkClick(href) }}
-              className="nav-link-hover"
-              style={{
-                fontSize: 14,
-                color: 'var(--text-secondary)',
-                textDecoration: 'none',
-                transition: 'color 150ms ease',
+              onClick={(event) => {
+                event.preventDefault()
+                handleLinkClick(href)
               }}
+              className="nav-link-hover uc-nav-link"
             >
               {label}
             </a>
           ))}
         </div>
 
-        {/* Right CTAs */}
-        <div style={{ display: 'flex', gap: 10, flexShrink: 0, marginLeft: 'auto', alignItems: 'center' }}>
+        <div className="uc-nav-actions">
           <ThemeToggleButton size={36} />
           <GhostBtn onClick={() => navigate(PATHS.LOGIN)}>Sign in</GhostBtn>
           <OrangeBtn onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}>
@@ -98,11 +91,13 @@ export function LandingNav() {
           </OrangeBtn>
         </div>
 
-        {/* Hamburger — visible on mobile via CSS */}
         <button
+          type="button"
           className={`uc-nav-hamburger${menuOpen ? ' open' : ''}`}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-          onClick={() => setMenuOpen((v) => !v)}
+          aria-expanded={menuOpen}
+          aria-controls="uc-nav-mobile-drawer"
+          onClick={() => setMenuOpen((value) => !value)}
         >
           <span />
           <span />
@@ -110,36 +105,37 @@ export function LandingNav() {
         </button>
       </nav>
 
-      {/* Mobile drawer */}
-      <div className={`uc-nav-mobile-drawer${menuOpen ? ' open' : ''}`}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 12px' }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Theme</span>
+      <div
+        id="uc-nav-mobile-drawer"
+        className={`uc-nav-mobile-drawer${menuOpen ? ' open' : ''}`}
+      >
+        <div className="uc-nav-mobile-header">
+          <div>
+            <p className="uc-nav-mobile-kicker">Public route</p>
+            <p className="uc-nav-mobile-note">Landing and about share the same chrome.</p>
+          </div>
           <ThemeToggleButton size={32} />
         </div>
-        {NAV_LINKS.map(({ label, href }) => (
+        {NAV_LINKS.map(({ href, label }) => (
           <a
             key={label}
             href={href}
-            onClick={(e) => { e.preventDefault(); handleLinkClick(href) }}
-            style={{
-              fontSize: 15,
-              color: 'var(--text-secondary)',
-              textDecoration: 'none',
-              padding: '10px 4px',
-              borderBottom: '0.5px solid var(--border-default)',
-              transition: 'color 0.2s',
+            onClick={(event) => {
+              event.preventDefault()
+              handleLinkClick(href)
             }}
+            className="uc-nav-mobile-link"
           >
             {label}
           </a>
         ))}
-        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-          <GhostBtn style={{ flex: 1 }} onClick={() => { setMenuOpen(false); navigate(PATHS.LOGIN) }}>
+        <div className="uc-nav-mobile-actions">
+          <GhostBtn style={{ flex: 1 }} onClick={() => navigate(PATHS.LOGIN)}>
             Sign in
           </GhostBtn>
           <OrangeBtn
             style={{ flex: 1 }}
-            onClick={() => { setMenuOpen(false); navigate(PATHS.REGISTER.replace(':token', 'invite')) }}
+            onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
           >
             Join free
           </OrangeBtn>
