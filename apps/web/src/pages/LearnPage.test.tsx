@@ -21,7 +21,11 @@ describe('LearnPage', () => {
     renderPage()
 
     expect(await screen.findByRole('heading', { name: 'Learn' })).toBeInTheDocument()
-    expect(await screen.findByText(learningFixtures.paths[0].title)).toBeInTheDocument()
+    // Path title now appears in both the TodayCard's path-context line and the
+    // Paths section card, so assert there is at least one match rather than
+    // requiring a single unambiguous element.
+    const pathTitleMatches = await screen.findAllByText(learningFixtures.paths[0].title)
+    expect(pathTitleMatches.length).toBeGreaterThanOrEqual(1)
     expect(await screen.findByText(learningFixtures.today[0].unit.title)).toBeInTheDocument()
   })
 })
