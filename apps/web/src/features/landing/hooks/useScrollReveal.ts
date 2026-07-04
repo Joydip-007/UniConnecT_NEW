@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
+
+const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 function supportsViewTimeline() {
   return typeof CSS !== 'undefined' && CSS.supports('animation-timeline: view()')
@@ -13,23 +15,28 @@ function prefersReducedMotion() {
 export function useScrollReveal<T extends HTMLElement = HTMLElement>(threshold = 0.08) {
   const ref = useRef<T>(null)
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const root = ref.current
     if (!root) return
 
     const targets = Array.from(root.querySelectorAll<HTMLElement>('.reveal'))
     if (targets.length === 0) return
 
-    root.dataset.revealReady = 'true'
+    targets.forEach((target) => {
+      const delay = target.dataset.delay ?? '0'
+      target.style.setProperty('--reveal-delay', delay)
+    })
 
     if (prefersReducedMotion()) {
       root.dataset.revealMode = 'reduced'
+      root.dataset.revealReady = 'true'
       targets.forEach((target) => target.classList.add('is-revealed'))
       return
     }
 
     if (supportsViewTimeline()) {
       root.dataset.revealMode = 'timeline'
+      root.dataset.revealReady = 'true'
       return
     }
 
@@ -50,6 +57,7 @@ export function useScrollReveal<T extends HTMLElement = HTMLElement>(threshold =
     )
 
     targets.forEach((target) => observer.observe(target))
+    root.dataset.revealReady = 'true'
 
     return () => observer.disconnect()
   }, [threshold])

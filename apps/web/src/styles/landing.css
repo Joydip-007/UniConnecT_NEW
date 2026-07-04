@@ -156,6 +156,7 @@
   transition:
     opacity 0.65s var(--ease-out-expo),
     transform 0.65s var(--ease-out-expo);
+  transition-delay: calc(var(--reveal-delay, 0) * 1ms);
 }
 
 [data-reveal-ready='true'][data-reveal-mode='observer'] .reveal.is-revealed,
@@ -174,6 +175,7 @@
     animation-timing-function: linear;
     animation-timeline: view(block);
     animation-range: entry 12% cover 36%;
+    animation-delay: calc(var(--reveal-delay, 0) * 1ms);
   }
 }
 
