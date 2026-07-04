@@ -4,7 +4,7 @@ import { AppError } from '../utils/errors'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ error: err.message, code: err.code })
     return
@@ -19,7 +19,16 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return
   }
 
-  logger.error('Unhandled API error', { err })
+  logger.error('Unhandled API error', {
+    err,
+    request: {
+      method: req.method,
+      path: req.originalUrl,
+      origin: req.get('origin') ?? null,
+      universityDomain: req.get('x-university-domain') ?? null,
+      ip: req.ip,
+    },
+  })
 
   const body: { error: string; code: string; stack?: string } = {
     error: 'Internal server error',
