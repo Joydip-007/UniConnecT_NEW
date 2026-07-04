@@ -1479,10 +1479,21 @@
     background 0.18s var(--ease-out-strong);
 }
 
+.uc-footer-social-link.is-disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .uc-footer-social-link:hover,
 .uc-footer-social-link:focus-visible {
   color: var(--text-primary);
   background: var(--surface-hover);
+}
+
+.uc-footer-social-link.is-disabled:hover,
+.uc-footer-social-link.is-disabled:focus-visible {
+  color: var(--text-tertiary);
+  background: transparent;
 }
 
 .uc-footer-copyright {

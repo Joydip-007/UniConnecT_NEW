@@ -111,7 +111,7 @@ function StoryPanel({ accent, background, children, index, label, num }: StoryPa
                 {num} / {label}
               </p>
               <p className="uc-story-brief">
-                Platform briefing for the campus network we are building.
+                A closer look at the network we are building for campus life.
               </p>
             </div>
             <span aria-hidden className="uc-story-watermark">
@@ -132,7 +132,12 @@ export function AboutStory() {
   useStoryScroll(rootRef)
 
   return (
-    <div ref={rootRef} className="uc-about-story-root" aria-label="About UniConnecT story">
+    <div
+      ref={rootRef}
+      className="uc-about-story-root"
+      role="region"
+      aria-label="About UniConnecT story"
+    >
       <div ref={revealRef}>
         <StoryPanel
           index={0}
@@ -150,9 +155,9 @@ export function AboutStory() {
               </p>
             </div>
             <aside className="uc-story-aside reveal" data-delay={140}>
-              <p className="uc-story-aside-label">Shared public route</p>
+              <p className="uc-story-aside-label">A clearer campus web</p>
               <p className="uc-story-aside-copy">
-                The about route now carries the same calm platform briefing tone as the landing page.
+                Our story lives in the same calm, welcoming world as the rest of UniConnecT.
               </p>
             </aside>
           </div>

@@ -36,6 +36,32 @@ export function LandingNav() {
     setMenuOpen(false)
   }, [location.pathname])
 
+  useEffect(() => {
+    if (location.pathname !== HOME_PATH || !location.hash) return
+
+    let frame = 0
+    let attempts = 0
+
+    const scrollToHash = () => {
+      attempts += 1
+      const target = document.querySelector(location.hash)
+      if (target) {
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
+        return
+      }
+
+      if (attempts < 8) {
+        frame = requestAnimationFrame(scrollToHash)
+      }
+    }
+
+    frame = requestAnimationFrame(scrollToHash)
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [location.hash, location.pathname])
+
   function handleLinkClick(href: string) {
     setMenuOpen(false)
 
@@ -111,8 +137,10 @@ export function LandingNav() {
       >
         <div className="uc-nav-mobile-header">
           <div>
-            <p className="uc-nav-mobile-kicker">Public route</p>
-            <p className="uc-nav-mobile-note">Landing and about share the same chrome.</p>
+            <p className="uc-nav-mobile-kicker">UniConnecT</p>
+            <p className="uc-nav-mobile-note">
+              A private network for campus life, built to feel familiar from the first visit.
+            </p>
           </div>
           <ThemeToggleButton size={32} />
         </div>

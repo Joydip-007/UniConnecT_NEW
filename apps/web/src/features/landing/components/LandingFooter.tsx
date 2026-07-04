@@ -42,6 +42,34 @@ const SOCIAL_LINKS = [
   { icon: GitHubIcon, label: 'GitHub', href: '#' },
 ] as const
 
+function SocialLink({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string
+  icon: (props: { size?: number }) => JSX.Element
+  label: string
+}) {
+  if (href === '#') {
+    return (
+      <span
+        aria-label={label}
+        aria-disabled="true"
+        className="uc-footer-social-link is-disabled"
+      >
+        <Icon size={17} />
+      </span>
+    )
+  }
+
+  return (
+    <a key={label} href={href} aria-label={label} className="uc-footer-social-link">
+      <Icon size={17} />
+    </a>
+  )
+}
+
 function FooterColumnHeader({ children }: { children: ReactNode }) {
   return <h4 className="uc-footer-column-title">{children}</h4>
 }
@@ -108,7 +136,7 @@ export function LandingFooter() {
           <Link to={HOME_PATH} className="uc-footer-brand-link">
             <BrandLogo height={28} />
           </Link>
-          <p className="uc-footer-kicker">Platform briefing</p>
+          <p className="uc-footer-kicker">UniConnecT</p>
           <p className="uc-footer-copy">
             The private social network built for universities — verified roles, campus
             communities, and real opportunities, all in one place.
@@ -167,9 +195,7 @@ export function LandingFooter() {
         <div className="uc-footer-bottom-bar">
           <div className="uc-footer-socials">
             {SOCIAL_LINKS.map(({ href, icon: Icon, label }) => (
-              <a key={label} href={href} aria-label={label} className="uc-footer-social-link">
-                <Icon size={17} />
-              </a>
+              <SocialLink key={label} href={href} icon={Icon} label={label} />
             ))}
           </div>
           <p className="uc-footer-copyright">© 2026 Team Mavericks · UIU · Bangladesh</p>

@@ -61,6 +61,8 @@ describe('AboutPage', () => {
         name: 'Three things we will not compromise on.',
       }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'About UniConnecT story' })).toBeInTheDocument()
+    expect(screen.getAllByRole('contentinfo').length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Join free' }).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'UniConnecT home' })).toBeInTheDocument()
   })
