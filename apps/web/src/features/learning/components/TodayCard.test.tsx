@@ -41,6 +41,22 @@ describe('TodayCard', () => {
     })
   })
 
+  it('shows a milestone streak toast on a 7-day streak', async () => {
+    server.use(
+      http.post('*/learning/units/:unitId/complete', () =>
+        HttpResponse.json({ data: { completed: true, pathCompleted: false, streak: { currentStreak: 7, longestStreak: 7 } } })),
+    )
+    const user = userEvent.setup()
+    renderWithClient(<TodayCard entry={baseEntry} pathTitle="Git basics" />)
+
+    await user.click(screen.getByRole('button', { name: 'Mark complete' }))
+
+    await vi.waitFor(() => {
+      const toasts = useToastStore.getState().toasts
+      expect(toasts.some((t) => t.message === '7-day streak — badge on its way' && t.type === 'success')).toBe(true)
+    })
+  })
+
   it('shows an additional toast when the path is completed', async () => {
     server.use(
       http.post('*/learning/units/:unitId/complete', () =>

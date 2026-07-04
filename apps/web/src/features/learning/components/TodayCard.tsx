@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BookOpen, Play, PenLine, HelpCircle, Check } from 'lucide-react'
 import { isAxiosError } from 'axios'
-import { useCompleteUnit } from '../hooks/useLearning'
+import { useCompleteUnit, streakToastMessage } from '../hooks/useLearning'
 import { useToastStore } from '@/stores/toastStore'
 import type { LearningUnit, TodayEntry } from '../types'
 
@@ -40,7 +40,7 @@ export function TodayCard({
       { unitId: unit.id },
       {
         onSuccess: (result) => {
-          show({ message: `Unit complete — streak: ${result.streak.currentStreak} days`, type: 'success' })
+          show({ message: streakToastMessage(result.streak.currentStreak), type: 'success' })
           if (result.pathCompleted) {
             show({ message: 'Path complete! Badge on its way', type: 'success' })
           }

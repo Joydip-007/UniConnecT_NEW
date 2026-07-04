@@ -4,7 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { learningFixtures } from '@/tests/msw/handlers'
 import {
-  useCompleteUnit, usePaths, useShowcaseBadge, useToday,
+  useCompleteUnit, usePaths, useShowcaseBadge, useToday, streakToastMessage,
 } from './useLearning'
 
 function createWrapper() {
@@ -14,6 +14,16 @@ function createWrapper() {
   }
   return { Wrapper, qc }
 }
+
+describe('streakToastMessage', () => {
+  it.each([7, 30, 100])('returns a milestone message for a %i-day streak', (n) => {
+    expect(streakToastMessage(n)).toBe(`${n}-day streak — badge on its way`)
+  })
+
+  it.each([1, 2, 4, 8, 29, 31, 99, 101])('returns the normal message for a %i-day streak', (n) => {
+    expect(streakToastMessage(n)).toBe(`Unit complete — streak: ${n} days`)
+  })
+})
 
 describe('useLearning hooks', () => {
   it('usePaths resolves the fixture list', async () => {

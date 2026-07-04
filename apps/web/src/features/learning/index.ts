@@ -1,5 +1,6 @@
 export * from './types'
 export * from './hooks/useLearning'
+export * from './hooks/useAchievementSocket'
 export * from './components/StreakBanner'
 export * from './components/TodayCard'
 export * from './components/QuizModal'

@@ -4,6 +4,15 @@ import type {
   CompleteUnitResult, LearningPath, LearningStats, PathDetail, TodayEntry, UserBadge,
 } from '../types'
 
+const STREAK_MILESTONES = new Set([7, 30, 100])
+
+export function streakToastMessage(n: number): string {
+  if (STREAK_MILESTONES.has(n)) {
+    return `${n}-day streak — badge on its way`
+  }
+  return `Unit complete — streak: ${n} days`
+}
+
 export function usePaths() {
   return useQuery({
     queryKey: ['learning', 'paths', {}],

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { Check } from 'lucide-react'
 import { Modal } from '@/components/Modal'
-import { useCompleteUnit } from '../hooks/useLearning'
+import { useCompleteUnit, streakToastMessage } from '../hooks/useLearning'
 import { useToastStore } from '@/stores/toastStore'
 import type { LearningUnit } from '../types'
 
@@ -59,7 +59,7 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
       {
         onSuccess: (res) => {
           setResult({ score, passed: true, passScore })
-          show({ message: `Unit complete — streak: ${res.streak.currentStreak} days`, type: 'success' })
+          show({ message: streakToastMessage(res.streak.currentStreak), type: 'success' })
           if (res.pathCompleted) {
             show({ message: 'Path complete! Badge on its way', type: 'success' })
           }

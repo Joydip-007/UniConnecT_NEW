@@ -92,6 +92,24 @@ describe('QuizModal', () => {
     })
   })
 
+  it('shows a milestone streak toast on a 30-day streak', async () => {
+    server.use(
+      http.post('*/learning/units/:unitId/complete', () =>
+        HttpResponse.json({ data: { completed: true, pathCompleted: false, streak: { currentStreak: 30, longestStreak: 30 } } })),
+    )
+    const user = userEvent.setup()
+    renderModal()
+
+    await user.click(screen.getByRole('radio', { name: 'git init' }))
+    await user.click(screen.getByRole('radio', { name: 'git add' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await vi.waitFor(() => {
+      const toasts = useToastStore.getState().toasts
+      expect(toasts.some((t) => t.message === '30-day streak — badge on its way' && t.type === 'success')).toBe(true)
+    })
+  })
+
   it('shows the inline retry state on a failing (400) response and resets answers on try again', async () => {
     server.use(
       http.post('*/learning/units/:unitId/complete', () =>
