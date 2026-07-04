@@ -1,3 +1,80 @@
-import { HttpHandler } from 'msw';
+import { http, HttpResponse } from 'msw';
 
-export const handlers: HttpHandler[] = [];
+export const learningFixtures = {
+  paths: [
+    {
+      id: 'path-1',
+      title: 'Git basics',
+      description: 'Learn version control',
+      category: 'engineering',
+      difficulty: 'beginner' as const,
+      estimated_days: 5,
+      badge_name: 'Git novice',
+      badge_icon: 'git',
+      unitCount: 3,
+      enrolledCount: 12,
+      myEnrollmentStatus: null,
+    },
+  ],
+  pathDetail: {
+    id: 'path-1',
+    title: 'Git basics',
+    description: 'Learn version control',
+    category: 'engineering',
+    difficulty: 'beginner' as const,
+    estimated_days: 5,
+    badge_name: 'Git novice',
+    badge_icon: 'git',
+    unitCount: 3,
+    enrolledCount: 12,
+    units: [
+      { id: 'unit-1', display_order: 1, title: 'Intro', type: 'read' as const, completed: false },
+    ],
+    enrollment: null,
+  },
+  today: [
+    {
+      pathId: 'path-1',
+      unit: { id: 'unit-1', display_order: 1, title: 'Intro', type: 'read' as const, completed: false },
+      completedToday: false,
+    },
+  ],
+  stats: {
+    currentStreak: 3,
+    longestStreak: 7,
+    lastActivityDate: '2026-07-03',
+    freezesRemaining: 2,
+  },
+  badges: [
+    {
+      id: 'badge-1',
+      name: 'Git novice',
+      description: 'Completed Git basics',
+      iconUrl: null,
+      category: 'path' as const,
+      points: 10,
+      rarity: 'common' as const,
+      isShowcased: false,
+      awardedAt: '2026-07-01T00:00:00.000Z',
+      skillPathId: 'path-1',
+    },
+  ],
+  completeUnitResult: {
+    completed: true,
+    pathCompleted: false,
+    streak: { currentStreak: 4, longestStreak: 7 },
+  },
+};
+
+export const handlers = [
+  http.get('*/learning/paths', () => HttpResponse.json({ data: learningFixtures.paths })),
+  http.get('*/learning/paths/:pathId', () => HttpResponse.json({ data: learningFixtures.pathDetail })),
+  http.post('*/learning/paths/:pathId/enroll', () => HttpResponse.json({ data: {} })),
+  http.post('*/learning/paths/:pathId/abandon', () => HttpResponse.json({ data: {} })),
+  http.get('*/learning/me/today', () => HttpResponse.json({ data: learningFixtures.today })),
+  http.get('*/learning/me/stats', () => HttpResponse.json({ data: learningFixtures.stats })),
+  http.get('*/learning/me/badges', () => HttpResponse.json({ data: learningFixtures.badges })),
+  http.put('*/learning/me/badges/showcase', () => HttpResponse.json({ data: {} })),
+  http.get('*/learning/users/:userId/badges', () => HttpResponse.json({ data: learningFixtures.badges })),
+  http.post('*/learning/units/:unitId/complete', () => HttpResponse.json({ data: learningFixtures.completeUnitResult })),
+];

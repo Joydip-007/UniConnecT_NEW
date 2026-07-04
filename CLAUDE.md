@@ -373,6 +373,7 @@ node scripts/screenshot.cjs all      # all pages
 | `login-mob` | `/login` (390×844) | no |
 | `register` | `/register` | no |
 | `otp` | `/otp` | no |
+| `learn` | `/learn` | yes |
 
 Rules:
 - Requires Vite dev server running (`npx pnpm --filter web dev`, port 5173). No backend needed.

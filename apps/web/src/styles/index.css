@@ -298,6 +298,22 @@ select:focus-visible {
   }
 }
 
+/* ── Learn feed card dismiss button — reveal on card hover ───────────── */
+.learn-feed-card-dismiss {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+@media (hover: hover) {
+  .learn-feed-card:hover .learn-feed-card-dismiss {
+    opacity: 1;
+  }
+}
+@media (hover: none) {
+  .learn-feed-card-dismiss {
+    opacity: 1;
+  }
+}
+
 /* ── Messages two-panel layout ────────────────────────────── */
 
 /* Sidebar on /messages (list view): 320px desktop, full-width mobile */

@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useSocketStore } from '@/stores/socketStore'
 import { useNotificationsSocket } from '@/features/notifications'
 import { usePresenceHeartbeat } from '@/features/presence'
+import { useAchievementSocket } from '@/features/learning'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 
 const bannerStyle: React.CSSProperties = {
@@ -34,6 +35,7 @@ export function FeedLayout() {
   const reduced = useReducedMotion()
   useNotificationsSocket(userId)
   usePresenceHeartbeat(Boolean(userId))
+  useAchievementSocket()
 
   const [justReconnected, setJustReconnected] = useState(false)
   const wasConnectedRef = useRef(connected)

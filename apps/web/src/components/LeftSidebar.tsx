@@ -22,6 +22,7 @@ import {
   ExternalLink,
   ShieldCheck,
   Handshake,
+  GraduationCap,
   type LucideIcon,
 } from 'lucide-react'
 import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
@@ -229,6 +230,7 @@ export function LeftSidebar() {
         { icon: Briefcase, label: 'Jobs', path: PATHS.JOBS },
         { icon: Newspaper, label: 'News', path: PATHS.NEWS },
         { icon: Handshake, label: 'Mentorship', path: PATHS.MENTORSHIP },
+        { icon: GraduationCap, label: 'Learn', path: PATHS.LEARN },
       ],
     },
     {

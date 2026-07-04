@@ -67,6 +67,8 @@ export const router = createBrowserRouter([
 
           { path: PATHS.MENTORSHIP, element: page(() => import('@/pages/MentorshipPage')) },
 
+          { path: PATHS.LEARN, element: page(() => import('@/pages/LearnPage')) },
+
           { path: PATHS.SHUTTLE, element: page(() => import('@/pages/ShuttlePage')) },
 
           { path: PATHS.EXPLORE, element: page(() => import('@/pages/ExplorePage')) },

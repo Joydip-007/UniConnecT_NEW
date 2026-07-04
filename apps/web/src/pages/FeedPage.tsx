@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Rss } from 'lucide-react'
@@ -16,6 +16,7 @@ import { useFeedSocket } from '@/features/feed/hooks/useFeedSocket'
 import { useFeedShortcuts } from '@/features/feed/hooks/useFeedShortcuts'
 import { SkeletonPost } from '@/components/skeletons/SkeletonPost'
 import { EmptyState } from '@/components/EmptyState'
+import { LearnFeedCard } from '@/features/learning'
 
 const EMPTY_FEED = {
   icon: Rss,
@@ -122,13 +123,15 @@ export default function FeedPage() {
         role="tabpanel"
         style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
       >
-        {posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            onCommentClick={(postId) => setOpenPostId(postId)}
-            onEditPost={(p) => setEditPost(p)}
-          />
+        {posts.map((post, i) => (
+          <Fragment key={post.id}>
+            <PostCard
+              post={post}
+              onCommentClick={(postId) => setOpenPostId(postId)}
+              onEditPost={(p) => setEditPost(p)}
+            />
+            {(i === 2 || (i === posts.length - 1 && posts.length < 3)) && <LearnFeedCard />}
+          </Fragment>
         ))}
       </div>
 
