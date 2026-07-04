@@ -1,5 +1,11 @@
 import { Router } from 'express'
-import { completeUnitSchema, pathIdParamsSchema, unitIdParamsSchema } from '@uniconnect/shared'
+import {
+  completeUnitSchema,
+  pathIdParamsSchema,
+  showcaseBadgeSchema,
+  unitIdParamsSchema,
+  userIdParamsSchema,
+} from '@uniconnect/shared'
 import { requireAuth } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validateRequest } from '../../middleware/validate'
@@ -19,4 +25,14 @@ learningRouter.post(
   validateRequest({ params: unitIdParamsSchema, body: completeUnitSchema }),
   c.completeUnit,
 )
-// Task 7 adds: GET /me/badges, PUT /me/badges/showcase, GET /users/:userId/badges
+learningRouter.get('/me/badges', c.listMyBadges)
+learningRouter.put(
+  '/me/badges/showcase',
+  validateRequest({ body: showcaseBadgeSchema }),
+  c.setShowcase,
+)
+learningRouter.get(
+  '/users/:userId/badges',
+  validateRequest({ params: userIdParamsSchema }),
+  c.listBadgesForUser,
+)

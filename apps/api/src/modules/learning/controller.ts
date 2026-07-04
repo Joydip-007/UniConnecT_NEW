@@ -47,3 +47,21 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await service.getStats(context.userId))
 })
+
+export const listMyBadges = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await service.listUserBadges(context.userId))
+})
+
+export const setShowcase = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { badgeId } = req.body as { badgeId: string | null }
+  await service.setShowcase(context.userId, badgeId)
+  sendSuccess(res, { success: true })
+})
+
+export const listBadgesForUser = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { userId } = req.params as { userId: string }
+  sendSuccess(res, await service.listUserBadgesForOther(userId, context.universityId))
+})

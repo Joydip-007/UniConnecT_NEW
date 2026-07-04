@@ -370,6 +370,87 @@ export async function getStats(userId: string) {
   }
 }
 
+interface UserBadgeRow {
+  id: string
+  name: string
+  description: string | null
+  icon_url: string | null
+  category: string
+  points: number
+  skill_path_id: string | null
+  awarded_at: string
+  is_showcased: boolean
+  holderCount: string
+}
+
+function rarityFor(holderCount: number): 'epic' | 'rare' | 'common' {
+  if (holderCount <= LEARNING.RARITY_EPIC_MAX_HOLDERS) return 'epic'
+  if (holderCount <= LEARNING.RARITY_RARE_MAX_HOLDERS) return 'rare'
+  return 'common'
+}
+
+export async function listUserBadges(userId: string) {
+  const rows = await db('user_badges')
+    .join('badges', 'badges.id', 'user_badges.badge_id')
+    .where('user_badges.user_id', userId)
+    .orderBy('user_badges.awarded_at', 'desc')
+    .select<UserBadgeRow[]>(
+      'badges.id',
+      'badges.name',
+      'badges.description',
+      'badges.icon_url',
+      'badges.category',
+      'badges.points',
+      'badges.skill_path_id',
+      'user_badges.awarded_at',
+      'user_badges.is_showcased',
+    )
+
+  if (rows.length === 0) return []
+
+  const badgeIds = rows.map((r) => r.id)
+  const holderCounts = await db('user_badges')
+    .whereIn('badge_id', badgeIds)
+    .groupBy('badge_id')
+    .select('badge_id')
+    .count('* as holderCount')
+  const holderCountByBadge = new Map(holderCounts.map((r) => [r.badge_id, Number(r.holderCount)]))
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    icon_url: r.icon_url,
+    category: r.category,
+    points: r.points,
+    skill_path_id: r.skill_path_id,
+    awarded_at: r.awarded_at,
+    isShowcased: r.is_showcased,
+    rarity: rarityFor(holderCountByBadge.get(r.id) ?? 0),
+  }))
+}
+
+export async function setShowcase(userId: string, badgeId: string | null) {
+  await db.transaction(async (trx) => {
+    await trx('user_badges').where({ user_id: userId }).update({ is_showcased: false })
+
+    if (badgeId) {
+      const owned = await trx('user_badges').where({ user_id: userId, badge_id: badgeId }).first()
+      if (!owned) throw notFound('Badge not owned')
+
+      await trx('user_badges')
+        .where({ user_id: userId, badge_id: badgeId })
+        .update({ is_showcased: true })
+    }
+  })
+}
+
+export async function listUserBadgesForOther(userId: string, universityId: string) {
+  const target = await db('users').where({ id: userId, university_id: universityId }).first('id')
+  if (!target) throw notFound('User not found')
+  return listUserBadges(userId)
+}
+
 export async function abandon(pathId: string, userId: string) {
   const existing = await db('skill_path_enrollments')
     .where({ path_id: pathId, user_id: userId, status: 'active' })

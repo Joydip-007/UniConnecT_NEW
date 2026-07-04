@@ -125,3 +125,46 @@ describe('unit completion & streaks', () => {
     expect(res.body.data.freezesRemaining).toBeDefined()
   })
 })
+
+describe('badges', () => {
+  let badgeId: string
+  beforeAll(async () => {
+    const studentId = (await db('users').where({ email: CREDENTIALS.student.email }).first('id')).id
+    const badge = await db('badges').where({ name: 'Week one' }).first('id')
+    badgeId = badge.id
+    await db('user_badges').insert({ user_id: studentId, badge_id: badgeId }).onConflict(['user_id', 'badge_id']).ignore()
+  })
+
+  it('lists my badges with rarity', async () => {
+    const res = await get('/api/v1/learning/me/badges')
+    expect(res.status).toBe(200)
+    const b = res.body.data.find((x: { id: string }) => x.id === badgeId)
+    expect(b.rarity).toBe('epic') // sole holder in the test DB tier
+  })
+
+  it('showcases an owned badge and swaps atomically', async () => {
+    const put = await supertest(app).put('/api/v1/learning/me/badges/showcase')
+      .set('x-university-domain', DOMAIN).set('Authorization', `Bearer ${student.accessToken}`)
+      .send({ badgeId })
+    expect(put.status).toBe(200)
+    const res = await get('/api/v1/learning/me/badges')
+    expect(res.body.data.find((x: { id: string }) => x.id === badgeId).isShowcased).toBe(true)
+  })
+
+  it('rejects showcasing an unowned badge', async () => {
+    const other = await db('badges').where({ name: 'Centurion' }).first('id')
+    const put = await supertest(app).put('/api/v1/learning/me/badges/showcase')
+      .set('x-university-domain', DOMAIN).set('Authorization', `Bearer ${student.accessToken}`)
+      .send({ badgeId: other.id })
+    expect(put.status).toBe(404)
+  })
+
+  it('exposes another user’s badges within the university', async () => {
+    const faculty = await loginAs(CREDENTIALS.faculty.email, CREDENTIALS.faculty.password)
+    const studentId = (await db('users').where({ email: CREDENTIALS.student.email }).first('id')).id
+    const res = await supertest(app).get(`/api/v1/learning/users/${studentId}/badges`)
+      .set('x-university-domain', DOMAIN).set('Authorization', `Bearer ${faculty.accessToken}`)
+    expect(res.status).toBe(200)
+    expect(res.body.data.some((x: { id: string }) => x.id === badgeId)).toBe(true)
+  })
+})

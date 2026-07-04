@@ -11,12 +11,16 @@ interface BadgeRow {
   trigger_type: string
   trigger_count: number
   points: number
+  skill_path_id: string | null
 }
 
 badgeQueue.process(async (job) => {
   const { userId, action, payload } = job.data
 
-  const badges = await db<BadgeRow>('badges').where({ trigger_type: action })
+  const allBadges = await db<BadgeRow>('badges').where({ trigger_type: action })
+  const badges = allBadges.filter(
+    (badge) => badge.skill_path_id === null || badge.skill_path_id === payload?.pathId,
+  )
   if (badges.length === 0) return
 
   const activityCount = await getActivityCount(userId, action, payload)
@@ -74,6 +78,14 @@ async function getActivityCount(
       return countRows('mentorship_requests', { mentor_id: userId, status: 'accepted' })
     case 'return_login':
       return typeof payload?.eligible === 'boolean' && payload.eligible ? 1 : 0
+    case 'unit_completed':
+      return countRows('unit_completions', { user_id: userId })
+    case 'streak_milestone':
+      return typeof payload?.streak === 'number' ? payload.streak : 0
+    case 'path_completed':
+      return typeof payload?.pathId === 'string'
+        ? countRows('skill_path_enrollments', { user_id: userId, path_id: payload.pathId, status: 'completed' })
+        : 0
     default:
       return 0
   }
