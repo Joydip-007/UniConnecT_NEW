@@ -115,6 +115,50 @@ describe('PathDetailModal', () => {
     })
   })
 
+  it('re-enrolls via POST when the undo callback is invoked after abandoning', async () => {
+    const enrollSpy = vi.fn()
+    server.use(
+      http.get('*/learning/paths/:pathId', () =>
+        HttpResponse.json({
+          data: {
+            id: 'path-1',
+            title: 'Git basics',
+            description: 'Learn version control',
+            category: 'engineering',
+            difficulty: 'beginner',
+            estimated_days: 5,
+            badge_name: null,
+            badge_icon: null,
+            unitCount: 1,
+            enrolledCount: 12,
+            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false }],
+            enrollment: { status: 'active' },
+          },
+        })),
+      http.post('*/learning/paths/:pathId/abandon', () => HttpResponse.json({ data: {} })),
+      http.post('*/learning/paths/:pathId/enroll', ({ params }) => {
+        enrollSpy(params.pathId)
+        return HttpResponse.json({ data: {} })
+      }),
+    )
+    const user = userEvent.setup()
+    renderModal()
+
+    await user.click(await screen.findByRole('button', { name: 'Abandon path' }))
+
+    let onUndo: (() => void) | undefined
+    await vi.waitFor(() => {
+      onUndo = useToastStore.getState().toasts.find((t) => t.message === 'Path abandoned')?.onUndo
+      expect(typeof onUndo).toBe('function')
+    })
+
+    onUndo?.()
+
+    await vi.waitFor(() => {
+      expect(enrollSpy).toHaveBeenCalledWith('path-1')
+    })
+  })
+
   it('shows a Completed chip and badge line when the path is completed', async () => {
     server.use(
       http.get('*/learning/paths/:pathId', () =>
