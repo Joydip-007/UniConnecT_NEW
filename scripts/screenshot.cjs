@@ -16,6 +16,7 @@ const ROUTES = {
   'otp':         { path: '/otp',                      auth: false, w: 1440, h: 900  },
   'feed':        { path: '/feed',                     auth: true,  w: 1440, h: 900  },
   'profile':     { path: `/profile/${DEV_USER_ID}`,   auth: true,  w: 1440, h: 900  },
+  'learn':       { path: '/learn',                    auth: true,  w: 1440, h: 900  },
 };
 
 async function capture(name, route) {
