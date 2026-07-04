@@ -152,7 +152,7 @@
   content: '';
   position: absolute;
   inset: -4px;
-  border: 1.5px solid var(--uc-indigo);
+  border: 0.5px solid var(--border-default);
   border-radius: 50%;
   animation: pulseRing 1.6s ease-out infinite;
 }
@@ -312,7 +312,7 @@
 
 .uc-hero-product-video {
   aspect-ratio: 16 / 10;
-  background: #0f1218;
+  background: var(--surface-card);
 }
 
 .uc-hero-media-notes {

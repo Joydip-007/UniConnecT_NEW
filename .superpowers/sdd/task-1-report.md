@@ -45,3 +45,14 @@
 - `npx pnpm exec vitest run src/features/landing/components/HeroSection.test.tsx` from `apps/web`: passed (`2` tests).
 - `npx pnpm typecheck` from repo root: passed.
 - `npx pnpm lint` from repo root: passed.
+
+## Second fix section
+
+- Swapped the hero pulse ring to `0.5px solid var(--border-default)` and changed the product video frame background to the existing theme token `var(--surface-card)` in `apps/web/src/styles/landing.css`.
+- Expanded `HeroSection.test.tsx` with a deterministic `IntersectionObserver` mock that triggers offscreen/onscreen callbacks and asserts the video `pause()`/`play()` behavior plus the `is-paused` class toggle.
+
+### Exact verification results
+
+- `npx pnpm exec vitest run src/features/landing/components/HeroSection.test.tsx` from `apps/web`: passed (`3` tests).
+- `npx pnpm typecheck && npx pnpm lint` from repo root: passed.
+- `graphify update .` from repo root: failed with `Operation not permitted`.

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { HeroSection } from './HeroSection'
@@ -29,9 +29,16 @@ beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
   class MockIntersectionObserver implements IntersectionObserver {
+    static callback: IntersectionObserverCallback | null = null
+    static instance: MockIntersectionObserver | null = null
     readonly root = null
     readonly rootMargin = ''
     readonly thresholds = [0]
+
+    constructor(callback: IntersectionObserverCallback) {
+      MockIntersectionObserver.callback = callback
+      MockIntersectionObserver.instance = this
+    }
 
     disconnect() {}
     observe() {}
@@ -43,6 +50,33 @@ beforeEach(() => {
 
   vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
 })
+
+function triggerIntersection(isIntersecting: boolean) {
+  const callback = (IntersectionObserver as typeof IntersectionObserver & {
+    callback?: IntersectionObserverCallback | null
+    instance?: IntersectionObserver | null
+  }).callback
+  const instance = (IntersectionObserver as typeof IntersectionObserver & {
+    callback?: IntersectionObserverCallback | null
+    instance?: IntersectionObserver | null
+  }).instance
+
+  if (!callback || !instance) {
+    throw new Error('IntersectionObserver mock was not initialized')
+  }
+
+  act(() => {
+    callback(
+      [
+        {
+          isIntersecting,
+          intersectionRatio: isIntersecting ? 1 : 0,
+        } as IntersectionObserverEntry,
+      ],
+      instance,
+    )
+  })
+}
 
 function renderHero() {
   return render(
@@ -69,6 +103,22 @@ describe('HeroSection', () => {
     expect(video.playsInline).toBe(true)
     expect(video.autoplay).toBe(true)
     expect(video.loop).toBe(true)
+  })
+
+  it('pauses and resumes the product loop when the hero scrolls offscreen', async () => {
+    renderHero()
+
+    await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1))
+
+    triggerIntersection(false)
+
+    await waitFor(() => expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1))
+    expect(document.querySelector('.uc-hero-kinetic-track')).toHaveClass('is-paused')
+
+    triggerIntersection(true)
+
+    await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2))
+    expect(document.querySelector('.uc-hero-kinetic-track')).not.toHaveClass('is-paused')
   })
 
   it('shows the static poster fallback when reduced motion is preferred', () => {
