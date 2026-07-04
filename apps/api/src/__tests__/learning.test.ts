@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, afterAll, describe, expect, it } from 'vitest'
 import supertest from 'supertest'
 import { app, DOMAIN, loginAs, CREDENTIALS, TEST_UNIVERSITY_ID } from './setup'
 import { db } from '../config/db'
@@ -6,9 +6,28 @@ import { db } from '../config/db'
 let student: { accessToken: string }
 let pathId: string
 let unitIds: string[]
+let studentId: string
 
 beforeAll(async () => {
   student = await loginAs(CREDENTIALS.student.email, CREDENTIALS.student.password)
+  studentId = (await db('users').where({ email: CREDENTIALS.student.email }).first('id')).id
+
+  // Reset this student's learning state so assertions (e.g. currentStreak) are
+  // deterministic across reruns against the shared, persistent test DB.
+  await db('unit_completions').where({ user_id: studentId }).del()
+  await db('skill_path_enrollments').where({ user_id: studentId }).del()
+  await db('user_badges').where({ user_id: studentId }).del()
+  await db('learning_stats').where({ user_id: studentId }).del()
+
+  // Remove stale fixture rows left behind by a prior interrupted run. Deleting
+  // skill_paths cascades to skill_path_units/enrollments/unit_completions
+  // (all ON DELETE CASCADE — see migration 085_create_learning_tables).
+  await db('skill_paths')
+    .where({ title: 'Foreign' })
+    .orWhere((qb) => qb.whereIn('title', ['Test path', 'Reminder path']).whereNull('university_id'))
+    .del()
+  await db('universities').where({ name: 'Other U' }).del()
+
   // Isolated fixture path (platform-wide) with 3 units, incl. a quiz
   const [path] = await db('skill_paths')
     .insert({ title: 'Test path', category: 'testing', difficulty: 'beginner', estimated_days: 3 })
@@ -22,6 +41,20 @@ beforeAll(async () => {
     ])
     .returning('id')
   unitIds = units.map((u: { id: string }) => u.id)
+})
+
+afterAll(async () => {
+  await db('unit_completions').where({ user_id: studentId }).del()
+  await db('skill_path_enrollments').where({ user_id: studentId }).del()
+  await db('user_badges').where({ user_id: studentId }).del()
+  await db('learning_stats').where({ user_id: studentId }).del()
+
+  // Deleting skill_paths cascades to skill_path_units/enrollments/unit_completions.
+  await db('skill_paths')
+    .where({ title: 'Foreign' })
+    .orWhere((qb) => qb.whereIn('title', ['Test path', 'Reminder path']).whereNull('university_id'))
+    .del()
+  await db('universities').where({ name: 'Other U' }).del()
 })
 
 const get = (url: string) =>

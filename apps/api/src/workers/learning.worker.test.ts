@@ -22,6 +22,15 @@ let pathId: string
 beforeAll(async () => {
   await db('universities').where({ id: TEST_UNIVERSITY_ID }).update({ timezone: 'Asia/Dhaka' })
   studentId = (await db('users').where({ email: CREDENTIALS.student.email }).first('id')).id
+
+  // Clean up any stale 'Reminder path' fixture (and this student's enrollment
+  // in it) left behind by a prior interrupted run against the shared test DB.
+  await db('skill_path_enrollments')
+    .where({ user_id: studentId })
+    .whereIn('path_id', db('skill_paths').select('id').where({ title: 'Reminder path' }))
+    .del()
+  await db('skill_paths').where({ title: 'Reminder path' }).del()
+  await db('learning_stats').where({ user_id: studentId }).del()
 })
 
 afterAll(async () => {
@@ -29,6 +38,7 @@ afterAll(async () => {
     await db('skill_path_enrollments').where({ path_id: pathId }).del()
     await db('skill_paths').where({ id: pathId }).del()
   }
+  await db('skill_paths').where({ title: 'Reminder path' }).del()
   await db('learning_stats').where({ user_id: studentId }).del()
 })
 
