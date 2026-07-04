@@ -2,36 +2,40 @@ import { ArrowUpRight, Rocket } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
+import connectionsImage from '@/assets/landing/connections.png'
+import exploreImage from '@/assets/landing/explore.png'
+import heroPoster from '@/assets/landing/feed.png'
+import jobsImage from '@/assets/landing/jobs.png'
+import messagesImage from '@/assets/landing/messages.png'
+import productLoopVideo from '@/assets/landing/product-loop.webm'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 import { PATHS } from '@/router/paths'
-
-const HERO_POSTER = new URL('../../../../../../screenshots/feed.png', import.meta.url).href
 
 const PRODUCT_PANELS = [
   {
     title: 'Campus feed',
     note: 'Verified updates across students, clubs, and faculty',
-    image: new URL('../../../../../../screenshots/feed.png', import.meta.url).href,
+    image: heroPoster,
   },
   {
     title: 'Direct messaging',
     note: 'Real-time coordination without the group-chat sprawl',
-    image: new URL('../../../../../../screenshots/messages.png', import.meta.url).href,
+    image: messagesImage,
   },
   {
     title: 'Connections',
     note: 'One graph for classmates, alumni, and mentors',
-    image: new URL('../../../../../../screenshots/connections.png', import.meta.url).href,
+    image: connectionsImage,
   },
   {
     title: 'Jobs and internships',
     note: 'Career access built into the campus layer',
-    image: new URL('../../../../../../screenshots/check/jobs.png', import.meta.url).href,
+    image: jobsImage,
   },
   {
     title: 'Explore',
     note: 'Campus discovery without leaving the platform',
-    image: new URL('../../../../../../screenshots/explore.png', import.meta.url).href,
+    image: exploreImage,
   },
 ] as const
 
@@ -53,6 +57,7 @@ export function HeroSection() {
   const navigate = useNavigate()
   const contentRef = useScrollReveal<HTMLDivElement>(0)
   const sectionRef = useRef<HTMLElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const [reducedMotion, setReducedMotion] = useState(getReducedMotionPreference)
   const [motionActive, setMotionActive] = useState(!getReducedMotionPreference())
 
@@ -89,8 +94,22 @@ export function HeroSection() {
     return () => observer.disconnect()
   }, [reducedMotion])
 
-  const duplicatedPanels = [...PRODUCT_PANELS, ...PRODUCT_PANELS]
   const duplicatedLines = [...KINETIC_LINES, ...KINETIC_LINES]
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || reducedMotion) return
+
+    if (motionActive) {
+      const playResult = video.play()
+      if (playResult && typeof playResult.catch === 'function') {
+        void playResult.catch(() => {})
+      }
+      return
+    }
+
+    video.pause()
+  }, [motionActive, reducedMotion])
 
   return (
     <section ref={sectionRef} className="uc-hero-shell">
@@ -229,24 +248,31 @@ export function HeroSection() {
             {reducedMotion ? (
               <div className="uc-hero-poster-shell">
                 <img
-                  src={HERO_POSTER}
+                  src={heroPoster}
                   alt="UniConnecT product still"
                   className="uc-hero-poster-image"
                 />
               </div>
             ) : (
               <div className="uc-hero-media-window">
-                <div className={`uc-hero-media-track${motionActive ? '' : ' is-paused'}`}>
-                  {duplicatedPanels.map(({ title, note, image }, index) => (
-                    <article key={`${title}-${index}`} className="uc-hero-media-card">
-                      <div className="uc-hero-media-frame">
-                        <img
-                          src={image}
-                          alt=""
-                          aria-hidden="true"
-                          className="uc-hero-media-image"
-                        />
-                      </div>
+                <div className="uc-hero-media-frame uc-hero-video-shell">
+                  <video
+                    ref={videoRef}
+                    className="uc-hero-product-video"
+                    src={productLoopVideo}
+                    poster={heroPoster}
+                    muted
+                    playsInline
+                    autoPlay
+                    loop
+                    preload="metadata"
+                    aria-label="UniConnecT product loop video"
+                  />
+                </div>
+                <div className="uc-hero-media-notes" aria-hidden="true">
+                  {PRODUCT_PANELS.map(({ title, note, image }) => (
+                    <article key={title} className="uc-hero-media-note-card">
+                      <img src={image} alt="" className="uc-hero-media-thumb" />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         <p className="uc-hero-media-title">{title}</p>
                         <p className="uc-hero-media-note">{note}</p>

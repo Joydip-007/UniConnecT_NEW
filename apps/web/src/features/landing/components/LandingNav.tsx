@@ -58,7 +58,6 @@ export function LandingNav() {
           alignItems: 'center',
           padding: '0 52px',
           gap: 36,
-          background: 'var(--surface-card)',
           borderBottom: '0.5px solid var(--border-default)',
         }}
       >
