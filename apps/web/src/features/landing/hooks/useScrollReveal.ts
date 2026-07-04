@@ -1,29 +1,57 @@
 import { useEffect, useRef } from 'react'
 
+function supportsViewTimeline() {
+  return typeof CSS !== 'undefined' && CSS.supports('animation-timeline: view()')
+}
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 export function useScrollReveal<T extends HTMLElement = HTMLElement>(threshold = 0.08) {
   const ref = useRef<T>(null)
 
   useEffect(() => {
-    const el = ref.current
-    if (!el) return
+    const root = ref.current
+    if (!root) return
 
-    const targets = el.querySelectorAll<HTMLElement>('.reveal')
+    const targets = Array.from(root.querySelectorAll<HTMLElement>('.reveal'))
+    if (targets.length === 0) return
 
-    const obs = new IntersectionObserver(
+    root.dataset.revealReady = 'true'
+
+    if (prefersReducedMotion()) {
+      root.dataset.revealMode = 'reduced'
+      targets.forEach((target) => target.classList.add('is-revealed'))
+      return
+    }
+
+    if (supportsViewTimeline()) {
+      root.dataset.revealMode = 'timeline'
+      return
+    }
+
+    root.dataset.revealMode = 'observer'
+
+    const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((e) => {
-          if (!e.isIntersecting) return
-          const delay = e.target.getAttribute('data-delay') ?? '0'
-          ;(e.target as HTMLElement).style.transitionDelay = delay + 'ms'
-          e.target.classList.add('revealed')
-          obs.unobserve(e.target)
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return
+          const target = entry.target as HTMLElement
+          const delay = target.dataset.delay ?? '0'
+          target.style.transitionDelay = `${delay}ms`
+          target.classList.add('is-revealed')
+          observer.unobserve(target)
         })
       },
       { threshold },
     )
 
-    targets.forEach((t) => obs.observe(t))
-    return () => obs.disconnect()
+    targets.forEach((target) => observer.observe(target))
+
+    return () => observer.disconnect()
   }, [threshold])
 
   return ref

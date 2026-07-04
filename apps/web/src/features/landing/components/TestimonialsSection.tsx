@@ -23,82 +23,29 @@ export function TestimonialsSection() {
   const sectionRef = useScrollReveal<HTMLDivElement>()
 
   return (
-    <section id="testimonials">
-      <div
-        ref={sectionRef}
-        className="uc-testimonials-wrap"
-        style={{ maxWidth: 920, margin: '0 auto', padding: '24px 52px 88px' }}
-      >
+    <section id="testimonials" className="uc-landing-section">
+      <div ref={sectionRef} className="uc-section-shell uc-testimonials-wrap">
+        <div className="uc-section-header uc-testimonials-header">
+          <div className="reveal" data-delay="0">
+            <p className="uc-section-eyebrow">Field notes</p>
+            <h2 className="uc-section-title">Early proof from the people already closest to the problem.</h2>
+          </div>
+          <p className="reveal uc-section-copy uc-testimonials-copy" data-delay="80">
+            The value shows up when hiring, faculty outreach, and student coordination all happen
+            inside one verified graph rather than in parallel channels.
+          </p>
+        </div>
 
-        {/* Header */}
-        <h2
-          className="reveal"
-          data-delay="0"
-          style={{
-            margin: '0 0 48px',
-            fontSize: 'clamp(32px, 4vw, 48px)',
-            fontWeight: 500,
-            letterSpacing: '-2px',
-            lineHeight: 1.12,
-            color: 'var(--text-primary)',
-          }}
-        >
-          What students are saying.
-        </h2>
-
-        {/* Cards grid */}
-        <div
-          className="uc-testimonials-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 16,
-          }}
-        >
-          {TESTIMONIALS.map(({ quote, name, role, initials, avatarColor }, i) => (
+        <div className="uc-testimonials-grid">
+          {TESTIMONIALS.map(({ quote, name, role, initials, avatarColor }, index) => (
             <div
               key={name}
-              className="reveal"
-              data-delay={String(180 + i * 100)}
-              style={{
-                background: 'var(--surface-card)',
-                border: '0.5px solid var(--border-default)',
-                borderRadius: 22,
-                padding: 32,
-                transition: 'border-color 0.3s, opacity 0.65s var(--ease-out-expo), transform 0.65s var(--ease-out-expo)',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-hover)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-default)' }}
+              className="reveal uc-testimonial-card"
+              data-delay={String(180 + index * 100)}
             >
-              {/* Quote mark */}
-              <div
-                style={{
-                  fontSize: 48,
-                  fontFamily: 'Georgia, serif',
-                  color: 'var(--uc-indigo)',
-                  lineHeight: 1,
-                  marginBottom: 12,
-                  opacity: 0.7,
-                }}
-              >
-                &ldquo;
-              </div>
+              <div className="uc-testimonial-mark">&ldquo;</div>
+              <p className="uc-testimonial-quote">{quote}</p>
 
-              {/* Quote text */}
-              <p
-                style={{
-                  margin: '0 0 20px',
-                  fontSize: 15,
-                  fontStyle: 'italic',
-                  color: 'var(--text-primary)',
-                  lineHeight: 1.78,
-                  opacity: 0.88,
-                }}
-              >
-                {quote}
-              </p>
-
-              {/* Author row */}
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <div
                   style={{
@@ -118,12 +65,8 @@ export function TestimonialsSection() {
                   {initials}
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {name}
-                  </p>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {role}
-                  </p>
+                  <p className="uc-testimonial-name">{name}</p>
+                  <p className="uc-testimonial-role">{role}</p>
                 </div>
               </div>
             </div>
