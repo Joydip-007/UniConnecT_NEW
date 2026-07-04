@@ -3,7 +3,14 @@ import { db } from '../config/db'
 import { logger } from '../utils/logger'
 import { learningQueue } from '../queues/learning.queue'
 import { pushQueue } from '../queues/push.queue'
-import { addDays, applySweep, localDateString, localHour, type StreakStats } from '../modules/learning/streak'
+import {
+  addDays,
+  applySweep,
+  localDateString,
+  localHour,
+  normalizePgDate,
+  type StreakStats,
+} from '../modules/learning/streak'
 
 // Hourly at :10 — each run only acts on universities whose local hour matches.
 // Stable jobId prevents duplicate registration on restart.
@@ -20,23 +27,11 @@ interface StatsRow {
   last_reminder_date: string | Date | null
 }
 
-function normalizeDate(v: string | Date | null): string | null {
-  // node-postgres parses `date` columns as a Date at local midnight (process TZ),
-  // so toISOString() would shift the date backward whenever the process runs in a
-  // positive UTC-offset timezone (e.g. Asia/Dhaka). Build the string from local
-  // components instead of converting to UTC.
-  if (!(v instanceof Date)) return v
-  const year = v.getFullYear()
-  const month = String(v.getMonth() + 1).padStart(2, '0')
-  const day = String(v.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 function toStats(row: StatsRow): StreakStats {
   return {
     currentStreak: row.current_streak,
     longestStreak: row.longest_streak,
-    lastActivityDate: normalizeDate(row.last_activity_date),
+    lastActivityDate: normalizePgDate(row.last_activity_date),
     freezesUsedMonth: row.freezes_used_month,
     freezesUsedCount: row.freezes_used_count,
   }

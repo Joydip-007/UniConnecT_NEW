@@ -3,7 +3,7 @@ import type { CompleteUnitInput } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, conflict, forbidden, notFound, tooManyRequests } from '../../utils/errors'
 import { badgeQueue } from '../../queues/badge.queue'
-import { applyCompletion, localDateString, type StreakStats } from './streak'
+import { applyCompletion, localDateString, normalizePgDate, type StreakStats } from './streak'
 
 function tenantVisible(qb: import('knex').Knex.QueryBuilder, universityId: string) {
   return qb.where((w) => w.whereNull('university_id').orWhere('university_id', universityId))
@@ -160,11 +160,10 @@ function normalizeStatsRow(row: {
   freezes_used_month: string | null
   freezes_used_count: number
 }): StreakStats {
-  const last = row.last_activity_date
   return {
     currentStreak: row.current_streak,
     longestStreak: row.longest_streak,
-    lastActivityDate: last instanceof Date ? last.toISOString().slice(0, 10) : last,
+    lastActivityDate: normalizePgDate(row.last_activity_date),
     freezesUsedMonth: row.freezes_used_month,
     freezesUsedCount: row.freezes_used_count,
   }
@@ -348,10 +347,12 @@ export async function getToday(userId: string, universityId: string) {
   return results
 }
 
-export async function getStats(userId: string) {
+export async function getStats(userId: string, universityId: string) {
   const statsRow = await db('learning_stats').where('user_id', userId).first()
-  const now = new Date()
-  const month = now.toISOString().slice(0, 7)
+  const university = await db('universities').where('id', universityId).first('timezone')
+  const timezone = university?.timezone ?? 'UTC'
+  // University-local month, consistent with the sweep's freeze accounting.
+  const month = localDateString(new Date(), timezone).slice(0, 7)
   if (!statsRow) {
     return {
       currentStreak: 0,

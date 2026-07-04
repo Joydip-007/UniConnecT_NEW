@@ -45,7 +45,7 @@ export const getToday = asyncHandler(async (req: Request, res: Response) => {
 
 export const getStats = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  sendSuccess(res, await service.getStats(context.userId))
+  sendSuccess(res, await service.getStats(context.userId, context.universityId))
 })
 
 export const listMyBadges = asyncHandler(async (req: Request, res: Response) => {

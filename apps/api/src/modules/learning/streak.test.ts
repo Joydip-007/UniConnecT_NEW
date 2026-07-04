@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, applyCompletion, applySweep, localDateString, localHour, type StreakStats } from './streak'
+import { addDays, applyCompletion, applySweep, localDateString, localHour, normalizePgDate, type StreakStats } from './streak'
 
 const base: StreakStats = {
   currentStreak: 3, longestStreak: 5, lastActivityDate: '2026-07-03',
@@ -85,5 +85,19 @@ describe('applySweep', () => {
   it('resets on a gap of 2+ missed days — a freeze covers exactly one day', () => {
     const r = applySweep(base, '2026-07-06')
     expect(r.action).toBe('reset')
+  })
+})
+
+describe('normalizePgDate', () => {
+  it('maps a Date at local midnight to the same calendar day (no UTC shift)', () => {
+    // pg returns date columns as local-midnight Dates; in a positive-UTC-offset
+    // process TZ, toISOString() would roll this back to the previous day.
+    expect(normalizePgDate(new Date(2026, 6, 4))).toBe('2026-07-04')
+  })
+  it('passes strings through unchanged', () => {
+    expect(normalizePgDate('2026-07-04')).toBe('2026-07-04')
+  })
+  it('passes null through unchanged', () => {
+    expect(normalizePgDate(null)).toBeNull()
   })
 })
