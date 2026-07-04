@@ -1,142 +1,102 @@
-import { Rocket, Play, Rss, Briefcase, CalendarDays, MessageSquare, Users, X } from 'lucide-react'
+import { ArrowUpRight, Rocket } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
-import { OrangeBtn, GhostBtn } from '@/components/Button'
-import { PATHS } from '@/router/paths'
+import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
-import { RadialOrbitalTimeline } from '@/components/ui/RadialOrbitalTimeline'
-import type { OrbitalNode } from '@/components/ui/RadialOrbitalTimeline'
+import { PATHS } from '@/router/paths'
 
-const DEMO_VIDEO_URL = 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+const HERO_POSTER = new URL('../../../../../../screenshots/feed.png', import.meta.url).href
 
-const ORBITAL_NODES: OrbitalNode[] = [
+const PRODUCT_PANELS = [
   {
-    id: 1,
     title: 'Campus feed',
-    subtitle: 'Live now',
-    content: 'Posts, announcements, and real-time updates from students, faculty, and clubs — all verified, no noise.',
-    icon: Rss,
-    relatedIds: [3, 4],
-    accent: 'var(--uc-indigo-l)',
-    accentBg: 'var(--uc-indigo-bg)',
-    accentBdr: 'var(--uc-indigo-bdr)',
-    energy: 95,
+    note: 'Verified updates across students, clubs, and faculty',
+    image: new URL('../../../../../../screenshots/feed.png', import.meta.url).href,
   },
   {
-    id: 2,
-    title: 'Jobs & internships',
-    subtitle: 'Alumni-posted',
-    content: 'Opportunities posted directly by UIU alumni and employers — not scraped, not generic. Role-matched to your batch.',
-    icon: Briefcase,
-    relatedIds: [5],
-    accent: 'var(--uc-mint)',
-    accentBg: 'var(--uc-mint-bg)',
-    accentBdr: 'var(--uc-mint-bdr)',
-    energy: 80,
+    title: 'Direct messaging',
+    note: 'Real-time coordination without the group-chat sprawl',
+    image: new URL('../../../../../../screenshots/messages.png', import.meta.url).href,
   },
   {
-    id: 3,
-    title: 'Events',
-    subtitle: 'RSVP & discover',
-    content: 'Faculty workshops, career fairs, club events. One tap to RSVP; reminders push to you automatically.',
-    icon: CalendarDays,
-    relatedIds: [1, 4],
-    accent: 'var(--uc-orange-l)',
-    accentBg: 'var(--uc-orange-bg)',
-    accentBdr: 'var(--uc-orange-bdr)',
-    energy: 70,
+    title: 'Connections',
+    note: 'One graph for classmates, alumni, and mentors',
+    image: new URL('../../../../../../screenshots/connections.png', import.meta.url).href,
   },
   {
-    id: 4,
-    title: 'Real-time chat',
-    subtitle: '247 online',
-    content: 'Encrypted direct messages and group threads. Replaces the fragmented WhatsApp groups your campus runs on today.',
-    icon: MessageSquare,
-    relatedIds: [1, 3],
-    accent: 'var(--uc-cyan)',
-    accentBg: 'var(--uc-cyan-bg)',
-    accentBdr: 'var(--uc-cyan-bdr)',
-    energy: 88,
+    title: 'Jobs and internships',
+    note: 'Career access built into the campus layer',
+    image: new URL('../../../../../../screenshots/check/jobs.png', import.meta.url).href,
   },
   {
-    id: 5,
-    title: 'Mentorship',
-    subtitle: 'Alumni network',
-    content: 'Request mentorship from verified UIU alumni. Career advice, referrals, and guidance from people who walked the same campus.',
-    icon: Users,
-    relatedIds: [2],
-    accent: 'var(--uc-indigo-xl)',
-    accentBg: 'var(--uc-indigo-bg)',
-    accentBdr: 'var(--uc-indigo-bdr)',
-    energy: 62,
+    title: 'Explore',
+    note: 'Campus discovery without leaving the platform',
+    image: new URL('../../../../../../screenshots/explore.png', import.meta.url).href,
   },
-]
+] as const
+
+const KINETIC_LINES = [
+  'for students.',
+  'for faculty.',
+  'for alumni.',
+  'for campus teams.',
+] as const
+
+function getReducedMotionPreference() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false
+  }
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
 export function HeroSection() {
-  const navigate    = useNavigate()
-  const leftRef     = useScrollReveal<HTMLDivElement>(0)
-  const [demoOpen, setDemoOpen] = useState(false)
+  const navigate = useNavigate()
+  const contentRef = useScrollReveal<HTMLDivElement>(0)
+  const sectionRef = useRef<HTMLElement>(null)
+  const [reducedMotion, setReducedMotion] = useState(getReducedMotionPreference)
+  const [motionActive, setMotionActive] = useState(!getReducedMotionPreference())
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const handleChange = (event: MediaQueryListEvent) => {
+      setReducedMotion(event.matches)
+      setMotionActive(!event.matches)
+    }
+
+    setReducedMotion(mediaQuery.matches)
+    mediaQuery.addEventListener('change', handleChange)
+
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  useEffect(() => {
+    const node = sectionRef.current
+    if (!node || reducedMotion || typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+      if (reducedMotion) setMotionActive(false)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setMotionActive(entry.isIntersecting)
+      },
+      { threshold: 0.25 },
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [reducedMotion])
+
+  const duplicatedPanels = [...PRODUCT_PANELS, ...PRODUCT_PANELS]
+  const duplicatedLines = [...KINETIC_LINES, ...KINETIC_LINES]
 
   return (
-    <section style={{ position: 'relative', overflow: 'hidden' }}>
-      <div
-        className="uc-hero-grid"
-        style={{
-          maxWidth: 1240,
-          margin: '0 auto',
-          minHeight: '90vh',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 56,
-          alignItems: 'center',
-          padding: '80px 52px 60px',
-          position: 'relative',
-        }}
-      >
-        {/* Background — dot grid */}
+    <section ref={sectionRef} className="uc-hero-shell">
+      <div className="uc-hero-grid">
         <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            backgroundImage: 'radial-gradient(rgba(91,91,214,.18) 1.5px, transparent 1.5px)',
-            backgroundSize: '30px 30px',
-            maskImage: 'radial-gradient(ellipse 70% 90% at 30% 50%, black 20%, transparent 80%)',
-            WebkitMaskImage: 'radial-gradient(ellipse 70% 90% at 30% 50%, black 20%, transparent 80%)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* Background — orange orb */}
-        <div
-          style={{
-            position: 'absolute',
-            width: 520,
-            height: 520,
-            borderRadius: '50%',
-            top: -80,
-            right: -60,
-            background: 'radial-gradient(circle, rgba(240,90,40,.12) 0%, transparent 65%)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* Background — indigo orb */}
-        <div
-          style={{
-            position: 'absolute',
-            width: 700,
-            height: 700,
-            borderRadius: '50%',
-            bottom: -280,
-            left: -160,
-            background: 'radial-gradient(circle, rgba(91,91,214,.09) 0%, transparent 60%)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* ── LEFT COLUMN ── */}
-        <div
-          ref={leftRef}
+          ref={contentRef}
           style={{
             zIndex: 1,
             position: 'relative',
@@ -145,64 +105,71 @@ export function HeroSection() {
             gap: 28,
           }}
         >
-          {/* Badge */}
           <div
             className="reveal"
             data-delay="0"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
+              gap: 10,
               alignSelf: 'flex-start',
               background: 'var(--surface-raised)',
-              border: '0.5px solid rgba(91,91,214,.45)',
-              borderRadius: 999,
-              padding: '6px 16px 6px 8px',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-pill)',
+              padding: '8px 14px',
             }}
           >
             <span className="hero-pulse-dot" />
-            <span style={{ fontSize: 12, color: 'var(--uc-indigo-xl)' }}>
-              Now live at UIU · Dhaka, Bangladesh
+            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>
+              Platform briefing · UIU launch scope
             </span>
           </div>
 
-          <h1
-            className="reveal"
-            data-delay="100"
-            style={{
-              margin: 0,
-              fontSize: 'clamp(44px, 6vw, 68px)',
-              fontWeight: 500,
-              lineHeight: 1.07,
-              letterSpacing: '-2.5px',
-            }}
-          >
-            <span style={{ color: 'var(--text-primary)' }}>Your campus.</span>
-            <br />
-            <span style={{ color: 'var(--uc-orange)' }}>One place.</span>
-          </h1>
+          <div className="reveal" data-delay="80" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'var(--uc-orange)',
+              }}
+            >
+              Feed, events, jobs, chat, and alumni reach in one verified system
+            </p>
+            <h1
+              className="uc-hero-headline"
+              aria-label="One operating layer for students, faculty, alumni, and campus teams."
+            >
+              <span aria-hidden="true">One operating layer</span>
+              <span className="uc-hero-kinetic-window" aria-hidden="true">
+                <span className={`uc-hero-kinetic-track${motionActive ? '' : ' is-paused'}`}>
+                  {duplicatedLines.map((line, index) => (
+                    <span key={`${line}-${index}`}>{line}</span>
+                  ))}
+                </span>
+              </span>
+            </h1>
+          </div>
 
-          {/* Subtitle */}
           <p
             className="reveal"
-            data-delay="200"
+            data-delay="160"
             style={{
               margin: 0,
               fontSize: 17,
-              lineHeight: 1.78,
+              lineHeight: 1.7,
               color: 'var(--text-secondary)',
-              maxWidth: 450,
+              maxWidth: 560,
             }}
           >
-            UniConnecT is the private social network built for universities. It connects students,
-            alumni, faculty, and staff with a feed, jobs, real-time chat, and campus tools, all in
-            one place.
+            UniConnecT gives universities one private layer for updates, messaging, hiring,
+            events, and mentorship, so the people who make a campus work stay connected before
+            and after graduation.
           </p>
 
-          {/* CTA row */}
           <div
             className="reveal"
-            data-delay="300"
+            data-delay="240"
             style={{ display: 'flex', gap: 13, flexWrap: 'wrap' }}
           >
             <OrangeBtn
@@ -210,177 +177,88 @@ export function HeroSection() {
               onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
             >
               <Rocket size={16} />
-              Get started free
+              Join the UIU pilot
             </OrangeBtn>
             <GhostBtn
               style={{ padding: '11px 22px', fontSize: 15, gap: 9 }}
-              onClick={() => setDemoOpen(true)}
+              onClick={() => navigate(PATHS.ABOUT)}
             >
-              <Play size={16} />
-              Watch demo
+              <ArrowUpRight size={16} />
+              Read the story
             </GhostBtn>
           </div>
 
-          {/* Social proof */}
           <div
-            className="reveal"
-            data-delay="400"
-            style={{ display: 'flex', gap: 14, alignItems: 'center' }}
+            className="reveal uc-hero-brief-grid"
+            data-delay="320"
           >
-            {/* Overlapping avatars */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              {(
-                [
-                  { initials: 'JD', color: 'var(--uc-indigo)', ml: 0 },
-                  { initials: 'SF', color: 'var(--uc-orange)', ml: -9 },
-                  { initials: 'MH', color: 'var(--uc-cyan)',   ml: -9 },
-                  { initials: 'MA', color: 'var(--uc-mint)',   ml: -9 },
-                ] as const
-              ).map(({ initials, color, ml }) => (
-                <div
-                  key={initials}
-                  style={{
-                    width: 33,
-                    height: 33,
-                    borderRadius: '50%',
-                    background: color,
-                    border: '2.5px solid var(--surface-page)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: 'var(--text-primary)',
-                    marginLeft: ml,
-                    flexShrink: 0,
-                  }}
-                >
-                  {initials}
-                </div>
-              ))}
+            <div className="uc-hero-brief-card">
+              <p className="uc-hero-brief-kicker">Scope</p>
+              <p className="uc-hero-brief-copy">One university at a time, starting with UIU.</p>
             </div>
-
-            <div>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                Team Mavericks is building this for UIU
-              </p>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.45 }}>
-                the first campus social network in South Asia
-              </p>
+            <div className="uc-hero-brief-card">
+              <p className="uc-hero-brief-kicker">Audience</p>
+              <p className="uc-hero-brief-copy">Students, faculty, staff, alumni, mentors.</p>
+            </div>
+            <div className="uc-hero-brief-card">
+              <p className="uc-hero-brief-kicker">Outcome</p>
+              <p className="uc-hero-brief-copy">A campus network that does not disappear after graduation.</p>
             </div>
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN — Orbital timeline ── */}
         <div
-          className="hero-col-right uc-hero-right"
-          style={{ position: 'relative', height: 560, zIndex: 1 }}
+          className="uc-hero-right"
+          style={{
+            position: 'relative',
+            minHeight: 560,
+            zIndex: 1,
+            display: 'flex',
+            alignItems: 'stretch',
+          }}
         >
-          {/* Subtle label */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 4,
-              pointerEvents: 'none',
-              zIndex: 5,
-            }}
-          >
-            <span style={{ fontSize: 11, letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>
-              The platform
-            </span>
-            <div style={{ width: 1, height: 20, background: 'var(--border-hover)' }} />
-          </div>
+          <div className="uc-hero-media-shell" aria-label="UniConnecT product loop">
+            <div className="uc-hero-media-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="online-dot" />
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Product loop</span>
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>UIU pilot</span>
+            </div>
 
-          {/* Orbital visual */}
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <RadialOrbitalTimeline nodes={ORBITAL_NODES} height={520} />
-          </div>
-
-          {/* Subtle bottom label */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 8,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              pointerEvents: 'none',
-            }}
-          >
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-              Tap any node to explore
-            </span>
+            {reducedMotion ? (
+              <div className="uc-hero-poster-shell">
+                <img
+                  src={HERO_POSTER}
+                  alt="UniConnecT product still"
+                  className="uc-hero-poster-image"
+                />
+              </div>
+            ) : (
+              <div className="uc-hero-media-window">
+                <div className={`uc-hero-media-track${motionActive ? '' : ' is-paused'}`}>
+                  {duplicatedPanels.map(({ title, note, image }, index) => (
+                    <article key={`${title}-${index}`} className="uc-hero-media-card">
+                      <div className="uc-hero-media-frame">
+                        <img
+                          src={image}
+                          alt=""
+                          aria-hidden="true"
+                          className="uc-hero-media-image"
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <p className="uc-hero-media-title">{title}</p>
+                        <p className="uc-hero-media-note">{note}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Video modal */}
-      {demoOpen && (
-        <div
-          onClick={() => setDemoOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 200,
-            background: 'var(--overlay-bg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: 900,
-              borderRadius: 'var(--r-xl)',
-              overflow: 'hidden',
-              background: 'var(--surface-card)',
-              border: '0.5px solid var(--border-hover)',
-              aspectRatio: '16 / 9',
-            }}
-          >
-            <iframe
-              src={DEMO_VIDEO_URL}
-              title="UniConnecT demo"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-            />
-          </div>
-          <button
-            aria-label="Close demo"
-            onClick={() => setDemoOpen(false)}
-            style={{
-              position: 'fixed',
-              top: 20,
-              right: 20,
-              width: 40,
-              height: 40,
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--surface-raised)',
-              border: '0.5px solid var(--border-hover)',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <X size={18} />
-          </button>
-        </div>
-      )}
     </section>
   )
 }

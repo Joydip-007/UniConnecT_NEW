@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { label: 'Features',     href: '#features' },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Universities', href: '#universities' },
-  { label: 'About',        href: PATHS.ABOUT },
+  { label: 'Story',        href: PATHS.ABOUT },
   { label: 'Pricing',      href: '#pricing' },
 ]
 
@@ -21,7 +21,7 @@ export function LandingNav() {
   useEffect(() => {
     const onScroll = () => {
       if (!navRef.current) return
-      if (window.scrollY > 20) {
+      if (window.scrollY > 12) {
         navRef.current.classList.add('nav-scrolled')
       } else {
         navRef.current.classList.remove('nav-scrolled')
