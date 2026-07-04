@@ -1,6 +1,8 @@
 import { Check, Lock } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/Modal'
 import { useToastStore } from '@/stores/toastStore'
+import { api } from '@/lib/axios'
 import { usePath, useEnroll, useAbandon } from '../hooks/useLearning'
 import type { LearningUnit } from '../types'
 
@@ -60,9 +62,11 @@ export function PathDetailModal({ pathId, open, onClose }: PathDetailModalProps)
   const enroll = useEnroll()
   const abandon = useAbandon()
   const show = useToastStore((s) => s.show)
+  const queryClient = useQueryClient()
 
   const units = path?.units ?? []
-  const nextUnlocked = units.find((u) => !u.completed)
+  const isActive = path?.enrollment?.status === 'active'
+  const nextUnlocked = isActive ? units.find((u) => !u.completed) : undefined
 
   function handleEnroll() {
     if (!pathId) return
@@ -78,7 +82,18 @@ export function PathDetailModal({ pathId, open, onClose }: PathDetailModalProps)
     const id = pathId
     abandon.mutate(id, {
       onSuccess: () => {
-        show({ message: 'Path abandoned', onUndo: () => enroll.mutate(id) })
+        show({
+          message: 'Path abandoned',
+          // Do the re-enroll + invalidation directly here (rather than via enroll.mutate's
+          // onSuccess) so it still runs even if this modal has unmounted by the time the
+          // user clicks undo — TanStack Query v5 skips onSuccess callbacks registered on
+          // unmounted observers.
+          onUndo: () => {
+            void api.post(`/learning/paths/${id}/enroll`).then(() => {
+              void queryClient.invalidateQueries({ queryKey: ['learning'] })
+            })
+          },
+        })
       },
     })
   }

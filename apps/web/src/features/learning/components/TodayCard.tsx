@@ -82,7 +82,7 @@ export function TodayCard({
 
       {completedToday ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-          <Check size={18} color="var(--uc-orange)" aria-hidden="true" />
+          <Check size={18} color="var(--uc-mint)" aria-hidden="true" />
           <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
             Done for today — come back tomorrow
           </p>

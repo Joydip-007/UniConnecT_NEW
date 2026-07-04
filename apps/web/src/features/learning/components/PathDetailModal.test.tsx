@@ -159,6 +159,84 @@ describe('PathDetailModal', () => {
     })
   })
 
+  it('invalidates the learning cache on undo even after the modal has unmounted', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
+    server.use(
+      http.get('*/learning/paths/:pathId', () =>
+        HttpResponse.json({
+          data: {
+            id: 'path-1',
+            title: 'Git basics',
+            description: 'Learn version control',
+            category: 'engineering',
+            difficulty: 'beginner',
+            estimated_days: 5,
+            badge_name: null,
+            badge_icon: null,
+            unitCount: 1,
+            enrolledCount: 12,
+            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false }],
+            enrollment: { status: 'active' },
+          },
+        })),
+      http.post('*/learning/paths/:pathId/abandon', () => HttpResponse.json({ data: {} })),
+      http.post('*/learning/paths/:pathId/enroll', () => HttpResponse.json({ data: {} })),
+    )
+    const user = userEvent.setup()
+    const { unmount } = render(
+      <QueryClientProvider client={qc}>
+        <PathDetailModal pathId="path-1" open onClose={vi.fn()} />
+      </QueryClientProvider>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Abandon path' }))
+
+    let onUndo: (() => void) | undefined
+    await vi.waitFor(() => {
+      onUndo = useToastStore.getState().toasts.find((t) => t.message === 'Path abandoned')?.onUndo
+      expect(typeof onUndo).toBe('function')
+    })
+
+    // Simulate the modal having unmounted before the user clicks undo on the toast.
+    unmount()
+    onUndo?.()
+
+    await vi.waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['learning'] })
+    })
+  })
+
+  it('does not highlight a "next" unit when the user is not enrolled', async () => {
+    server.use(
+      http.get('*/learning/paths/:pathId', () =>
+        HttpResponse.json({
+          data: {
+            id: 'path-1',
+            title: 'Git basics',
+            description: 'Learn version control',
+            category: 'engineering',
+            difficulty: 'beginner',
+            estimated_days: 5,
+            badge_name: null,
+            badge_icon: null,
+            unitCount: 2,
+            enrolledCount: 12,
+            units: [
+              { id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false },
+              { id: 'unit-2', display_order: 2, title: 'Follow-up', type: 'read', completed: false },
+            ],
+            enrollment: null,
+          },
+        })),
+    )
+    renderModal()
+
+    expect(await screen.findByText('Intro')).toBeInTheDocument()
+    const introRow = screen.getByText('Intro').closest('div')
+    expect(introRow).toHaveStyle({ background: 'var(--surface-card)' })
+  })
+
   it('shows a Completed chip and badge line when the path is completed', async () => {
     server.use(
       http.get('*/learning/paths/:pathId', () =>

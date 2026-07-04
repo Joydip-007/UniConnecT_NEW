@@ -110,10 +110,10 @@ describe('QuizModal', () => {
     })
   })
 
-  it('shows the inline retry state on a failing (400) response and resets answers on try again', async () => {
+  it('shows the inline retry state on a failing quiz (400, "below pass mark") response and resets answers on try again', async () => {
     server.use(
       http.post('*/learning/units/:unitId/complete', () =>
-        HttpResponse.json({ error: 'Score too low', code: 'QUIZ_FAILED' }, { status: 400 })),
+        HttpResponse.json({ error: 'Score below pass mark', code: 'BAD_REQUEST' }, { status: 400 })),
     )
     const user = userEvent.setup()
     renderModal()
@@ -128,6 +128,43 @@ describe('QuizModal', () => {
 
     expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
     expect(screen.getByRole('radio', { name: 'git init' })).not.toBeChecked()
+  })
+
+  it('toasts the error message instead of the fake score-fail state on a non-quiz-failure 400 (e.g. unit locked)', async () => {
+    server.use(
+      http.post('*/learning/units/:unitId/complete', () =>
+        HttpResponse.json({ error: 'Unit is locked — complete earlier units first', code: 'BAD_REQUEST' }, { status: 400 })),
+    )
+    const user = userEvent.setup()
+    renderModal()
+
+    await user.click(screen.getByRole('radio', { name: 'git init' }))
+    await user.click(screen.getByRole('radio', { name: 'git add' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await vi.waitFor(() => {
+      const toasts = useToastStore.getState().toasts
+      expect(toasts.some((t) => t.message === 'Unit is locked — complete earlier units first' && t.type === 'error')).toBe(true)
+    })
+    expect(screen.queryByText(/you need 70%/)).not.toBeInTheDocument()
+  })
+
+  it('toasts a generic error message on a 500 response instead of showing the fake score-fail state', async () => {
+    server.use(
+      http.post('*/learning/units/:unitId/complete', () => HttpResponse.json({ error: 'boom' }, { status: 500 })),
+    )
+    const user = userEvent.setup()
+    renderModal()
+
+    await user.click(screen.getByRole('radio', { name: 'git init' }))
+    await user.click(screen.getByRole('radio', { name: 'git add' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await vi.waitFor(() => {
+      const toasts = useToastStore.getState().toasts
+      expect(toasts.some((t) => t.message === 'boom' && t.type === 'error')).toBe(true)
+    })
+    expect(screen.queryByText(/you need 70%/)).not.toBeInTheDocument()
   })
 
   it('shows an error toast and closes the modal on 429', async () => {

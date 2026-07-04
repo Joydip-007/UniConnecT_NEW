@@ -25,6 +25,17 @@ function extractErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
+// Backend does not expose a distinct error code for "quiz failed" vs other 400s
+// (e.g. "unit locked") — both use code BAD_REQUEST (see apps/api/src/modules/learning/service.ts).
+// Discriminate on the message text so only an actual failed-quiz attempt shows the retry state.
+function isQuizFailureError(err: unknown): boolean {
+  if (!isAxiosError(err) || err.response?.status !== 400) return false
+  const message = err.response?.data?.error
+  return typeof message === 'string' && message.toLowerCase().includes('below pass mark')
+}
+
+const DEFAULT_PASS_SCORE = 70
+
 export function QuizModal({ unit, open, onClose }: QuizModalProps) {
   const questions = unit?.content?.questions ?? []
   const [answers, setAnswers] = useState<(number | null)[]>([])
@@ -44,7 +55,7 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
   const currentUnit = unit
 
   const allAnswered = questions.length > 0 && answers.every((a) => a !== null)
-  const passScore = currentUnit.completion_rule?.passScore ?? 70
+  const passScore = currentUnit.completion_rule?.passScore ?? DEFAULT_PASS_SCORE
 
   function handleSelect(qIndex: number, optionIndex: number) {
     setAnswers((prev) => prev.map((a, i) => (i === qIndex ? optionIndex : a)))
@@ -70,7 +81,11 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
             onClose()
             return
           }
-          setResult({ score, passed: false, passScore })
+          if (isQuizFailureError(err)) {
+            setResult({ score, passed: false, passScore })
+            return
+          }
+          show({ message: extractErrorMessage(err, 'Something went wrong. Please try again.'), type: 'error' })
         },
       },
     )
