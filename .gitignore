@@ -1,4 +1,8 @@
 node_modules
+# Local env files (contain live credentials)
+.env
+.env.*
+!.env.example
 .pnpm-store
 dist/
 *.tsbuildinfo
