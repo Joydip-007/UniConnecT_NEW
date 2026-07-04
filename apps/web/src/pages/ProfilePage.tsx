@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { EditProfileModal, ProfileHeader } from '@/features/profile'
 import { ProfileAbout } from '@/features/profile/components/ProfileAbout'
 import { PostsPanel } from '@/features/profile/components/PostsPanel'
+import { BadgesPanel } from '@/features/profile/components/BadgesPanel'
 import { ProfileExperience as ProfileExperienceSection } from '@/features/profile/components/ProfileExperience'
 import { ProfileEducation as ProfileEducationSection } from '@/features/profile/components/ProfileEducation'
 import { ProfileSkills } from '@/features/profile/components/ProfileSkills'
@@ -237,6 +238,11 @@ export default function ProfilePage() {
       {/* ── Posts tab ────────────────────────────────────────── */}
       {activeTab === 'posts' && (
         <PostsPanel userId={user.id} isOwnProfile={isOwnProfile} />
+      )}
+
+      {/* ── Badges tab ───────────────────────────────────────── */}
+      {activeTab === 'badges' && (
+        <BadgesPanel userId={user.id} isOwnProfile={isOwnProfile} />
       )}
 
       {/* Modals */}

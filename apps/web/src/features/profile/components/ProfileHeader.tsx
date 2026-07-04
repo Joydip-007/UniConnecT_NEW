@@ -8,6 +8,7 @@ import { ShareMenu } from '@/components/ShareMenu'
 import { ConnectButton } from '@/features/connections'
 import { UserActionsMenu } from '@/features/moderation'
 import { PresenceLabel, usePresence } from '@/features/presence'
+import { ShowcasedBadge } from '@/features/learning'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 interface Props {
@@ -105,6 +106,7 @@ export function ProfileHeader({
                 <BadgeCheck size={14} strokeWidth={1.75} />
               </span>
             )}
+            <ShowcasedBadge userId={user.id} />
             {user.profile.department && (
               <Badge variant="neutral">
                 {user.profile.department}
