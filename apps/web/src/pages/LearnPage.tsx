@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { GraduationCap } from 'lucide-react'
-import { usePaths, useToday, useLearningStats, StreakBanner, TodayCard } from '@/features/learning'
+import { usePaths, useToday, useLearningStats, StreakBanner, TodayCard, QuizModal } from '@/features/learning'
+import type { LearningUnit } from '@/features/learning'
 import { EmptyState } from '@/components/EmptyState'
 
 function Skeleton({ height }: { height: number }) {
@@ -19,6 +21,7 @@ export default function LearnPage() {
   const { data: stats, isLoading: statsLoading } = useLearningStats()
   const { data: today, isLoading: todayLoading } = useToday()
   const { data: paths, isLoading: pathsLoading } = usePaths()
+  const [quizUnit, setQuizUnit] = useState<LearningUnit | null>(null)
 
   return (
     <div>
@@ -61,6 +64,7 @@ export default function LearnPage() {
                 key={entry.unit.id}
                 entry={entry}
                 pathTitle={paths?.find((p) => p.id === entry.pathId)?.title}
+                onQuizStart={setQuizUnit}
               />
             ))}
           </div>
@@ -72,6 +76,8 @@ export default function LearnPage() {
           />
         )}
       </div>
+
+      <QuizModal unit={quizUnit} open={!!quizUnit} onClose={() => setQuizUnit(null)} />
 
       {/* Paths section */}
       <div>
