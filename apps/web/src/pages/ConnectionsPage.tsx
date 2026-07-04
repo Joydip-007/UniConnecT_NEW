@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
-import { Badge } from '@/components/Badge'
+import { RoleBadge } from '@/components/RoleBadge'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { PATHS } from '@/router/paths'
 import {
@@ -12,7 +12,7 @@ import {
   usePendingSent,
   useConnectionAction,
 } from '@/features/connections'
-import type { ConnectionRequest } from '@uniconnect/shared'
+import type { ConnectionRequest, UserRole } from '@uniconnect/shared'
 
 // ── Skeleton ─────────────────────────────────────────────
 
@@ -152,6 +152,7 @@ function SentRequestCard({ request }: { request: ConnectionRequest }) {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {user?.role && <RoleBadge role={user.role as UserRole} size={14} />}
           <Link to={PATHS.PROFILE.replace(':id', userId)} style={{ textDecoration: 'none' }}>
             <span
               style={{
@@ -164,11 +165,6 @@ function SentRequestCard({ request }: { request: ConnectionRequest }) {
               {fullName}
             </span>
           </Link>
-          {user?.role && (
-            <Badge variant={user.role === 'student' ? 'dept' : user.role === 'alumni' ? 'alumni' : 'neutral'}>
-              {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-            </Badge>
-          )}
         </div>
         {(user?.headline || user?.department) && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>

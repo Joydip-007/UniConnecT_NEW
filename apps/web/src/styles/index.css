@@ -753,3 +753,91 @@ select:focus-visible {
 .post-timestamp-link:focus-visible {
   text-decoration: underline;
 }
+
+/* ── Role badge (spec §6) ─────────────────────────────────────────────────
+   Idle-calm: never animates at rest — hover/focus only. Transform/opacity
+   only. Per-role color channels are set once via the --role-c-* indirection
+   so the shared rules below stay role-agnostic. */
+.role-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+  color: var(--role-c-text);
+}
+.role-badge--student { --role-c-text: var(--role-student-text); --role-c-bg: var(--role-student-bg); --role-c-bdr: var(--role-student-bdr); }
+.role-badge--alumni  { --role-c-text: var(--role-alumni-text);  --role-c-bg: var(--role-alumni-bg);  --role-c-bdr: var(--role-alumni-bdr); }
+.role-badge--faculty { --role-c-text: var(--role-faculty-text); --role-c-bg: var(--role-faculty-bg); --role-c-bdr: var(--role-faculty-bdr); }
+.role-badge--admin   { --role-c-text: var(--role-admin-text);   --role-c-bg: var(--role-admin-bg);   --role-c-bdr: var(--role-admin-bdr); }
+.role-badge--driver  { --role-c-text: var(--role-driver-text);  --role-c-bg: var(--role-driver-bg);  --role-c-bdr: var(--role-driver-bdr); }
+
+.role-badge__glyph {
+  transition: transform var(--dur-med) var(--ease-out-expo);
+  transform-origin: 50% 75%;
+}
+
+/* Tooltip pill — slides in ~200ms on hover (spec §6) */
+.role-badge__tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+  opacity: 0;
+  pointer-events: none;
+  padding: 5px 9px;
+  border-radius: var(--r-pill);
+  border: 0.5px solid var(--role-c-bdr);
+  background: var(--surface-raised);
+  background-image: linear-gradient(var(--role-c-bg), var(--role-c-bg));
+  color: var(--role-c-text);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  z-index: var(--z-popover);
+  transition:
+    opacity var(--dur-med) var(--ease-out-expo),
+    transform var(--dur-med) var(--ease-out-expo);
+}
+.role-badge:hover .role-badge__tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-badge__tip { transition: none; }
+}
+
+/* Per-role hover animations — hover-capable pointers, motion-safe only */
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .role-badge--student:hover .role-badge__glyph { transform: rotate(-14deg); } /* cap tips */
+  .role-badge--driver:hover  .role-badge__glyph { transform: rotate(10deg); }  /* micro-rotation */
+  .role-badge--faculty:hover .role-badge__glyph { animation: role-book-flip 0.3s var(--ease-out-expo); }
+  .role-badge--alumni:hover  .role-badge__glyph { animation: role-shimmer 0.45s var(--ease-out-expo); }
+  .role-badge--admin:hover::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 0.5px solid var(--role-c-bdr);
+    animation: role-pulse-ring 1.4s var(--ease-out-expo) infinite;
+  }
+}
+
+@keyframes role-book-flip {
+  0%   { transform: scaleX(1); }
+  50%  { transform: scaleX(0.7); }
+  100% { transform: scaleX(1); }
+}
+@keyframes role-shimmer {
+  0%   { opacity: 1; }
+  35%  { opacity: 0.45; transform: translateX(-1px); }
+  70%  { opacity: 1; transform: translateX(1px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes role-pulse-ring {
+  0%   { transform: scale(0.85); opacity: 0.9; }
+  100% { transform: scale(1.35); opacity: 0; }
+}

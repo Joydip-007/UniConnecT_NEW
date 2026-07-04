@@ -2,18 +2,12 @@ import { useState } from 'react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
-import { Badge } from '@/components/Badge'
+import { RoleBadge } from '@/components/RoleBadge'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import type { FeedPost } from '@uniconnect/shared'
 import { PATHS } from '@/router/paths'
 
 type EmbeddedPost = NonNullable<FeedPost['originalPost']>
-
-function roleBadgeVariant(role: EmbeddedPost['author']['role']): 'dept' | 'alumni' | 'neutral' {
-  if (role === 'student') return 'dept'
-  if (role === 'alumni') return 'alumni'
-  return 'neutral'
-}
 
 interface Props {
   post: EmbeddedPost | null
@@ -65,15 +59,13 @@ export function OriginalPostEmbed({ post }: Props) {
         </Link>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <RoleBadge role={post.author.role} size={13} />
             <Link
               to={authorProfileUrl}
               style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
             >
               {post.author.fullName}
             </Link>
-            <Badge variant={roleBadgeVariant(post.author.role)}>
-              {post.author.role.charAt(0).toUpperCase() + post.author.role.slice(1)}
-            </Badge>
           </div>
           {post.createdAt && (
             <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)' }}>

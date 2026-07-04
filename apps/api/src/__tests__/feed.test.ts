@@ -268,3 +268,27 @@ describe('POST /api/v1/posts — hashtag extraction', () => {
     expect(tags.length).toBe(10)
   })
 })
+
+describe('GET /api/v1/posts/:postId/comments — author role', () => {
+  it('includes the author role on each comment', async () => {
+    const postRes = await api
+      .post('/api/v1/posts')
+      .set(authHeader(studentToken))
+      .send({ content: 'Post for comment role test', type: 'post' })
+    const postId = postRes.body.data.id as string
+    createdPostIds.push(postId)
+
+    await api
+      .post(`/api/v1/posts/${postId}/comments`)
+      .set(authHeader(studentToken))
+      .send({ content: 'Role-bearing comment' })
+
+    const res = await api
+      .get(`/api/v1/posts/${postId}/comments`)
+      .set(authHeader(studentToken))
+
+    expect(res.status).toBe(200)
+    const comment = res.body.data.items[0]
+    expect(comment.author.role).toBe('student')
+  })
+})

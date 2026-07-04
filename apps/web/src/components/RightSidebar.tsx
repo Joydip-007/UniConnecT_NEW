@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
-import { Badge } from '@/components/Badge'
+import { RoleBadge } from '@/components/RoleBadge'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import type { UserRole } from '@uniconnect/shared/types'
@@ -61,19 +61,6 @@ function formatDate(iso: string) {
     month: d.toLocaleString('en-US', { month: 'short' }),
     time: d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
   }
-}
-
-function roleBadgeVariant(role: UserRole): 'dept' | 'alumni' | 'neutral' {
-  if (role === 'alumni') return 'alumni'
-  if (role === 'student') return 'dept'
-  return 'neutral'
-}
-
-function roleLabel(role: UserRole): string {
-  if (role === 'alumni') return 'Alumni · verified'
-  if (role === 'faculty') return 'Faculty'
-  if (role === 'admin') return 'Admin'
-  return 'Student'
 }
 
 // ── Sub-components ───────────────────────────────────────
@@ -207,12 +194,15 @@ function PersonRow({
               border: 'none',
               padding: 0,
               cursor: 'pointer',
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
               width: '100%',
               textAlign: 'left',
             }}
           >
-            <div
+            <RoleBadge role={user.role} size={13} />
+            <span
               style={{
                 fontSize: 13,
                 fontWeight: 500,
@@ -224,11 +214,8 @@ function PersonRow({
               }}
             >
               {user.profile.fullName}
-            </div>
+            </span>
           </button>
-          <Badge variant={roleBadgeVariant(user.role)} className="mt-0.5">
-            {roleLabel(user.role)}
-          </Badge>
         </div>
 
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4 }}>

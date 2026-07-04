@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
-import { Badge } from '@/components/Badge'
+import { RoleBadge } from '@/components/RoleBadge'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { PATHS } from '@/router/paths'
 import { api } from '@/lib/axios'
@@ -12,16 +12,6 @@ import { useConnectionAction } from '../hooks/useConnectionAction'
 
 interface Props {
   connection: Connection
-}
-
-function roleBadgeVariant(role: UserRole): 'dept' | 'alumni' | 'neutral' {
-  if (role === 'student') return 'dept'
-  if (role === 'alumni') return 'alumni'
-  return 'neutral'
-}
-
-function roleLabel(role: UserRole): string {
-  return role.charAt(0).toUpperCase() + role.slice(1)
 }
 
 export function ConnectionCard({ connection }: Props) {
@@ -79,6 +69,7 @@ export function ConnectionCard({ connection }: Props) {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          {user?.role && <RoleBadge role={user.role as UserRole} size={14} />}
           <Link
             to={PATHS.PROFILE.replace(':id', userId)}
             style={{ textDecoration: 'none' }}
@@ -94,11 +85,6 @@ export function ConnectionCard({ connection }: Props) {
               {fullName}
             </span>
           </Link>
-          {user?.role && (
-            <Badge variant={roleBadgeVariant(user.role as UserRole)}>
-              {roleLabel(user.role as UserRole)}
-            </Badge>
-          )}
         </div>
         {(user?.headline || user?.department) && (
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>

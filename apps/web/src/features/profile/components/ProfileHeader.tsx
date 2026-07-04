@@ -1,7 +1,8 @@
 import { BadgeCheck, Briefcase, MapPin } from 'lucide-react'
-import type { PublicUserProfile, UserRole } from '@uniconnect/shared'
+import type { PublicUserProfile } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GhostBtn } from '@/components/Button'
 import { ShareMenu } from '@/components/ShareMenu'
 import { ConnectButton } from '@/features/connections'
@@ -13,19 +14,6 @@ interface Props {
   user: PublicUserProfile
   isOwnProfile: boolean
   onEdit: () => void
-}
-
-
-function roleBadgeVariant(role: UserRole): 'dept' | 'alumni' | 'neutral' {
-  if (role === 'student') return 'dept'
-  if (role === 'alumni') return 'alumni'
-  return 'neutral'
-}
-
-function roleLabel(role: UserRole): string {
-  if (role === 'faculty') return 'Faculty'
-  if (role === 'admin') return 'Admin'
-  return role.charAt(0).toUpperCase() + role.slice(1)
 }
 
 export function ProfileHeader({
@@ -104,6 +92,7 @@ export function ProfileHeader({
 
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+            <RoleBadge role={user.role} size={16} />
             <span style={{ fontSize: 17, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
               {fullName}
             </span>
@@ -116,7 +105,6 @@ export function ProfileHeader({
                 <BadgeCheck size={14} strokeWidth={1.75} />
               </span>
             )}
-            <Badge variant={roleBadgeVariant(user.role)}>{roleLabel(user.role)}</Badge>
             {user.profile.department && (
               <Badge variant="neutral">
                 {user.profile.department}

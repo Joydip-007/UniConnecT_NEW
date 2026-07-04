@@ -72,4 +72,10 @@ describe('PostCard markdown sanitization', () => {
     const link = screen.getByRole('link', { name: 'ok' })
     expect(link.getAttribute('href')).toBe('https://example.com')
   })
+
+  it('renders a role badge beside the author name', () => {
+    renderCard(makePost('hello'))
+    expect(screen.getByRole('img', { name: 'Student' })).toBeInTheDocument()
+    expect(screen.queryByText('Student', { selector: '.role-badge__tip' })).toBeInTheDocument()
+  })
 })

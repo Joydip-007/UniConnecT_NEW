@@ -47,6 +47,36 @@
   --uc-red-bg:        rgba(225, 29, 72, 0.08);
   --uc-red-bdr:       rgba(225, 29, 72, 0.25);
 
+  /* ── Role identity (spec §6) — platform-global, same meaning at every
+     university. student/alumni/faculty alias existing families so they
+     track theme overrides automatically; admin/driver are standalone and
+     re-declared in the light block below. `-text` is the legible-on-card
+     tone used for the glyph, tooltip text, and (optionally) the name. */
+  --role-student:      var(--uc-indigo);
+  --role-student-text: var(--uc-indigo-l);
+  --role-student-bg:   var(--uc-indigo-bg);
+  --role-student-bdr:  var(--uc-indigo-bdr);
+
+  --role-alumni:       var(--uc-amber);
+  --role-alumni-text:  var(--uc-amber-l);
+  --role-alumni-bg:    var(--uc-amber-bg);
+  --role-alumni-bdr:   var(--uc-amber-bdr);
+
+  --role-faculty:      var(--uc-cyan);
+  --role-faculty-text: #67E8F9;
+  --role-faculty-bg:   var(--uc-cyan-bg);
+  --role-faculty-bdr:  var(--uc-cyan-bdr);
+
+  --role-admin:        #E8543F;
+  --role-admin-text:   #F58A78;
+  --role-admin-bg:     rgba(232, 84, 63, 0.10);
+  --role-admin-bdr:    rgba(232, 84, 63, 0.28);
+
+  --role-driver:       #8B99AD;
+  --role-driver-text:  #B7C3D4;
+  --role-driver-bg:    rgba(139, 153, 173, 0.10);
+  --role-driver-bdr:   rgba(139, 153, 173, 0.28);
+
   /* ── Overlay ──────────────────────────────────────── */
   --overlay-bg:        rgba(6, 13, 26, 0.75);
   --overlay-bg-soft:   rgba(6, 13, 26, 0.56);
@@ -147,6 +177,19 @@
   --uc-red:           #BE123C;
   --uc-red-bg:        rgba(190, 18, 60, 0.08);
   --uc-red-bdr:       rgba(190, 18, 60, 0.22);
+
+  /* Role identity — light steps darker for AA (spec §6) */
+  --role-faculty-text: #0E7490;
+
+  --role-admin:        #B93A28;
+  --role-admin-text:   #9C2F1F;
+  --role-admin-bg:     rgba(185, 58, 40, 0.10);
+  --role-admin-bdr:    rgba(185, 58, 40, 0.25);
+
+  --role-driver:       #52617A;
+  --role-driver-text:  #43506A;
+  --role-driver-bg:    rgba(82, 97, 122, 0.08);
+  --role-driver-bdr:   rgba(82, 97, 122, 0.22);
 
   --overlay-bg:        rgba(250, 247, 242, 0.78);
   --overlay-bg-soft:   rgba(250, 247, 242, 0.56);

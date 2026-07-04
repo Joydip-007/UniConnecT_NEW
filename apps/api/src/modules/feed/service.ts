@@ -90,6 +90,7 @@ interface CommentRow {
   author_full_name: string
   author_avatar_url: string | null
   author_headline: string | null
+  author_role: UserRole
   reaction_counts: unknown
   own_reaction: ReactionType | null
 }
@@ -1204,6 +1205,7 @@ function commentSelectQuery(knex: Knex, userId: string) {
       'profiles.full_name as author_full_name',
       'profiles.avatar_url as author_avatar_url',
       'profiles.headline as author_headline',
+      'users.role as author_role',
       knex.raw(
         `COALESCE(
           (
@@ -1385,6 +1387,7 @@ function toComment(row: CommentRow) {
       fullName: row.author_full_name,
       avatarUrl: row.author_avatar_url,
       headline: row.author_headline,
+      role: row.author_role,
     },
     mediaUrls: row.media_urls ?? [],
     reactionCounts: normalizeReactionCounts(row.reaction_counts),
