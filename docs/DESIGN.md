@@ -221,15 +221,15 @@ A dark-first palette anchored to UIU's institutional orange, with a Warm Neutral
 - **Indigo Dot** (`#5B5BD64D` ≈ 30% alpha indigo): The dot-pattern color in the profile mini-card cover. Used exactly once in the system, as a `radial-gradient` against `--surface-raised`. Not a structural color; do not use as a fill, border, or text.
 
 ### Role tokens
-Platform-global identity markers for the five user roles — student, alumni, faculty, admin, driver. Each family provides four tokens: the base color, plus `-text` (legible-on-card glyph and tooltip tone), `-bg` (tinted card background), and `-bdr` (border for cards). Student, alumni, and faculty alias the core color families (indigo, amber, cyan) so they track theme overrides automatically; admin and red-orange and driver slate-gray are standalone and re-declared in light mode for AA contrast on white. Role colors decorate identity only — never use on buttons, links, or CTAs.
+Platform-global identity markers for the five user roles — student, alumni, faculty, admin, driver. Each family provides four tokens: the base color, plus `-text` (legible-on-card glyph and tooltip tone), `-bg` (tinted card background), and `-bdr` (border for cards). Student, alumni, and faculty alias the core color families (indigo, amber, cyan) so they track theme overrides automatically; admin (red-orange) and driver (slate-gray) are standalone and re-declared in light mode for AA contrast on white. Role colors decorate identity only — never use on buttons, links, or CTAs.
 
 | Family | Base | `-text` | `-bg` | `-bdr` | Notes |
 |---|---|---|---|---|---|
 | Student | `--uc-indigo` | `--uc-indigo-l` | `--uc-indigo-bg` | `--uc-indigo-bdr` | Aliases core indigo family; auto-updates in both themes. |
 | Alumni | `--uc-amber` | `--uc-amber-l` | `--uc-amber-bg` | `--uc-amber-bdr` | Aliases core amber family; auto-updates in both themes. |
 | Faculty | `--uc-cyan` | `#67E8F9` (dark) / `#0E7490` (light) | `--uc-cyan-bg` | `--uc-cyan-bdr` | Cyan base aliases; text darkened in light mode for AA. |
-| Admin | `#E8543F` (dark) / `#B93A28` (light) | `#F58A78` (dark) / `#9C2F1F` (light) | `rgba(…, 0.10)` | `rgba(…, 0.28)` | Red-orange identity; fully re-declared in light mode. |
-| Driver | `#8B99AD` (dark) / `#52617A` (light) | `#B7C3D4` (dark) / `#43506A` (light) | `rgba(…, 0.10)` | `rgba(…, 0.08/0.22)` | Slate-gray walled-garden role; fully re-declared. |
+| Admin | `#E8543F` (dark) / `#B93A28` (light) | `#F58A78` (dark) / `#9C2F1F` (light) | `rgba(232, 84, 63, 0.10)` (dark) / `rgba(185, 58, 40, 0.10)` (light) | `rgba(232, 84, 63, 0.28)` (dark) / `rgba(185, 58, 40, 0.25)` (light) | Red-orange identity; fully re-declared in light mode (`--role-admin*` tokens). |
+| Driver | `#8B99AD` (dark) / `#52617A` (light) | `#B7C3D4` (dark) / `#43506A` (light) | `rgba(139, 153, 173, 0.10)` (dark) / `rgba(82, 97, 122, 0.08)` (light) | `rgba(139, 153, 173, 0.28)` (dark) / `rgba(82, 97, 122, 0.22)` (light) | Slate-gray walled-garden role; fully re-declared (`--role-driver*` tokens). |
 
 ### Named Rules
 

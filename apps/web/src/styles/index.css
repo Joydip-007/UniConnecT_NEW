@@ -806,6 +806,10 @@ select:focus-visible {
   transform: translate(-50%, 0);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .role-badge__tip { transition: none; }
+}
+
 /* Per-role hover animations — hover-capable pointers, motion-safe only */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .role-badge--student:hover .role-badge__glyph { transform: rotate(-14deg); } /* cap tips */
