@@ -57,6 +57,10 @@ export async function up(knex: Knex) {
     table.unique(['user_id', 'unit_id']) // idempotent completion writes
   })
 
+  await knex.raw(
+    'CREATE INDEX idx_unit_completions_uni_completed_at ON unit_completions (university_id, completed_at DESC)',
+  )
+
   await knex.schema.createTable('learning_stats', (table) => {
     table.uuid('user_id').primary().references('id').inTable('users').onDelete('CASCADE')
     table.uuid('university_id').notNullable().references('id').inTable('universities').onDelete('CASCADE').index()
