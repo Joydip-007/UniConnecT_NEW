@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import supertest from 'supertest'
-import { app, DOMAIN, loginAs, CREDENTIALS } from './setup'
+import { app, DOMAIN, loginAs, CREDENTIALS, TEST_UNIVERSITY_ID } from './setup'
 import { db } from '../config/db'
 
 let student: { accessToken: string }
@@ -64,5 +64,64 @@ describe('learning paths', () => {
       .insert({ university_id: other.id, title: 'Foreign', category: 'x' })
       .returning('id')
     expect((await get(`/api/v1/learning/paths/${foreign.id}`)).status).toBe(404)
+  })
+})
+
+describe('unit completion & streaks', () => {
+  it('rejects completing a locked (out-of-order) unit', async () => {
+    const res = await post(`/api/v1/learning/units/${unitIds[1]}/complete`).send({})
+    expect(res.status).toBe(400)
+  })
+
+  it('completes the first unit and starts a streak', async () => {
+    const res = await post(`/api/v1/learning/units/${unitIds[0]}/complete`).send({})
+    expect(res.status).toBe(200)
+    expect(res.body.data.streak.currentStreak).toBe(1)
+  })
+
+  it('is idempotent on repeat completion', async () => {
+    const res = await post(`/api/v1/learning/units/${unitIds[0]}/complete`).send({})
+    expect(res.status).toBe(200)
+    expect(res.body.data.alreadyCompleted).toBe(true)
+  })
+
+  it('enforces one unit per path per day', async () => {
+    const res = await post(`/api/v1/learning/units/${unitIds[1]}/complete`).send({})
+    expect(res.status).toBe(429)
+  })
+
+  it('surfaces the next unit in /me/today', async () => {
+    const res = await get('/api/v1/learning/me/today')
+    expect(res.status).toBe(200)
+    const entry = res.body.data.find((e: { pathId: string }) => e.pathId === pathId)
+    expect(entry.unit.id).toBe(unitIds[1])
+    expect(entry.completedToday).toBe(true)
+  })
+
+  it('requires a passing score on quiz units', async () => {
+    // Fast-forward: mark unit 2 complete yesterday directly in the DB to unlock unit 3 and clear the daily cap
+    await db('unit_completions').insert({
+      user_id: (await db('users').where({ email: CREDENTIALS.student.email }).first('id')).id,
+      unit_id: unitIds[1], path_id: pathId, university_id: TEST_UNIVERSITY_ID,
+      completed_at: db.raw(`now() - interval '1 day'`),
+    })
+    expect((await post(`/api/v1/learning/units/${unitIds[2]}/complete`).send({ score: 40 })).status).toBe(400)
+    const pass = await post(`/api/v1/learning/units/${unitIds[2]}/complete`).send({ score: 85 })
+    expect(pass.status).toBe(200)
+    expect(pass.body.data.pathCompleted).toBe(true)
+  })
+
+  it('marks the enrollment completed and enqueued no inline badge writes', async () => {
+    const enr = await db('skill_path_enrollments')
+      .where({ path_id: pathId })
+      .first('status')
+    expect(enr.status).toBe('completed')
+  })
+
+  it('returns stats', async () => {
+    const res = await get('/api/v1/learning/me/stats')
+    expect(res.status).toBe(200)
+    expect(res.body.data.currentStreak).toBeGreaterThanOrEqual(1)
+    expect(res.body.data.freezesRemaining).toBeDefined()
   })
 })

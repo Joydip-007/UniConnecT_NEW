@@ -31,3 +31,19 @@ export const abandon = asyncHandler(async (req: Request, res: Response) => {
   const { pathId } = req.params as { pathId: string }
   sendSuccess(res, await service.abandon(pathId, context.userId))
 })
+
+export const completeUnit = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { unitId } = req.params as { unitId: string }
+  sendSuccess(res, await service.completeUnit(unitId, context.userId, context.universityId, req.body))
+})
+
+export const getToday = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await service.getToday(context.userId, context.universityId))
+})
+
+export const getStats = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await service.getStats(context.userId))
+})

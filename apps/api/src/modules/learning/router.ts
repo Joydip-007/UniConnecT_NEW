@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { pathIdParamsSchema } from '@uniconnect/shared'
+import { completeUnitSchema, pathIdParamsSchema, unitIdParamsSchema } from '@uniconnect/shared'
 import { requireAuth } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validateRequest } from '../../middleware/validate'
@@ -12,5 +12,11 @@ learningRouter.get('/paths', c.listPaths)
 learningRouter.get('/paths/:pathId', validateRequest({ params: pathIdParamsSchema }), c.getPath)
 learningRouter.post('/paths/:pathId/enroll', validateRequest({ params: pathIdParamsSchema }), c.enroll)
 learningRouter.post('/paths/:pathId/abandon', validateRequest({ params: pathIdParamsSchema }), c.abandon)
-// Tasks 6–7 add: GET /me/today, POST /units/:unitId/complete, GET /me/stats,
-// GET /me/badges, PUT /me/badges/showcase, GET /users/:userId/badges
+learningRouter.get('/me/today', c.getToday)
+learningRouter.get('/me/stats', c.getStats)
+learningRouter.post(
+  '/units/:unitId/complete',
+  validateRequest({ params: unitIdParamsSchema, body: completeUnitSchema }),
+  c.completeUnit,
+)
+// Task 7 adds: GET /me/badges, PUT /me/badges/showcase, GET /users/:userId/badges
