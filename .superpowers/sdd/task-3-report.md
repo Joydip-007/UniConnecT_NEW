@@ -9,7 +9,7 @@
 - `apps/web/src/components/FeedLayout.test.tsx`
 
 ## Commit hash
-- `a48eada`
+- Implementation commit: `1659b4e`
 
 ## Tests run with results
 - `npx pnpm --filter web test src/components/FeedLayout.test.tsx` — failed first as expected on missing `data-left-sidebar` attribute
