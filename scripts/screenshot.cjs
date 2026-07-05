@@ -8,10 +8,26 @@ const fs = require('fs');
 // ProfilePage's isOwnProfile check compares this against the fetched profile's id.
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 
+const PUBLIC_CAPTURE_MATRIX = [
+  { suffix: '',               w: 1440, h: 900, theme: 'dark' },
+  { suffix: '-light',         w: 1440, h: 900, theme: 'light' },
+  { suffix: '-mobile',        w: 390,  h: 844, theme: 'dark' },
+  { suffix: '-mobile-light',  w: 390,  h: 844, theme: 'light' },
+];
+
+function buildPublicRoutes(name, routePath) {
+  return Object.fromEntries(
+    PUBLIC_CAPTURE_MATRIX.map((variant) => [
+      `${name}${variant.suffix}`,
+      { path: routePath, auth: false, ...variant },
+    ]),
+  );
+}
+
 // Route map — add new entries as pages are built in Figma
 const ROUTES = {
-  'landing':     { path: '/',                         auth: false, w: 1440, h: 900  },
-  'about':       { path: '/about',                    auth: false, w: 1440, h: 900  },
+  ...buildPublicRoutes('landing', '/'),
+  ...buildPublicRoutes('about', '/about'),
   'login':       { path: '/login',                    auth: false, w: 1440, h: 900  },
   'login-mob':   { path: '/login',                    auth: false, w: 390,  h: 844  },
   'register':    { path: '/register',                 auth: false, w: 1440, h: 900  },
@@ -32,6 +48,15 @@ async function capture(name, route) {
   });
   const page = await browser.newPage();
   await page.setViewport({ width: route.w, height: route.h, deviceScaleFactor: 2 });
+  if (route.theme) {
+    await page.evaluateOnNewDocument((theme) => {
+      try {
+        localStorage.setItem('uc.theme', theme);
+      } catch {}
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-theme-mode', theme);
+    }, route.theme);
+  }
 
   const url = `http://localhost:5173${route.path}${route.auth ? '?dev-auth=1' : ''}`;
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });

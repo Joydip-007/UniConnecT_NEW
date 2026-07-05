@@ -380,6 +380,7 @@ node scripts/screenshot.cjs all      # all pages
 Rules:
 - Requires Vite dev server running (`npx pnpm --filter web dev`, port 5173). No backend needed.
 - Pages that require auth use `?dev-auth=1` — `AuthLoader` detects this in DEV mode and seeds a mock user, bypassing the real refresh/login flow entirely.
+- Public marketing pages also expose a small matrix: `landing|about`, `*-light`, `*-mobile`, `*-mobile-light`.
 - Replace the old screenshot — never keep both. The file in `screenshots/` is always the current state.
 - When adding a new page to `ROUTES` in `scripts/screenshot.cjs`, also add a row to this table.
 
