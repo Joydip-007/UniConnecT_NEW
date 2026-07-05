@@ -367,6 +367,8 @@ node scripts/screenshot.cjs all      # all pages
 
 | Name | Route | Auth needed |
 |---|---|---|
+| `landing` | `/` | no |
+| `about` | `/about` | no |
 | `feed` | `/feed` | yes |
 | `profile` | `/profile/:devId` | yes |
 | `login` | `/login` | no |

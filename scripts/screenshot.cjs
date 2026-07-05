@@ -10,6 +10,8 @@ const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
 
 // Route map — add new entries as pages are built in Figma
 const ROUTES = {
+  'landing':     { path: '/',                         auth: false, w: 1440, h: 900  },
+  'about':       { path: '/about',                    auth: false, w: 1440, h: 900  },
   'login':       { path: '/login',                    auth: false, w: 1440, h: 900  },
   'login-mob':   { path: '/login',                    auth: false, w: 390,  h: 844  },
   'register':    { path: '/register',                 auth: false, w: 1440, h: 900  },
@@ -24,12 +26,23 @@ async function capture(name, route) {
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
   const out = path.join(outDir, `${name}.png`);
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
   const page = await browser.newPage();
   await page.setViewport({ width: route.w, height: route.h, deviceScaleFactor: 2 });
 
   const url = `http://localhost:5173${route.path}${route.auth ? '?dev-auth=1' : ''}`;
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
+  await page.addStyleTag({
+    content: `
+      .tsqd-open-btn-container,
+      .tsqd-open-btn {
+        display: none !important;
+      }
+    `,
+  });
   await new Promise(r => setTimeout(r, 1000));
   await page.screenshot({ path: out, clip: { x: 0, y: 0, width: route.w, height: route.h } });
   await browser.close();

@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 function supportsViewTimeline() {
-  return typeof CSS !== 'undefined' && CSS.supports('animation-timeline: view()')
+  return typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('animation-timeline: view()')
 }
 
 function prefersReducedMotion() {
