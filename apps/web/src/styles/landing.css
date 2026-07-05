@@ -309,17 +309,18 @@
 
 .uc-hero-headline {
   margin: 0;
-  display: block;
-  font-size: clamp(48px, 7vw, 86px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: clamp(32px, 8vw, 86px);
   font-weight: 500;
-  line-height: 1.05;
+  line-height: 1;
   color: var(--text-primary);
 }
 
 .uc-hero-kinetic-window {
   position: relative;
-  display: inline-block;
-  vertical-align: bottom;
+  display: block;
   height: 1.05em;
   overflow: hidden;
   color: var(--uc-orange);
@@ -341,6 +342,7 @@
   display: flex;
   align-items: center;
   min-height: 1.05em;
+  white-space: nowrap;
 }
 
 .uc-hero-brief-grid {
