@@ -49,7 +49,7 @@ function SocialLink({
   label,
 }: {
   href: string
-  icon: ElementType<any>
+  icon: ElementType
   label: string
 }) {
   if (href === '#') {
