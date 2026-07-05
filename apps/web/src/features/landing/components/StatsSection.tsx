@@ -6,8 +6,8 @@ const HEADLINES = [
 ] as const
 
 const RAIL = [
-  { value: '150+', label: 'universities ready to onboard' },
-  { value: '6', label: 'core modules in the launch stack' },
+  { value: '1', label: 'campus pilot starting with UIU' },
+  { value: '12', label: 'core modules in the launch stack' },
   { value: '$0', label: 'student pricing across every tenant' },
 ] as const
 

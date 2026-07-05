@@ -2,42 +2,74 @@ import { ArrowUpRight, Rocket } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
-import connectionsImage from '@/assets/landing/connections.png'
-import exploreImage from '@/assets/landing/explore.png'
-import heroPoster from '@/assets/landing/feed.png'
-import jobsImage from '@/assets/landing/jobs.png'
-import messagesImage from '@/assets/landing/messages.png'
-import productLoopVideo from '@/assets/landing/product-loop.webm'
+
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 import { PATHS } from '@/router/paths'
+import { RadialOrbitalTimeline, type OrbitalNode } from '@/components/ui/RadialOrbitalTimeline'
+import { Rss, MessageSquare, Users, Briefcase, Search } from 'lucide-react'
 
-const PRODUCT_PANELS = [
+const HERO_NODES: OrbitalNode[] = [
   {
+    id: 1,
     title: 'Campus feed',
-    note: 'Verified updates across students, clubs, and faculty',
-    image: heroPoster,
+    subtitle: 'Feed',
+    content: 'Verified updates across students, clubs, and faculty',
+    icon: Rss,
+    relatedIds: [2, 3],
+    accent: 'var(--uc-orange)',
+    accentBg: 'var(--uc-orange-bg)',
+    accentBdr: 'var(--uc-orange-bdr)',
+    energy: 90,
   },
   {
+    id: 2,
     title: 'Direct messaging',
-    note: 'Real-time coordination without the group-chat sprawl',
-    image: messagesImage,
+    subtitle: 'Chat',
+    content: 'Real-time coordination without the group-chat sprawl',
+    icon: MessageSquare,
+    relatedIds: [1, 3],
+    accent: 'var(--uc-cyan)',
+    accentBg: 'var(--uc-cyan-bg)',
+    accentBdr: 'var(--uc-cyan-bdr)',
+    energy: 65,
   },
   {
+    id: 3,
     title: 'Connections',
-    note: 'One graph for classmates, alumni, and mentors',
-    image: connectionsImage,
+    subtitle: 'Network',
+    content: 'One graph for classmates, alumni, and mentors',
+    icon: Users,
+    relatedIds: [1, 4],
+    accent: 'var(--uc-indigo)',
+    accentBg: 'var(--uc-indigo-bg)',
+    accentBdr: 'var(--uc-indigo-bdr)',
+    energy: 100,
   },
   {
+    id: 4,
     title: 'Jobs and internships',
-    note: 'Career access built into the campus layer',
-    image: jobsImage,
+    subtitle: 'Career',
+    content: 'Career access built into the campus layer',
+    icon: Briefcase,
+    relatedIds: [3, 5],
+    accent: 'var(--uc-mint)',
+    accentBg: 'var(--uc-mint-bg)',
+    accentBdr: 'var(--uc-mint-bdr)',
+    energy: 40,
   },
   {
+    id: 5,
     title: 'Explore',
-    note: 'Campus discovery without leaving the platform',
-    image: exploreImage,
+    subtitle: 'Discovery',
+    content: 'Campus discovery without leaving the platform',
+    icon: Search,
+    relatedIds: [1, 4],
+    accent: 'var(--uc-amber)',
+    accentBg: 'var(--uc-amber-bg)',
+    accentBdr: 'var(--uc-amber-bdr)',
+    energy: 80,
   },
-] as const
+]
 
 const KINETIC_LINES = [
   'for students.',
@@ -236,52 +268,8 @@ export function HeroSection() {
             alignItems: 'stretch',
           }}
         >
-          <div className="uc-hero-media-shell" aria-label="UniConnecT product loop">
-            <div className="uc-hero-media-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="online-dot" />
-                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Product loop</span>
-              </div>
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>UIU pilot</span>
-            </div>
-
-            {reducedMotion ? (
-              <div className="uc-hero-poster-shell">
-                <img
-                  src={heroPoster}
-                  alt="UniConnecT product still"
-                  className="uc-hero-poster-image"
-                />
-              </div>
-            ) : (
-              <div className="uc-hero-media-window">
-                <div className="uc-hero-media-frame uc-hero-video-shell">
-                  <video
-                    ref={videoRef}
-                    className="uc-hero-product-video"
-                    src={productLoopVideo}
-                    poster={heroPoster}
-                    muted
-                    playsInline
-                    autoPlay
-                    loop
-                    preload="metadata"
-                    aria-label="UniConnecT product loop video"
-                  />
-                </div>
-                <div className="uc-hero-media-notes" aria-hidden="true">
-                  {PRODUCT_PANELS.map(({ title, note, image }) => (
-                    <article key={title} className="uc-hero-media-note-card">
-                      <img src={image} alt="" className="uc-hero-media-thumb" />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <p className="uc-hero-media-title">{title}</p>
-                        <p className="uc-hero-media-note">{note}</p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="w-full flex items-center justify-center">
+             <RadialOrbitalTimeline nodes={HERO_NODES} />
           </div>
         </div>
       </div>
