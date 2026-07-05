@@ -33,7 +33,7 @@ async function getUniversityTimezone(universityId: string): Promise<string> {
 }
 
 async function getDepartment(userId: string): Promise<string> {
-  const row = await db('users').where({ id: userId }).first<{ department: string | null }>('department')
+  const row = await db('profiles').where({ user_id: userId }).first<{ department: string | null }>('department')
   return row?.department ?? 'General'
 }
 
