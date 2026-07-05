@@ -175,6 +175,13 @@ interface FlashcardRow {
   last_rating: 'again' | 'hard' | 'good' | 'easy' | null
 }
 
+interface FlashcardOwnerRow {
+  id: string
+  deck_id: string
+  created_by: string | null
+  deck_created_by: string | null
+}
+
 interface FlashcardReviewRow {
   card_id: string
   user_id: string
@@ -1358,6 +1365,13 @@ export class GroupsService {
 
     if (!deck) throw badRequest('Flashcard deck could not be created', 'FLASHCARD_DECK_CREATE_FAILED')
 
+    await badgeQueue.add({
+      userId: context.userId,
+      universityId: context.universityId,
+      action: 'deck_contributed',
+      payload: { deckId: deck.id },
+    })
+
     return getFlashcardDeck(context, groupId, deck.id)
   }
 
@@ -1417,8 +1431,18 @@ export class GroupsService {
     await getFlashcardDeckOwner(context, groupId, deckId)
 
     let cardId: string
+    let firstCardInDeckForUser = false
 
     await db.transaction(async (trx) => {
+      const existingContribution = await trx('group_flashcards')
+        .where({
+          deck_id: deckId,
+          group_id: groupId,
+          university_id: context.universityId,
+          created_by: context.userId,
+        })
+        .first<{ id: string }>('id')
+
       const [card] = await trx('group_flashcards')
         .insert({
           deck_id: deckId,
@@ -1433,6 +1457,7 @@ export class GroupsService {
 
       if (!card) throw badRequest('Flashcard could not be created', 'FLASHCARD_CREATE_FAILED')
       cardId = card.id
+      firstCardInDeckForUser = !existingContribution
 
       await trx('group_flashcard_decks')
         .where({ id: deckId, group_id: groupId, university_id: context.universityId })
@@ -1440,12 +1465,14 @@ export class GroupsService {
         .update({ updated_at: new Date() })
     })
 
-    await badgeQueue.add({
-      userId: context.userId,
-      universityId: context.universityId,
-      action: 'deck_contributed',
-      payload: { deckId },
-    })
+    if (firstCardInDeckForUser) {
+      await badgeQueue.add({
+        userId: context.userId,
+        universityId: context.universityId,
+        action: 'deck_contributed',
+        payload: { deckId },
+      })
+    }
 
     return getFlashcard(context, groupId, cardId!)
   }
@@ -1453,7 +1480,7 @@ export class GroupsService {
   async updateFlashcard(context: AuthContext, groupId: string, cardId: string, input: UpdateFlashcardInput) {
     const access = await assertMemberAccess(context, groupId)
     const card = await getFlashcardOwner(context, groupId, cardId)
-    assertCanEditOwnedResource(access, card.created_by, context.userId)
+    assertCanEditCard(access, card, context.userId)
 
     await db('group_flashcards')
       .where({ id: cardId, group_id: groupId, university_id: context.universityId })
@@ -1474,15 +1501,20 @@ export class GroupsService {
   async deleteFlashcard(context: AuthContext, groupId: string, cardId: string) {
     const access = await assertMemberAccess(context, groupId)
     const card = await getFlashcardOwner(context, groupId, cardId)
-    assertCanEditOwnedResource(access, card.created_by, context.userId)
+    assertCanEditCard(access, card, context.userId)
 
     await db.transaction(async (trx) => {
-      await trx('group_flashcards').where({ id: cardId, group_id: groupId, university_id: context.universityId }).delete()
-      await trx('group_flashcard_decks')
-        .where({ id: card.deck_id, group_id: groupId, university_id: context.universityId })
-        .where('card_count', '>', 0)
-        .decrement('card_count', 1)
-        .update({ updated_at: new Date() })
+      const deleted = await trx('group_flashcards')
+        .where({ id: cardId, group_id: groupId, university_id: context.universityId })
+        .delete()
+
+      if (deleted > 0) {
+        await trx('group_flashcard_decks')
+          .where({ id: card.deck_id, group_id: groupId, university_id: context.universityId })
+          .where('card_count', '>', 0)
+          .decrement('card_count', 1)
+          .update({ updated_at: new Date() })
+      }
     })
 
     return { deleted: true }
@@ -1921,8 +1953,18 @@ async function getFlashcard(context: AuthContext, groupId: string, cardId: strin
 
 async function getFlashcardOwner(context: AuthContext, groupId: string, cardId: string) {
   const row = await db('group_flashcards')
-    .where({ id: cardId, group_id: groupId, university_id: context.universityId })
-    .select<{ id: string; deck_id: string; created_by: string | null }[]>('id', 'deck_id', 'created_by')
+    .join('group_flashcard_decks', 'group_flashcard_decks.id', 'group_flashcards.deck_id')
+    .where({
+      'group_flashcards.id': cardId,
+      'group_flashcards.group_id': groupId,
+      'group_flashcards.university_id': context.universityId,
+    })
+    .select<FlashcardOwnerRow[]>(
+      'group_flashcards.id',
+      'group_flashcards.deck_id',
+      'group_flashcards.created_by',
+      'group_flashcard_decks.created_by as deck_created_by',
+    )
     .first()
 
   if (!row) throw notFound('Flashcard not found', 'FLASHCARD_NOT_FOUND')
@@ -2018,6 +2060,11 @@ function canModerate(role: GroupRole | null) {
 function assertCanEditOwnedResource(access: GroupAccessRow, ownerId: string | null, userId: string) {
   if (ownerId === userId || canModerate(access.user_role)) return
   throw forbidden('Only the creator or group moderators can edit this item', 'GROUP_ROLE_FORBIDDEN')
+}
+
+function assertCanEditCard(access: GroupAccessRow, card: FlashcardOwnerRow, userId: string) {
+  if (card.created_by === userId || card.deck_created_by === userId || canModerate(access.user_role)) return
+  throw forbidden('Only the card creator, deck creator, or group moderators can edit this card', 'GROUP_ROLE_FORBIDDEN')
 }
 
 function assertCanAssignRole(actorRole: GroupRole | null, targetRole: GroupRole, nextRole: GroupRole) {

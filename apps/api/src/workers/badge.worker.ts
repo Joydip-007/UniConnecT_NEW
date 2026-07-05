@@ -87,7 +87,7 @@ async function getActivityCount(
     case 'unit_completed':
       return countRows('unit_completions', { user_id: userId })
     case 'deck_contributed':
-      return countRows('group_flashcard_decks', { created_by: userId })
+      return countDeckContributions(userId)
     case 'flashcard_review_completed':
       return countRows('group_flashcard_reviews', { user_id: userId })
     case 'streak_milestone':
@@ -103,5 +103,22 @@ async function getActivityCount(
 
 async function countRows(table: string, where: Record<string, unknown>): Promise<number> {
   const [{ count }] = await db(table).where(where).count<{ count: string | number }[]>({ count: '*' })
+  return Number(count)
+}
+
+async function countDeckContributions(userId: string): Promise<number> {
+  const [{ count }] = await db
+    .from(
+      db
+        .select('id as deck_id')
+        .from('group_flashcard_decks')
+        .where({ created_by: userId })
+        .union((builder) => {
+          builder.select('deck_id').from('group_flashcards').where({ created_by: userId })
+        })
+        .as('deck_contributions'),
+    )
+    .count<{ count: string | number }[]>({ count: '*' })
+
   return Number(count)
 }
