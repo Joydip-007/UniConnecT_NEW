@@ -84,8 +84,8 @@ function NoteForm({ initial, isPending, onCancel, onSubmit }: {
   const [body, setBody] = useState(initial?.body ?? '')
   return (
     <form onSubmit={(event) => { event.preventDefault(); onSubmit({ title, body }) }} style={{ padding: 12, display: 'grid', gap: 8, borderTop: '0.5px solid var(--border-default)' }}>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title" required style={fieldStyle} />
-      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Note" required rows={4} style={{ ...fieldStyle, resize: 'vertical' }} />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Note title" required maxLength={160} style={fieldStyle} />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Note" required rows={4} maxLength={10000} style={{ ...fieldStyle, resize: 'vertical' }} />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         <button type="button" onClick={onCancel} style={controlButton}><X size={14} />Cancel</button>
         <button type="submit" disabled={isPending} style={{ ...controlButton, background: 'var(--uc-indigo)', color: 'var(--on-accent)', border: 'none' }}><Save size={14} />{initial ? 'Save' : 'Create'}</button>
