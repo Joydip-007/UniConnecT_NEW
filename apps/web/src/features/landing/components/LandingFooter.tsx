@@ -144,13 +144,13 @@ export function LandingFooter() {
           </p>
           <div className="uc-footer-contact-list">
             <a href="mailto:hello@uniconnect.app" className="uc-footer-contact-link">
-              <EnvelopeSimple size="0.9375rem" className="uc-footer-contact-icon uc-footer-contact-icon-indigo" />
+              <EnvelopeSimple className="uc-footer-contact-icon uc-footer-contact-icon-indigo" size={18} weight="bold" />
               hello@uniconnect.app
             </a>
-            <span className="uc-footer-contact-item">
-              <MapPin size="0.9375rem" className="uc-footer-contact-icon uc-footer-contact-icon-orange" />
+            <div className="uc-footer-contact-item">
+              <MapPin className="uc-footer-contact-icon uc-footer-contact-icon-orange" size={18} weight="bold" />
               UIU Campus, Dhaka, Bangladesh
-            </span>
+            </div>
           </div>
         </div>
 
@@ -192,10 +192,6 @@ export function LandingFooter() {
         </div>
       </div>
 
-      <div className="uc-footer-hover-text">
-        <TextHoverEffect text="UniConnecT" />
-      </div>
-
       <div className="uc-footer-bottom">
         <div className="uc-footer-bottom-bar">
           <div className="uc-footer-socials">
@@ -205,6 +201,10 @@ export function LandingFooter() {
           </div>
           <p className="uc-footer-copyright">© 2026 Team Mavericks · UIU · Bangladesh</p>
         </div>
+      </div>
+
+      <div className="uc-footer-hover-text">
+        <TextHoverEffect text="UniConnecT" />
       </div>
     </footer>
   )

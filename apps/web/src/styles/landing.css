@@ -1334,10 +1334,16 @@
   background: color-mix(in srgb, var(--surface-page) 94%, var(--surface-raised));
 }
 
-.uc-footer-grid,
-.uc-footer-bottom {
+.uc-footer-grid {
   position: relative;
   z-index: 1;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.uc-footer-bottom {
+  position: relative;
+  z-index: 10;
   max-width: 1240px;
   margin: 0 auto;
 }
@@ -1511,10 +1517,10 @@
 
 .uc-footer-hover-text {
   position: relative;
-  z-index: 1;
+  z-index: 0;
   height: 14rem;
   margin-top: -9rem;
-
+  margin-bottom: -5rem;
   overflow: hidden;
   pointer-events: none;
 }
