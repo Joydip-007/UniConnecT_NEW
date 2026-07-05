@@ -24,3 +24,10 @@
 - Added the collapsed grid-column rules and sidebar utility classes in `index.css` without touching `LeftSidebar` or hook code.
 - Added a focused layout test that proves the grid state flips and persists through the existing preference hook.
 - Did not run `graphify update .` because the task scope explicitly limited code modifications to the three owned files; rebuilding the graph would have modified generated files outside that scope.
+
+## Follow-up fix
+- Reviewer follow-up addressed in `apps/web/src/components/LeftSidebar.tsx` and `apps/web/src/styles/index.css`.
+- Made `.left-sidebar-toggle` the authoritative source for toggle sizing, alignment, padding, border radius, and no-shadow styling by removing the conflicting inline style block from `LeftSidebar.tsx`.
+- Kept collapsed-specific toggle positioning in CSS via `.left-sidebar--collapsed .left-sidebar-toggle`.
+- Removed the duplicate inline screen-reader hiding styles from `NavItem` so `.left-sidebar-visually-hidden` is the single source of truth.
+- Re-ran the required focused tests, `typecheck`, and `lint` after the follow-up fix.

@@ -121,21 +121,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
 
         <span
           className={collapsed ? 'left-sidebar-visually-hidden' : undefined}
-          style={
-            collapsed
-              ? {
-                  position: 'absolute',
-                  width: 1,
-                  height: 1,
-                  padding: 0,
-                  margin: -1,
-                  overflow: 'hidden',
-                  clip: 'rect(0, 0, 0, 0)',
-                  whiteSpace: 'nowrap',
-                  border: 0,
-                }
-              : { flex: 1 }
-          }
+          style={collapsed ? undefined : { flex: 1 }}
         >
           {label}
         </span>
@@ -328,24 +314,6 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         className="left-sidebar-toggle press-feedback"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          alignSelf: collapsed ? 'center' : 'flex-end',
-          width: 36,
-          height: 36,
-          minWidth: 36,
-          minHeight: 36,
-          margin: collapsed ? '0 auto 4px' : '0 6px 4px auto',
-          padding: 0,
-          background: 'var(--surface-card)',
-          color: 'var(--text-secondary)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-md)',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
       >
         <ToggleIcon size={17} />
       </button>

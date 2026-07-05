@@ -486,22 +486,28 @@ select:focus-visible {
 }
 
 .left-sidebar-toggle {
-  width: 100%;
+  align-self: flex-end;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   min-height: 36px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 0 10px;
+  justify-content: center;
+  margin: 0 6px 4px auto;
+  padding: 0;
   border: 0.5px solid var(--border-default);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface-card);
+  box-shadow: none;
   color: var(--text-secondary);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .left-sidebar--collapsed .left-sidebar-toggle {
-  justify-content: center;
-  padding: 0;
+  align-self: center;
+  margin: 0 auto 4px;
 }
 
 .left-sidebar-visually-hidden {
