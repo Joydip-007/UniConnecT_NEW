@@ -89,7 +89,6 @@ export function HeroSection() {
   const navigate = useNavigate()
   const contentRef = useScrollReveal<HTMLDivElement>(0)
   const sectionRef = useRef<HTMLElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
   const [reducedMotion, setReducedMotion] = useState(getReducedMotionPreference)
   const [motionActive, setMotionActive] = useState(!getReducedMotionPreference())
 
@@ -127,21 +126,6 @@ export function HeroSection() {
   }, [reducedMotion])
 
   const duplicatedLines = [...KINETIC_LINES, ...KINETIC_LINES]
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || reducedMotion) return
-
-    if (motionActive) {
-      const playResult = video.play()
-      if (playResult && typeof playResult.catch === 'function') {
-        void playResult.catch(() => {})
-      }
-      return
-    }
-
-    video.pause()
-  }, [motionActive, reducedMotion])
 
   return (
     <section ref={sectionRef} className="uc-hero-shell">
@@ -283,7 +267,11 @@ export function HeroSection() {
             >
               Click a node to explore
             </p>
-             <RadialOrbitalTimeline nodes={HERO_NODES} />
+            <RadialOrbitalTimeline
+              nodes={HERO_NODES}
+              label="UniConnecT product model"
+              motionEnabled={!reducedMotion && motionActive}
+            />
           </div>
         </div>
       </div>

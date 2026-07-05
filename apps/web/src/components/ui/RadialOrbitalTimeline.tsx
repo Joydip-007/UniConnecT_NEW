@@ -21,13 +21,20 @@ export interface OrbitalNode {
 interface RadialOrbitalTimelineProps {
   nodes: OrbitalNode[]
   height?: number
+  motionEnabled?: boolean
+  label?: string
 }
 
 const ORBIT_RADIUS = 168
 /* expo-out for all node micro-interactions */
 const EASE = 'cubic-bezier(0.16, 1, 0.3, 1)'
 
-export function RadialOrbitalTimeline({ nodes, height = 480 }: RadialOrbitalTimelineProps) {
+export function RadialOrbitalTimeline({
+  nodes,
+  height = 480,
+  motionEnabled = true,
+  label = 'Interactive product model',
+}: RadialOrbitalTimelineProps) {
   const [expanded, setExpanded]   = useState<number | null>(null)
   const [hovered,  setHovered]    = useState<number | null>(null)
   const [rotation, setRotation]   = useState(0)
@@ -35,10 +42,11 @@ export function RadialOrbitalTimeline({ nodes, height = 480 }: RadialOrbitalTime
   const containerRef  = useRef<HTMLDivElement>(null)
   const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const resumeTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const shouldAutoRotate = motionEnabled && autoRotate
 
   /* ── Auto-rotation ─────────────────────────────────── */
   useEffect(() => {
-    if (!autoRotate) {
+    if (!shouldAutoRotate) {
       if (intervalRef.current) clearInterval(intervalRef.current)
       return
     }
@@ -46,7 +54,7 @@ export function RadialOrbitalTimeline({ nodes, height = 480 }: RadialOrbitalTime
       setRotation(prev => Number(((prev + 0.22) % 360).toFixed(3)))
     }, 50)
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [autoRotate])
+  }, [shouldAutoRotate])
 
   /* ── Snap to top-right on expand ───────────────────── */
   function centerViewOnNode(id: number) {
@@ -107,6 +115,9 @@ export function RadialOrbitalTimeline({ nodes, height = 480 }: RadialOrbitalTime
   return (
     <div
       ref={containerRef}
+      role="region"
+      aria-label={label}
+      data-motion-active={shouldAutoRotate ? 'true' : 'false'}
       onClick={handleBgClick}
       style={{
         position: 'relative',
@@ -197,10 +208,20 @@ export function RadialOrbitalTimeline({ nodes, height = 480 }: RadialOrbitalTime
 
         return (
           <div
+            role="button"
+            tabIndex={0}
+            aria-label={`${node.title}: ${node.content}`}
             key={node.id}
             onMouseEnter={() => handleNodeEnter(node.id)}
             onMouseLeave={handleNodeLeave}
             onClick={e => { e.stopPropagation(); toggleNode(node.id) }}
+            onKeyDown={e => {
+              if (e.target !== e.currentTarget) return
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                toggleNode(node.id)
+              }
+            }}
             style={{
               position: 'absolute',
               transform: `translate(${pos.x}px, ${pos.y}px) scale(${wrapperScale})`,

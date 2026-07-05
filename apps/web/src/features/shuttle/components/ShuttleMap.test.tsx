@@ -1,4 +1,5 @@
 import { StrictMode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { ShuttleMap } from './ShuttleMap'
@@ -24,17 +25,20 @@ const busStates: Record<string, BusState> = {
 
 describe('ShuttleMap', () => {
   it('mounts under StrictMode without crashing and renders a Leaflet container', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const { container, unmount } = render(
       <StrictMode>
-        <ShuttleMap
-          routes={[route]}
-          busStates={busStates}
-          selectedRouteId="r1"
-          focusMode={false}
-          liveOnly={false}
-          userLocation={null}
-          onSelectRoute={() => {}}
-        />
+        <QueryClientProvider client={client}>
+          <ShuttleMap
+            routes={[route]}
+            busStates={busStates}
+            selectedRouteId="r1"
+            focusMode={false}
+            liveOnly={false}
+            userLocation={null}
+            onSelectRoute={() => {}}
+          />
+        </QueryClientProvider>
       </StrictMode>,
     )
     expect(container.querySelector('.leaflet-container')).not.toBeNull()
