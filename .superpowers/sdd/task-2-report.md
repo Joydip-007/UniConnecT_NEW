@@ -1,32 +1,61 @@
-Status: DONE_WITH_CONCERNS
+# Task 2 report
 
-Files changed:
-- apps/web/src/components/LeftSidebar.tsx
-- apps/web/src/components/LeftSidebar.test.tsx
-- .superpowers/sdd/task-2-report.md
+## Status
+- Completed Task 2 landing section rhythm and scroll-reveal work within the assigned file boundary.
 
-Tests run with results:
-- `npx pnpm --filter web test src/components/LeftSidebar.test.tsx` -> FAIL as expected before implementation; missing toggle/collapsed rendering contract.
-- `npx pnpm --filter web test src/components/LeftSidebar.test.tsx` -> PASS (3 tests)
-- `npx pnpm --filter web typecheck && npx pnpm --filter web lint` -> PASS
+## Implementation details
+- Reworked `useScrollReveal` into a CSS-first progressive enhancement hook:
+  - `animation-timeline: view()` path when supported.
+  - `IntersectionObserver` fallback when scroll timelines are unavailable.
+  - reduced-motion path that leaves content immediately visible and stable.
+- Rebuilt the owned landing sections around a shared editorial system in `landing.css`:
+  - quieter section headers
+  - tighter vertical rhythm
+  - shared card, header, and CTA treatments
+  - mobile/tablet layout rules for the revised section structure
+- Updated `TickerStrip` into a labeled platform band that matches the briefing tone.
+- Reframed `StatsSection` into a two-part briefing with a primary market fact and supporting rail.
+- Reworked `FeaturesSection` into a platform-first content grid with shorter copy and unified card treatment.
+- Reworked `HowItWorks` into an onboarding section with clearer top matter and a tighter three-step track.
+- Turned `UniversitiesSection` into the signature multi-tenant section:
+  - tenant rows with per-university accent variables
+  - animated accent sweep on supporting browsers
+  - static readable fallback everywhere else
+- Reworked `TestimonialsSection`, `PricingSection`, and `CtaSection` to match the new landing stack tone and spacing.
+- Did not add a landing smoke test because the brief explicitly made it optional and the required verification for this task was typecheck/lint, with visual verification deferred to Task 4.
 
-Follow-up note:
-- Fix scope also included the minimal `FeedLayout` prop wiring in `apps/web/src/components/FeedLayout.tsx` so the sidebar rail contract could be exercised end-to-end.
+## Tests and results
+- `npx pnpm typecheck` — passed
+- `npx pnpm lint` — passed
 
-Self-review notes:
-- Implemented the collapsed rail rendering contract only in `LeftSidebar`, including accessible toggle button, collapsed icon-only nav/tool variants, and expanded rendering preservation.
-- Added focused component coverage exactly around the new prop contract and toggle behavior.
-- `FeedLayout` still renders `LeftSidebar` without props, but task scope forbids editing that file. To keep required checks green inside scope, `collapsed` and `onToggleCollapsed` were made backward-compatible optional props with defaults. The new contract still works for explicit callers, but full strict required-prop enforcement needs the later wiring task.
-- `graphify update .` was attempted after the code change per repo instructions, but the rebuild failed with `Operation not permitted`.
+## Files changed
+- `apps/web/src/features/landing/components/TickerStrip.tsx`
+- `apps/web/src/features/landing/components/StatsSection.tsx`
+- `apps/web/src/features/landing/components/FeaturesSection.tsx`
+- `apps/web/src/features/landing/components/HowItWorks.tsx`
+- `apps/web/src/features/landing/components/UniversitiesSection.tsx`
+- `apps/web/src/features/landing/components/TestimonialsSection.tsx`
+- `apps/web/src/features/landing/components/PricingSection.tsx`
+- `apps/web/src/features/landing/components/CtaSection.tsx`
+- `apps/web/src/features/landing/hooks/useScrollReveal.ts`
+- `apps/web/src/styles/landing.css`
 
----
+## Self-review
+- Scope stayed inside the Task 2 ownership list.
+- No backend, API, or shared-package changes were made.
+- Color usage in component code stays on tokens and existing theme-aware values.
+- Borders remain `0.5px solid ...`, no box shadows were introduced, and buttons still rely on pill radii.
+- Motion is limited to opacity/transform for reveals and degrades cleanly under reduced motion.
 
-Fix implementer follow-up (2026-07-05):
+## Concerns
+- `graphify update .` did not complete because the rebuild hit `Operation not permitted` in this environment after printing `Nothing to update or rebuild failed`. Code changes themselves verified cleanly through typecheck and lint.
 
-- Addressed reviewer finding on the toggle button by giving `left-sidebar-toggle` complete inline token-based styling in `LeftSidebar.tsx`, so the control no longer relies on missing Task 3 CSS for its core appearance.
-- Restored the strict Task 2 prop contract: `collapsed` and `onToggleCollapsed` are required again in `LeftSidebar`, and `FeedLayout.tsx` now wires them from `useSidebarRailPreference()`.
-- Added focused coverage that the active route keeps `aria-current="page"`.
+## Fix
+- Moved the reveal hook to an isomorphic layout-timed effect so the fallback mode is established before the first client paint, with `data-reveal-mode` set before `data-reveal-ready`.
+- Kept reduced-motion immediate and stable, and pushed `data-delay` into a CSS custom property so both observer and `animation-timeline` paths share the same staged cadence.
+- Preserved the existing opacity/transform-only motion and existing border/token treatment.
 
-Command results:
-- `npx pnpm --filter web test src/components/LeftSidebar.test.tsx` -> PASS (4 tests)
-- `npx pnpm --filter web typecheck && npx pnpm --filter web lint` -> PASS
+## Verification
+- `npx pnpm typecheck` — passed
+- `npx pnpm lint` — passed
+- `graphify update .` — attempted, but failed with `Operation not permitted` after `Nothing to update or rebuild failed`
