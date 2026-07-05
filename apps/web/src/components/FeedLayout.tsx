@@ -6,7 +6,6 @@ import { LeftSidebar } from '@/components/LeftSidebar'
 import { RightSidebar } from '@/components/RightSidebar'
 import { MobileBottomNav } from '@/components/MobileBottomNav'
 import { ToastHost } from '@/components/ToastHost'
-import { LandingFooter } from '@/features/landing/components/LandingFooter'
 import { useAuthStore } from '@/stores/authStore'
 import { useSocketStore } from '@/stores/socketStore'
 import { useNotificationsSocket } from '@/features/notifications'
@@ -103,9 +102,6 @@ export function FeedLayout() {
         <div className="feed-layout-right">
           <RightSidebar />
         </div>
-      </div>
-      <div style={{ marginTop: 'auto' }}>
-        <LandingFooter />
       </div>
     </div>
   )

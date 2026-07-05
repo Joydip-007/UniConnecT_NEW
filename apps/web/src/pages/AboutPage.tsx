@@ -1,7 +1,6 @@
 import '@/styles/landing.css'
 import { LandingNav } from '@/features/landing/components/LandingNav'
 import { AboutStory } from '@/features/landing/components/AboutStory'
-import { LandingFooter } from '@/features/landing/components/LandingFooter'
 
 export function AboutPage() {
   return (
@@ -12,7 +11,6 @@ export function AboutPage() {
       <main>
         <AboutStory />
       </main>
-      <LandingFooter />
     </div>
   )
 }
