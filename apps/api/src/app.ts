@@ -19,6 +19,7 @@ import { connectionsRouter } from './modules/connections'
 import { contentSyncRouter } from './modules/content-sync'
 import { draftsRouter } from './modules/drafts'
 import { learningRouter } from './modules/learning'
+import { quizRouter } from './modules/quiz'
 import { mentorshipRouter } from './modules/mentorship'
 import { moderationRouter } from './modules/moderation'
 import { presenceRouter } from './modules/presence'
@@ -93,6 +94,7 @@ export function createApp() {
   app.use('/api/v1/push', pushRouter)
   app.use('/api/v1/presence', presenceRouter)
   app.use('/api/v1/learning', learningRouter)
+  app.use('/api/v1/quiz', quizRouter)
   app.use('/api/v1/news', newsRouter)
   app.use('/api/v1/me/drafts', draftsRouter)
   app.use('/api/v1/connections', connectionsRouter)
