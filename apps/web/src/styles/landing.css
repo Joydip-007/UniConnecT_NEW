@@ -148,8 +148,11 @@
 }
 
 @keyframes uc-hero-kinetic-cycle {
-  from { transform: translateY(0); }
-  to { transform: translateY(-50%); }
+  0%, 20% { transform: translateY(0); }
+  25%, 45% { transform: translateY(-12.5%); }
+  50%, 70% { transform: translateY(-25%); }
+  75%, 95% { transform: translateY(-37.5%); }
+  100% { transform: translateY(-50%); }
 }
 
 @keyframes uc-hero-rail {

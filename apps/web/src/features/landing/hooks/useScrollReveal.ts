@@ -3,7 +3,12 @@ import { useEffect, useLayoutEffect, useRef } from 'react'
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 function supportsViewTimeline() {
-  return typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('animation-timeline: view()')
+  // animation-timeline: view() is disabled here: mixing `entry`/`cover` range
+  // names (see landing.css) produces unpredictable per-element reveal
+  // failures depending on element size/position on the page — some sections
+  // never reach opacity 1. The IntersectionObserver fallback below is the
+  // reliable path until the range math is fixed and verified in a real browser.
+  return false
 }
 
 function prefersReducedMotion() {
