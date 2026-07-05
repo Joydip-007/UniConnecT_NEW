@@ -84,6 +84,12 @@ describe('LeftSidebar', () => {
     expect(screen.getByText('Campus tools')).toBeInTheDocument()
   })
 
+  it('keeps the active route marked with aria-current page', () => {
+    renderSidebar(false)
+    expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: 'Explore' })).not.toHaveAttribute('aria-current')
+  })
+
   it('renders collapsed nav as accessible icon buttons without visible labels', () => {
     const { container } = renderSidebar(true)
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument()

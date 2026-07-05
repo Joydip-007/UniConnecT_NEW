@@ -227,11 +227,11 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, collapsed = false, o
 // ── LeftSidebar ──────────────────────────────────────────
 
 interface LeftSidebarProps {
-  collapsed?: boolean
-  onToggleCollapsed?: () => void
+  collapsed: boolean
+  onToggleCollapsed: () => void
 }
 
-export function LeftSidebar({ collapsed = false, onToggleCollapsed = () => {} }: LeftSidebarProps) {
+export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) {
   const navigate = useViewTransitionNavigate()
   const { pathname } = useLocation()
   const { user } = useAuthStore()
@@ -328,6 +328,25 @@ export function LeftSidebar({ collapsed = false, onToggleCollapsed = () => {} }:
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         className="left-sidebar-toggle press-feedback"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          alignSelf: collapsed ? 'center' : 'flex-end',
+          width: 36,
+          height: 36,
+          minWidth: 36,
+          minHeight: 36,
+          margin: collapsed ? '0 auto 4px' : '0 6px 4px auto',
+          padding: 0,
+          background: 'var(--surface-card)',
+          color: 'var(--text-secondary)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-md)',
+          boxShadow: 'var(--shadow-xs)',
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
       >
         <ToggleIcon size={17} />
       </button>
