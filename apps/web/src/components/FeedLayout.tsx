@@ -11,6 +11,7 @@ import { useSocketStore } from '@/stores/socketStore'
 import { useNotificationsSocket } from '@/features/notifications'
 import { usePresenceHeartbeat } from '@/features/presence'
 import { useAchievementSocket } from '@/features/learning'
+import { useSidebarRailPreference } from '@/hooks/useSidebarRailPreference'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 
 const bannerStyle: React.CSSProperties = {
@@ -31,6 +32,7 @@ const bannerStyle: React.CSSProperties = {
 export function FeedLayout() {
   const userId = useAuthStore((s) => s.user?.id)
   const { connected, hasConnected } = useSocketStore()
+  const { isCollapsed, toggleCollapsed } = useSidebarRailPreference()
   const reduced = useReducedMotion()
   useNotificationsSocket(userId)
   usePresenceHeartbeat(Boolean(userId))
@@ -92,9 +94,9 @@ export function FeedLayout() {
       <TopNav />
       <MobileBottomNav />
       <ToastHost />
-      <div className="feed-layout-grid">
+      <div className="feed-layout-grid" data-left-sidebar={isCollapsed ? 'collapsed' : 'expanded'}>
         <div className="feed-layout-left">
-          <LeftSidebar />
+          <LeftSidebar collapsed={isCollapsed} onToggleCollapsed={toggleCollapsed} />
         </div>
         <main className="feed-layout-main" style={{ minWidth: 0, paddingTop: 18 }}>
           <Outlet />

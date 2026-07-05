@@ -20,6 +20,8 @@ import {
   BookOpen,
   BarChart2,
   ExternalLink,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
   Handshake,
   GraduationCap,
@@ -41,23 +43,29 @@ interface NavItemProps {
   badge?: number
   isActive?: boolean
   hasDot?: boolean
+  collapsed?: boolean
   onClick: () => void
 }
 
-function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, onClick }: NavItemProps) {
+function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, collapsed = false, onClick }: NavItemProps) {
   const reduced = useReducedMotion()
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
+      aria-label={collapsed ? label : undefined}
+      title={collapsed ? label : undefined}
       className="nav-sidebar-item press-feedback"
       style={{
         position: 'relative',
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
+        justifyContent: collapsed ? 'center' : undefined,
+        gap: collapsed ? 0 : 10,
         width: '100%',
-        padding: '8px 10px',
+        minHeight: 44,
+        padding: collapsed ? '8px 0' : '8px 10px',
         background: 'transparent',
         border: 'none',
         borderRadius: 'var(--r-sm)',
@@ -82,7 +90,17 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, o
         />
       )}
 
-      <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+      <span
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : undefined,
+          gap: collapsed ? 0 : 10,
+          width: '100%',
+        }}
+      >
         <div className="nav-item-icon" style={{ position: 'relative', flexShrink: 0, lineHeight: 0 }}>
           <Icon size={17} />
           {hasDot && (
@@ -99,11 +117,41 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, o
               }}
             />
           )}
+          {collapsed && badge != null && badge > 0 && (
+            <span
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                top: -7,
+                right: -9,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 'var(--r-pill)',
+                background: 'var(--uc-indigo)',
+                color: 'var(--text-primary)',
+                fontSize: 9,
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 3px',
+                lineHeight: 1,
+                border: '0.5px solid var(--surface-card)',
+              }}
+            >
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
         </div>
 
-        <span style={{ flex: 1 }}>{label}</span>
+        <span
+          className={collapsed ? 'left-sidebar-visually-hidden' : undefined}
+          style={collapsed ? undefined : { flex: 1 }}
+        >
+          {label}
+        </span>
 
-        {badge != null && badge > 0 && (
+        {!collapsed && badge != null && badge > 0 && (
           <span
             style={{
               minWidth: 18,
@@ -135,19 +183,25 @@ interface CampusToolProps {
   label: string
   iconColor: string
   iconBg: string
+  collapsed?: boolean
   onClick: () => void
 }
 
-function CampusTool({ icon: Icon, label, iconColor, iconBg, onClick }: CampusToolProps) {
+function CampusTool({ icon: Icon, label, iconColor, iconBg, collapsed = false, onClick }: CampusToolProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-label={collapsed ? label : undefined}
+      title={collapsed ? label : undefined}
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
+        justifyContent: collapsed ? 'center' : undefined,
+        gap: collapsed ? 0 : 10,
         width: '100%',
-        padding: '7px 4px',
+        minHeight: 44,
+        padding: collapsed ? '6px 0' : '7px 4px',
         background: 'transparent',
         border: 'none',
         borderRadius: 'var(--r-sm)',
@@ -171,15 +225,24 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, onClick }: CampusToo
       >
         <Icon size={15} />
       </div>
-      <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
-      <ExternalLink size={12} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+      {!collapsed && (
+        <>
+          <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
+          <ExternalLink size={12} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        </>
+      )}
     </button>
   )
 }
 
 // ── LeftSidebar ──────────────────────────────────────────
 
-export function LeftSidebar() {
+interface LeftSidebarProps {
+  collapsed: boolean
+  onToggleCollapsed: () => void
+}
+
+export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) {
   const navigate = useViewTransitionNavigate()
   const { pathname } = useLocation()
   const { user } = useAuthStore()
@@ -208,6 +271,7 @@ export function LeftSidebar() {
 
   const connectionsShown = useCountUp(profileData?.stats.connections ?? 0)
   const pendingShown = useCountUp(profileData?.stats.pendingReceived ?? 0)
+  const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose
 
   const navGroups: Array<{
     groupLabel: string
@@ -256,7 +320,7 @@ export function LeftSidebar() {
   return (
     <aside
       style={{
-        width: 232,
+        width: collapsed ? 68 : 232,
         flexShrink: 0,
         position: 'sticky',
         top: 78,
@@ -267,10 +331,21 @@ export function LeftSidebar() {
         gap: 6,
         paddingBottom: 20,
       }}
-      className="rail-scroll"
+      className={`rail-scroll left-sidebar-shell${collapsed ? ' left-sidebar--collapsed' : ''}`}
     >
+      <button
+        type="button"
+        onClick={onToggleCollapsed}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        className="left-sidebar-toggle press-feedback"
+      >
+        <ToggleIcon size={17} />
+      </button>
+
       {/* Profile mini-card */}
       <button
+        type="button"
         onClick={() => navigate(profilePath)}
         aria-label="View my profile"
         style={{
@@ -283,77 +358,112 @@ export function LeftSidebar() {
           flexShrink: 0,
         }}
       >
-      <div
-        className="interactive-surface"
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          overflow: 'hidden',
-          flexShrink: 0,
-        }}
-      >
-        {/* Cover strip — user photo or dot-pattern fallback */}
-        <div
-          style={{
-            height: 60,
-            background: user?.profile.coverUrl
-              ? `center / cover no-repeat url(${user.profile.coverUrl})`
-              : [
-                  'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
-                  'var(--surface-raised)',
-                ].join(', '),
-            backgroundSize: user?.profile.coverUrl ? undefined : '14px 14px',
-          }}
-        />
-
-        {/* Name + dept + stats */}
-        <div style={{ padding: '0 14px 14px' }}>
-          {/* Avatar pulled up over the cover with negative margin */}
+        {collapsed ? (
           <div
+            className="interactive-surface"
             style={{
-              marginTop: -20,
-              marginBottom: 8,
-              display: 'inline-block',
-              borderRadius: '50%',
-              background: 'var(--tenant-accent)',
-              padding: 1.5,
-              lineHeight: 0,
+              background: 'transparent',
+              border: 'none',
+              borderRadius: 'var(--r-lg)',
+              overflow: 'hidden',
+              flexShrink: 0,
+              display: 'flex',
+              justifyContent: 'center',
+              padding: '4px 0',
             }}
           >
             <div
               style={{
                 borderRadius: '50%',
-                border: '2px solid var(--surface-card)',
+                background: 'var(--tenant-accent)',
+                padding: 1.5,
                 lineHeight: 0,
               }}
             >
-              <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
+              <div
+                style={{
+                  borderRadius: '50%',
+                  border: '2px solid var(--surface-card)',
+                  lineHeight: 0,
+                }}
+              >
+                <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
+              </div>
             </div>
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-            {user?.profile.fullName ?? 'Loading…'}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, minHeight: 16 }}>
-            {deptLabel}
-          </div>
+        ) : (
+          <div
+            className="interactive-surface"
+            style={{
+              background: 'var(--surface-card)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-lg)',
+              overflow: 'hidden',
+              flexShrink: 0,
+            }}
+          >
+            {/* Cover strip — user photo or dot-pattern fallback */}
+            <div
+              style={{
+                height: 60,
+                background: user?.profile.coverUrl
+                  ? `center / cover no-repeat url(${user.profile.coverUrl})`
+                  : [
+                      'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
+                      'var(--surface-raised)',
+                    ].join(', '),
+                backgroundSize: user?.profile.coverUrl ? undefined : '14px 14px',
+              }}
+            />
 
-          {/* Connection stats */}
-          <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
-            {[
-              { label: 'connections', value: connectionsShown },
-              { label: 'pending', value: pendingShown },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
-                  {value}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{label}</span>
+            {/* Name + dept + stats */}
+            <div style={{ padding: '0 14px 14px' }}>
+              {/* Avatar pulled up over the cover with negative margin */}
+              <div
+                style={{
+                  marginTop: -20,
+                  marginBottom: 8,
+                  display: 'inline-block',
+                  borderRadius: '50%',
+                  background: 'var(--tenant-accent)',
+                  padding: 1.5,
+                  lineHeight: 0,
+                }}
+              >
+                <div
+                  style={{
+                    borderRadius: '50%',
+                    border: '2px solid var(--surface-card)',
+                    lineHeight: 0,
+                  }}
+                >
+                  <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
+                </div>
               </div>
-            ))}
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                {user?.profile.fullName ?? 'Loading…'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, minHeight: 16 }}>
+                {deptLabel}
+              </div>
+
+              {/* Connection stats */}
+              <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
+                {[
+                  { label: 'connections', value: connectionsShown },
+                  { label: 'pending', value: pendingShown },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+                      {value}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        )}
       </button>
 
       {/* Nav list — grouped, no card chrome */}
@@ -361,13 +471,16 @@ export function LeftSidebar() {
         {navGroups.map((group, gi) => (
           <div key={group.groupLabel} style={{ marginTop: gi === 0 ? 0 : 6 }}>
             <div
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: 'var(--text-tertiary)',
-                padding: '6px 10px 2px',
-                letterSpacing: '0.04em',
-              }}
+              className={collapsed ? 'left-sidebar-visually-hidden' : undefined}
+              style={collapsed
+                ? undefined
+                : {
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: 'var(--text-tertiary)',
+                    padding: '6px 10px 2px',
+                    letterSpacing: '0.04em',
+                  }}
             >
               {group.groupLabel}
             </div>
@@ -379,6 +492,7 @@ export function LeftSidebar() {
                 badge={item.badge}
                 hasDot={item.hasDot}
                 isActive={isActive(item.path)}
+                collapsed={collapsed}
                 onClick={() => navigate(item.path)}
               />
             ))}
@@ -395,23 +509,26 @@ export function LeftSidebar() {
           flexShrink: 0,
         }}
       >
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: 'var(--text-tertiary)',
-            padding: '0 6px 6px',
-            letterSpacing: '0.04em',
-          }}
-        >
-          Campus tools
-        </div>
+        {!collapsed && (
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 500,
+              color: 'var(--text-tertiary)',
+              padding: '0 6px 6px',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Campus tools
+          </div>
+        )}
 
         <CampusTool
           icon={Bus}
           label="Shuttle live"
           iconColor="var(--uc-cyan)"
           iconBg="var(--uc-cyan-bg)"
+          collapsed={collapsed}
           onClick={() => navigate(PATHS.SHUTTLE)}
         />
         <CampusTool
@@ -419,6 +536,7 @@ export function LeftSidebar() {
           label="eLMS"
           iconColor="var(--uc-orange-l)"
           iconBg="var(--uc-orange-bg)"
+          collapsed={collapsed}
           onClick={() => window.open('https://elms.uiu.ac.bd', '_blank', 'noopener,noreferrer')}
         />
         <CampusTool
@@ -426,6 +544,7 @@ export function LeftSidebar() {
           label="CGPA calculator"
           iconColor="var(--uc-mint)"
           iconBg="var(--uc-mint-bg)"
+          collapsed={collapsed}
           onClick={() => window.open('https://cgpa.uiu.ac.bd', '_blank', 'noopener,noreferrer')}
         />
       </div>
