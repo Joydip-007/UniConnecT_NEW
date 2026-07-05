@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { HeroSection } from './HeroSection'
@@ -25,8 +25,6 @@ function mockMatchMedia({ matches }: MatchMediaConfig) {
 
 beforeEach(() => {
   mockMatchMedia({ matches: false })
-  vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
-  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
 
   class MockIntersectionObserver implements IntersectionObserver {
     static callback: IntersectionObserverCallback | null = null
@@ -87,7 +85,7 @@ function renderHero() {
 }
 
 describe('HeroSection', () => {
-  it('renders the refreshed hero CTAs and product loop region', () => {
+  it('renders the refreshed hero CTAs and product model region', () => {
     renderHero()
 
     expect(
@@ -97,35 +95,44 @@ describe('HeroSection', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join the UIU pilot' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Read the story' })).toBeInTheDocument()
-    expect(screen.getByLabelText('UniConnecT product loop')).toBeInTheDocument()
-    const video = screen.getByLabelText('UniConnecT product loop video') as HTMLVideoElement
-    expect(video.muted).toBe(true)
-    expect(video.playsInline).toBe(true)
-    expect(video.autoplay).toBe(true)
-    expect(video.loop).toBe(true)
+    expect(screen.getByRole('region', { name: 'UniConnecT product model' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Campus feed: Verified updates across students, clubs, and faculty',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Direct messaging: Real-time coordination without the group-chat sprawl',
+      }),
+    ).toBeInTheDocument()
   })
 
-  it('pauses and resumes the product loop when the hero scrolls offscreen', async () => {
+  it('pauses and resumes hero motion when the hero scrolls offscreen', () => {
     renderHero()
 
-    await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1))
+    const model = screen.getByRole('region', { name: 'UniConnecT product model' })
+    expect(model).toHaveAttribute('data-motion-active', 'true')
 
     triggerIntersection(false)
 
-    await waitFor(() => expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1))
+    expect(model).toHaveAttribute('data-motion-active', 'false')
     expect(document.querySelector('.uc-hero-kinetic-track')).toHaveClass('is-paused')
 
     triggerIntersection(true)
 
-    await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2))
+    expect(model).toHaveAttribute('data-motion-active', 'true')
     expect(document.querySelector('.uc-hero-kinetic-track')).not.toHaveClass('is-paused')
   })
 
-  it('shows the static poster fallback when reduced motion is preferred', () => {
+  it('keeps hero motion paused when reduced motion is preferred', () => {
     mockMatchMedia({ matches: true })
     renderHero()
 
-    expect(screen.getByAltText('UniConnecT product still')).toBeInTheDocument()
-    expect(screen.queryByLabelText('UniConnecT product loop video')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'UniConnecT product model' })).toHaveAttribute(
+      'data-motion-active',
+      'false',
+    )
+    expect(document.querySelector('.uc-hero-kinetic-track')).toHaveClass('is-paused')
   })
 })
