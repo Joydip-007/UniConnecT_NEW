@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import AboutPage from './AboutPage'
@@ -62,7 +62,17 @@ describe('AboutPage', () => {
       }),
     ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'About UniConnecT story' })).toBeInTheDocument()
-    expect(screen.getAllByRole('contentinfo').length).toBeGreaterThan(0)
+    const footer = screen
+      .getAllByRole('contentinfo')
+      .find((node) => within(node).queryByText('hello@uniconnect.app'))
+
+    expect(footer).toBeDefined()
+    if (!footer) {
+      throw new Error('LandingFooter content was not rendered')
+    }
+
+    expect(within(footer).getByText('hello@uniconnect.app')).toBeInTheDocument()
+    expect(within(footer).getByText('UIU Campus, Dhaka, Bangladesh')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Join free' }).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'UniConnecT home' })).toBeInTheDocument()
   })

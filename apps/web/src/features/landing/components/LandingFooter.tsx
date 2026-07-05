@@ -29,9 +29,9 @@ const COMMUNITY_LINKS = [
 ] as const
 
 const LEGAL_LINKS = [
-  { label: 'Privacy policy', href: '#privacy' },
-  { label: 'Terms of use', href: '#terms' },
-  { label: 'Cookie policy', href: '#cookies' },
+  { label: 'Privacy policy' },
+  { label: 'Terms of use' },
+  { label: 'Cookie policy' },
 ] as const
 
 const SOCIAL_LINKS = [
@@ -76,15 +76,15 @@ function FooterColumnHeader({ children }: { children: ReactNode }) {
 
 type FooterLinkProps = {
   children: ReactNode
-  href: string
+  href?: string
 }
 
 function FooterLink({ children, href }: FooterLinkProps) {
   const location = useLocation()
   const navigate = useNavigate()
-  if (href === '#') {
+  if (!href || href === '#') {
     return (
-      <span className="uc-footer-link" style={{ display: 'block' }}>
+      <span aria-disabled="true" className="uc-footer-link" style={{ display: 'block' }}>
         {children}
       </span>
     )
@@ -178,8 +178,8 @@ export function LandingFooter() {
         <div>
           <FooterColumnHeader>Legal</FooterColumnHeader>
           <nav aria-label="Legal links">
-            {LEGAL_LINKS.map(({ href, label }) => (
-              <FooterLink key={label} href={href}>
+            {LEGAL_LINKS.map(({ label }) => (
+              <FooterLink key={label}>
                 {label}
               </FooterLink>
             ))}
