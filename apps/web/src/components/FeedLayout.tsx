@@ -94,7 +94,7 @@ export function FeedLayout() {
       <TopNav />
       <MobileBottomNav />
       <ToastHost />
-      <div className="feed-layout-grid">
+      <div className="feed-layout-grid" data-left-sidebar={isCollapsed ? 'collapsed' : 'expanded'}>
         <div className="feed-layout-left">
           <LeftSidebar collapsed={isCollapsed} onToggleCollapsed={toggleCollapsed} />
         </div>
