@@ -33,17 +33,15 @@ interface TagProps {
   label: string
   bg: string
   color: string
-  border?: string
 }
 
-function Tag({ label, bg, color, border = 'var(--border-default)' }: TagProps) {
+function Tag({ label, bg, color }: TagProps) {
   return (
     <div
       className="uc-feature-tag"
       style={{
         background: bg,
         color,
-        borderColor: border,
       }}
     >
       {label}
@@ -85,12 +83,7 @@ export function FeaturesSection() {
                 Verified campus updates, reactions, comments, and media posts inside one timeline
                 that belongs to the university instead of an external social graph.
               </p>
-              <Tag
-                label="Must-have"
-                bg="var(--uc-indigo-bg)"
-                color="var(--uc-indigo-l)"
-                border="var(--uc-indigo-bdr)"
-              />
+              <Tag label="Must-have" bg="var(--uc-indigo-bg)" color="var(--uc-indigo-l)" />
 
               <div className="uc-feature-preview">
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -113,7 +106,7 @@ export function FeaturesSection() {
                   <div
                     style={{
                       background: 'var(--uc-indigo-bg)',
-                      border: '0.5px solid var(--uc-indigo-bdr)',
+                      border: '0.5px solid var(--border-default)',
                       borderRadius: 'var(--r-pill)',
                       padding: '2px 10px',
                       fontSize: 11,
@@ -125,7 +118,7 @@ export function FeaturesSection() {
                   <div
                     style={{
                       background: 'var(--uc-cyan-bg)',
-                      border: '0.5px solid var(--uc-cyan-bdr)',
+                      border: '0.5px solid var(--border-default)',
                       borderRadius: 'var(--r-pill)',
                       padding: '2px 10px',
                       fontSize: 11,
@@ -147,12 +140,7 @@ export function FeaturesSection() {
                 Alumni and hiring partners post internships and full-time roles directly into the
                 campus network, filtered by university context.
               </p>
-              <Tag
-                label="Alumni-powered"
-                bg="var(--uc-mint-bg)"
-                color="var(--uc-mint)"
-                border="var(--uc-mint-bdr)"
-              />
+              <Tag label="Alumni-powered" bg="var(--uc-mint-bg)" color="var(--uc-mint)" />
 
               <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {[
@@ -194,12 +182,7 @@ export function FeaturesSection() {
                 Direct and group messaging stays inside the same verified identity system, so
                 conversations, follow-ups, and introductions do not drift into separate apps.
               </p>
-              <Tag
-                label="Live"
-                bg="var(--uc-cyan-bg)"
-                color="var(--uc-cyan)"
-                border="var(--uc-cyan-bdr)"
-              />
+              <Tag label="Live" bg="var(--uc-cyan-bg)" color="var(--uc-cyan)" />
             </div>
           </div>
 
@@ -211,12 +194,7 @@ export function FeaturesSection() {
                 Seminars, hackathons, and student programs move through one RSVP flow with
                 reminders, campus visibility, and a native place in the product loop.
               </p>
-              <Tag
-                label="Campus-wide"
-                bg="var(--uc-orange-bg)"
-                color="var(--uc-orange-l)"
-                border="var(--uc-orange-bdr)"
-              />
+              <Tag label="Campus-wide" bg="var(--uc-orange-bg)" color="var(--uc-orange-l)" />
             </div>
           </div>
 
@@ -228,12 +206,7 @@ export function FeaturesSection() {
                 Department circles, clubs, and community threads keep operational updates and
                 long-tail campus culture inside the same private tenant.
               </p>
-              <Tag
-                label="Community"
-                bg="var(--uc-indigo-bg)"
-                color="var(--uc-indigo-xl)"
-                border="var(--uc-indigo-bdr)"
-              />
+              <Tag label="Community" bg="var(--uc-indigo-bg)" color="var(--uc-indigo-xl)" />
             </div>
           </div>
         </div>

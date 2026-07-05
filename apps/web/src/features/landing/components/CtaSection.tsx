@@ -6,6 +6,13 @@ import { PATHS } from '@/router/paths'
 export function CtaSection() {
   const navigate = useNavigate()
   const cardRef = useScrollReveal<HTMLDivElement>()
+  const scrollToUniversities = () => {
+    const target = document.querySelector('#universities')
+    if (!target) return
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' })
+  }
 
   return (
     <section id="contact" className="uc-cta-section">
@@ -30,7 +37,7 @@ export function CtaSection() {
               </OrangeBtn>
               <GhostBtn
                 style={{ padding: '11px 24px', fontSize: 15 }}
-                onClick={() => navigate('/contact')}
+                onClick={scrollToUniversities}
               >
                 For universities
               </GhostBtn>

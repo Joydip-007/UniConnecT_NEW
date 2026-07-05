@@ -15,21 +15,18 @@ const TENANTS = [
     name: 'UIU',
     accent: 'var(--uc-orange)',
     tone: 'var(--uc-orange-bg)',
-    border: 'var(--uc-orange-bdr)',
     note: 'Pilot tenant · student feed, jobs, events',
   },
   {
     name: 'BUET',
     accent: 'var(--uc-indigo)',
     tone: 'var(--uc-indigo-bg)',
-    border: 'var(--uc-indigo-bdr)',
     note: 'Engineering communities · alumni hiring loops',
   },
   {
     name: 'DU',
     accent: 'var(--uc-mint)',
     tone: 'var(--uc-mint-bg)',
-    border: 'var(--uc-mint-bdr)',
     note: 'Faculty broadcast · cross-department coordination',
   },
 ] as const
@@ -75,7 +72,7 @@ export function UniversitiesSection() {
             </div>
 
             <div className="uc-universities-stage-list">
-              {TENANTS.map(({ name, accent, tone, border, note }) => (
+              {TENANTS.map(({ name, accent, tone, note }) => (
                 <article
                   key={name}
                   className="uc-tenant-row"
@@ -83,7 +80,6 @@ export function UniversitiesSection() {
                     {
                       '--tenant-accent': accent,
                       '--tenant-tone': tone,
-                      '--tenant-border': border,
                     } as CSSProperties
                   }
                 >
