@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { Check } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
@@ -39,9 +39,9 @@ function PlanCard({ name, price, priceNote, description, features, cta, highligh
 
       <div className="uc-pricing-feature-list">
         {features.map((feature) => (
-          <div key={feature} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <Check size={15} style={{ color: 'var(--uc-mint)', flexShrink: 0, marginTop: 2 }} />
-            <span style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{feature}</span>
+          <div key={feature} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
+            <Check size="0.9375rem" style={{ color: 'var(--uc-mint)', flexShrink: 0, marginTop: '0.125rem' }} />
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{feature}</span>
           </div>
         ))}
       </div>

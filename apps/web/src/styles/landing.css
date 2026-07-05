@@ -74,9 +74,13 @@
   flex-shrink: 0;
 }
 
-/* Desktop nav links — declared on <a> via className */
-.nav-link-hover:hover,
-.nav-link-hover:focus-visible {
+@media (hover: hover) {
+  .nav-link-hover:hover {
+    color: var(--text-primary);
+  }
+}
+.nav-link-hover:focus-visible,
+.nav-link-hover:active {
   color: var(--text-primary);
 }
 
@@ -1510,7 +1514,7 @@
   z-index: 1;
   height: 14rem;
   margin-top: -9rem;
-  margin-bottom: -5rem;
+
   overflow: hidden;
   pointer-events: none;
 }

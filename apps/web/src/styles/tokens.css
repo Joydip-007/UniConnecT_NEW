@@ -142,11 +142,11 @@
   /* In light mode the -l/-xl steps invert intent: tints (--*-bg) are PALE,
      so accent TEXT on them must step DARKER, not lighter. These are the
      legible-on-pale-tint tones (nav-active text, badges, filter pills). */
-  --uc-indigo:        #4747C2;
-  --uc-indigo-l:      #4242BD;
-  --uc-indigo-xl:     #3A3AA8;
-  --uc-indigo-bg:     rgba(71, 71, 194, 0.08);
-  --uc-indigo-bdr:    rgba(71, 71, 194, 0.22);
+  --uc-indigo:        #4338CA;
+  --uc-indigo-l:      #3730A3;
+  --uc-indigo-xl:     #312E81;
+  --uc-indigo-bg:     rgba(55, 48, 163, 0.08);
+  --uc-indigo-bdr:    rgba(55, 48, 163, 0.22);
 
   --uc-orange:        #D44A1F;
   --uc-orange-l:      #A8391A;
@@ -155,9 +155,9 @@
 
   --uc-navy:          #1E3A70;
 
-  --uc-cyan:          #0891B2;
-  --uc-cyan-bg:       rgba(8, 145, 178, 0.08);
-  --uc-cyan-bdr:      rgba(8, 145, 178, 0.25);
+  --uc-cyan:          #0E7490;
+  --uc-cyan-bg:       rgba(14, 116, 144, 0.08);
+  --uc-cyan-bdr:      rgba(14, 116, 144, 0.25);
   /* Deeper green: legible as text on --uc-mint-bg AND clears AA as a
      filled-button background under white --on-accent (mid-tone #059669 did neither). */
   --uc-mint:          #047857;

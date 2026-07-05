@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useScroll } from 'framer-motion'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 import { PATHS } from '@/router/paths'
@@ -29,6 +30,8 @@ const VALUES = [
 ] as const
 
 function useStoryScroll(rootRef: RefObject<HTMLDivElement | null>) {
+  const { scrollY } = useScroll()
+
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
@@ -63,22 +66,22 @@ function useStoryScroll(rootRef: RefObject<HTMLDivElement | null>) {
       })
     }
 
-    const onScroll = () => {
+    const scheduleUpdate = () => {
       if (!raf) {
         raf = requestAnimationFrame(update)
       }
     }
 
     update()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    window.addEventListener('resize', onScroll)
+    const unsubscribeScroll = scrollY.on('change', scheduleUpdate)
+    window.addEventListener('resize', scheduleUpdate)
 
     return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('resize', onScroll)
+      unsubscribeScroll()
+      window.removeEventListener('resize', scheduleUpdate)
       if (raf) cancelAnimationFrame(raf)
     }
-  }, [rootRef])
+  }, [rootRef, scrollY])
 }
 
 type StoryPanelProps = {

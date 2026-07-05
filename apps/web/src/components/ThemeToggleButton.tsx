@@ -1,5 +1,5 @@
 import { useState, useEffect, type CSSProperties } from 'react'
-import { Moon, Sun } from 'lucide-react'
+import { Moon, Sun } from '@phosphor-icons/react'
 import { useThemeStore } from '@/stores/themeStore'
 
 interface ThemeToggleButtonProps {
@@ -73,12 +73,14 @@ export function ThemeToggleButton({ size = 36, className }: ThemeToggleButtonPro
       onMouseLeave={() => { setHovered(false); setPressed(false) }}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => { setPressed(false); setHovered(false) }}
       aria-label={label}
       aria-pressed={resolved === 'dark'}
       style={hitStyle}
     >
       <span aria-hidden="true" style={circleStyle}>
-        <Icon size={16} strokeWidth={1.75} />
+        <Icon size={16} weight="bold" />
       </span>
     </button>
   )

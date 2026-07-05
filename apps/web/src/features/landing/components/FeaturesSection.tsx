@@ -1,10 +1,10 @@
-import { Briefcase, Calendar, MessageCircle, MessageSquare, Users } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Briefcase, CalendarBlank, ChatCircle, Chat, Users, ThumbsUp } from '@phosphor-icons/react'
+import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 import { Skel } from './Skel'
 
 interface IconCircleProps {
-  icon: LucideIcon
+  icon: PhosphorIcon
   bg: string
   color: string
 }
@@ -13,18 +13,18 @@ function IconCircle({ icon: Icon, bg, color }: IconCircleProps) {
   return (
     <div
       style={{
-        width: 46,
-        height: 46,
+        width: '2.875rem',
+        height: '2.875rem',
         borderRadius: 8,
         background: bg,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 18,
+        marginBottom: '1.125rem',
         flexShrink: 0,
       }}
     >
-      <Icon size={22} style={{ color }} />
+      <Icon size="1.375rem" style={{ color }} />
     </div>
   )
 }
@@ -77,7 +77,7 @@ export function FeaturesSection() {
         <div ref={gridRef} className="uc-features-grid">
           <div className="reveal uc-span-2 card-hover-border" data-delay="0" style={{ gridColumn: 'span 2' }}>
             <div className="uc-feature-card">
-              <IconCircle icon={MessageCircle} bg="var(--uc-indigo-bg)" color="var(--uc-indigo-l)" />
+              <IconCircle icon={ChatCircle} bg="var(--uc-indigo-bg)" color="var(--uc-indigo-l)" />
               <h3 className="uc-feature-title">Social feed</h3>
               <p className="uc-feature-copy">
                 Verified campus updates, reactions, comments, and media posts inside one timeline
@@ -86,46 +86,46 @@ export function FeaturesSection() {
               <Tag label="Must-have" bg="var(--uc-indigo-bg)" color="var(--uc-indigo-l)" />
 
               <div className="uc-feature-preview">
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
                   <div
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: '1.75rem',
+                      height: '1.75rem',
                       borderRadius: '50%',
                       background: 'var(--uc-indigo)',
                       flexShrink: 0,
                     }}
                   />
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3125rem' }}>
                     <Skel w="88%" h={7} />
                     <Skel w="70%" h={7} />
                     <Skel w="48%" h={7} />
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 7 }}>
+                <div style={{ display: 'flex', gap: '0.4375rem' }}>
                   <div
                     style={{
                       background: 'var(--uc-indigo-bg)',
                       border: '0.5px solid var(--border-default)',
                       borderRadius: 'var(--r-pill)',
-                      padding: '2px 10px',
-                      fontSize: 11,
+                      padding: '0.125rem 0.625rem',
+                      fontSize: '0.6875rem',
                       color: 'var(--uc-indigo-l)',
                     }}
                   >
-                    👍 18
+                    <ThumbsUp size="0.75rem" weight="bold" /> 18
                   </div>
                   <div
                     style={{
                       background: 'var(--uc-cyan-bg)',
                       border: '0.5px solid var(--border-default)',
                       borderRadius: 'var(--r-pill)',
-                      padding: '2px 10px',
-                      fontSize: 11,
+                      padding: '0.125rem 0.625rem',
+                      fontSize: '0.6875rem',
                       color: 'var(--uc-cyan)',
                     }}
                   >
-                    💬 6
+                    <ChatCircle size="0.75rem" weight="bold" /> 6
                   </div>
                 </div>
               </div>
@@ -142,7 +142,7 @@ export function FeaturesSection() {
               </p>
               <Tag label="Alumni-powered" bg="var(--uc-mint-bg)" color="var(--uc-mint)" />
 
-              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4375rem' }}>
                 {[
                   { title: 'SWE Intern', company: 'Pathao · Remote', dot: 'var(--uc-mint)' },
                   { title: 'ML Engineer', company: 'bKash · On-site', dot: 'var(--uc-indigo)' },
@@ -153,18 +153,18 @@ export function FeaturesSection() {
                       background: 'var(--surface-raised)',
                       border: '0.5px solid var(--border-default)',
                       borderRadius: 8,
-                      padding: '8px 11px',
+                      padding: '0.5rem 0.6875rem',
                       display: 'flex',
-                      gap: 10,
+                      gap: '0.625rem',
                       alignItems: 'center',
                     }}
                   >
-                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />
+                    <div style={{ width: '0.4375rem', height: '0.4375rem', borderRadius: '50%', background: dot, flexShrink: 0 }} />
                     <div>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+                      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                         {title}
                       </p>
-                      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3 }}>
+                      <p style={{ margin: 0, fontSize: '0.6875rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
                         {company}
                       </p>
                     </div>
@@ -176,7 +176,7 @@ export function FeaturesSection() {
 
           <div className="reveal card-hover-border" data-delay="160">
             <div className="uc-feature-card">
-              <IconCircle icon={MessageSquare} bg="var(--uc-cyan-bg)" color="var(--uc-cyan)" />
+              <IconCircle icon={Chat} bg="var(--uc-cyan-bg)" color="var(--uc-cyan)" />
               <h3 className="uc-feature-title">Real-time chat</h3>
               <p className="uc-feature-copy">
                 Direct and group messaging stays inside the same verified identity system, so
@@ -188,7 +188,7 @@ export function FeaturesSection() {
 
           <div className="reveal card-hover-border" data-delay="240">
             <div className="uc-feature-card">
-              <IconCircle icon={Calendar} bg="var(--uc-orange-bg)" color="var(--uc-orange-l)" />
+              <IconCircle icon={CalendarBlank} bg="var(--uc-orange-bg)" color="var(--uc-orange-l)" />
               <h3 className="uc-feature-title">Events</h3>
               <p className="uc-feature-copy">
                 Seminars, hackathons, and student programs move through one RSVP flow with

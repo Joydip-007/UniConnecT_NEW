@@ -1,4 +1,4 @@
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle } from '@phosphor-icons/react'
 import type { CSSProperties } from 'react'
 import { OrangeBtn } from '@/components/Button'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
@@ -104,8 +104,8 @@ export function UniversitiesSection() {
                 data-delay={String(180 + index * 70)}
               >
                 <CheckCircle
-                  size={18}
-                  style={{ color: 'var(--uc-mint)', flexShrink: 0, marginTop: 2 }}
+                  size="1.125rem"
+                  style={{ color: 'var(--uc-mint)', flexShrink: 0, marginTop: '0.125rem' }}
                 />
                 <p className="uc-university-benefit-copy">{text}</p>
               </div>

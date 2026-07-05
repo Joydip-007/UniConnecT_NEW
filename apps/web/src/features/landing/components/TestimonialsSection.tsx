@@ -46,11 +46,11 @@ export function TestimonialsSection() {
               <div className="uc-testimonial-mark">&ldquo;</div>
               <p className="uc-testimonial-quote">{quote}</p>
 
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                 <div
                   style={{
-                    width: 38,
-                    height: 38,
+                    width: '2.375rem',
+                    height: '2.375rem',
                     borderRadius: '50%',
                     background: avatarColor,
                     display: 'flex',

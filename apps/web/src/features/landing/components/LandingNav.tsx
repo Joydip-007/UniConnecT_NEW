@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useScroll, useMotionValueEvent } from 'framer-motion'
 import { BrandLogo } from '@/components/BrandLogo'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { ThemeToggleButton } from '@/components/ThemeToggleButton'
@@ -21,16 +22,18 @@ export function LandingNav() {
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  useEffect(() => {
-    const onScroll = () => {
-      if (!navRef.current) return
-      navRef.current.classList.toggle('nav-scrolled', window.scrollY > 12)
-    }
+  const { scrollY } = useScroll()
 
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  useMotionValueEvent(scrollY, 'change', (latest) => {
+    if (!navRef.current) return
+    navRef.current.classList.toggle('nav-scrolled', latest > 12)
+  })
+
+  // Ensure initial state is set
+  useEffect(() => {
+    if (!navRef.current) return
+    navRef.current.classList.toggle('nav-scrolled', scrollY.get() > 12)
+  }, [scrollY])
 
   useEffect(() => {
     setMenuOpen(false)
@@ -111,8 +114,8 @@ export function LandingNav() {
 
         <div className="uc-nav-actions">
           <ThemeToggleButton size={36} />
-          <GhostBtn onClick={() => navigate(PATHS.LOGIN)}>Sign in</GhostBtn>
-          <OrangeBtn onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}>
+          <GhostBtn onClick={() => navigate(PATHS.LOGIN)} aria-label="Sign in to your account">Sign in</GhostBtn>
+          <OrangeBtn onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))} aria-label="Create a free account">
             Join free
           </OrangeBtn>
         </div>
@@ -158,12 +161,13 @@ export function LandingNav() {
           </a>
         ))}
         <div className="uc-nav-mobile-actions">
-          <GhostBtn style={{ flex: 1 }} onClick={() => navigate(PATHS.LOGIN)}>
+          <GhostBtn style={{ flex: 1 }} onClick={() => navigate(PATHS.LOGIN)} aria-label="Sign in to your account">
             Sign in
           </GhostBtn>
           <OrangeBtn
             style={{ flex: 1 }}
             onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
+            aria-label="Create a free account"
           >
             Join free
           </OrangeBtn>

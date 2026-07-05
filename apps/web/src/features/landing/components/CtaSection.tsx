@@ -30,13 +30,13 @@ export function CtaSection() {
 
             <div className="uc-cta-actions">
               <OrangeBtn
-                style={{ padding: '11px 28px', fontSize: 15 }}
+                style={{ padding: '0.6875rem 1.75rem', fontSize: '0.9375rem' }}
                 onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
               >
                 Get started free
               </OrangeBtn>
               <GhostBtn
-                style={{ padding: '11px 24px', fontSize: 15 }}
+                style={{ padding: '0.6875rem 1.5rem', fontSize: '0.9375rem' }}
                 onClick={scrollToUniversities}
               >
                 For universities

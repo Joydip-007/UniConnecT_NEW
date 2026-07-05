@@ -1,4 +1,4 @@
-import { ArrowUpRight, Rocket } from 'lucide-react'
+import { ArrowUpRight, Rocket } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
@@ -6,7 +6,7 @@ import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 import { PATHS } from '@/router/paths'
 import { RadialOrbitalTimeline, type OrbitalNode } from '@/components/ui/RadialOrbitalTimeline'
-import { Rss, MessageSquare, Users, Briefcase, Search } from 'lucide-react'
+import { Rss, Chat, Users, Briefcase, MagnifyingGlass } from '@phosphor-icons/react'
 
 const HERO_NODES: OrbitalNode[] = [
   {
@@ -26,7 +26,7 @@ const HERO_NODES: OrbitalNode[] = [
     title: 'Direct messaging',
     subtitle: 'Chat',
     content: 'Real-time coordination without the group-chat sprawl',
-    icon: MessageSquare,
+    icon: Chat,
     relatedIds: [1, 3],
     accent: 'var(--uc-cyan)',
     accentBg: 'var(--uc-cyan-bg)',
@@ -62,7 +62,7 @@ const HERO_NODES: OrbitalNode[] = [
     title: 'Explore',
     subtitle: 'Discovery',
     content: 'Campus discovery without leaving the platform',
-    icon: Search,
+    icon: MagnifyingGlass,
     relatedIds: [1, 4],
     accent: 'var(--uc-amber)',
     accentBg: 'var(--uc-amber-bg)',
@@ -153,7 +153,7 @@ export function HeroSection() {
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
-            gap: 28,
+            gap: '1.75rem',
           }}
         >
           <div
@@ -162,12 +162,12 @@ export function HeroSection() {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 10,
+              gap: '0.625rem',
               alignSelf: 'flex-start',
               background: 'var(--surface-raised)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--r-pill)',
-              padding: '8px 14px',
+              padding: '0.5rem 0.875rem',
             }}
           >
             <span className="hero-pulse-dot" />
@@ -176,11 +176,11 @@ export function HeroSection() {
             </span>
           </div>
 
-          <div className="reveal" data-delay="80" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="reveal" data-delay="80" style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             <p
               style={{
                 margin: 0,
-                fontSize: 13,
+                fontSize: '0.8125rem',
                 fontWeight: 500,
                 color: 'var(--uc-orange)',
               }}
@@ -207,10 +207,10 @@ export function HeroSection() {
             data-delay="160"
             style={{
               margin: 0,
-              fontSize: 17,
+              fontSize: '1.0625rem',
               lineHeight: 1.7,
               color: 'var(--text-secondary)',
-              maxWidth: 640,
+              maxWidth: '40rem',
             }}
           >
             UniConnecT gives universities one private layer for updates, messaging, hiring,
@@ -221,20 +221,20 @@ export function HeroSection() {
           <div
             className="reveal"
             data-delay="240"
-            style={{ display: 'flex', gap: 13, flexWrap: 'wrap' }}
+            style={{ display: 'flex', gap: '0.8125rem', flexWrap: 'wrap' }}
           >
             <OrangeBtn
-              style={{ padding: '11px 24px', fontSize: 15, gap: 9 }}
+              style={{ padding: '0.6875rem 1.5rem', fontSize: '0.9375rem', gap: '0.5625rem' }}
               onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
             >
-              <Rocket size={16} />
+              <Rocket size="1rem" />
               Join the UIU pilot
             </OrangeBtn>
             <GhostBtn
-              style={{ padding: '11px 22px', fontSize: 15, gap: 9 }}
+              style={{ padding: '0.6875rem 1.375rem', fontSize: '0.9375rem', gap: '0.5625rem' }}
               onClick={() => navigate(PATHS.ABOUT)}
             >
-              <ArrowUpRight size={16} />
+              <ArrowUpRight size="1rem" />
               Read the story
             </GhostBtn>
           </div>

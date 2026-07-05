@@ -1,6 +1,7 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, ElementType } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Mail, MapPin } from 'lucide-react'
+import { EnvelopeSimple, MapPin } from '@phosphor-icons/react'
+
 import { BrandLogo } from '@/components/BrandLogo'
 import {
   FacebookIcon,
@@ -48,7 +49,7 @@ function SocialLink({
   label,
 }: {
   href: string
-  icon: (props: { size?: number }) => JSX.Element
+  icon: ElementType<any>
   label: string
 }) {
   if (href === '#') {
@@ -58,14 +59,14 @@ function SocialLink({
         aria-disabled="true"
         className="uc-footer-social-link is-disabled"
       >
-        <Icon size={17} />
+        <Icon size="1.0625rem" />
       </span>
     )
   }
 
   return (
     <a key={label} href={href} aria-label={label} className="uc-footer-social-link">
-      <Icon size={17} />
+      <Icon size="1.0625rem" />
     </a>
   )
 }
@@ -143,11 +144,11 @@ export function LandingFooter() {
           </p>
           <div className="uc-footer-contact-list">
             <a href="mailto:hello@uniconnect.app" className="uc-footer-contact-link">
-              <Mail size={15} className="uc-footer-contact-icon uc-footer-contact-icon-indigo" />
+              <EnvelopeSimple size="0.9375rem" className="uc-footer-contact-icon uc-footer-contact-icon-indigo" />
               hello@uniconnect.app
             </a>
             <span className="uc-footer-contact-item">
-              <MapPin size={15} className="uc-footer-contact-icon uc-footer-contact-icon-orange" />
+              <MapPin size="0.9375rem" className="uc-footer-contact-icon uc-footer-contact-icon-orange" />
               UIU Campus, Dhaka, Bangladesh
             </span>
           </div>
@@ -191,6 +192,10 @@ export function LandingFooter() {
         </div>
       </div>
 
+      <div className="uc-footer-hover-text">
+        <TextHoverEffect text="UniConnecT" />
+      </div>
+
       <div className="uc-footer-bottom">
         <div className="uc-footer-bottom-bar">
           <div className="uc-footer-socials">
@@ -200,10 +205,6 @@ export function LandingFooter() {
           </div>
           <p className="uc-footer-copyright">© 2026 Team Mavericks · UIU · Bangladesh</p>
         </div>
-      </div>
-
-      <div className="uc-footer-hover-text">
-        <TextHoverEffect text="UniConnecT" />
       </div>
     </footer>
   )
