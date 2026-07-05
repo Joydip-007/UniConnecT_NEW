@@ -36,7 +36,10 @@ export const router = createBrowserRouter([
   { path: PATHS.VERIFY_OTP, element: page(() => import('@/pages/OtpPage')) },
 
   // Public marketing page — viewable signed in or out
-  { path: PATHS.ABOUT, element: page(() => import('@/pages/AboutPage')) },
+  {
+    path: PATHS.ABOUT,
+    element: page(() => import('@/pages/AboutPage').then((mod) => ({ default: mod.AboutPage }))),
+  },
 
   {
     element: <ProtectedRoute />,

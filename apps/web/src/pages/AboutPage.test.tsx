@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
-import AboutPage from './AboutPage'
+import { AboutPage } from './AboutPage'
 
 beforeEach(() => {
   Object.defineProperty(window, 'CSS', {

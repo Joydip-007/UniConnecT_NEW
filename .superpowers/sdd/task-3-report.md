@@ -51,3 +51,15 @@
 ### Exact verification results
 - `npx pnpm --filter web exec vitest run src/pages/AboutPage.test.tsx` — passed (`1` file, `1` test)
 - `npx pnpm typecheck && npx pnpm lint` — passed
+
+## Final fix after re-review
+- Converted `apps/web/src/pages/AboutPage.tsx` from a default export to a named `AboutPage` export to match the task constraint.
+- Removed the extra outer `<footer>` wrapper so `LandingFooter` renders directly and does not end up nested inside another footer landmark.
+- Updated `apps/web/src/pages/AboutPage.test.tsx` to import the named export.
+- Updated the `/about` route in `apps/web/src/router/index.tsx` to adapt the named export back into the router's lazy default shape without changing the helper for other pages.
+
+### Exact verification results
+- `npx pnpm --filter web exec vitest run src/pages/AboutPage.test.tsx` — passed (`1` file, `1` test)
+- `npx pnpm typecheck` — passed
+- `npx pnpm lint` — passed
+- `graphify update .` — passed after rerun with escalation; `graphify-out/graph.json` and `graphify-out/GRAPH_REPORT.md` were updated
