@@ -29,7 +29,7 @@ export function ThemeToggleButton({ size = 36, className }: ThemeToggleButtonPro
     return () => mq.removeEventListener('change', update)
   }, [])
 
-  const tap = coarse ? Math.max(size, MIN_TAP) : size
+  const tap = Math.max(size, coarse ? MIN_TAP : 40)
   const scale = pressed ? 0.96 : hovered ? 1.04 : 1
 
   const hitStyle: CSSProperties = {

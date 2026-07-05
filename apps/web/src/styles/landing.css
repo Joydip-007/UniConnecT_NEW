@@ -309,18 +309,17 @@
 
 .uc-hero-headline {
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: block;
   font-size: clamp(48px, 7vw, 86px);
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.05;
   color: var(--text-primary);
 }
 
 .uc-hero-kinetic-window {
   position: relative;
-  display: block;
+  display: inline-block;
+  vertical-align: bottom;
   height: 1.05em;
   overflow: hidden;
   color: var(--uc-orange);

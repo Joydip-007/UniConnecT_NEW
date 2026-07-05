@@ -5,8 +5,9 @@ type BaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  'inline-flex items-center justify-center whitespace-nowrap gap-[7px] text-[13px] font-medium cursor-pointer transition-[opacity,transform,background-color,color,border-color] duration-150 ease-out ' +
-  'hover:opacity-90 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ' +
+  'relative inline-flex items-center justify-center whitespace-nowrap gap-[7px] text-[13px] font-medium cursor-pointer transition-[opacity,transform,background-color,color,border-color] duration-150 ease-out ' +
+  'hover:opacity-90 active:scale-[0.96] disabled:opacity-40 disabled:cursor-not-allowed ' +
+  'before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-[40px] before:min-h-[40px] before:content-[\'\'] ' +
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--uc-indigo-xl)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-page)]';
 
 export function PrimaryBtn({ className = '', ...props }: BaseProps) {
