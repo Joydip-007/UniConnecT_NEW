@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
+import type {
+  Flashcard,
+  FlashcardDeck,
+  FlashcardReviewItem,
+  FlashcardReviewResult,
+  ReviewRating,
+  SharedNote,
+} from '../types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,6 +70,37 @@ interface PaginatedResponse<T> {
   page: number
   hasMore: boolean
 }
+
+type CreateFlashcardDeckInput = {
+  title: string
+  description?: string | null
+}
+
+type UpdateFlashcardDeckInput = Partial<CreateFlashcardDeckInput> & {
+  is_archived?: boolean
+}
+
+type CreateFlashcardInput = {
+  front: string
+  back: string
+  hint?: string | null
+}
+
+type UpdateFlashcardInput = Partial<CreateFlashcardInput>
+
+type CreateSharedNoteInput = {
+  title: string
+  body: string
+}
+
+type UpdateSharedNoteInput = Partial<CreateSharedNoteInput>
+
+const flashcardDecksKey = (groupId: string) => ['groups', 'flashcard-decks', { groupId }] as const
+const flashcardsKey = (groupId: string, deckId: string) =>
+  ['groups', 'flashcards', { groupId, deckId }] as const
+const flashcardReviewKey = (groupId: string, deckId: string) =>
+  ['groups', 'flashcard-review', { groupId, deckId }] as const
+const sharedNotesKey = (groupId: string) => ['groups', 'shared-notes', { groupId }] as const
 
 // ── Join requests ─────────────────────────────────────────────────────────────
 
@@ -222,5 +261,170 @@ export function useGroupStats(groupId: string) {
     queryFn: () =>
       api.get<{ data: GroupStats }>(`/groups/${groupId}/stats`).then((r) => r.data.data),
     enabled: !!groupId,
+  })
+}
+
+// ── Flashcards ───────────────────────────────────────────────────────────────
+
+export function useFlashcardDecks(groupId: string) {
+  return useQuery({
+    queryKey: flashcardDecksKey(groupId),
+    queryFn: () =>
+      api.get<{ data: FlashcardDeck[] }>(`/groups/${groupId}/flashcard-decks`).then((r) => r.data.data),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateFlashcardDeck(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateFlashcardDeckInput) =>
+      api.post<{ data: FlashcardDeck }>(`/groups/${groupId}/flashcard-decks`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: flashcardDecksKey(groupId) })
+    },
+  })
+}
+
+export function useUpdateFlashcardDeck(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ deckId, input }: { deckId: string; input: UpdateFlashcardDeckInput }) =>
+      api.patch<{ data: FlashcardDeck }>(`/groups/${groupId}/flashcard-decks/${deckId}`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: flashcardDecksKey(groupId) })
+    },
+  })
+}
+
+export function useDeleteFlashcardDeck(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (deckId: string) =>
+      api.delete<{ data: { deleted: true } }>(`/groups/${groupId}/flashcard-decks/${deckId}`).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: flashcardDecksKey(groupId) })
+    },
+  })
+}
+
+export function useFlashcards(groupId: string, deckId: string) {
+  return useQuery({
+    queryKey: flashcardsKey(groupId, deckId),
+    queryFn: () =>
+      api
+        .get<{ data: Flashcard[] }>(`/groups/${groupId}/flashcard-decks/${deckId}/cards`)
+        .then((r) => r.data.data),
+    enabled: !!groupId && !!deckId,
+  })
+}
+
+function useInvalidateFlashcards(groupId: string, deckId: string) {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: flashcardsKey(groupId, deckId) })
+    queryClient.invalidateQueries({ queryKey: flashcardDecksKey(groupId) })
+    queryClient.invalidateQueries({ queryKey: flashcardReviewKey(groupId, deckId) })
+  }
+}
+
+export function useCreateFlashcard(groupId: string, deckId: string) {
+  const invalidateFlashcards = useInvalidateFlashcards(groupId, deckId)
+  return useMutation({
+    mutationFn: (input: CreateFlashcardInput) =>
+      api
+        .post<{ data: Flashcard }>(`/groups/${groupId}/flashcard-decks/${deckId}/cards`, input)
+        .then((r) => r.data.data),
+    onSuccess: invalidateFlashcards,
+  })
+}
+
+export function useUpdateFlashcard(groupId: string, deckId: string) {
+  const invalidateFlashcards = useInvalidateFlashcards(groupId, deckId)
+  return useMutation({
+    mutationFn: ({ cardId, input }: { cardId: string; input: UpdateFlashcardInput }) =>
+      api.patch<{ data: Flashcard }>(`/groups/${groupId}/flashcards/${cardId}`, input).then((r) => r.data.data),
+    onSuccess: invalidateFlashcards,
+  })
+}
+
+export function useDeleteFlashcard(groupId: string, deckId: string) {
+  const invalidateFlashcards = useInvalidateFlashcards(groupId, deckId)
+  return useMutation({
+    mutationFn: (cardId: string) =>
+      api.delete<{ data: { deleted: true } }>(`/groups/${groupId}/flashcards/${cardId}`).then((r) => r.data.data),
+    onSuccess: invalidateFlashcards,
+  })
+}
+
+export function useReviewQueue(groupId: string, deckId: string) {
+  return useQuery({
+    queryKey: flashcardReviewKey(groupId, deckId),
+    queryFn: () =>
+      api
+        .get<{ data: PaginatedResponse<FlashcardReviewItem> }>(
+          `/groups/${groupId}/flashcard-decks/${deckId}/review?limit=50`,
+        )
+        .then((r) => r.data.data),
+    enabled: !!groupId && !!deckId,
+  })
+}
+
+export function useReviewFlashcard(groupId: string, deckId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ cardId, rating }: { cardId: string; rating: ReviewRating }) =>
+      api
+        .post<{ data: FlashcardReviewResult }>(`/groups/${groupId}/flashcards/${cardId}/review`, { rating })
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: flashcardReviewKey(groupId, deckId) })
+      queryClient.invalidateQueries({ queryKey: flashcardDecksKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: flashcardsKey(groupId, deckId) })
+    },
+  })
+}
+
+// ── Shared notes ─────────────────────────────────────────────────────────────
+
+export function useSharedNotes(groupId: string) {
+  return useQuery({
+    queryKey: sharedNotesKey(groupId),
+    queryFn: () =>
+      api.get<{ data: PaginatedResponse<SharedNote> }>(`/groups/${groupId}/shared-notes?limit=50`).then((r) => r.data.data),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateSharedNote(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateSharedNoteInput) =>
+      api.post<{ data: SharedNote }>(`/groups/${groupId}/shared-notes`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sharedNotesKey(groupId) })
+    },
+  })
+}
+
+export function useUpdateSharedNote(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ noteId, input }: { noteId: string; input: UpdateSharedNoteInput }) =>
+      api.patch<{ data: SharedNote }>(`/groups/${groupId}/shared-notes/${noteId}`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sharedNotesKey(groupId) })
+    },
+  })
+}
+
+export function useDeleteSharedNote(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (noteId: string) =>
+      api.delete<{ data: { deleted: true } }>(`/groups/${groupId}/shared-notes/${noteId}`).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sharedNotesKey(groupId) })
+    },
   })
 }

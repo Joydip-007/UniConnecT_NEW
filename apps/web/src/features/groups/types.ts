@@ -1,6 +1,13 @@
 export type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other'
 export type AllowedRole = 'student' | 'alumni' | 'faculty' | 'admin'
 export type MemberRole = 'owner' | 'admin' | 'moderator' | 'member'
+export type ReviewRating = 'again' | 'hard' | 'good' | 'easy'
+
+export interface GroupUserSummary {
+  id: string
+  fullName: string | null
+  avatarUrl: string | null
+}
 
 export interface Group {
   id: string
@@ -79,4 +86,69 @@ export interface GroupCollabJob {
     avatarUrl: string | null
     department: string | null
   }
+}
+
+export interface FlashcardDeck {
+  id: string
+  groupId: string
+  createdBy: string | null
+  title: string
+  description: string | null
+  isArchived: boolean
+  cardCount: number
+  dueCount: number
+  createdAt: string
+  updatedAt: string
+  creator: GroupUserSummary | null
+}
+
+export interface FlashcardReview {
+  userId: string
+  easeFactor: number
+  intervalDays: number
+  repetitionCount: number
+  dueAt: string | null
+  lastReviewedAt: string | null
+  lastRating: ReviewRating | null
+}
+
+export interface Flashcard {
+  id: string
+  deckId: string
+  groupId: string
+  createdBy: string | null
+  front: string
+  back: string
+  hint: string | null
+  createdAt: string
+  updatedAt: string
+  creator: GroupUserSummary | null
+  review: FlashcardReview | null
+}
+
+export type FlashcardReviewItem = Flashcard
+
+export interface FlashcardReviewResult {
+  cardId: string
+  userId: string
+  groupId: string
+  easeFactor: number
+  intervalDays: number
+  repetitionCount: number
+  dueAt: string | null
+  lastReviewedAt: string | null
+  lastRating: ReviewRating | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SharedNote {
+  id: string
+  groupId: string
+  createdBy: string | null
+  title: string
+  body: string
+  createdAt: string
+  updatedAt: string
+  creator: GroupUserSummary | null
 }
