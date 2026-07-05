@@ -86,6 +86,10 @@ async function getActivityCount(
       return typeof payload?.eligible === 'boolean' && payload.eligible ? 1 : 0
     case 'unit_completed':
       return countRows('unit_completions', { user_id: userId })
+    case 'deck_contributed':
+      return countRows('group_flashcard_decks', { created_by: userId })
+    case 'flashcard_review_completed':
+      return countRows('group_flashcard_reviews', { user_id: userId })
     case 'streak_milestone':
       return typeof payload?.streak === 'number' ? payload.streak : 0
     case 'path_completed':
