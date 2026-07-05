@@ -32,86 +32,32 @@ export function HowItWorks() {
   const sectionRef = useScrollReveal<HTMLDivElement>()
 
   return (
-    <section id="how-it-works">
-      <div
-        ref={sectionRef}
-        className="uc-how-wrap"
-        style={{ maxWidth: 1240, margin: '0 auto', padding: '72px 52px 96px' }}
-      >
-        <h2
-          className="reveal"
-          data-delay="0"
-          style={{
-            margin: 0,
-            maxWidth: 560,
-            fontSize: 'clamp(32px, 4vw, 48px)',
-            fontWeight: 500,
-            letterSpacing: '-2px',
-            lineHeight: 1.12,
-            color: 'var(--text-primary)',
-          }}
-        >
-          Up and running in three steps.
-        </h2>
+    <section id="how-it-works" className="uc-landing-section">
+      <div ref={sectionRef} className="uc-section-shell uc-how-wrap">
+        <div className="uc-section-header uc-how-header">
+          <div className="reveal" data-delay="0">
+            <p className="uc-section-eyebrow">Onboarding</p>
+            <h2 className="uc-section-title">Three moves to get a campus tenant live.</h2>
+          </div>
+          <p className="reveal uc-section-copy uc-how-copy" data-delay="80">
+            The flow stays practical: verify identity, shape the profile, then move straight into
+            the feed, groups, jobs, and messaging layer.
+          </p>
+        </div>
 
-        {/* Steps track — no card containers; numbers carry the structure */}
-        <div
-          className="uc-how-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            columnGap: 48,
-            rowGap: 48,
-            marginTop: 72,
-          }}
-        >
-          {STEPS.map(({ num, accent, title, body }, i) => (
+        <div className="uc-how-grid">
+          {STEPS.map(({ num, accent, title, body }, index) => (
             <div
               key={num}
-              className="reveal"
-              data-delay={String(120 + i * 90)}
-              style={{
-                position: 'relative',
-                paddingTop: 24,
-                borderTop: `0.5px solid ${accent}`,
-              }}
+              className="reveal uc-how-step"
+              data-delay={String(120 + index * 90)}
+              style={{ borderTopColor: accent }}
             >
-              <div
-                style={{
-                  fontSize: 'clamp(56px, 6vw, 88px)',
-                  fontWeight: 500,
-                  letterSpacing: '-3px',
-                  lineHeight: 0.95,
-                  color: accent,
-                  marginBottom: 36,
-                }}
-              >
+              <div className="uc-how-step-number" style={{ color: accent }}>
                 {num}
               </div>
-
-              <h3
-                style={{
-                  margin: '0 0 10px',
-                  fontSize: 18,
-                  fontWeight: 500,
-                  letterSpacing: '-0.2px',
-                  color: 'var(--text-primary)',
-                  lineHeight: 1.3,
-                }}
-              >
-                {title}
-              </h3>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 14,
-                  color: 'var(--text-secondary)',
-                  lineHeight: 1.7,
-                  maxWidth: '32ch',
-                }}
-              >
-                {body}
-              </p>
+              <h3 className="uc-how-step-title">{title}</h3>
+              <p className="uc-how-step-copy">{body}</p>
             </div>
           ))}
         </div>

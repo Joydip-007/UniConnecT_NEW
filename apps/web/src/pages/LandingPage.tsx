@@ -34,9 +34,7 @@ export default function LandingPage() {
         <PricingSection />
         <CtaSection />
       </main>
-      <footer>
-        <LandingFooter />
-      </footer>
+      <LandingFooter />
     </div>
   )
 }

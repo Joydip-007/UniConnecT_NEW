@@ -1,8 +1,8 @@
-import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
-import { GhostBtn, OrangeBtn } from '@/components/Button'
-import { useNavigate } from 'react-router-dom'
-import { PATHS } from '@/router/paths'
 import { Check } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
+import { PATHS } from '@/router/paths'
 
 interface PlanProps {
   name: string
@@ -17,30 +17,14 @@ interface PlanProps {
 
 function PlanCard({ name, price, priceNote, description, features, cta, highlighted, onCta }: PlanProps) {
   return (
-    <div
-      style={{
-        background: highlighted ? 'var(--surface-raised)' : 'var(--surface-card)',
-        border: highlighted ? '0.5px solid rgba(91,91,214,.4)' : '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-xl)',
-        padding: '36px 32px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 24,
-      }}
-    >
+    <article className={`uc-pricing-card${highlighted ? ' is-highlighted' : ''}`}>
       <div>
-        <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 500, letterSpacing: '0.06em', color: highlighted ? 'var(--uc-indigo-l)' : 'var(--text-tertiary)' }}>
-          {name}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
-          <span style={{ fontSize: 'clamp(32px, 4vw, 44px)', fontWeight: 500, letterSpacing: '-1.5px', lineHeight: 1, color: 'var(--text-primary)' }}>
-            {price}
-          </span>
-          <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{priceNote}</span>
+        <p className={`uc-pricing-plan-label${highlighted ? ' is-highlighted' : ''}`}>{name}</p>
+        <div className="uc-pricing-price-row">
+          <span className="uc-pricing-price">{price}</span>
+          <span className="uc-pricing-price-note">{priceNote}</span>
         </div>
-        <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          {description}
-        </p>
+        <p className="uc-pricing-description">{description}</p>
       </div>
 
       {highlighted ? (
@@ -53,96 +37,42 @@ function PlanCard({ name, price, priceNote, description, features, cta, highligh
         </GhostBtn>
       )}
 
-      <div
-        style={{
-          borderTop: '0.5px solid var(--border-default)',
-          paddingTop: 20,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        {features.map((f) => (
-          <div key={f} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <div className="uc-pricing-feature-list">
+        {features.map((feature) => (
+          <div key={feature} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <Check size={15} style={{ color: 'var(--uc-mint)', flexShrink: 0, marginTop: 2 }} />
-            <span style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f}</span>
+            <span style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{feature}</span>
           </div>
         ))}
       </div>
-    </div>
+    </article>
   )
 }
 
 export function PricingSection() {
-  const navigate    = useNavigate()
-  const sectionRef  = useScrollReveal<HTMLDivElement>()
+  const navigate = useNavigate()
+  const sectionRef = useScrollReveal<HTMLDivElement>()
 
   return (
-    <section id="pricing">
-      <div
-        ref={sectionRef}
-        className="uc-pricing-wrap"
-        style={{ maxWidth: 1240, margin: '0 auto', padding: '96px 52px' }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: 64 }}>
-          <p
-            className="reveal"
-            data-delay="0"
-            style={{
-              margin: '0 0 13px',
-              fontSize: 11,
-              fontWeight: 500,
-              letterSpacing: '0.06em',
-              color: 'var(--uc-indigo-l)',
-            }}
-          >
-            Pricing
-          </p>
-          <h2
-            className="reveal"
-            data-delay="80"
-            style={{
-              margin: '0 0 14px',
-              fontSize: 'clamp(32px, 4vw, 48px)',
-              fontWeight: 500,
-              letterSpacing: '-2px',
-              lineHeight: 1.12,
-              color: 'var(--text-primary)',
-            }}
-          >
-            Free for students, always.
-          </h2>
-          <p
-            className="reveal"
-            data-delay="160"
-            style={{
-              margin: '0 auto',
-              fontSize: 16,
-              color: 'var(--text-secondary)',
-              lineHeight: 1.75,
-              maxWidth: 480,
-            }}
-          >
-            Universities fund access for their community. Students never pay.
+    <section id="pricing" className="uc-landing-section">
+      <div ref={sectionRef} className="uc-section-shell uc-pricing-wrap">
+        <div className="uc-section-header uc-pricing-header">
+          <div className="reveal" data-delay="0">
+            <p className="uc-section-eyebrow">Pricing</p>
+            <h2 className="uc-section-title">Free for students. Institution-funded at the tenant level.</h2>
+          </div>
+          <p className="reveal uc-section-copy uc-pricing-copy" data-delay="80">
+            The model stays clean: students get the full campus network, while universities fund
+            onboarding, controls, and branded deployment for their institution.
           </p>
         </div>
 
-        <div
-          className="uc-pricing-grid reveal"
-          data-delay="200"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 16,
-            maxWidth: 800,
-            margin: '0 auto',
-          }}
-        >
+        <div className="uc-pricing-grid reveal" data-delay="160">
           <PlanCard
             name="Students"
             price="$0"
             priceNote="forever"
-            description="Full access to the UniConnecT platform — feed, jobs, events, chat, mentorship, and more."
+            description="Full access to the UniConnecT platform: feed, jobs, events, chat, mentorship, and more."
             features={[
               'Campus feed and social posts',
               'Job and internship listings',
@@ -172,18 +102,15 @@ export function PricingSection() {
             highlighted={true}
             onCta={() => {
               const el = document.querySelector('#contact')
-              if (el) el.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+              if (el) {
+                el.scrollIntoView({
+                  behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                })
+              }
             }}
           />
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 767px) {
-          .uc-pricing-wrap { padding: 64px 20px !important; }
-          .uc-pricing-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </section>
   )
 }

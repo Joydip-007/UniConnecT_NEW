@@ -1,14 +1,17 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { OrangeBtn, GhostBtn } from '@/components/Button'
+import { GhostBtn, OrangeBtn } from '@/components/Button'
+import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
 import { PATHS } from '@/router/paths'
+
+const HOME_PATH = '/'
 
 const TEAM = [
   { initials: 'JD', color: 'var(--uc-indigo)', name: 'Joydip Datta', role: 'Full-stack' },
   { initials: 'SF', color: 'var(--uc-orange)', name: 'Saem Ferdous', role: 'Backend' },
   { initials: 'MH', color: 'var(--uc-cyan)', name: 'Monabbur Hosen Bhuiyan', role: 'Frontend' },
   { initials: 'MA', color: 'var(--uc-mint)', name: 'Mahfujur Rahman Himel Akon', role: 'Design' },
-]
+] as const
 
 const VALUES = [
   {
@@ -23,47 +26,53 @@ const VALUES = [
     label: 'Useful, not addictive',
     body: 'Jobs, mentorship, events, study groups. Tools that move your life forward, not just your scroll.',
   },
-]
+] as const
 
-/**
- * Story-scroll: panels stack via sticky + rising z-index, and each incoming
- * panel swings up from 30°→0° (pivoting bottom-left), scrubbed to scroll —
- * mirroring the GSAP reference without adding the dependency.
- */
 function useStoryScroll(rootRef: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
 
     const sections = Array.from(root.querySelectorAll<HTMLElement>('[data-story-section]'))
-    const cards = sections.map((s) => s.querySelector<HTMLElement>('[data-story-card]'))
-
+    const cards = sections.map((section) => section.querySelector<HTMLElement>('[data-story-card]'))
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
     if (reduce) {
-      cards.forEach((c) => c && (c.style.transform = 'none'))
+      cards.forEach((card) => {
+        if (card) {
+          card.style.transform = 'none'
+        }
+      })
       return
     }
 
     let raf = 0
     const update = () => {
       raf = 0
-      const vh = window.innerHeight
-      sections.forEach((section, i) => {
-        const card = cards[i]
-        if (!card || i === 0) return // first panel never rotates
+      const viewportHeight = window.innerHeight
+
+      sections.forEach((section, index) => {
+        const card = cards[index]
+        if (!card || index === 0) return
+
         const top = section.getBoundingClientRect().top
-        // top bottom (vh) → top 25% (0.25vh): rotation 30 → 0
-        const progress = Math.min(1, Math.max(0, (vh - top) / (vh * 0.75)))
-        card.style.transform = `rotate(${30 * (1 - progress)}deg)`
+        const progress = Math.min(1, Math.max(0, (viewportHeight - top) / (viewportHeight * 0.78)))
+        const rotation = 20 * (1 - progress)
+        const translateY = 26 * (1 - progress)
+        card.style.transform = `translate3d(0, ${translateY}px, 0) rotate(${rotation}deg)`
       })
     }
+
     const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update)
+      if (!raf) {
+        raf = requestAnimationFrame(update)
+      }
     }
 
     update()
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onScroll)
+
     return () => {
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
@@ -72,59 +81,44 @@ function useStoryScroll(rootRef: RefObject<HTMLDivElement | null>) {
   }, [rootRef])
 }
 
-type PanelProps = {
-  index: number
-  num: string
-  label: string
+type StoryPanelProps = {
   accent: string
-  bg: string
+  background: string
   children: ReactNode
+  index: number
+  label: string
+  num: string
 }
 
-function StoryPanel({ index, num, label, accent, bg, children }: PanelProps) {
+function StoryPanel({ accent, background, children, index, label, num }: StoryPanelProps) {
+  const panelStyle = {
+    '--story-accent': accent,
+    '--story-background': background,
+    '--story-layer': index + 1,
+  } as CSSProperties
+
   return (
     <section
       data-story-section
       className="uc-story-panel"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: index + 1,
-        minHeight: '100vh',
-        overflow: 'hidden',
-      }}
+      style={panelStyle}
     >
-      <div
-        data-story-card
-        className="uc-story-card"
-        style={{
-          background: bg,
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          position: 'relative',
-          transformOrigin: 'bottom left',
-          willChange: 'transform',
-        }}
-      >
-        <span aria-hidden className="uc-story-watermark" style={{ color: 'var(--surface-glint)' }}>
-          {num}
-        </span>
-
-        <div className="uc-story-inner">
-          <p
-            style={{
-              margin: '0 0 20px',
-              fontSize: 12,
-              fontWeight: 500,
-              letterSpacing: '0.08em',
-              color: accent,
-            }}
-          >
-            {num} — {label}
-          </p>
-          <hr style={{ border: 0, borderTop: '0.5px solid var(--border-default)', margin: '0 0 36px' }} />
-          {children}
+      <div data-story-card className="uc-story-card">
+        <div className="uc-story-shell uc-section-shell">
+          <div className="uc-story-frame">
+            <div className="uc-story-meta reveal" data-delay={index * 40}>
+              <p className="uc-story-eyebrow">
+                {num} / {label}
+              </p>
+              <p className="uc-story-brief">
+                A closer look at the network we are building for campus life.
+              </p>
+            </div>
+            <span aria-hidden className="uc-story-watermark">
+              {num}
+            </span>
+            <div className="uc-story-content">{children}</div>
+          </div>
         </div>
       </div>
     </section>
@@ -133,199 +127,174 @@ function StoryPanel({ index, num, label, accent, bg, children }: PanelProps) {
 
 export function AboutStory() {
   const rootRef = useRef<HTMLDivElement>(null)
+  const revealRef = useScrollReveal<HTMLDivElement>()
   const navigate = useNavigate()
   useStoryScroll(rootRef)
 
   return (
-    <div ref={rootRef}>
-      {/* 00 — Intro */}
-      <StoryPanel index={0} num="00" label="The story" accent="var(--uc-indigo-l)" bg="color-mix(in srgb, var(--uc-indigo) 6%, var(--surface-page))">
-        <h1 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
-          A campus, online — without the rest of the internet.
-        </h1>
-        <p className="uc-story-lede" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-          UniConnecT is a private social network for one university at a time. Scroll to see how it
-          started, what we believe, and who is building it.
-        </p>
-      </StoryPanel>
-
-      {/* 01 — Who we are */}
-      <StoryPanel index={1} num="01" label="Who we are" accent="var(--uc-orange-l)" bg="color-mix(in srgb, var(--uc-orange) 6%, var(--surface-page))">
-        <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
-          Team Mavericks, building at UIU.
-        </h2>
-        <p className="uc-story-lede" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-          We are a group of computer science students at United International University in Dhaka. We
-          spent three years on campus wishing for a place that felt like ours — so we decided to
-          build it.
-        </p>
-      </StoryPanel>
-
-      {/* 02 — Why we built it */}
-      <StoryPanel index={2} num="02" label="Why it exists" accent="var(--uc-cyan)" bg="color-mix(in srgb, var(--uc-cyan) 6%, var(--surface-page))">
-        <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
-          The campus network keeps disappearing.
-        </h2>
-        <p className="uc-story-lede" style={{ margin: '0 0 16px', color: 'var(--text-secondary)' }}>
-          Class groups scatter across chat apps. Alumni vanish after graduation. The people most
-          worth knowing are the hardest to reach. Public social networks were never built for the
-          messy, valuable, slow-burn relationships a university creates.
-        </p>
-        <p className="uc-story-lede" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-          UniConnecT started as a capstone project and grew into a platform designed for every
-          university in Bangladesh — and beyond.
-        </p>
-      </StoryPanel>
-
-      {/* 03 — What we believe */}
-      <StoryPanel index={3} num="03" label="What we believe" accent="var(--uc-mint)" bg="color-mix(in srgb, var(--uc-mint) 6%, var(--surface-page))">
-        <h2 className="uc-story-heading" style={{ margin: '0 0 48px', color: 'var(--text-primary)' }}>
-          Three things we will not compromise on.
-        </h2>
-        <div className="uc-story-values">
-          {VALUES.map(({ label, body }) => (
-            <div
-              key={label}
-              style={{
-                background: 'var(--surface-raised)',
-                border: '0.5px solid var(--border-default)',
-                borderRadius: 'var(--r-xl)',
-                padding: '28px 24px',
-              }}
-            >
-              <p style={{ margin: '0 0 12px', fontSize: 17, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {label}
-              </p>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: 'var(--text-secondary)' }}>
-                {body}
+    <div
+      ref={rootRef}
+      className="uc-about-story-root"
+      role="region"
+      aria-label="About UniConnecT story"
+    >
+      <div ref={revealRef}>
+        <StoryPanel
+          index={0}
+          num="00"
+          label="The story"
+          accent="var(--uc-indigo-l)"
+          background="color-mix(in srgb, var(--uc-indigo) 6%, var(--surface-page))"
+        >
+          <div className="uc-story-grid">
+            <div className="uc-story-lead-block">
+              <h1 className="uc-story-heading reveal">A campus, online — without the rest of the internet.</h1>
+              <p className="uc-story-lede reveal" data-delay={80}>
+                UniConnecT is a private social network for one university at a time. Scroll to see how it
+                started, what we believe, and who is building it.
               </p>
             </div>
-          ))}
-        </div>
-      </StoryPanel>
+            <aside className="uc-story-aside reveal" data-delay={140}>
+              <p className="uc-story-aside-label">A clearer campus web</p>
+              <p className="uc-story-aside-copy">
+                Our story lives in the same calm, welcoming world as the rest of UniConnecT.
+              </p>
+            </aside>
+          </div>
+        </StoryPanel>
 
-      {/* 04 — The team */}
-      <StoryPanel index={4} num="04" label="The team" accent="var(--uc-indigo-l)" bg="color-mix(in srgb, var(--uc-indigo) 6%, var(--surface-page))">
-        <h2 className="uc-story-heading" style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}>
-          Built at UIU, for UIU.
-        </h2>
-        <p className="uc-story-lede" style={{ margin: '0 0 48px', color: 'var(--text-secondary)' }}>
-          Four students, one campus, one mission.
-        </p>
-        <div className="uc-story-team">
-          {TEAM.map(({ initials, color, name, role }) => (
-            <div
-              key={name}
-              style={{
-                background: 'var(--surface-card)',
-                border: '0.5px solid var(--border-default)',
-                borderRadius: 'var(--r-xl)',
-                padding: '24px 20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 14,
-              }}
-            >
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  background: color,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 15,
-                  fontWeight: 500,
-                  color: 'var(--text-primary)',
-                  flexShrink: 0,
-                }}
-              >
-                {initials}
-              </div>
-              <div>
-                <p style={{ margin: '0 0 3px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                  {name}
-                </p>
-                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {role} · UIU · CSE
-                </p>
+        <StoryPanel
+          index={1}
+          num="01"
+          label="Who we are"
+          accent="var(--uc-orange-l)"
+          background="color-mix(in srgb, var(--uc-orange) 6%, var(--surface-page))"
+        >
+          <div className="uc-story-grid">
+            <div className="uc-story-copy-stack">
+              <h2 className="uc-story-heading reveal">Team Mavericks, building at UIU.</h2>
+              <p className="uc-story-lede reveal" data-delay={80}>
+                We are a group of computer science students at United International University in Dhaka. We
+                spent three years on campus wishing for a place that felt like ours — so we decided to
+                build it.
+              </p>
+            </div>
+            <aside className="uc-story-aside reveal" data-delay={140}>
+              <p className="uc-story-aside-label">Campus origin</p>
+              <p className="uc-story-aside-copy">
+                Built inside the same university environment it is meant to serve first.
+              </p>
+            </aside>
+          </div>
+        </StoryPanel>
+
+        <StoryPanel
+          index={2}
+          num="02"
+          label="Why it exists"
+          accent="var(--uc-cyan)"
+          background="color-mix(in srgb, var(--uc-cyan) 6%, var(--surface-page))"
+        >
+          <div className="uc-story-grid">
+            <div className="uc-story-copy-stack">
+              <h2 className="uc-story-heading reveal">The campus network keeps disappearing.</h2>
+              <p className="uc-story-lede reveal" data-delay={80}>
+                Class groups scatter across chat apps. Alumni vanish after graduation. The people most
+                worth knowing are the hardest to reach. Public social networks were never built for the
+                messy, valuable, slow-burn relationships a university creates.
+              </p>
+              <p className="uc-story-body reveal" data-delay={140}>
+                UniConnecT started as a capstone project and grew into a platform designed for every
+                university in Bangladesh — and beyond.
+              </p>
+            </div>
+            <aside className="uc-story-aside reveal" data-delay={200}>
+              <p className="uc-story-aside-label">Problem framing</p>
+              <p className="uc-story-aside-copy">
+                Keep the network private, durable, and useful long after graduation.
+              </p>
+            </aside>
+          </div>
+        </StoryPanel>
+
+        <StoryPanel
+          index={3}
+          num="03"
+          label="What we believe"
+          accent="var(--uc-mint)"
+          background="color-mix(in srgb, var(--uc-mint) 6%, var(--surface-page))"
+        >
+          <div className="uc-story-copy-stack">
+            <h2 className="uc-story-heading reveal">Three things we will not compromise on.</h2>
+            <div className="uc-story-values">
+              {VALUES.map(({ body, label }, index) => (
+                <article key={label} className="uc-story-cardlet reveal" data-delay={index * 70 + 80}>
+                  <p className="uc-story-cardlet-title">{label}</p>
+                  <p className="uc-story-cardlet-copy">{body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </StoryPanel>
+
+        <StoryPanel
+          index={4}
+          num="04"
+          label="The team"
+          accent="var(--uc-indigo-l)"
+          background="color-mix(in srgb, var(--uc-indigo) 6%, var(--surface-page))"
+        >
+          <div className="uc-story-copy-stack">
+            <h2 className="uc-story-heading reveal">Built at UIU, for UIU.</h2>
+            <p className="uc-story-lede reveal" data-delay={80}>
+              Four students, one campus, one mission.
+            </p>
+            <div className="uc-story-team">
+              {TEAM.map(({ color, initials, name, role }, index) => (
+                <article key={name} className="uc-story-member reveal" data-delay={index * 55 + 110}>
+                  <div className="uc-story-member-mark" style={{ background: color }}>
+                    {initials}
+                  </div>
+                  <div className="uc-story-member-copy">
+                    <p className="uc-story-member-name">{name}</p>
+                    <p className="uc-story-member-role">{role} · UIU · CSE</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </StoryPanel>
+
+        <StoryPanel
+          index={5}
+          num="05"
+          label="What's next"
+          accent="var(--uc-orange-l)"
+          background="color-mix(in srgb, var(--uc-orange) 12%, var(--surface-page))"
+        >
+          <div className="uc-story-grid">
+            <div className="uc-story-copy-stack">
+              <h2 className="uc-story-heading reveal">Every campus deserves its own network.</h2>
+              <p className="uc-story-lede reveal" data-delay={80}>
+                We started with UIU. The goal is every university — a place where your people stay
+                reachable long after the last lecture.
+              </p>
+              <div className="uc-story-actions reveal" data-delay={140}>
+                <OrangeBtn onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}>
+                  Join free
+                </OrangeBtn>
+                <GhostBtn onClick={() => navigate(HOME_PATH)}>Back to home</GhostBtn>
               </div>
             </div>
-          ))}
-        </div>
-      </StoryPanel>
-
-      {/* 05 — Where we're headed */}
-      <StoryPanel index={5} num="05" label="What's next" accent="var(--uc-orange-l)" bg="color-mix(in srgb, var(--uc-orange) 12%, var(--surface-page))">
-        <h2 className="uc-story-heading" style={{ margin: '0 0 24px', color: 'var(--text-primary)' }}>
-          Every campus deserves its own network.
-        </h2>
-        <p className="uc-story-lede" style={{ margin: '0 0 40px', color: 'var(--text-secondary)' }}>
-          We started with UIU. The goal is every university — a place where your people stay
-          reachable long after the last lecture.
-        </p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <OrangeBtn onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}>
-            Join free
-          </OrangeBtn>
-          <GhostBtn onClick={() => navigate('/')}>Back to home</GhostBtn>
-        </div>
-      </StoryPanel>
-
-      <style>{`
-        .uc-story-inner {
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 120px 52px;
-          position: relative;
-          width: 100%;
-        }
-        .uc-story-heading {
-          font-size: clamp(34px, 6vw, 76px);
-          font-weight: 500;
-          letter-spacing: -2.5px;
-          line-height: 1.05;
-          max-width: 16ch;
-        }
-        .uc-story-lede {
-          font-size: clamp(16px, 1.6vw, 20px);
-          line-height: 1.7;
-          max-width: 52ch;
-        }
-        .uc-story-watermark {
-          position: absolute;
-          top: 8%;
-          right: 4%;
-          font-size: clamp(140px, 24vw, 380px);
-          font-weight: 500;
-          line-height: 1;
-          letter-spacing: -0.04em;
-          pointer-events: none;
-          user-select: none;
-        }
-        .uc-story-values {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 16px;
-        }
-        .uc-story-team {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-        }
-        @media (max-width: 900px) {
-          .uc-story-values { grid-template-columns: 1fr; }
-          .uc-story-team { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 767px) {
-          .uc-story-inner { padding: 96px 20px; }
-          .uc-story-watermark { font-size: 120px; top: 4%; }
-        }
-        @media (max-width: 480px) {
-          .uc-story-team { grid-template-columns: 1fr; }
-        }
-      `}</style>
+            <aside className="uc-story-aside reveal" data-delay={200}>
+              <p className="uc-story-aside-label">Expansion path</p>
+              <p className="uc-story-aside-copy">
+                Start with one campus, then repeat with the same verified structure at the next one.
+              </p>
+            </aside>
+          </div>
+        </StoryPanel>
+      </div>
     </div>
   )
 }
