@@ -10,6 +10,9 @@ Tests run with results:
 - `npx pnpm --filter web test src/components/LeftSidebar.test.tsx` -> PASS (3 tests)
 - `npx pnpm --filter web typecheck && npx pnpm --filter web lint` -> PASS
 
+Follow-up note:
+- Fix scope also included the minimal `FeedLayout` prop wiring in `apps/web/src/components/FeedLayout.tsx` so the sidebar rail contract could be exercised end-to-end.
+
 Self-review notes:
 - Implemented the collapsed rail rendering contract only in `LeftSidebar`, including accessible toggle button, collapsed icon-only nav/tool variants, and expanded rendering preservation.
 - Added focused component coverage exactly around the new prop contract and toggle behavior.

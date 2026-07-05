@@ -343,7 +343,6 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
           color: 'var(--text-secondary)',
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-md)',
-          boxShadow: 'var(--shadow-xs)',
           cursor: 'pointer',
           flexShrink: 0,
         }}
