@@ -163,6 +163,33 @@ function resolveMockBody(url: string): unknown | null {
   // Bare `/users/:id` (e.g. the left-sidebar mini profile) — keep last so the
   // more specific routes above win.
   if (/\/users\/[^/]+$/.test(url)) return { data: DEV_PROFILE }
+  // Daily quiz
+  if (url === '/quiz/today') {
+    return {
+      data: {
+        id: 'dev-slot-1',
+        department: 'Computer Science',
+        date: new Date().toLocaleDateString('en-CA'),
+        questions: [
+          { q: 'What does CPU stand for?', options: ['Central Processing Unit', 'Computer Personal Unit', 'Core Processing Utility', 'Central Program Unit'] },
+          { q: 'Which language is used for web styling?', options: ['Java', 'Python', 'CSS', 'Swift'] },
+          { q: 'What is a compiler?', options: ['A text editor', 'A program that translates source code', 'A database system', 'An operating system'] },
+        ],
+        myAttempt: null,
+      },
+    }
+  }
+  if (/\/quiz\/today\/[^/]+\/attempt$/.test(url)) {
+    return { data: { score: 100, correctCount: 3, totalQuestions: 3, passed: true } }
+  }
+  if (url === '/quiz/today/leaderboard') {
+    return {
+      data: [
+        { rank: 1, userId: 'dev-user-1', fullName: 'Dev User', avatarUrl: null, score: 100, correctCount: 3 },
+      ],
+    }
+  }
+
   return null
 }
 
@@ -177,7 +204,7 @@ export function installDevMocks(): void {
   api.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
     const method = (config.method ?? 'get').toLowerCase()
     const url = config.url ?? ''
-    if (method === 'get') {
+    if (method === 'get' || method === 'post') {
       const body = resolveMockBody(url)
       if (body !== null) {
         return {

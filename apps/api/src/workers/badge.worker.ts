@@ -90,6 +90,8 @@ async function getActivityCount(
       return countDeckContributions(userId)
     case 'flashcard_review_completed':
       return countRows('group_flashcard_reviews', { user_id: userId })
+    case 'quiz_win':
+      return countRows('daily_quiz_attempts', { user_id: userId })
     case 'streak_milestone':
       return typeof payload?.streak === 'number' ? payload.streak : 0
     case 'path_completed':
