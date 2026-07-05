@@ -100,6 +100,16 @@ describe('LeftSidebar', () => {
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument()
   })
 
+  it('keeps collapsed badges and group labels in the DOM', () => {
+    renderSidebar(true)
+
+    const messages = screen.getByRole('button', { name: 'Messages' })
+    expect(messages).toHaveTextContent('7')
+    expect(screen.getByText('Main')).toHaveClass('left-sidebar-visually-hidden')
+    expect(screen.getByText('Community')).toHaveClass('left-sidebar-visually-hidden')
+    expect(screen.getByText('You')).toHaveClass('left-sidebar-visually-hidden')
+  })
+
   it('calls the collapse toggle from the rail button', async () => {
     const onToggleCollapsed = vi.fn()
     renderSidebar(false, onToggleCollapsed)

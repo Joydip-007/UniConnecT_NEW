@@ -117,6 +117,31 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
               }}
             />
           )}
+          {collapsed && badge != null && badge > 0 && (
+            <span
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                top: -7,
+                right: -9,
+                minWidth: 16,
+                height: 16,
+                borderRadius: 'var(--r-pill)',
+                background: 'var(--uc-indigo)',
+                color: 'var(--text-primary)',
+                fontSize: 9,
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0 3px',
+                lineHeight: 1,
+                border: '0.5px solid var(--surface-card)',
+              }}
+            >
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
         </div>
 
         <span
@@ -445,19 +470,20 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
       <nav style={{ padding: '2px 2px', flexShrink: 0 }}>
         {navGroups.map((group, gi) => (
           <div key={group.groupLabel} style={{ marginTop: gi === 0 ? 0 : 6 }}>
-            {!collapsed && (
-              <div
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  color: 'var(--text-tertiary)',
-                  padding: '6px 10px 2px',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {group.groupLabel}
-              </div>
-            )}
+            <div
+              className={collapsed ? 'left-sidebar-visually-hidden' : undefined}
+              style={collapsed
+                ? undefined
+                : {
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: 'var(--text-tertiary)',
+                    padding: '6px 10px 2px',
+                    letterSpacing: '0.04em',
+                  }}
+            >
+              {group.groupLabel}
+            </div>
             {group.items.map((item) => (
               <NavItem
                 key={item.label}
