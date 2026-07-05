@@ -321,7 +321,7 @@
 .uc-hero-kinetic-window {
   position: relative;
   display: block;
-  height: 1.2em;
+  height: 1.4em;
   overflow: hidden;
   color: var(--uc-orange);
 }
@@ -341,7 +341,7 @@
 .uc-hero-kinetic-track > span {
   display: flex;
   align-items: center;
-  height: 1.2em;
+  height: 1.4em;
   white-space: nowrap;
 }
 
