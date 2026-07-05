@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from 'framer-motion'
 import {
   usePaths, useToday, useLearningStats, StreakBanner, TodayCard, QuizModal, PathCard, PathDetailModal,
 } from '@/features/learning'
+import { DailyQuizCard, LeaderboardPanel } from '@/features/quiz'
+import { useAuthStore } from '@/stores/authStore'
 import type { LearningUnit } from '@/features/learning'
 import { EmptyState } from '@/components/EmptyState'
 import { listStagger, listItem } from '@/lib/motion'
@@ -25,6 +27,7 @@ export default function LearnPage() {
   const { data: stats, isLoading: statsLoading } = useLearningStats()
   const { data: today, isLoading: todayLoading } = useToday()
   const { data: paths, isLoading: pathsLoading } = usePaths()
+  const user = useAuthStore((s) => s.user)
   const [quizUnit, setQuizUnit] = useState<LearningUnit | null>(null)
   const [selectedPathId, setSelectedPathId] = useState<string | null>(null)
   const prefersReducedMotion = useReducedMotion()
@@ -73,6 +76,8 @@ export default function LearnPage() {
                 onQuizStart={setQuizUnit}
               />
             ))}
+            <DailyQuizCard />
+            <LeaderboardPanel currentUserId={user?.id} />
           </div>
         ) : (
           <EmptyState
