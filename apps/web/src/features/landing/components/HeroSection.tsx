@@ -210,7 +210,7 @@ export function HeroSection() {
               fontSize: 17,
               lineHeight: 1.7,
               color: 'var(--text-secondary)',
-              maxWidth: 560,
+              maxWidth: 640,
             }}
           >
             UniConnecT gives universities one private layer for updates, messaging, hiring,
@@ -268,7 +268,21 @@ export function HeroSection() {
             alignItems: 'stretch',
           }}
         >
-          <div className="w-full flex items-center justify-center">
+          <div className="w-full flex flex-col items-center justify-center gap-6">
+            <p
+              className="reveal"
+              data-delay="400"
+              style={{
+                margin: 0,
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'var(--text-tertiary)',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase'
+              }}
+            >
+              Click a node to explore
+            </p>
              <RadialOrbitalTimeline nodes={HERO_NODES} />
           </div>
         </div>

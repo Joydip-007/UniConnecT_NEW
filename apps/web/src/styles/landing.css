@@ -300,7 +300,7 @@
   margin: 0 auto;
   min-height: calc(100vh - 66px);
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
   gap: 56px;
   align-items: center;
   padding: 72px 52px 60px;
@@ -321,7 +321,7 @@
 .uc-hero-kinetic-window {
   position: relative;
   display: block;
-  height: 1.05em;
+  height: 1.2em;
   overflow: hidden;
   color: var(--uc-orange);
 }
@@ -341,7 +341,7 @@
 .uc-hero-kinetic-track > span {
   display: flex;
   align-items: center;
-  min-height: 1.05em;
+  height: 1.2em;
   white-space: nowrap;
 }
 
