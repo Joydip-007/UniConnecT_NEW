@@ -114,6 +114,49 @@ export const RsvpStudySessionSchema = z.object({
   status: z.enum(['going', 'not_going']),
 })
 
+export const CreateFlashcardDeckSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(1000).nullable().optional(),
+})
+
+export const UpdateFlashcardDeckSchema = z
+  .object({
+    title: z.string().trim().min(1).max(160).optional(),
+    description: z.string().trim().max(1000).nullable().optional(),
+    is_archived: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' })
+
+export const CreateFlashcardSchema = z.object({
+  front: z.string().trim().min(1).max(2000),
+  back: z.string().trim().min(1).max(2000),
+  hint: z.string().trim().max(500).nullable().optional(),
+})
+
+export const UpdateFlashcardSchema = z
+  .object({
+    front: z.string().trim().min(1).max(2000).optional(),
+    back: z.string().trim().min(1).max(2000).optional(),
+    hint: z.string().trim().max(500).nullable().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' })
+
+export const FlashcardReviewSchema = z.object({
+  rating: z.enum(['again', 'hard', 'good', 'easy']),
+})
+
+export const CreateSharedNoteSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  body: z.string().trim().min(1).max(10000),
+})
+
+export const UpdateSharedNoteSchema = z
+  .object({
+    title: z.string().trim().min(1).max(160).optional(),
+    body: z.string().trim().min(1).max(10000).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' })
+
 export type JoinGroupInput = z.infer<typeof JoinGroupSchema>
 export type JoinRequestActionInput = z.infer<typeof JoinRequestActionSchema>
 export type ResourceCategory = z.infer<typeof ResourceCategorySchema>
@@ -123,3 +166,10 @@ export type SetPinnedInput = z.infer<typeof SetPinnedSchema>
 export type SetRulesInput = z.infer<typeof SetRulesSchema>
 export type CreateStudySessionInput = z.infer<typeof CreateStudySessionSchema>
 export type RsvpStudySessionInput = z.infer<typeof RsvpStudySessionSchema>
+export type CreateFlashcardDeckInput = z.infer<typeof CreateFlashcardDeckSchema>
+export type UpdateFlashcardDeckInput = z.infer<typeof UpdateFlashcardDeckSchema>
+export type CreateFlashcardInput = z.infer<typeof CreateFlashcardSchema>
+export type UpdateFlashcardInput = z.infer<typeof UpdateFlashcardSchema>
+export type FlashcardReviewInput = z.infer<typeof FlashcardReviewSchema>
+export type CreateSharedNoteInput = z.infer<typeof CreateSharedNoteSchema>
+export type UpdateSharedNoteInput = z.infer<typeof UpdateSharedNoteSchema>
