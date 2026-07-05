@@ -54,8 +54,84 @@ const DEV_PROFILE: PublicUserProfile & { visibility?: Record<string, unknown> } 
   stats: { connections: 0, pendingReceived: 0, posts: 0 },
 }
 
+const DEV_GROUP = {
+  id: 'dev-study-group',
+  name: 'CSE Study Circle',
+  type: 'department',
+  description: 'Peer-led study group for core CSE courses.',
+  avatarUrl: null,
+  coverUrl: null,
+  isPrivate: false,
+  memberCount: 48,
+  isMember: true,
+  userRole: 'member',
+  allowedRole: 'student',
+  isSystem: false,
+  department: 'CSE',
+  createdBy: DEV_PROFILE.id,
+  pinnedText: null,
+  pinnedAt: null,
+  pinnedBy: null,
+  rulesMd: 'Keep decks accurate and cite course material when possible.',
+}
+
+const DEV_DECK = {
+  id: 'dev-deck-1',
+  groupId: DEV_GROUP.id,
+  createdBy: DEV_PROFILE.id,
+  title: 'Algorithms midterm',
+  description: 'Greedy proofs, graph traversal, and complexity checks.',
+  isArchived: false,
+  cardCount: 2,
+  dueCount: 1,
+  createdAt: '2026-07-01T08:00:00.000Z',
+  updatedAt: '2026-07-05T08:00:00.000Z',
+  creator: { id: DEV_PROFILE.id, fullName: DEV_PROFILE.profile.fullName, avatarUrl: null },
+}
+
+const DEV_CARD = {
+  id: 'dev-card-1',
+  deckId: DEV_DECK.id,
+  groupId: DEV_GROUP.id,
+  createdBy: DEV_PROFILE.id,
+  front: 'When does Dijkstra require non-negative edges?',
+  back: 'Always; negative edges can invalidate the greedy shortest-path choice.',
+  hint: 'Think about relaxing a path after a node is finalized.',
+  createdAt: '2026-07-01T08:10:00.000Z',
+  updatedAt: '2026-07-05T08:10:00.000Z',
+  creator: { id: DEV_PROFILE.id, fullName: DEV_PROFILE.profile.fullName, avatarUrl: null },
+  review: null,
+}
+
+const DEV_NOTE = {
+  id: 'dev-note-1',
+  groupId: DEV_GROUP.id,
+  createdBy: DEV_PROFILE.id,
+  title: 'Greedy proof checklist',
+  body: 'State the greedy choice, prove exchange safety, then show optimal substructure before writing complexity.',
+  createdAt: '2026-07-02T08:00:00.000Z',
+  updatedAt: '2026-07-05T09:00:00.000Z',
+  creator: { id: DEV_PROFILE.id, fullName: DEV_PROFILE.profile.fullName, avatarUrl: null },
+}
+
 /** Returns the HTTP body to fake for a GET, or null to defer to the real adapter. */
 function resolveMockBody(url: string): unknown | null {
+  if (url === '/groups') return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
+  if (url === `/groups/${DEV_GROUP.id}`) return { data: DEV_GROUP }
+  if (url === `/groups/${DEV_GROUP.id}/join-requests`) {
+    return { data: { items: [], total: 0, page: 1, hasMore: false } }
+  }
+  if (url.startsWith(`/groups/${DEV_GROUP.id}/study-sessions`)) {
+    return { data: { items: [], total: 0, page: 1, hasMore: false } }
+  }
+  if (url === `/groups/${DEV_GROUP.id}/flashcard-decks`) return { data: [DEV_DECK] }
+  if (url === `/groups/${DEV_GROUP.id}/flashcard-decks/${DEV_DECK.id}/cards`) return { data: [DEV_CARD] }
+  if (url.startsWith(`/groups/${DEV_GROUP.id}/flashcard-decks/${DEV_DECK.id}/review`)) {
+    return { data: { items: [DEV_CARD], total: 1, page: 1, hasMore: false } }
+  }
+  if (url.startsWith(`/groups/${DEV_GROUP.id}/shared-notes`)) {
+    return { data: { items: [DEV_NOTE], total: 1, page: 1, hasMore: false } }
+  }
   if (/\/users\/by-username\/[^/]+$/.test(url)) return { data: DEV_PROFILE }
   if (/\/users\/me\/analytics$/.test(url))
     return {
