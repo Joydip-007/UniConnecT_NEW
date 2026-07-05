@@ -8,13 +8,30 @@ export { CollabTab } from './components/CollabTab'
 export { MembersTab } from './components/MembersTab'
 export { MemberRoleTag } from './components/MemberRoleTag'
 export { AllowedRoleBadge, OfficialBadge, TypeBadge } from './components/GroupBadges'
-export type { Group, GroupMember, GroupType, MemberRole, AllowedRole, GroupEventEntry, GroupCollabJob } from './types'
+export type {
+  Flashcard,
+  FlashcardDeck,
+  FlashcardReview,
+  FlashcardReviewItem,
+  FlashcardReviewResult,
+  Group,
+  GroupCollabJob,
+  GroupEventEntry,
+  GroupMember,
+  GroupType,
+  GroupUserSummary,
+  MemberRole,
+  ReviewRating,
+  SharedNote,
+  AllowedRole,
+} from './types'
 export * from './hooks/useGroupExtended'
 export { AnimatedTabBar } from './components/AnimatedTabBar'
 export { PinnedBanner } from './components/PinnedBanner'
 export type { TabDef } from './components/AnimatedTabBar'
 export { ResourcesTab } from './components/ResourcesTab'
 export { StudySessionsTab } from './components/StudySessionsTab'
+export { StudyToolsTab } from './components/StudyToolsTab'
 export { JoinRequestsTab } from './components/JoinRequestsTab'
 export { AboutTab } from './components/AboutTab'
 export { AdminStatsTab } from './components/AdminStatsTab'

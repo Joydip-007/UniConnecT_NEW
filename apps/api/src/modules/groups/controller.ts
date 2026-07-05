@@ -4,14 +4,21 @@ import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import { groupsService } from './service'
 import type {
+  CreateFlashcardDeckInput,
+  CreateFlashcardInput,
   CreateGroupInput,
+  CreateSharedNoteInput,
   GroupListQuery,
+  FlashcardReviewInput,
   InviteToGroupInput,
   JoinRequestActionInput,
   MembersQuery,
   PaginationQuery,
+  UpdateFlashcardDeckInput,
+  UpdateFlashcardInput,
   UpdateGroupInput,
   UpdateMemberInput,
+  UpdateSharedNoteInput,
 } from './schema'
 
 export const listGroups = asyncHandler(async (req: Request, res: Response) => {
@@ -245,6 +252,134 @@ export const rsvpStudySession = asyncHandler(async (req, res) => {
   )
 })
 
+export const listFlashcardDecks = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.listFlashcardDecks(context, getGroupIdParam(req)))
+})
+
+export const createFlashcardDeck = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createFlashcardDeck(context, getGroupIdParam(req), req.body as CreateFlashcardDeckInput),
+    201,
+  )
+})
+
+export const updateFlashcardDeck = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateFlashcardDeck(
+      context,
+      getGroupIdParam(req),
+      getDeckIdParam(req),
+      req.body as UpdateFlashcardDeckInput,
+    ),
+  )
+})
+
+export const deleteFlashcardDeck = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.deleteFlashcardDeck(context, getGroupIdParam(req), getDeckIdParam(req)))
+})
+
+export const listFlashcards = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.listFlashcards(context, getGroupIdParam(req), getDeckIdParam(req)))
+})
+
+export const createFlashcard = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createFlashcard(
+      context,
+      getGroupIdParam(req),
+      getDeckIdParam(req),
+      req.body as CreateFlashcardInput,
+    ),
+    201,
+  )
+})
+
+export const updateFlashcard = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateFlashcard(
+      context,
+      getGroupIdParam(req),
+      getCardIdParam(req),
+      req.body as UpdateFlashcardInput,
+    ),
+  )
+})
+
+export const deleteFlashcard = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.deleteFlashcard(context, getGroupIdParam(req), getCardIdParam(req)))
+})
+
+export const getFlashcardReviewQueue = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.getFlashcardReviewQueue(
+      context,
+      getGroupIdParam(req),
+      getDeckIdParam(req),
+      req.query as unknown as PaginationQuery,
+    ),
+  )
+})
+
+export const reviewFlashcard = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.reviewFlashcard(
+      context,
+      getGroupIdParam(req),
+      getCardIdParam(req),
+      req.body as FlashcardReviewInput,
+    ),
+  )
+})
+
+export const listSharedNotes = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listSharedNotes(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const createSharedNote = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.createSharedNote(context, getGroupIdParam(req), req.body as CreateSharedNoteInput), 201)
+})
+
+export const updateSharedNote = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateSharedNote(
+      context,
+      getGroupIdParam(req),
+      getNoteIdParam(req),
+      req.body as UpdateSharedNoteInput,
+    ),
+  )
+})
+
+export const deleteSharedNote = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.deleteSharedNote(context, getGroupIdParam(req), getNoteIdParam(req)))
+})
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 
@@ -272,5 +407,20 @@ function getResourceIdParam(req: Request) {
 
 function getSessionIdParam(req: Request) {
   const value = req.params.sessionId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getDeckIdParam(req: Request) {
+  const value = req.params.deckId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getCardIdParam(req: Request) {
+  const value = req.params.cardId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getNoteIdParam(req: Request) {
+  const value = req.params.noteId
   return Array.isArray(value) ? value[0] : value
 }

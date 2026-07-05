@@ -8,7 +8,7 @@ import { GhostBtn } from '@/components/Button'
 import {
   EventsTab, FeedTab, GroupHeader, MembersTab,
   AnimatedTabBar, PinnedBanner,
-  ResourcesTab, StudySessionsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
+  ResourcesTab, StudyToolsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
   useJoinRequests,
   type TabDef,
 } from '@/features/groups'
@@ -124,7 +124,9 @@ export default function GroupDetailPage() {
       <div>
         {id && activeTab === 'feed' && <FeedTab groupId={id} />}
         {id && activeTab === 'resources' && <ResourcesTab groupId={id} userRole={userRole} />}
-        {id && activeTab === 'study-sessions' && <StudySessionsTab groupId={id} currentUserId={user?.id} />}
+        {id && activeTab === 'study-sessions' && (
+          <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} />
+        )}
         {id && group && activeTab === 'members' && <MembersTab group={group} />}
         {id && activeTab === 'events' && <EventsTab groupId={id} />}
         {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}

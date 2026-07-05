@@ -3,20 +3,29 @@ import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { feedService } from '../feed/service'
 import { notificationsService } from '../notifications/service'
+import { badgeQueue } from '../../queues/badge.queue'
 import { notificationQueue } from '../../queues/notification.queue'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import type {
   AllowedRole,
+  CreateFlashcardDeckInput,
+  CreateFlashcardInput,
   CreateGroupInput,
   CreateResourceInput,
+  CreateSharedNoteInput,
   CreateStudySessionInput,
+  FlashcardReviewInput,
   GroupListQuery,
   MembersQuery,
   PaginationQuery,
   ResourceListQuery,
   RsvpStudySessionInput,
+  UpdateFlashcardDeckInput,
+  UpdateFlashcardInput,
   UpdateGroupInput,
+  UpdateSharedNoteInput,
 } from './schema'
+import { scheduleFlashcardReview } from './spacedRepetition'
 
 type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other'
 type GroupRole = 'owner' | 'admin' | 'moderator' | 'member'
@@ -126,6 +135,79 @@ interface StudySessionRow {
   creator_full_name: string | null
   creator_avatar_url: string | null
   own_rsvp: 'going' | 'not_going' | null
+}
+
+interface FlashcardDeckRow {
+  id: string
+  group_id: string
+  university_id: string
+  created_by: string | null
+  title: string
+  description: string | null
+  is_archived: boolean
+  card_count: number
+  created_at: Date
+  updated_at: Date
+  creator_full_name: string | null
+  creator_avatar_url: string | null
+  due_count: string | number
+}
+
+interface FlashcardRow {
+  id: string
+  deck_id: string
+  group_id: string
+  university_id: string
+  created_by: string | null
+  front: string
+  back: string
+  hint: string | null
+  created_at: Date
+  updated_at: Date
+  creator_full_name: string | null
+  creator_avatar_url: string | null
+  review_user_id: string | null
+  ease_factor: string | number | null
+  interval_days: number | null
+  repetition_count: number | null
+  due_at: Date | null
+  last_reviewed_at: Date | null
+  last_rating: 'again' | 'hard' | 'good' | 'easy' | null
+}
+
+interface FlashcardOwnerRow {
+  id: string
+  deck_id: string
+  created_by: string | null
+  deck_created_by: string | null
+}
+
+interface FlashcardReviewRow {
+  card_id: string
+  user_id: string
+  group_id: string
+  university_id: string
+  ease_factor: string | number
+  interval_days: number
+  repetition_count: number
+  due_at: Date
+  last_reviewed_at: Date | null
+  last_rating: 'again' | 'hard' | 'good' | 'easy' | null
+  created_at: Date
+  updated_at: Date
+}
+
+interface SharedNoteRow {
+  id: string
+  group_id: string
+  university_id: string
+  created_by: string | null
+  title: string
+  body: string
+  created_at: Date
+  updated_at: Date
+  creator_full_name: string | null
+  creator_avatar_url: string | null
 }
 
 export class GroupsService {
@@ -1254,6 +1336,366 @@ export class GroupsService {
     return { status, rsvpCount: updated?.rsvp_count ?? 0 }
   }
 
+  async listFlashcardDecks(context: AuthContext, groupId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const rows = await flashcardDeckSelectQuery(context.userId)
+      .where({
+        'group_flashcard_decks.group_id': groupId,
+        'group_flashcard_decks.university_id': context.universityId,
+        'group_flashcard_decks.is_archived': false,
+      })
+      .orderBy('group_flashcard_decks.updated_at', 'desc')
+
+    return rows.map(toFlashcardDeck)
+  }
+
+  async createFlashcardDeck(context: AuthContext, groupId: string, input: CreateFlashcardDeckInput) {
+    await assertMemberAccess(context, groupId)
+
+    const [deck] = await db('group_flashcard_decks')
+      .insert({
+        group_id: groupId,
+        university_id: context.universityId,
+        created_by: context.userId,
+        title: input.title,
+        description: input.description ?? null,
+      })
+      .returning<{ id: string }[]>('id')
+
+    if (!deck) throw badRequest('Flashcard deck could not be created', 'FLASHCARD_DECK_CREATE_FAILED')
+
+    await badgeQueue.add({
+      userId: context.userId,
+      universityId: context.universityId,
+      action: 'deck_contributed',
+      payload: { deckId: deck.id },
+    })
+
+    return getFlashcardDeck(context, groupId, deck.id)
+  }
+
+  async updateFlashcardDeck(
+    context: AuthContext,
+    groupId: string,
+    deckId: string,
+    input: UpdateFlashcardDeckInput,
+  ) {
+    const access = await assertMemberAccess(context, groupId)
+    const deck = await getFlashcardDeckOwner(context, groupId, deckId)
+    assertCanEditOwnedResource(access, deck.created_by, context.userId)
+
+    await db('group_flashcard_decks')
+      .where({ id: deckId, group_id: groupId, university_id: context.universityId })
+      .update({
+        ...pickDefined({
+          title: input.title,
+          description: input.description,
+          is_archived: input.is_archived,
+        }),
+        updated_at: new Date(),
+      })
+
+    return getFlashcardDeck(context, groupId, deckId)
+  }
+
+  async deleteFlashcardDeck(context: AuthContext, groupId: string, deckId: string) {
+    const access = await assertMemberAccess(context, groupId)
+    const deck = await getFlashcardDeckOwner(context, groupId, deckId)
+    assertCanEditOwnedResource(access, deck.created_by, context.userId)
+
+    await db('group_flashcard_decks')
+      .where({ id: deckId, group_id: groupId, university_id: context.universityId })
+      .delete()
+
+    return { deleted: true }
+  }
+
+  async listFlashcards(context: AuthContext, groupId: string, deckId: string) {
+    await assertMemberAccess(context, groupId)
+    await getFlashcardDeckOwner(context, groupId, deckId)
+
+    const rows = await flashcardSelectQuery(context.userId)
+      .where({
+        'group_flashcards.group_id': groupId,
+        'group_flashcards.deck_id': deckId,
+        'group_flashcards.university_id': context.universityId,
+      })
+      .orderBy('group_flashcards.created_at', 'asc')
+
+    return rows.map(toFlashcard)
+  }
+
+  async createFlashcard(context: AuthContext, groupId: string, deckId: string, input: CreateFlashcardInput) {
+    await assertMemberAccess(context, groupId)
+    await getFlashcardDeckOwner(context, groupId, deckId)
+
+    let cardId: string
+    let firstCardInDeckForUser = false
+
+    await db.transaction(async (trx) => {
+      const existingContribution = await trx('group_flashcards')
+        .where({
+          deck_id: deckId,
+          group_id: groupId,
+          university_id: context.universityId,
+          created_by: context.userId,
+        })
+        .first<{ id: string }>('id')
+
+      const [card] = await trx('group_flashcards')
+        .insert({
+          deck_id: deckId,
+          group_id: groupId,
+          university_id: context.universityId,
+          created_by: context.userId,
+          front: input.front,
+          back: input.back,
+          hint: input.hint ?? null,
+        })
+        .returning<{ id: string }[]>('id')
+
+      if (!card) throw badRequest('Flashcard could not be created', 'FLASHCARD_CREATE_FAILED')
+      cardId = card.id
+      firstCardInDeckForUser = !existingContribution
+
+      await trx('group_flashcard_decks')
+        .where({ id: deckId, group_id: groupId, university_id: context.universityId })
+        .increment('card_count', 1)
+        .update({ updated_at: new Date() })
+    })
+
+    if (firstCardInDeckForUser) {
+      await badgeQueue.add({
+        userId: context.userId,
+        universityId: context.universityId,
+        action: 'deck_contributed',
+        payload: { deckId },
+      })
+    }
+
+    return getFlashcard(context, groupId, cardId!)
+  }
+
+  async updateFlashcard(context: AuthContext, groupId: string, cardId: string, input: UpdateFlashcardInput) {
+    const access = await assertMemberAccess(context, groupId)
+    const card = await getFlashcardOwner(context, groupId, cardId)
+    assertCanEditCard(access, card, context.userId)
+
+    await db('group_flashcards')
+      .where({ id: cardId, group_id: groupId, university_id: context.universityId })
+      .update({
+        ...pickDefined({
+          front: input.front,
+          back: input.back,
+          hint: input.hint,
+        }),
+        updated_at: new Date(),
+      })
+
+    await db('group_flashcard_decks').where({ id: card.deck_id }).update({ updated_at: new Date() })
+
+    return getFlashcard(context, groupId, cardId)
+  }
+
+  async deleteFlashcard(context: AuthContext, groupId: string, cardId: string) {
+    const access = await assertMemberAccess(context, groupId)
+    const card = await getFlashcardOwner(context, groupId, cardId)
+    assertCanEditCard(access, card, context.userId)
+
+    await db.transaction(async (trx) => {
+      const deleted = await trx('group_flashcards')
+        .where({ id: cardId, group_id: groupId, university_id: context.universityId })
+        .delete()
+
+      if (deleted > 0) {
+        await trx('group_flashcard_decks')
+          .where({ id: card.deck_id, group_id: groupId, university_id: context.universityId })
+          .where('card_count', '>', 0)
+          .decrement('card_count', 1)
+          .update({ updated_at: new Date() })
+      }
+    })
+
+    return { deleted: true }
+  }
+
+  async getFlashcardReviewQueue(context: AuthContext, groupId: string, deckId: string, query: PaginationQuery) {
+    await assertMemberAccess(context, groupId)
+    await getFlashcardDeckOwner(context, groupId, deckId)
+
+    const dueFilter = (builder: Knex.QueryBuilder) => {
+      builder.whereNull('my_review.card_id').orWhere('my_review.due_at', '<=', db.fn.now())
+    }
+
+    const [{ count }] = await db('group_flashcards')
+      .leftJoin('group_flashcard_reviews as my_review', function joinCurrentReview(this: Knex.JoinClause) {
+        this.on('my_review.card_id', '=', 'group_flashcards.id').andOn(
+          'my_review.user_id',
+          '=',
+          db.raw('?', [context.userId]),
+        )
+      })
+      .where({
+        'group_flashcards.group_id': groupId,
+        'group_flashcards.deck_id': deckId,
+        'group_flashcards.university_id': context.universityId,
+      })
+      .andWhere(dueFilter)
+      .count<CountRow[]>({ count: '*' })
+
+    const rows = await flashcardSelectQuery(context.userId)
+      .where({
+        'group_flashcards.group_id': groupId,
+        'group_flashcards.deck_id': deckId,
+        'group_flashcards.university_id': context.universityId,
+      })
+      .andWhere(dueFilter)
+      .orderByRaw('CASE WHEN my_review.card_id IS NULL THEN 1 ELSE 0 END ASC')
+      .orderBy('my_review.due_at', 'asc')
+      .orderBy('group_flashcards.created_at', 'asc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map(toFlashcard),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async reviewFlashcard(context: AuthContext, groupId: string, cardId: string, input: FlashcardReviewInput) {
+    await assertMemberAccess(context, groupId)
+    const card = await getFlashcardOwner(context, groupId, cardId)
+
+    const existing = await db('group_flashcard_reviews')
+      .where({ card_id: cardId, user_id: context.userId })
+      .first<FlashcardReviewRow>()
+
+    const reviewedAt = new Date()
+    const schedule = scheduleFlashcardReview(
+      existing
+        ? {
+            easeFactor: Number(existing.ease_factor),
+            intervalDays: existing.interval_days,
+            repetitionCount: existing.repetition_count,
+          }
+        : null,
+      input.rating,
+      reviewedAt,
+    )
+
+    await db('group_flashcard_reviews')
+      .insert({
+        card_id: cardId,
+        user_id: context.userId,
+        group_id: groupId,
+        university_id: context.universityId,
+        ease_factor: schedule.easeFactor,
+        interval_days: schedule.intervalDays,
+        repetition_count: schedule.repetitionCount,
+        due_at: schedule.dueAt,
+        last_rating: input.rating,
+        last_reviewed_at: reviewedAt,
+        updated_at: reviewedAt,
+      })
+      .onConflict(['card_id', 'user_id'])
+      .merge({
+        group_id: groupId,
+        university_id: context.universityId,
+        ease_factor: schedule.easeFactor,
+        interval_days: schedule.intervalDays,
+        repetition_count: schedule.repetitionCount,
+        due_at: schedule.dueAt,
+        last_rating: input.rating,
+        last_reviewed_at: reviewedAt,
+        updated_at: reviewedAt,
+      })
+
+    await badgeQueue.add({
+      userId: context.userId,
+      universityId: context.universityId,
+      action: 'flashcard_review_completed',
+      payload: { cardId, groupId },
+    })
+
+    const row = await db('group_flashcard_reviews')
+      .where({ card_id: card.id, user_id: context.userId })
+      .first<FlashcardReviewRow>()
+
+    return toFlashcardReview(row!)
+  }
+
+  async listSharedNotes(context: AuthContext, groupId: string, query: PaginationQuery) {
+    await assertMemberAccess(context, groupId)
+
+    const [{ count }] = await db('group_shared_notes')
+      .where({ group_id: groupId, university_id: context.universityId })
+      .count<CountRow[]>({ count: '*' })
+
+    const rows = await sharedNoteSelectQuery()
+      .where({ 'group_shared_notes.group_id': groupId, 'group_shared_notes.university_id': context.universityId })
+      .orderBy('group_shared_notes.updated_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map(toSharedNote),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async createSharedNote(context: AuthContext, groupId: string, input: CreateSharedNoteInput) {
+    await assertMemberAccess(context, groupId)
+
+    const [note] = await db('group_shared_notes')
+      .insert({
+        group_id: groupId,
+        university_id: context.universityId,
+        created_by: context.userId,
+        title: input.title,
+        body: input.body,
+      })
+      .returning<{ id: string }[]>('id')
+
+    if (!note) throw badRequest('Shared note could not be created', 'SHARED_NOTE_CREATE_FAILED')
+
+    return getSharedNote(context, groupId, note.id)
+  }
+
+  async updateSharedNote(context: AuthContext, groupId: string, noteId: string, input: UpdateSharedNoteInput) {
+    const access = await assertMemberAccess(context, groupId)
+    const note = await getSharedNoteOwner(context, groupId, noteId)
+    assertCanEditOwnedResource(access, note.created_by, context.userId)
+
+    await db('group_shared_notes')
+      .where({ id: noteId, group_id: groupId, university_id: context.universityId })
+      .update({
+        ...pickDefined({
+          title: input.title,
+          body: input.body,
+        }),
+        updated_at: new Date(),
+      })
+
+    return getSharedNote(context, groupId, noteId)
+  }
+
+  async deleteSharedNote(context: AuthContext, groupId: string, noteId: string) {
+    const access = await assertMemberAccess(context, groupId)
+    const note = await getSharedNoteOwner(context, groupId, noteId)
+    assertCanEditOwnedResource(access, note.created_by, context.userId)
+
+    await db('group_shared_notes')
+      .where({ id: noteId, group_id: groupId, university_id: context.universityId })
+      .delete()
+
+    return { deleted: true }
+  }
+
   async setRules(context: AuthContext, groupId: string, content: string) {
     const access = await assertGroupAccess(context, groupId)
     assertCanAdminGroup(access.user_role)
@@ -1392,6 +1834,166 @@ function memberSelectQuery(knex: Knex) {
     )
 }
 
+function flashcardDeckSelectQuery(userId: string) {
+  return db('group_flashcard_decks')
+    .leftJoin('profiles as cp', 'cp.user_id', 'group_flashcard_decks.created_by')
+    .select<FlashcardDeckRow[]>(
+      'group_flashcard_decks.id',
+      'group_flashcard_decks.group_id',
+      'group_flashcard_decks.university_id',
+      'group_flashcard_decks.created_by',
+      'group_flashcard_decks.title',
+      'group_flashcard_decks.description',
+      'group_flashcard_decks.is_archived',
+      'group_flashcard_decks.card_count',
+      'group_flashcard_decks.created_at',
+      'group_flashcard_decks.updated_at',
+      'cp.full_name as creator_full_name',
+      'cp.avatar_url as creator_avatar_url',
+      db.raw(
+        `(
+          SELECT COUNT(*)::int
+          FROM group_flashcards due_cards
+          LEFT JOIN group_flashcard_reviews due_reviews
+            ON due_reviews.card_id = due_cards.id
+           AND due_reviews.user_id = ?
+          WHERE due_cards.deck_id = group_flashcard_decks.id
+            AND (due_reviews.card_id IS NULL OR due_reviews.due_at <= now())
+        ) AS due_count`,
+        [userId],
+      ),
+    )
+}
+
+function flashcardSelectQuery(userId: string) {
+  return db('group_flashcards')
+    .leftJoin('profiles as cp', 'cp.user_id', 'group_flashcards.created_by')
+    .leftJoin('group_flashcard_reviews as my_review', function joinCurrentReview(this: Knex.JoinClause) {
+      this.on('my_review.card_id', '=', 'group_flashcards.id').andOn(
+        'my_review.user_id',
+        '=',
+        db.raw('?', [userId]),
+      )
+    })
+    .select<FlashcardRow[]>(
+      'group_flashcards.id',
+      'group_flashcards.deck_id',
+      'group_flashcards.group_id',
+      'group_flashcards.university_id',
+      'group_flashcards.created_by',
+      'group_flashcards.front',
+      'group_flashcards.back',
+      'group_flashcards.hint',
+      'group_flashcards.created_at',
+      'group_flashcards.updated_at',
+      'cp.full_name as creator_full_name',
+      'cp.avatar_url as creator_avatar_url',
+      'my_review.user_id as review_user_id',
+      'my_review.ease_factor',
+      'my_review.interval_days',
+      'my_review.repetition_count',
+      'my_review.due_at',
+      'my_review.last_reviewed_at',
+      'my_review.last_rating',
+    )
+}
+
+function sharedNoteSelectQuery() {
+  return db('group_shared_notes')
+    .leftJoin('profiles as cp', 'cp.user_id', 'group_shared_notes.created_by')
+    .select<SharedNoteRow[]>(
+      'group_shared_notes.id',
+      'group_shared_notes.group_id',
+      'group_shared_notes.university_id',
+      'group_shared_notes.created_by',
+      'group_shared_notes.title',
+      'group_shared_notes.body',
+      'group_shared_notes.created_at',
+      'group_shared_notes.updated_at',
+      'cp.full_name as creator_full_name',
+      'cp.avatar_url as creator_avatar_url',
+    )
+}
+
+async function getFlashcardDeck(context: AuthContext, groupId: string, deckId: string) {
+  const row = await flashcardDeckSelectQuery(context.userId)
+    .where({
+      'group_flashcard_decks.id': deckId,
+      'group_flashcard_decks.group_id': groupId,
+      'group_flashcard_decks.university_id': context.universityId,
+    })
+    .first<FlashcardDeckRow>()
+
+  if (!row) throw notFound('Flashcard deck not found', 'FLASHCARD_DECK_NOT_FOUND')
+  return toFlashcardDeck(row)
+}
+
+async function getFlashcardDeckOwner(context: AuthContext, groupId: string, deckId: string) {
+  const row = await db('group_flashcard_decks')
+    .where({ id: deckId, group_id: groupId, university_id: context.universityId })
+    .select<{ id: string; created_by: string | null }[]>('id', 'created_by')
+    .first()
+
+  if (!row) throw notFound('Flashcard deck not found', 'FLASHCARD_DECK_NOT_FOUND')
+  return row
+}
+
+async function getFlashcard(context: AuthContext, groupId: string, cardId: string) {
+  const row = await flashcardSelectQuery(context.userId)
+    .where({
+      'group_flashcards.id': cardId,
+      'group_flashcards.group_id': groupId,
+      'group_flashcards.university_id': context.universityId,
+    })
+    .first<FlashcardRow>()
+
+  if (!row) throw notFound('Flashcard not found', 'FLASHCARD_NOT_FOUND')
+  return toFlashcard(row)
+}
+
+async function getFlashcardOwner(context: AuthContext, groupId: string, cardId: string) {
+  const row = await db('group_flashcards')
+    .join('group_flashcard_decks', 'group_flashcard_decks.id', 'group_flashcards.deck_id')
+    .where({
+      'group_flashcards.id': cardId,
+      'group_flashcards.group_id': groupId,
+      'group_flashcards.university_id': context.universityId,
+    })
+    .select<FlashcardOwnerRow[]>(
+      'group_flashcards.id',
+      'group_flashcards.deck_id',
+      'group_flashcards.created_by',
+      'group_flashcard_decks.created_by as deck_created_by',
+    )
+    .first()
+
+  if (!row) throw notFound('Flashcard not found', 'FLASHCARD_NOT_FOUND')
+  return row
+}
+
+async function getSharedNote(context: AuthContext, groupId: string, noteId: string) {
+  const row = await sharedNoteSelectQuery()
+    .where({
+      'group_shared_notes.id': noteId,
+      'group_shared_notes.group_id': groupId,
+      'group_shared_notes.university_id': context.universityId,
+    })
+    .first<SharedNoteRow>()
+
+  if (!row) throw notFound('Shared note not found', 'SHARED_NOTE_NOT_FOUND')
+  return toSharedNote(row)
+}
+
+async function getSharedNoteOwner(context: AuthContext, groupId: string, noteId: string) {
+  const row = await db('group_shared_notes')
+    .where({ id: noteId, group_id: groupId, university_id: context.universityId })
+    .select<{ id: string; created_by: string | null }[]>('id', 'created_by')
+    .first()
+
+  if (!row) throw notFound('Shared note not found', 'SHARED_NOTE_NOT_FOUND')
+  return row
+}
+
 async function assertGroupAccess(context: AuthContext, groupId: string) {
   const group = await db('groups')
     .leftJoin('group_members as current_member', function joinCurrentMember() {
@@ -1451,6 +2053,20 @@ function assertCanAdminGroup(role: GroupRole | null) {
   throw forbidden('You do not have permission to manage this group', 'GROUP_ADMIN_REQUIRED')
 }
 
+function canModerate(role: GroupRole | null) {
+  return role === 'owner' || role === 'admin' || role === 'moderator'
+}
+
+function assertCanEditOwnedResource(access: GroupAccessRow, ownerId: string | null, userId: string) {
+  if (ownerId === userId || canModerate(access.user_role)) return
+  throw forbidden('Only the creator or group moderators can edit this item', 'GROUP_ROLE_FORBIDDEN')
+}
+
+function assertCanEditCard(access: GroupAccessRow, card: FlashcardOwnerRow, userId: string) {
+  if (card.created_by === userId || card.deck_created_by === userId || canModerate(access.user_role)) return
+  throw forbidden('Only the card creator, deck creator, or group moderators can edit this card', 'GROUP_ROLE_FORBIDDEN')
+}
+
 function assertCanAssignRole(actorRole: GroupRole | null, targetRole: GroupRole, nextRole: GroupRole) {
   if (actorRole === 'owner') return
   if (actorRole === 'admin' && isBelowAdmin(targetRole) && isBelowAdmin(nextRole)) return
@@ -1507,6 +2123,83 @@ function toStudySession(row: StudySessionRow) {
     rsvpCount: row.rsvp_count,
     createdAt: row.created_at,
     ownRsvp: row.own_rsvp,
+    creator: row.created_by
+      ? { id: row.created_by, fullName: row.creator_full_name, avatarUrl: row.creator_avatar_url }
+      : null,
+  }
+}
+
+function toFlashcardDeck(row: FlashcardDeckRow) {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    createdBy: row.created_by,
+    title: row.title,
+    description: row.description,
+    isArchived: row.is_archived,
+    cardCount: Number(row.card_count),
+    dueCount: Number(row.due_count ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    creator: row.created_by
+      ? { id: row.created_by, fullName: row.creator_full_name, avatarUrl: row.creator_avatar_url }
+      : null,
+  }
+}
+
+function toFlashcard(row: FlashcardRow) {
+  return {
+    id: row.id,
+    deckId: row.deck_id,
+    groupId: row.group_id,
+    createdBy: row.created_by,
+    front: row.front,
+    back: row.back,
+    hint: row.hint,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    creator: row.created_by
+      ? { id: row.created_by, fullName: row.creator_full_name, avatarUrl: row.creator_avatar_url }
+      : null,
+    review: row.review_user_id
+      ? {
+          userId: row.review_user_id,
+          easeFactor: Number(row.ease_factor),
+          intervalDays: Number(row.interval_days),
+          repetitionCount: Number(row.repetition_count),
+          dueAt: row.due_at,
+          lastReviewedAt: row.last_reviewed_at,
+          lastRating: row.last_rating,
+        }
+      : null,
+  }
+}
+
+function toFlashcardReview(row: FlashcardReviewRow) {
+  return {
+    cardId: row.card_id,
+    userId: row.user_id,
+    groupId: row.group_id,
+    easeFactor: Number(row.ease_factor),
+    intervalDays: Number(row.interval_days),
+    repetitionCount: Number(row.repetition_count),
+    dueAt: row.due_at,
+    lastReviewedAt: row.last_reviewed_at,
+    lastRating: row.last_rating,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function toSharedNote(row: SharedNoteRow) {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    createdBy: row.created_by,
+    title: row.title,
+    body: row.body,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
     creator: row.created_by
       ? { id: row.created_by, fullName: row.creator_full_name, avatarUrl: row.creator_avatar_url }
       : null,

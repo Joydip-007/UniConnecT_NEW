@@ -10,9 +10,10 @@ import {
 interface Props {
   groupId: string
   currentUserId?: string
+  showCreateAction?: boolean
 }
 
-export function StudySessionsTab({ groupId, currentUserId }: Props) {
+export function StudySessionsTab({ groupId, currentUserId, showCreateAction = true }: Props) {
   const [showCreate, setShowCreate] = useState(false)
   const { data, isLoading } = useStudySessions(groupId)
   const createMutation = useCreateStudySession(groupId)
@@ -24,18 +25,20 @@ export function StudySessionsTab({ groupId, currentUserId }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          style={{ padding: '6px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'var(--surface-raised)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-        >
-          <Plus size={13} strokeWidth={1.5} />
-          New session
-        </button>
-      </div>
+      {showCreateAction && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            style={{ minHeight: 44, padding: '8px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'var(--surface-raised)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <Plus size={13} strokeWidth={1.5} />
+            New session
+          </button>
+        </div>
+      )}
 
-      {showCreate && (
+      {showCreateAction && showCreate && (
         <CreateSessionForm
           onSubmit={(input) => createMutation.mutate(input, { onSuccess: () => setShowCreate(false) })}
           onCancel={() => setShowCreate(false)}
