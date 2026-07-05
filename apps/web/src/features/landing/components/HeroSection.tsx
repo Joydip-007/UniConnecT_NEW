@@ -191,7 +191,7 @@ export function HeroSection() {
               className="uc-hero-headline"
               aria-label="One operating layer for students, faculty, alumni, and campus teams."
             >
-              <span aria-hidden="true">One operating layer</span>
+              <span aria-hidden="true">One operating layer&nbsp;</span>
               <span className="uc-hero-kinetic-window" aria-hidden="true">
                 <span className={`uc-hero-kinetic-track${motionActive ? '' : ' is-paused'}`}>
                   {duplicatedLines.map((line, index) => (
