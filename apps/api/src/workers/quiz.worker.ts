@@ -23,16 +23,42 @@ export async function generateDailyQuizSlots(now: Date): Promise<void> {
   for (const uni of universities) {
     const localDate = now.toLocaleDateString('en-CA', { timeZone: uni.timezone })
 
-    const departments = await db('users')
-      .where({ university_id: uni.id })
-      .whereNotNull('department')
-      .distinct<{ department: string }[]>('department')
+    const departments = await db('profiles as p')
+      .join('users as u', 'u.id', 'p.user_id')
+      .where('u.university_id', uni.id)
+      .whereNotNull('p.department')
+      .distinct<{ department: string }[]>('p.department as department')
 
     for (const { department } of departments) {
       const exists = await db('daily_quiz_slots')
         .where({ university_id: uni.id, department, date: localDate })
         .first<{ id: string }>('id')
       if (exists) continue
+
+      const pooled = await db('ai_quiz_pool')
+        .where({ university_id: uni.id, department, consumed_at: null })
+        .orderBy('generated_at', 'asc')
+        .first<{ id: string; questions: StoredQuestion[] | string }>()
+
+      if (pooled) {
+        try {
+          await db('ai_quiz_pool').where({ id: pooled.id }).update({ consumed_at: db.fn.now() })
+          const pooledQuestions =
+            typeof pooled.questions === 'string' ? (JSON.parse(pooled.questions) as StoredQuestion[]) : pooled.questions
+          await db('daily_quiz_slots').insert({
+            university_id: uni.id,
+            department,
+            date: localDate,
+            questions: JSON.stringify(pooledQuestions),
+          })
+          logger.info('daily quiz slot created from ai_quiz_pool', { university_id: uni.id, department, date: localDate })
+        } catch (err: unknown) {
+          // 23505 = unique violation: another worker beat us, safe to skip
+          if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === '23505') continue
+          logger.error('Failed to create daily quiz slot from ai_quiz_pool', { err })
+        }
+        continue
+      }
 
       const units = await db('skill_path_units as u')
         .join('skill_paths as p', 'p.id', 'u.path_id')
