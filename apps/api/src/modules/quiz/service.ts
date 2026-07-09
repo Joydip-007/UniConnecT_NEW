@@ -1,6 +1,6 @@
 import { db } from '../../config/db'
 import { badgeQueue } from '../../queues/badge.queue'
-import { conflict, notFound } from '../../utils/errors'
+import { conflict } from '../../utils/errors'
 import { scoreQuiz } from './quizEngine'
 import type { StoredQuestion } from './quizEngine'
 import type { SubmitAnswersInput, QuizHistoryQuery } from './schema'
@@ -46,7 +46,7 @@ export async function getTodaySlot(context: AuthContext) {
     .where({ university_id: context.universityId, department, date })
     .first()
 
-  if (!slot) throw notFound('No quiz available today', 'QUIZ_NOT_FOUND')
+  if (!slot) return null
 
   const stored = parseQuestions(slot.questions)
   const clientQuestions: ClientQuestion[] = stored.map(({ q, options }) => ({ q, options }))

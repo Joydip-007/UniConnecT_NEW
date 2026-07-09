@@ -21,9 +21,6 @@ export async function generateDailyQuizSlots(now: Date): Promise<void> {
   const universities = await db('universities').select<{ id: string; timezone: string }[]>('id', 'timezone')
 
   for (const uni of universities) {
-    const localHour = new Date(now.toLocaleString('en-US', { timeZone: uni.timezone })).getHours()
-    if (localHour !== 0) continue
-
     const localDate = now.toLocaleDateString('en-CA', { timeZone: uni.timezone })
 
     const departments = await db('users')
@@ -79,4 +76,9 @@ learningQueue.on('completed', async () => {
   } catch (err) {
     logger.error('quiz slot generator failed', { err })
   }
+})
+
+// Run once on startup so today's slots exist immediately after deploy/restart.
+void generateDailyQuizSlots(new Date()).catch((err) => {
+  logger.error('quiz slot startup generation failed', { err })
 })

@@ -11,7 +11,7 @@ const historyKey = (page: number) => ['quiz', 'history', { page }] as const
 export function useTodayQuiz() {
   return useQuery({
     queryKey: todayKey(),
-    queryFn: () => api.get<{ data: DailyQuizSlot }>('/quiz/today').then((r) => r.data.data),
+    queryFn: () => api.get<{ data: DailyQuizSlot | null }>('/quiz/today').then((r) => r.data.data),
     staleTime: 60_000,
   })
 }
