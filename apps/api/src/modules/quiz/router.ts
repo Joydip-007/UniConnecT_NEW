@@ -9,6 +9,6 @@ export const quizRouter = Router()
 quizRouter.use(requireAuth, resolveUniversity)
 
 quizRouter.get('/today', getTodaySlot)
-quizRouter.post('/today/:slotId/attempt', validate(SubmitAnswersSchema), submitAttempt)
 quizRouter.get('/today/leaderboard', getTodayLeaderboard)
+quizRouter.post('/today/:slotId/attempt', validate(SubmitAnswersSchema), submitAttempt)
 quizRouter.get('/me/history', validateRequest({ query: QuizHistoryQuerySchema }), getMyHistory)

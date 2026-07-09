@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniConnecT — Feature Implementation Guide</title>
+  <style>
+    :root {
+      --bg: #0e0f1a;
+      --surface: #161728;
+      --surface2: #1e2035;
+      --border: #2a2d4a;
+      --accent: #6c63ff;
+      --accent2: #ff6b9d;
+      --accent3: #00d4aa;
+      --accent4: #ffb347;
+      --text: #e8e9f3;
+      --muted: #8b8fa8;
+      --code-bg: #12131f;
+      --radius: 12px;
+      --gap: 1.5rem;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    /* ── HEADER ── */
+    .hero {
+      background: linear-gradient(135deg, #1a0a3d 0%, #0e1a3d 40%, #0d2a2d 100%);
+      padding: 3.5rem 2rem 2.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(108,99,255,0.18) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(108,99,255,0.15);
+      border: 1px solid rgba(108,99,255,0.4);
+      color: #a9a3ff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.3rem 1rem;
+      border-radius: 50px;
+      margin-bottom: 1.2rem;
+      position: relative;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, #e8e9f3 0%, #a9a3ff 50%, #6c63ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.8rem;
+      position: relative;
+    }
+    .hero p {
+      color: var(--muted);
+      max-width: 650px;
+      margin: 0 auto;
+      font-size: 1rem;
+      position: relative;
+    }
+    .hero-meta {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      position: relative;
+    }
+    .meta-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 0.3rem 0.9rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .meta-chip .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent3);
+      flex-shrink: 0;
+    }
+
+    /* ── NAV ── */
+    .toc-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(14,15,26,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .toc-nav::-webkit-scrollbar { display: none; }
+    .toc-list {
+      display: flex;
+      gap: 0;
+      list-style: none;
+      white-space: nowrap;
+    }
+    .toc-list a {
+      display: block;
+      padding: 0.9rem 1.1rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .toc-list a:hover {
+      color: var(--text);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-bottom: 4rem;
+      scroll-margin-top: 60px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .icon-purple { background: rgba(108,99,255,0.15); }
+    .icon-pink   { background: rgba(255,107,157,0.15); }
+    .icon-teal   { background: rgba(0,212,170,0.15); }
+    .icon-amber  { background: rgba(255,179,71,0.15); }
+    .icon-blue   { background: rgba(72,149,255,0.15); }
+
+    .section-header h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    /* ── FINDING CARDS ── */
+    .finding-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .finding-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .finding-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .finding-card h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tag {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .tag-exists  { background: rgba(0,212,170,0.15); color: var(--accent3); }
+    .tag-new     { background: rgba(108,99,255,0.15); color: #a9a3ff; }
+    .tag-modify  { background: rgba(255,179,71,0.15); color: var(--accent4); }
+    .tag-remove  { background: rgba(255,107,157,0.15); color: var(--accent2); }
+    .tag-free    { background: rgba(0,212,170,0.12); color: var(--accent3); border: 1px solid rgba(0,212,170,0.3); }
+
+    .finding-card p { color: var(--muted); font-size: 0.85rem; }
+
+    /* ── ARCH DIAGRAM ── */
+    .arch-diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+    .arch-diagram pre {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.78rem;
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .arch-diagram .hl-purple { color: #a9a3ff; }
+    .arch-diagram .hl-teal   { color: var(--accent3); }
+    .arch-diagram .hl-amber  { color: var(--accent4); }
+    .arch-diagram .hl-pink   { color: var(--accent2); }
+    .arch-diagram .hl-muted  { color: var(--muted); }
+
+    /* ── PROMPT BLOCKS ── */
+    .prompt-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1rem 0;
+      position: relative;
+    }
+    .prompt-block.pink  { border-left-color: var(--accent2); }
+    .prompt-block.teal  { border-left-color: var(--accent3); }
+    .prompt-block.amber { border-left-color: var(--accent4); }
+
+    .prompt-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .prompt-label.purple { color: #a9a3ff; }
+    .prompt-label.pink   { color: var(--accent2); }
+    .prompt-label.teal   { color: var(--accent3); }
+    .prompt-label.amber  { color: var(--accent4); }
+
+    .prompt-block p {
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── CODE SNIPPETS ── */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin: 0.8rem 0;
+      overflow-x: auto;
+    }
+    .code-block pre {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .kw  { color: #c792ea; }
+    .fn  { color: #82aaff; }
+    .str { color: #c3e88d; }
+    .cm  { color: #546e7a; font-style: italic; }
+    .ty  { color: #ffcb6b; }
+    .num { color: #f78c6c; }
+
+    /* ── STEP LIST ── */
+    .steps {
+      counter-reset: step;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .step {
+      counter-increment: step;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.2rem 1.2rem 4rem;
+      position: relative;
+    }
+    .step::before {
+      content: counter(step);
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(108,99,255,0.2);
+      border: 1px solid rgba(108,99,255,0.5);
+      color: #a9a3ff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step h4 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+    .step p { color: var(--muted); font-size: 0.85rem; }
+
+    /* ── CALLOUT ── */
+    .callout {
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      display: flex;
+      gap: 0.8rem;
+      align-items: flex-start;
+      font-size: 0.88rem;
+    }
+    .callout-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .callout.info    { background: rgba(72,149,255,0.08);  border: 1px solid rgba(72,149,255,0.25); }
+    .callout.warn    { background: rgba(255,179,71,0.08);  border: 1px solid rgba(255,179,71,0.25); }
+    .callout.success { background: rgba(0,212,170,0.08);   border: 1px solid rgba(0,212,170,0.25); }
+    .callout.danger  { background: rgba(255,107,157,0.08); border: 1px solid rgba(255,107,157,0.25); }
+
+    /* ── TABLE ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+    }
+    .data-table th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.7rem 1rem;
+      text-align: left;
+    }
+    .data-table td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: top;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── SKILL PILLS ── */
+    .skill-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.8rem 0;
+    }
+    .skill-pill {
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.35);
+      color: #c4c0ff;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.3rem 0.8rem;
+      border-radius: 50px;
+    }
+
+    /* ── DIVIDER ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 640px) {
+      .container { padding: 1.5rem 1rem; }
+      .finding-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════ HERO ══════════════════════════ -->
+<div class="hero">
+  <div class="hero-badge">Implementation Specification</div>
+  <h1>UniConnecT Feature Guide</h1>
+  <p>AI Automation · Academic LMS Groups · File Uploads in Notes · Free Integration Stack</p>
+  <div class="hero-meta">
+    <span class="meta-chip"><span class="dot"></span>Codebase: UniConnecT_NEW</span>
+    <span class="meta-chip"><span class="dot" style="background:#ff6b9d"></span>Stack: Node/Express · Knex · React/Vite</span>
+    <span class="meta-chip"><span class="dot" style="background:#ffb347"></span>Queue: Bull (Redis)</span>
+    <span class="meta-chip"><span class="dot" style="background:#6c63ff"></span>Free AI: Gemini 1.5 Flash</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════ NAV ══════════════════════════ -->
+<nav class="toc-nav">
+  <ul class="toc-list">
+    <li><a href="#findings">Codebase Findings</a></li>
+    <li><a href="#ai-automation">AI Automation</a></li>
+    <li><a href="#academic-groups">Academic LMS Groups</a></li>
+    <li><a href="#flashcards">Flashcard Restructure</a></li>
+    <li><a href="#ai-scheduler">AI Daily Scheduler</a></li>
+    <li><a href="#file-upload">File Upload in Notes</a></li>
+    <li><a href="#free-stack">Free Stack</a></li>
+    <li><a href="#prompts">Implementation Prompts</a></li>
+    <li><a href="#instructions">Step-by-Step</a></li>
+  </ul>
+</nav>
+
+<div class="container">
+
+<!-- ══════════════════════════ SECTION 1: FINDINGS ══════════════════════════ -->
+<section class="section" id="findings">
+  <div class="section-header">
+    <div class="section-icon icon-purple">🔍</div>
+    <h2>Codebase Findings</h2>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ️</span>
+    <div>All findings are based on live code analysis of <code>apps/api/src/</code> and <code>apps/web/src/features/</code>. File references are exact paths.</div>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Learning Page — What Exists</h3>
+  <div class="finding-grid">
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Skill Paths</h4>
+      <p>Table: <code>skill_paths</code> + <code>skill_path_units</code>. Service at <code>modules/learning/service.ts</code> with enroll, complete unit, abandon. Unit types: read | video | exercise | quiz. Tenant-scoped (<code>university_id</code> nullable = platform-wide).</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Daily Quiz</h4>
+      <p>Tables: <code>daily_quiz_slots</code> + <code>daily_quiz_attempts</code>. Worker at <code>workers/quiz.worker.ts</code> generates slots at midnight via the Bull learning queue. Uses fallback static questions when pool is empty.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Streak / Stats</h4>
+      <p><code>learning_stats</code> table tracks current/longest streak, freeze mechanics, and reminder dates. Hourly Bull job (<code>learning.worker.ts</code>) at cron <code>'10 * * * *'</code> sweeps midnight resets.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Badges</h4>
+      <p><code>badges</code> + <code>user_badges</code> tables. Badge queue fires on: unit_completed, streak_milestone, path_completed, quiz_win. Rarity system (epic/rare/common) based on holder count.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Learning Queue</h4>
+      <p>Bull queue (<code>queues/learning.queue.ts</code>). Workers piggyback on it. Quiz worker listens to <code>learningQueue.on('completed')</code> to trigger slot generation.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">missing</span> AI Path Generation</h4>
+      <p>No AI model integration for generating new learning paths dynamically. Current paths are seeded manually (migration <code>087_seed_platform_skill_paths.ts</code>). No LLM call anywhere in learning module.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">missing</span> AI Quiz Generation</h4>
+      <p>Quiz questions come from existing quiz-type units OR the hardcoded <code>FALLBACK_QUESTIONS</code> array in <code>quiz.worker.ts</code>. No LLM generation of quiz questions at runtime.</p>
+    </div>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Study Groups — What Exists</h3>
+  <div class="finding-grid">
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Group Types</h4>
+      <p>Schema: <code>z.enum(['department', 'club', 'batch', 'research', 'interest', 'other'])</code>. No "academic" type currently. All types have equal access to flashcard decks.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Flashcard Decks</h4>
+      <p>Tables: <code>group_flashcard_decks</code>, <code>group_flashcards</code>, <code>group_flashcard_reviews</code>. Spaced repetition via SM-2 algorithm in <code>spacedRepetition.ts</code>. ALL group types can access decks currently.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Shared Notes</h4>
+      <p>Table: <code>group_shared_notes</code> (id, group_id, university_id, created_by, title, body). Notes are TEXT only — no file attachments. Body max 10,000 chars.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Study Sessions</h4>
+      <p>Table: <code>group_study_sessions</code> + RSVP table. Sessions have title, description, location, online flag, capacity. Members auto-RSVP as creator.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-exists">exists</span> Role Restriction</h4>
+      <p><code>allowed_role</code> column on groups: <code>z.enum(['student','alumni','faculty','admin'])</code>. Students can only create student-restricted groups (<code>resolveAllowedRoleOnCreate</code> in service).</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">missing</span> Academic Group Type</h4>
+      <p>No "academic" group type exists. The schema needs: new enum value, faculty-only creation guard, LMS feature flags, and AI automation toggle at the group level.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">missing</span> File Upload in Notes</h4>
+      <p>Notes body is pure text. No attachment column in <code>group_shared_notes</code>. Upload service exists (<code>services/upload.service.ts</code>) using S3/R2 presigned URLs — can be reused.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">missing</span> LMS Features</h4>
+      <p>No gradebook, assignment submission, course modules, or attendance tracking. Must be built as new sub-features of academic groups.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 2: AI AUTOMATION ══════════════════════════ -->
+<section class="section" id="ai-automation">
+  <div class="section-header">
+    <div class="section-icon icon-purple">🤖</div>
+    <h2>AI Automation — Learning Paths &amp; Daily Quizzes</h2>
+  </div>
+
+  <div class="callout success">
+    <span class="callout-icon">✅</span>
+    <div><strong>Free tier choice:</strong> <strong>Google Gemini 1.5 Flash</strong> via <code>@google/generative-ai</code> SDK. Provides 1M tokens/day free (as of 2025). No credit card required with Firebase project. Alternatively, use <strong>Groq API</strong> (free tier, blazing fast inference for LLaMA 3) or <strong>Together.ai</strong> free tier.</div>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Architecture: How AI Slots Into Existing Worker System</h3>
+  <div class="arch-diagram">
+    <pre>
+<span class="hl-muted">┌─────────────────────────────────────────────────────────────┐
+│                   Existing Bull Queue System                  │
+│                                                               │</span>
+<span class="hl-purple">│  learningQueue  (cron: '10 * * * *')                         │</span>
+<span class="hl-muted">│        │                                                      │
+│        ▼                                                      │</span>
+<span class="hl-amber">│  learning.worker.ts                                           │</span>
+<span class="hl-muted">│    • midnight sweep (streak resets)                           │
+│    • reminder hour push notifications                         │
+│        │ emits 'completed' event                              │
+│        ▼                                                      │</span>
+<span class="hl-teal">│  quiz.worker.ts  (piggybacks on 'completed')                  │</span>
+<span class="hl-muted">│    • generates daily_quiz_slots at hour=0                     │
+│    • currently: static pool OR fallback questions             │
+│                                                               │
+│  ── NEW: AI layer added to these workers ────────────────── │</span>
+<span class="hl-pink">│  ai-content.worker.ts  (NEW — cron: '0 1 * * *')             │</span>
+<span class="hl-muted">│    • calls Gemini 1.5 Flash API                               │
+│    • generates quiz questions per department                  │
+│    • generates new skill path drafts                          │
+│    • stores to DB tables                                      │</span>
+<span class="hl-purple">│                                                               │
+│  academic-groups.worker.ts  (NEW — cron: '0 8 * * *')        │</span>
+<span class="hl-muted">│    • for each academic group with AI toggle ON                │
+│    • posts daily flashdecks, quiz, learning path link         │</span>
+<span class="hl-teal">└─────────────────────────────────────────────────────────────┘</span>
+    </pre>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Free AI Provider Options</h3>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Provider</th>
+        <th>Model</th>
+        <th>Free Tier</th>
+        <th>Best For</th>
+        <th>SDK</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Google Gemini</strong> <span class="tag tag-free">recommended</span></td>
+        <td>gemini-1.5-flash</td>
+        <td>1M tokens/day, 15 req/min</td>
+        <td>Quiz + Path generation</td>
+        <td><code>@google/generative-ai</code></td>
+      </tr>
+      <tr>
+        <td>Groq</td>
+        <td>llama-3.1-8b-instant</td>
+        <td>14,400 req/day</td>
+        <td>Fast quiz questions</td>
+        <td><code>groq-sdk</code></td>
+      </tr>
+      <tr>
+        <td>Together.ai</td>
+        <td>Llama 3.1 8B</td>
+        <td>$1 free credit</td>
+        <td>Content generation</td>
+        <td>OpenAI-compatible</td>
+      </tr>
+      <tr>
+        <td>Cloudflare Workers AI</td>
+        <td>llama-3.1-8b</td>
+        <td>10k neurons/day</td>
+        <td>Edge generation</td>
+        <td>REST</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">New File: <code>services/ai.service.ts</code></h3>
+  <div class="code-block">
+    <pre><span class="cm">// apps/api/src/services/ai.service.ts</span>
+<span class="cm">// Uses FREE Gemini 1.5 Flash via @google/generative-ai</span>
+<span class="kw">import</span> { GoogleGenerativeAI } <span class="kw">from</span> <span class="str">'@google/generative-ai'</span>
+<span class="kw">import</span> { env } <span class="kw">from</span> <span class="str">'../config/env'</span>
+
+<span class="kw">const</span> genAI = <span class="kw">new</span> <span class="ty">GoogleGenerativeAI</span>(env.GEMINI_API_KEY)
+<span class="kw">const</span> model = genAI.<span class="fn">getGenerativeModel</span>({ model: <span class="str">'gemini-1.5-flash'</span> })
+
+<span class="cm">// Generate 5 quiz questions for a department</span>
+<span class="kw">export async function</span> <span class="fn">generateQuizQuestions</span>(department: <span class="ty">string</span>, count = <span class="num">5</span>) {
+  <span class="kw">const</span> prompt = `Generate ${count} multiple-choice quiz questions for ${department} students.
+Return ONLY valid JSON array: [{"q":"...","options":["A","B","C","D"],"answer":0}]
+answer is 0-indexed. No markdown, no explanation.`
+  <span class="kw">const</span> result = <span class="kw">await</span> model.<span class="fn">generateContent</span>(prompt)
+  <span class="kw">return</span> JSON.<span class="fn">parse</span>(result.response.<span class="fn">text</span>().trim())
+}
+
+<span class="cm">// Generate a new skill path with units</span>
+<span class="kw">export async function</span> <span class="fn">generateSkillPath</span>(category: <span class="ty">string</span>) {
+  <span class="kw">const</span> prompt = `Create a 7-day learning path for "${category}".
+Return ONLY valid JSON: {
+  "title":"...", "description":"...", "difficulty":"beginner|intermediate|advanced",
+  "units":[{"title":"...","type":"read|video|exercise","content":{"text":"..."}}]
+}`
+  <span class="kw">const</span> result = <span class="kw">await</span> model.<span class="fn">generateContent</span>(prompt)
+  <span class="kw">return</span> JSON.<span class="fn">parse</span>(result.response.<span class="fn">text</span>().trim())
+}
+
+<span class="cm">// Generate flashcards for academic groups</span>
+<span class="kw">export async function</span> <span class="fn">generateFlashcards</span>(topic: <span class="ty">string</span>, count = <span class="num">10</span>) {
+  <span class="kw">const</span> prompt = `Create ${count} flashcards for "${topic}".
+Return ONLY valid JSON array: [{"front":"Question or term","back":"Answer or definition","hint":"optional hint"}]`
+  <span class="kw">const</span> result = <span class="kw">await</span> model.<span class="fn">generateContent</span>(prompt)
+  <span class="kw">return</span> JSON.<span class="fn">parse</span>(result.response.<span class="fn">text</span>().trim())
+}</pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 3: ACADEMIC GROUPS ══════════════════════════ -->
+<section class="section" id="academic-groups">
+  <div class="section-header">
+    <div class="section-icon icon-pink">🎓</div>
+    <h2>Academic LMS Groups</h2>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>Academic groups are <strong>faculty-only to create</strong>. Faculty becomes the group admin. Other roles retain existing group creation abilities but cannot create "academic" type groups.</div>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">LMS Features Inside Academic Groups</h3>
+  <div class="finding-grid">
+    <div class="finding-card">
+      <h4><span class="tag tag-new">new</span> Course Modules</h4>
+      <p>Structured course content organized in weeks/modules. Faculty creates modules, members access them sequentially. Stored in <code>academic_group_modules</code> table.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">new</span> AI Flashcard Decks</h4>
+      <p>Flashcard decks moved exclusively to academic groups. Faculty toggles "AI Auto-Generate Flashcards" setting. AI posts new decks at 8 AM daily.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">new</span> Assignments</h4>
+      <p>Faculty posts assignments with deadline, description, and file attachments. Students submit via file upload. Grades stored in <code>academic_submissions</code>.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">new</span> Gradebook</h4>
+      <p>Faculty-only view showing all member grades across assignments. Visible only to group owner/admin (faculty). Students see their own grades.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">new</span> Attendance</h4>
+      <p>Linked to study sessions. Faculty can mark session as requiring attendance. Members RSVP or check in. Attendance report for faculty.</p>
+    </div>
+    <div class="finding-card">
+      <h4><span class="tag tag-new">new</span> Announcements</h4>
+      <p>Faculty pinned announcements (extends existing pinned_text). AI daily posts show as "AI Tutor" announcements. Toggle-able by faculty.</p>
+    </div>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">DB Schema Changes Required</h3>
+  <div class="code-block">
+    <pre><span class="cm">-- Migration: 091_add_academic_group_type.ts</span>
+
+<span class="cm">-- 1. Add 'academic' to group type enum</span>
+ALTER TYPE group_type ADD VALUE <span class="str">'academic'</span>;
+<span class="cm">-- OR update CHECK constraint if using string columns</span>
+
+<span class="cm">-- 2. Add AI settings column to groups</span>
+ALTER TABLE groups ADD COLUMN ai_settings JSONB DEFAULT <span class="str">'{}'</span>;
+<span class="cm">-- ai_settings shape: { ai_flashcards_enabled: bool, ai_quiz_enabled: bool,
+--                      ai_learning_path_enabled: bool, last_ai_post_date: string }</span>
+
+<span class="cm">-- 3. Academic group modules (LMS course structure)</span>
+CREATE TABLE academic_group_modules (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  university_id UUID NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  week_number INTEGER,
+  display_order INTEGER NOT NULL DEFAULT 1,
+  is_published BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+<span class="cm">-- 4. Assignments</span>
+CREATE TABLE academic_assignments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  module_id UUID REFERENCES academic_group_modules(id) ON DELETE SET NULL,
+  university_id UUID NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  file_urls JSONB DEFAULT '[]',
+  deadline TIMESTAMPTZ,
+  max_score INTEGER DEFAULT 100,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+<span class="cm">-- 5. Submissions</span>
+CREATE TABLE academic_submissions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  assignment_id UUID NOT NULL REFERENCES academic_assignments(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  university_id UUID NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+  file_urls JSONB DEFAULT '[]',
+  text_content TEXT,
+  score INTEGER,
+  feedback TEXT,
+  graded_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  graded_at TIMESTAMPTZ,
+  UNIQUE(assignment_id, user_id)
+);</pre>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Role Guard: Faculty-Only Academic Group Creation</h3>
+  <div class="code-block">
+    <pre><span class="cm">// In groups/service.ts — createGroup method, add this guard:</span>
+<span class="kw">async</span> <span class="fn">createGroup</span>(context: AuthContext, input: CreateGroupInput) {
+  <span class="cm">// NEW: Only faculty can create academic groups</span>
+  <span class="kw">if</span> (input.type === <span class="str">'academic'</span> &amp;&amp; context.role !== <span class="str">'faculty'</span>) {
+    <span class="kw">throw</span> <span class="fn">forbidden</span>(<span class="str">'Only faculty can create academic groups'</span>, <span class="str">'ACADEMIC_FACULTY_ONLY'</span>)
+  }
+  <span class="cm">// Existing resolveAllowedRoleOnCreate logic continues...</span>
+}</pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 4: FLASHCARD RESTRUCTURE ══════════════════════════ -->
+<section class="section" id="flashcards">
+  <div class="section-header">
+    <div class="section-icon icon-teal">🃏</div>
+    <h2>Flashcard Restructure</h2>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Feature</th><th>Regular Groups (all non-academic)</th><th>Academic Groups</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Flashcard Decks</td>
+        <td><span class="tag tag-remove">removed</span> Not available</td>
+        <td><span class="tag tag-exists">available</span> Full access + AI generation</td>
+      </tr>
+      <tr>
+        <td>Spaced Repetition</td>
+        <td><span class="tag tag-remove">removed</span></td>
+        <td><span class="tag tag-exists">available</span> SM-2 algorithm</td>
+      </tr>
+      <tr>
+        <td>AI Auto-Flashcards</td>
+        <td>N/A</td>
+        <td><span class="tag tag-new">new</span> Faculty toggle via ai_settings.ai_flashcards_enabled</td>
+      </tr>
+      <tr>
+        <td>Study Sessions</td>
+        <td><span class="tag tag-exists">available</span> Unchanged</td>
+        <td><span class="tag tag-exists">available</span> + Attendance tracking</td>
+      </tr>
+      <tr>
+        <td>Shared Notes</td>
+        <td><span class="tag tag-modify">modified</span> + file attachments</td>
+        <td><span class="tag tag-modify">modified</span> + file attachments</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>The flashcard router endpoints (<code>/:groupId/flashcard-decks</code>) need a middleware guard that checks <code>group.type === 'academic'</code> before allowing access. Existing non-academic groups that have deck data will need a data migration or soft-hide (recommended: soft-hide with a migration timestamp gate).</div>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Router Guard Implementation</h3>
+  <div class="code-block">
+    <pre><span class="cm">// In groups/router.ts — wrap flashcard routes with academic check middleware</span>
+<span class="kw">import</span> { requireAcademicGroup } <span class="kw">from</span> <span class="str">'../../middleware/academicGroup'</span>
+
+<span class="cm">// Replace existing flashcard routes with:</span>
+groupsRouter.<span class="fn">get</span>(<span class="str">'/:groupId/flashcard-decks'</span>, requireAcademicGroup, listFlashcardDecks)
+groupsRouter.<span class="fn">post</span>(<span class="str">'/:groupId/flashcard-decks'</span>, requireAcademicGroup, validate(CreateFlashcardDeckSchema), createFlashcardDeck)
+<span class="cm">// ... all other flashcard routes get requireAcademicGroup middleware</span>
+
+<span class="cm">// middleware/academicGroup.ts</span>
+<span class="kw">export async function</span> <span class="fn">requireAcademicGroup</span>(req, res, next) {
+  <span class="kw">const</span> { groupId } = req.params
+  <span class="kw">const</span> group = <span class="kw">await</span> db(<span class="str">'groups'</span>).<span class="fn">where</span>({ id: groupId }).<span class="fn">first</span>(<span class="str">'type'</span>)
+  <span class="kw">if</span> (!group || group.type !== <span class="str">'academic'</span>) {
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">403</span>).<span class="fn">json</span>({ error: <span class="str">'Flashcard decks are only available in academic groups'</span> })
+  }
+  <span class="fn">next</span>()
+}</pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 5: AI SCHEDULER ══════════════════════════ -->
+<section class="section" id="ai-scheduler">
+  <div class="section-header">
+    <div class="section-icon icon-amber">⏰</div>
+    <h2>AI Daily Scheduler — Automated Content Posting</h2>
+  </div>
+
+  <p style="color: var(--muted); margin-bottom: 1.5rem;">The AI acts as an autonomous "bot" that posts daily at a fixed time. This piggybacks on the existing Bull queue system — no new infrastructure needed. The bot uses a system user (like the existing "campus bot" from migration 063).</p>
+
+  <div class="arch-diagram">
+    <pre>
+<span class="hl-teal">Daily Schedule (per university timezone):</span>
+
+<span class="hl-amber">  01:00</span> <span class="hl-muted">→</span> <span class="hl-purple">AI generates quiz questions for each dept</span> <span class="hl-muted">(replaces/supplements quiz.worker static fallback)</span>
+<span class="hl-amber">  06:00</span> <span class="hl-muted">→</span> <span class="hl-purple">AI generates new skill path drafts (1 per category, admin reviews)</span>
+<span class="hl-amber">  08:00</span> <span class="hl-muted">→</span> <span class="hl-pink">For each academic group with AI enabled:</span>
+            <span class="hl-teal">  • Post AI-generated flashcard deck (if ai_flashcards_enabled)</span>
+            <span class="hl-teal">  • Post "today's quiz" announcement</span>
+            <span class="hl-teal">  • Post "recommended learning path" message</span>
+
+<span class="hl-muted">Implementation: Single new worker file + new Bull queue</span>
+<span class="hl-muted">Bot identity: Reuse campus_bot user (migration 063 already creates it)</span>
+    </pre>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">New Worker: <code>workers/ai-content.worker.ts</code></h3>
+  <div class="code-block">
+    <pre><span class="cm">// apps/api/src/workers/ai-content.worker.ts</span>
+<span class="kw">import</span> { aiContentQueue } <span class="kw">from</span> <span class="str">'../queues/ai-content.queue'</span>
+<span class="kw">import</span> { generateQuizQuestions, generateFlashcards } <span class="kw">from</span> <span class="str">'../services/ai.service'</span>
+<span class="kw">import</span> { db } <span class="kw">from</span> <span class="str">'../config/db'</span>
+<span class="kw">import</span> { logger } <span class="kw">from</span> <span class="str">'../utils/logger'</span>
+
+<span class="cm">// Cron: daily at 1 AM UTC (adjust per university tz in logic)</span>
+aiContentQueue.<span class="fn">add</span>({}, { repeat: { cron: <span class="str">'0 1 * * *'</span> }, jobId: <span class="str">'ai-daily-content'</span> })
+
+aiContentQueue.<span class="fn">process</span>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> universities = <span class="kw">await</span> db(<span class="str">'universities'</span>).<span class="fn">where</span>({ is_active: <span class="kw">true</span> }).<span class="fn">select</span>(<span class="str">'id'</span>, <span class="str">'timezone'</span>)
+
+  <span class="kw">for</span> (<span class="kw">const</span> uni <span class="kw">of</span> universities) {
+    <span class="cm">// 1. Generate AI quiz questions for each department</span>
+    <span class="kw">const</span> departments = <span class="kw">await</span> db(<span class="str">'profiles'</span>)
+      .<span class="fn">where</span>({ <span class="str">'users.university_id'</span>: uni.id })
+      .<span class="fn">join</span>(<span class="str">'users'</span>, <span class="str">'users.id'</span>, <span class="str">'profiles.user_id'</span>)
+      .<span class="fn">whereNotNull</span>(<span class="str">'profiles.department'</span>)
+      .<span class="fn">distinct</span>(<span class="str">'profiles.department'</span>)
+
+    <span class="kw">for</span> (<span class="kw">const</span> { department } <span class="kw">of</span> departments) {
+      <span class="kw">try</span> {
+        <span class="kw">const</span> aiQuestions = <span class="kw">await</span> <span class="fn">generateQuizQuestions</span>(department, <span class="num">5</span>)
+        <span class="cm">// Store to ai_generated_quiz_pool for quiz.worker to pick up</span>
+        <span class="kw">await</span> db(<span class="str">'ai_quiz_pool'</span>).<span class="fn">insert</span>({
+          university_id: uni.id, department,
+          questions: JSON.<span class="fn">stringify</span>(aiQuestions),
+          generated_at: <span class="kw">new</span> <span class="ty">Date</span>(),
+        })
+      } <span class="kw">catch</span> (err) {
+        logger.<span class="fn">error</span>(<span class="str">'AI quiz gen failed'</span>, { department, err })
+      }
+    }
+
+    <span class="cm">// 2. Post to academic groups with AI enabled</span>
+    <span class="kw">const</span> academicGroups = <span class="kw">await</span> db(<span class="str">'groups'</span>)
+      .<span class="fn">where</span>({ university_id: uni.id, type: <span class="str">'academic'</span> })
+      .<span class="fn">whereRaw</span>(<span class="str">"(ai_settings->>'ai_flashcards_enabled')::boolean = true"</span>)
+
+    <span class="kw">for</span> (<span class="kw">const</span> group <span class="kw">of</span> academicGroups) {
+      <span class="kw">const</span> topic = group.department || group.name
+      <span class="kw">const</span> cards = <span class="kw">await</span> <span class="fn">generateFlashcards</span>(topic, <span class="num">10</span>)
+      <span class="cm">// Insert AI deck + cards using bot user as created_by</span>
+      <span class="cm">// Notify group members via notification queue</span>
+    }
+  }
+})</pre>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">💡</span>
+    <div><strong>Rate limiting strategy:</strong> Gemini 1.5 Flash allows 15 requests/minute on free tier. Add a <code>sleep(4000)</code> between AI calls per department to stay safe. For larger deployments, batch requests across multiple days.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 6: FILE UPLOAD IN NOTES ══════════════════════════ -->
+<section class="section" id="file-upload">
+  <div class="section-header">
+    <div class="section-icon icon-teal">📎</div>
+    <h2>File Upload in Study Session Notes</h2>
+  </div>
+
+  <p style="color: var(--muted); margin-bottom: 1.5rem;">The existing upload service (<code>services/upload.service.ts</code>) already implements S3/R2 presigned URL uploads. We just need to add file attachment support to the <code>group_shared_notes</code> table and expose a presigned URL endpoint for notes.</p>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">DB Migration</h3>
+  <div class="code-block">
+    <pre><span class="cm">-- Migration: 092_add_note_attachments.ts</span>
+ALTER TABLE group_shared_notes
+  ADD COLUMN attachments JSONB NOT NULL DEFAULT <span class="str">'[]'</span>;
+
+<span class="cm">-- Attachment shape (stored as JSON array):
+-- [{ "name": "lecture1.pdf", "url": "https://cdn.../...", "contentType": "application/pdf", "size": 204800 }]</span></pre>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Backend Changes</h3>
+  <div class="steps">
+    <div class="step">
+      <h4>Update schema.ts</h4>
+      <p>Add <code>attachments</code> field to <code>CreateSharedNoteSchema</code> and <code>UpdateSharedNoteSchema</code> as <code>z.array(AttachmentSchema).optional()</code> where AttachmentSchema validates name/url/contentType/size.</p>
+    </div>
+    <div class="step">
+      <h4>Add presigned URL endpoint for notes</h4>
+      <p>Add route: <code>POST /:groupId/shared-notes/upload-url</code> → returns presigned S3 URL. Reuse <code>getPresignedUploadUrl()</code> from upload service with folder <code>'group-notes'</code>.</p>
+    </div>
+    <div class="step">
+      <h4>Update createSharedNote / updateSharedNote</h4>
+      <p>Accept and persist <code>attachments</code> array to DB. Return attachments in <code>toSharedNote()</code> mapper.</p>
+    </div>
+    <div class="step">
+      <h4>Frontend: StudyNotesPanel.tsx</h4>
+      <p>Add file drag-and-drop zone using existing upload pattern. Show attachment thumbnails/chips below note body. File types: PDF, images, DOCX. Limit: 10MB per file, 5 files per note.</p>
+    </div>
+  </div>
+
+  <div class="callout success">
+    <span class="callout-icon">💾</span>
+    <div><strong>Free storage:</strong> Cloudflare R2 free tier = 10 GB storage + 1M write ops/month. The project already uses R2 via the S3-compatible client (<code>env.AWS_ENDPOINT</code>). Zero additional cost for file uploads.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 7: FREE STACK ══════════════════════════ -->
+<section class="section" id="free-stack">
+  <div class="section-header">
+    <div class="section-icon icon-amber">💰</div>
+    <h2>Keeping It Free — Integration Stack</h2>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr><th>Component</th><th>Free Solution</th><th>Limits</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>AI Text Generation</td>
+        <td>Google Gemini 1.5 Flash (Free API)</td>
+        <td>1M tokens/day, 15 rpm</td>
+        <td>Get API key at aistudio.google.com — no credit card</td>
+      </tr>
+      <tr>
+        <td>File Storage (Notes)</td>
+        <td>Cloudflare R2 (existing)</td>
+        <td>10 GB free, 1M writes/mo</td>
+        <td>Already configured in upload.service.ts</td>
+      </tr>
+      <tr>
+        <td>Queue / Scheduling</td>
+        <td>Bull + existing Redis</td>
+        <td>Unlimited (self-hosted)</td>
+        <td>Piggybacks on existing learning queue pattern</td>
+      </tr>
+      <tr>
+        <td>Vector Search (future)</td>
+        <td>pgvector extension on Neon/Supabase</td>
+        <td>Free tier</td>
+        <td>Optional — for semantic search of learning paths</td>
+      </tr>
+      <tr>
+        <td>Cron (alternative)</td>
+        <td>node-cron (no Redis needed)</td>
+        <td>Unlimited</td>
+        <td>If Redis is not available, use node-cron directly</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout success">
+    <span class="callout-icon">🆓</span>
+    <div><strong>Total additional cost: $0.</strong> Gemini 1.5 Flash free tier is generous enough for generating daily quiz questions (≈50 requests/day = well within 1M tokens/day). R2 is already in use. No new services required.</div>
+  </div>
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">Environment Variables to Add</h3>
+  <div class="code-block">
+    <pre><span class="cm"># .env additions</span>
+GEMINI_API_KEY=<span class="str">your-free-api-key-from-aistudio.google.com</span>
+AI_CONTENT_ENABLED=<span class="str">true</span>
+AI_DAILY_HOUR=<span class="num">1</span>   <span class="cm"># UTC hour for AI content generation</span>
+AI_POST_HOUR=<span class="num">8</span>    <span class="cm"># UTC hour for academic group posting</span></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 8: PROMPTS ══════════════════════════ -->
+<section class="section" id="prompts">
+  <div class="section-header">
+    <div class="section-icon icon-purple">✨</div>
+    <h2>Implementation Prompts for Agent Skills</h2>
+  </div>
+
+  <div class="skill-pills">
+    <span class="skill-pill">superpowers</span>
+    <span class="skill-pill">make-interfaces-feel-better</span>
+    <span class="skill-pill">subagent-driven-development</span>
+    <span class="skill-pill">database</span>
+    <span class="skill-pill">backend-architect</span>
+  </div>
+
+  <!-- Prompt 1 -->
+  <div class="prompt-block">
+    <div class="prompt-label purple">🤖 Prompt 1 — AI Service &amp; Quiz Generation</div>
+    <p>
+      In the UniConnecT backend at <code>apps/api/src/</code>, create a new file <code>services/ai.service.ts</code> that integrates Google Gemini 1.5 Flash (free tier) using the <code>@google/generative-ai</code> npm package. The service needs three exported async functions: <code>generateQuizQuestions(department: string, count: number)</code> that returns an array of <code>{q, options, answer}</code> objects, <code>generateSkillPath(category: string)</code> that returns a structured learning path with units, and <code>generateFlashcards(topic: string, count: number)</code> that returns <code>{front, back, hint}</code> arrays. All functions must return valid JSON only (use a JSON-mode system prompt). Add <code>GEMINI_API_KEY</code> to <code>config/env.ts</code>. Then, modify <code>workers/quiz.worker.ts</code> to first check a new table <code>ai_quiz_pool</code> for AI-generated questions before falling back to the static pool. Create migration <code>090_create_ai_quiz_pool.ts</code> with columns: id, university_id, department, questions (JSONB), generated_at, consumed_at (nullable). After quiz generation, mark slot as consumed. Use <code>make-interfaces-feel-better</code> patterns for error handling with graceful degradation to static questions on AI failure.
+    </p>
+  </div>
+
+  <!-- Prompt 2 -->
+  <div class="prompt-block pink">
+    <div class="prompt-label pink">🎓 Prompt 2 — Academic Group Type &amp; LMS Schema</div>
+    <p>
+      In <code>apps/api/src/modules/groups/</code>, add "academic" as a new group type. First update <code>schema.ts</code>: change <code>GroupTypeSchema</code> from <code>z.enum(['department','club','batch','research','interest','other'])</code> to include <code>'academic'</code>. Then in <code>service.ts</code> <code>createGroup()</code> method, add a guard: if <code>input.type === 'academic' &amp;&amp; context.role !== 'faculty'</code> throw <code>forbidden('Only faculty can create academic groups', 'ACADEMIC_FACULTY_ONLY')</code>. Create migration <code>091_add_academic_group_features.ts</code> that: (1) adds <code>ai_settings JSONB DEFAULT '{}'</code> column to groups table, (2) creates <code>academic_group_modules</code> table with columns (id, group_id, university_id, created_by, title, description TEXT, week_number INTEGER, display_order INTEGER, is_published BOOLEAN, created_at, updated_at), (3) creates <code>academic_assignments</code> table (id, group_id, module_id, university_id, created_by, title VARCHAR(255), description TEXT, file_urls JSONB DEFAULT '[]', deadline TIMESTAMPTZ, max_score INTEGER DEFAULT 100, created_at), (4) creates <code>academic_submissions</code> table (id, assignment_id, user_id, university_id, file_urls JSONB, text_content TEXT, score INTEGER, feedback TEXT, graded_by, submitted_at, graded_at, UNIQUE(assignment_id, user_id)). Add index on academic_group_modules(group_id, display_order) and academic_assignments(group_id, deadline). Update the <code>toGroup()</code> mapper to include <code>aiSettings: row.ai_settings</code>.
+    </p>
+  </div>
+
+  <!-- Prompt 3 -->
+  <div class="prompt-block teal">
+    <div class="prompt-label teal">🃏 Prompt 3 — Flashcard Access Control Restructure</div>
+    <p>
+      In <code>apps/api/src/modules/groups/</code>, restrict flashcard deck endpoints to academic groups only. Create a new middleware file <code>middleware/requireAcademicGroup.ts</code> that: fetches the group by <code>req.params.groupId</code>, checks <code>group.type === 'academic'</code>, and returns 403 with message "Flashcard decks are only available in academic groups" if not academic. In <code>groups/router.ts</code>, import and apply this middleware to all flashcard-related routes (the 8 routes starting with <code>/:groupId/flashcard-decks</code> and <code>/:groupId/flashcards</code>). Additionally, in <code>groups/service.ts createFlashcardDeck()</code>, add a secondary check: fetch the group and verify type is academic, throw forbidden if not. On the frontend at <code>apps/web/src/features/groups/components/StudyToolsTab.tsx</code>, conditionally render the <code>StudyDecksPanel</code> only when <code>group.type === 'academic'</code>. When not academic, replace the flashcards panel with a friendly upgrade message: "Flashcard decks are available in Academic Groups created by faculty." Use <code>make-interfaces-feel-better</code> for smooth transition animations on tab switch.
+    </p>
+  </div>
+
+  <!-- Prompt 4 -->
+  <div class="prompt-block amber">
+    <div class="prompt-label amber">⏰ Prompt 4 — AI Daily Content Automation Worker</div>
+    <p>
+      Create a new Bull queue and worker for automated AI content posting. First create <code>queues/ai-content.queue.ts</code> following the same pattern as <code>queues/learning.queue.ts</code>. Then create <code>workers/ai-content.worker.ts</code> that: (1) registers a cron job <code>'0 1 * * *'</code> with stable jobId <code>'ai-daily-content'</code>, (2) in the processor, iterates all active universities checking if local hour is 1 for quiz generation and local hour is 8 for academic group posting, (3) for quiz generation: calls <code>aiService.generateQuizQuestions(department, 5)</code> for each distinct department in that university, handles rate limiting with 4s delay between calls, inserts to <code>ai_quiz_pool</code> table, (4) for academic group posting: queries groups where <code>type='academic'</code> and <code>ai_settings->>'ai_flashcards_enabled' = 'true'</code> and <code>ai_settings->>'last_ai_post_date' != today</code>, generates flashcards via <code>aiService.generateFlashcards()</code>, creates a new deck with bot user as <code>created_by</code> (fetch campus_bot user_id from users table where role='bot'), inserts cards, updates <code>ai_settings.last_ai_post_date</code> on the group, sends notifications to all group members via <code>notificationQueue</code>. Add error boundaries so one failure doesn't stop others. Register this worker in <code>workers/index.ts</code>.
+    </p>
+  </div>
+
+  <!-- Prompt 5 -->
+  <div class="prompt-block">
+    <div class="prompt-label purple">📎 Prompt 5 — File Upload in Study Session Notes</div>
+    <p>
+      Add file attachment support to <code>group_shared_notes</code>. Create migration <code>092_add_note_attachments.ts</code> adding column <code>attachments JSONB NOT NULL DEFAULT '[]'</code> to the table. Update <code>groups/schema.ts</code>: add <code>AttachmentSchema = z.object({name: z.string(), url: z.string().url(), contentType: z.string(), size: z.number()})</code>, add <code>attachments: z.array(AttachmentSchema).max(5).optional()</code> to both <code>CreateSharedNoteSchema</code> and <code>UpdateSharedNoteSchema</code>. In <code>groups/service.ts</code>, update <code>createSharedNote</code> and <code>updateSharedNote</code> to persist attachments, update <code>toSharedNote()</code> to include <code>attachments: row.attachments</code>. Add a new route in <code>groups/router.ts</code>: <code>POST /:groupId/shared-notes/upload-url</code> that accepts <code>{fileName, contentType}</code> body, validates membership, calls <code>uploadService.getPresignedUploadUrl()</code> with folder <code>'group-notes'</code>, and returns <code>{uploadUrl, publicUrl}</code>. On the frontend, update <code>StudyNotesPanel.tsx</code>: add a file drop zone (drag-and-drop + click to upload), show upload progress, display attachments as chips with file type icon and download link. Accept PDF, images, DOCX, PPTX up to 10MB. Use <code>make-interfaces-feel-better</code> skill for smooth upload animations, progress indicators, and file preview hover states.
+    </p>
+  </div>
+
+  <!-- Prompt 6 -->
+  <div class="prompt-block pink">
+    <div class="prompt-label pink">🎓 Prompt 6 — LMS Features: Modules, Assignments, Gradebook (Frontend)</div>
+    <p>
+      In <code>apps/web/src/features/groups/</code>, add LMS UI for academic groups. When <code>group.type === 'academic'</code>, show additional tabs in the group page. Create component <code>components/AcademicLMSTab.tsx</code> with sub-sections: (1) Modules panel — faculty can create/reorder modules (drag-and-drop list), students see published modules, (2) Assignments panel — faculty creates assignments with title, description, file attachments, deadline; students see assignment list and submission form with file upload; (3) Gradebook (faculty only) — table view of all students × all assignments showing scores, (4) AI Settings panel (faculty/owner only) — toggle switches for "AI Daily Flashcards", "AI Daily Quiz Tips", "AI Learning Path Suggestions" — these write to the <code>aiSettings</code> object on the group via a new <code>PATCH /:groupId/ai-settings</code> endpoint. Use <code>make-interfaces-feel-better</code> for: smooth tab animations, skeleton loading states for gradebook, satisfying toggle switch transitions. Add the <code>AcademicLMSTab</code> to the existing <code>AnimatedTabBar.tsx</code> conditionally when group type is academic. Create corresponding API hooks in <code>hooks/</code> folder following the existing pattern (React Query based on the existing hooks pattern).
+    </p>
+  </div>
+
+  <!-- Prompt 7 -->
+  <div class="prompt-block teal">
+    <div class="prompt-label teal">🧠 Prompt 7 — AI Learning Path Generation (Backend Admin + Auto)</div>
+    <p>
+      Extend the learning module to support AI-generated skill paths. In <code>modules/learning/service.ts</code>, add new function <code>generateAndSaveAIPath(category: string, universityId: string | null, createdBy: string)</code> that: calls <code>aiService.generateSkillPath(category)</code>, validates the returned JSON structure, inserts to <code>skill_paths</code> with <code>is_published = false</code> (requires admin review), inserts all units to <code>skill_path_units</code> with sequential <code>display_order</code>. Add API endpoint <code>POST /learning/paths/generate</code> restricted to admin/faculty roles that accepts <code>{category: string}</code> and calls this function. In the admin panel (<code>modules/admin/</code>), add a UI for reviewing AI-generated draft paths: list all paths where <code>is_published = false</code> with "Publish" and "Delete" buttons. Also in the AI content worker (Prompt 4), add a daily category rotation: maintain a list of categories (CS, Math, Communication, etc.), rotate daily, call <code>generateAndSaveAIPath</code> at 6 AM, but only if there are no unpublished drafts already queued (prevent backlog). Admin gets a push notification when a new draft path is ready for review.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SECTION 9: STEP-BY-STEP ══════════════════════════ -->
+<section class="section" id="instructions">
+  <div class="section-header">
+    <div class="section-icon icon-blue">📋</div>
+    <h2>Step-by-Step Implementation Order</h2>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>Follow this order to avoid breaking existing functionality. Each step is independently deployable. Use feature flags where noted.</div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <h4>Install Gemini SDK &amp; Add ENV</h4>
+      <p>Run <code>pnpm add @google/generative-ai</code> in <code>apps/api/</code>. Add <code>GEMINI_API_KEY</code> to env.ts validation (optional field, fallback to static content if missing). Get free API key from <a href="https://aistudio.google.com" style="color:#a9a3ff">aistudio.google.com</a>.</p>
+    </div>
+    <div class="step">
+      <h4>Create ai.service.ts</h4>
+      <p>Implement the three AI generation functions with proper JSON-only prompts. Add retry logic (max 2 retries) and timeout (10s). Test manually with a simple script before integrating into workers.</p>
+    </div>
+    <div class="step">
+      <h4>Run Migration 091 — Academic Group Schema</h4>
+      <p>Add 'academic' to group type, add ai_settings JSONB, create academic_group_modules, academic_assignments, academic_submissions tables. Run <code>pnpm knex migrate:latest</code>.</p>
+    </div>
+    <div class="step">
+      <h4>Add Faculty Guard to createGroup</h4>
+      <p>Single line check in <code>service.ts createGroup()</code>. No migration needed. Deploy and verify non-faculty cannot create academic groups via API test.</p>
+    </div>
+    <div class="step">
+      <h4>Add Flashcard Access Middleware</h4>
+      <p>Create <code>requireAcademicGroup</code> middleware. Apply to all 8 flashcard routes. Test that existing flashcard data is still accessible for academic groups, blocked for others.</p>
+    </div>
+    <div class="step">
+      <h4>Run Migration 092 — Note Attachments</h4>
+      <p>Add <code>attachments JSONB</code> column to group_shared_notes. Update schema, service, and mapper. Add the upload-url endpoint. Test presigned URL flow end-to-end.</p>
+    </div>
+    <div class="step">
+      <h4>Create ai-content.queue.ts + ai-content.worker.ts</h4>
+      <p>Register the new Bull queue. Add the worker with cron schedule. Run migration for <code>ai_quiz_pool</code> table. Test with a manual job trigger before enabling cron.</p>
+    </div>
+    <div class="step">
+      <h4>Update quiz.worker.ts to Use AI Pool</h4>
+      <p>Modify the existing quiz worker to check <code>ai_quiz_pool</code> first, fall back to skill_path_units, then fall back to static questions. Ensures AI enhancement is backward-compatible.</p>
+    </div>
+    <div class="step">
+      <h4>Frontend: Update GroupTypeSchema &amp; CreateGroupModal</h4>
+      <p>Add "Academic" to the group type dropdown in <code>CreateGroupModal.tsx</code>. Show it only when user role is faculty. Add informational tooltip explaining it creates an LMS-style group.</p>
+    </div>
+    <div class="step">
+      <h4>Frontend: StudyToolsTab Conditional Rendering</h4>
+      <p>In <code>StudyToolsTab.tsx</code>, show <code>StudyDecksPanel</code> only for academic groups. Add <code>AcademicLMSTab</code> component for academic groups with modules/assignments/gradebook sub-panels.</p>
+    </div>
+    <div class="step">
+      <h4>Frontend: StudyNotesPanel File Upload</h4>
+      <p>Add drag-and-drop zone to <code>StudyNotesPanel.tsx</code>. Call the <code>/upload-url</code> endpoint, PUT directly to presigned URL, then include returned publicUrl in the note's attachments array on save.</p>
+    </div>
+    <div class="step">
+      <h4>Add AI Settings Panel for Faculty</h4>
+      <p>In academic group settings (admin/owner only), add toggle switches for ai_flashcards_enabled, ai_quiz_enabled, ai_learning_path_enabled. Wire to new <code>PATCH /:groupId/ai-settings</code> endpoint.</p>
+    </div>
+  </div>
+
+  <hr />
+
+  <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--muted);">How to Use Skills for Implementation</h3>
+
+  <div class="code-block">
+    <pre><span class="cm"># Using superpowers skill for multi-file implementations:</span>
+<span class="str">"Use the superpowers skill to implement the AI service integration.
+Create services/ai.service.ts, update workers/quiz.worker.ts to use AI-generated
+questions, and create the new ai-content.worker.ts. Follow all existing
+code patterns in the codebase (Bull queue pattern from learning.queue.ts,
+error handling from utils/errors.ts, logging from utils/logger.ts)."</span>
+
+<span class="cm"># Using make-interfaces-feel-better for frontend polish:</span>
+<span class="str">"Use the make-interfaces-feel-better skill on StudyNotesPanel.tsx to add:
+smooth file upload progress animation, drag-over highlight state, file type
+icon mapping (pdf/image/doc), and a satisfying completion micro-animation
+when a file finishes uploading. Also apply to the AI settings toggle switches
+in the academic group settings panel."</span></pre>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">💡</span>
+    <div><strong>Tip:</strong> Use the <code>/teamwork-preview</code> slash command to spin up parallel subagents for backend (API changes) and frontend (React components) simultaneously. This significantly speeds up implementation of larger feature sets like the LMS academic groups.</div>
+  </div>
+
+  <div class="callout success">
+    <span class="callout-icon">🎯</span>
+    <div><strong>Testing checklist:</strong> (1) Faculty can create academic group, student cannot. (2) Flashcard decks inaccessible in non-academic groups. (3) AI quiz questions appear in daily slots. (4) Note file upload works end-to-end. (5) AI worker runs without crashing on Gemini rate limit errors. (6) Academic groups show LMS tabs only to members.</div>
+  </div>
+</section>
+
+</div><!-- /container -->
+
+<footer style="text-align:center; padding: 2rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 2rem;">
+  UniConnecT Feature Implementation Guide · Generated 2026-07-07 · Codebase: Joydip-007/UniConnecT_NEW
+</footer>
+
+</body>
+</html>

@@ -121,11 +121,11 @@ export async function getTodayLeaderboard(context: AuthContext) {
     .limit(10)
     .select(
       db.raw('ROW_NUMBER() OVER (ORDER BY a.score DESC, a.completed_at ASC) AS rank'),
-      'a.user_id',
-      'u.full_name',
-      'u.avatar_url',
+      'a.user_id as userId',
+      'u.full_name as fullName',
+      'u.avatar_url as avatarUrl',
       'a.score',
-      'a.correct_count',
+      'a.correct_count as correctCount',
     )
 }
 
