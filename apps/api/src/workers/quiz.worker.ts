@@ -42,22 +42,28 @@ export async function generateDailyQuizSlots(now: Date): Promise<void> {
 
       if (pooled) {
         try {
-          await db('ai_quiz_pool').where({ id: pooled.id }).update({ consumed_at: db.fn.now() })
-          const pooledQuestions =
-            typeof pooled.questions === 'string' ? (JSON.parse(pooled.questions) as StoredQuestion[]) : pooled.questions
-          await db('daily_quiz_slots').insert({
-            university_id: uni.id,
-            department,
-            date: localDate,
-            questions: JSON.stringify(pooledQuestions),
-          })
-          logger.info('daily quiz slot created from ai_quiz_pool', { university_id: uni.id, department, date: localDate })
+          const affectedRows = await db('ai_quiz_pool')
+            .where({ id: pooled.id, consumed_at: null })
+            .update({ consumed_at: db.fn.now() })
+          if (affectedRows === 0) {
+            // Another worker already consumed this row, fall through to fallback
+          } else {
+            const pooledQuestions =
+              typeof pooled.questions === 'string' ? (JSON.parse(pooled.questions) as StoredQuestion[]) : pooled.questions
+            await db('daily_quiz_slots').insert({
+              university_id: uni.id,
+              department,
+              date: localDate,
+              questions: JSON.stringify(pooledQuestions),
+            })
+            logger.info('daily quiz slot created from ai_quiz_pool', { university_id: uni.id, department, date: localDate })
+            continue
+          }
         } catch (err: unknown) {
           // 23505 = unique violation: another worker beat us, safe to skip
           if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === '23505') continue
           logger.error('Failed to create daily quiz slot from ai_quiz_pool', { err })
         }
-        continue
       }
 
       const units = await db('skill_path_units as u')
