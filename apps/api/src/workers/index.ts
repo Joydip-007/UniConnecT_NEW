@@ -10,6 +10,7 @@ import './feed-ranking.worker'
 import './post-lifecycle.worker'
 import './learning.worker'
 import './quiz.worker'
+import './ai-content.worker'
 import { logger } from '../utils/logger'
 
 logger.info('UniConnecT workers started')
