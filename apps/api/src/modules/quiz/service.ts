@@ -1,6 +1,6 @@
 import { db } from '../../config/db'
 import { badgeQueue } from '../../queues/badge.queue'
-import { conflict } from '../../utils/errors'
+import { conflict, notFound } from '../../utils/errors'
 import { scoreQuiz } from './quizEngine'
 import type { StoredQuestion } from './quizEngine'
 import type { SubmitAnswersInput, QuizHistoryQuery } from './schema'
