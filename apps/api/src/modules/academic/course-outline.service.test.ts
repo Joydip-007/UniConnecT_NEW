@@ -9,6 +9,11 @@ async function getFacultyContext() {
   return { userId: faculty.id as string, universityId: TEST_UNIVERSITY_ID, role: 'faculty' as const }
 }
 
+async function getStudentContext() {
+  const student = await db('users').where({ email: CREDENTIALS.student.email }).first('id')
+  return { userId: student.id as string, universityId: TEST_UNIVERSITY_ID, role: 'student' as const }
+}
+
 function getCurrentISOWeek(): number {
   const now = new Date()
   const target = new Date(now.valueOf())
@@ -42,8 +47,36 @@ describe('courseOutlineService', () => {
     expect(outline.assessments).toHaveLength(3)
     expect(outline.topics).toHaveLength(1)
 
-    const fetched = await courseOutlineService.getOutline(group.id, context.universityId)
+    const fetched = await courseOutlineService.getOutline(context, group.id)
     expect(fetched?.id).toBe(outline.id)
+  })
+
+  it('rejects getOutline for a caller who is not a group member', async () => {
+    const context = await getFacultyContext()
+    const group = await createGroupFixture({ type: 'academic', creatorId: context.userId })
+    await courseOutlineService.createOutline(context, group.id, {
+      courseTitle: 'Restricted Course',
+      gradingScale: 'uiu',
+      assessments: [{ categoryName: 'CT', fullMarks: 20, weightPercent: 100, totalGiven: 1, bestNCounted: 1, displayOrder: 1 }],
+      topics: [],
+    })
+
+    const nonMember = await getStudentContext()
+    await expect(courseOutlineService.getOutline(nonMember, group.id)).rejects.toMatchObject({ statusCode: 403 })
+  })
+
+  it('rejects createOutline on a non-academic group', async () => {
+    const context = await getFacultyContext()
+    const group = await createGroupFixture({ type: 'club', creatorId: context.userId })
+
+    await expect(
+      courseOutlineService.createOutline(context, group.id, {
+        courseTitle: 'Not Allowed',
+        gradingScale: 'uiu',
+        assessments: [{ categoryName: 'CT', fullMarks: 20, weightPercent: 100, totalGiven: 1, bestNCounted: 1, displayOrder: 1 }],
+        topics: [],
+      }),
+    ).rejects.toMatchObject({ statusCode: 403, code: 'ACADEMIC_GROUP_REQUIRED' })
   })
 
   it('rejects assessments whose weight_percent does not sum to 100', async () => {

@@ -22,7 +22,7 @@ function getGroupIdParam(req: Request) {
 
 export const getCourseOutline = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  const outline = await courseOutlineService.getOutline(getGroupIdParam(req), context.universityId)
+  const outline = await courseOutlineService.getOutline(context, getGroupIdParam(req))
   sendSuccess(res, outline)
 })
 

@@ -28,6 +28,14 @@ export const CreateTopicSchema = z.object({
   description: z.string().optional(),
 })
 
+export function isWeightSumValid(assessments: { weightPercent: number }[]): boolean {
+  return Math.abs(assessments.reduce((sum, a) => sum + a.weightPercent, 0) - 100) < 0.01
+}
+
+export function areWeekNumbersUnique(topics: { weekNumber: number }[]): boolean {
+  return new Set(topics.map((t) => t.weekNumber)).size === topics.length
+}
+
 export const CreateCourseOutlineSchema = z
   .object({
     courseCode: z.string().max(50).optional(),
@@ -40,32 +48,32 @@ export const CreateCourseOutlineSchema = z
     assessments: z.array(CreateAssessmentSchema).min(1),
     topics: z.array(CreateTopicSchema).optional().default([]),
   })
-  .refine(
-    (input) => Math.abs(input.assessments.reduce((sum, a) => sum + a.weightPercent, 0) - 100) < 0.01,
-    { message: 'Sum of weightPercent across all assessments must equal 100', path: ['assessments'] },
-  )
-  .refine(
-    (input) => new Set(input.topics.map((t) => t.weekNumber)).size === input.topics.length,
-    { message: 'Week numbers in topics must be unique', path: ['topics'] },
-  )
+  .refine((input) => isWeightSumValid(input.assessments), {
+    message: 'Sum of weightPercent across all assessments must equal 100',
+    path: ['assessments'],
+  })
+  .refine((input) => areWeekNumbersUnique(input.topics), {
+    message: 'Week numbers in topics must be unique',
+    path: ['topics'],
+  })
 
 export const UpdateAssessmentsSchema = z
   .object({
     assessments: z.array(CreateAssessmentSchema).min(1),
   })
-  .refine(
-    (input) => Math.abs(input.assessments.reduce((sum, a) => sum + a.weightPercent, 0) - 100) < 0.01,
-    { message: 'Sum of weightPercent across all assessments must equal 100', path: ['assessments'] },
-  )
+  .refine((input) => isWeightSumValid(input.assessments), {
+    message: 'Sum of weightPercent across all assessments must equal 100',
+    path: ['assessments'],
+  })
 
 export const UpdateTopicsSchema = z
   .object({
     topics: z.array(CreateTopicSchema),
   })
-  .refine(
-    (input) => new Set(input.topics.map((t) => t.weekNumber)).size === input.topics.length,
-    { message: 'Week numbers in topics must be unique', path: ['topics'] },
-  )
+  .refine((input) => areWeekNumbersUnique(input.topics), {
+    message: 'Week numbers in topics must be unique',
+    path: ['topics'],
+  })
 
 export type CreateCourseOutlineInput = z.infer<typeof CreateCourseOutlineSchema>
 export type UpdateAssessmentsInput = z.infer<typeof UpdateAssessmentsSchema>

@@ -1,7 +1,8 @@
 import { db } from '../../config/db'
 import type { AuthContext } from '../../types/auth'
-import { badRequest, notFound } from '../../utils/errors'
-import { assertGroupAdminAccess } from '../groups/service'
+import { badRequest, forbidden, notFound } from '../../utils/errors'
+import { assertGroupAdminAccess, assertMemberAccess } from '../groups/service'
+import { areWeekNumbersUnique, isWeightSumValid } from './schema'
 import type { CreateCourseOutlineInput, UpdateAssessmentsInput, UpdateTopicsInput } from './schema'
 
 interface OutlineRow {
@@ -80,8 +81,7 @@ function getCurrentISOWeek(): number {
 }
 
 function validateAssessments(assessments: { weightPercent: number; totalGiven: number; bestNCounted: number }[]) {
-  const sum = assessments.reduce((total, a) => total + a.weightPercent, 0)
-  if (Math.abs(sum - 100) >= 0.01) {
+  if (!isWeightSumValid(assessments)) {
     throw badRequest('Sum of weightPercent across all assessments must equal 100')
   }
   for (const a of assessments) {
@@ -92,10 +92,29 @@ function validateAssessments(assessments: { weightPercent: number; totalGiven: n
 }
 
 function validateTopics(topics: { weekNumber: number }[]) {
-  const weekNumbers = topics.map((t) => t.weekNumber)
-  if (new Set(weekNumbers).size !== weekNumbers.length) {
+  if (!areWeekNumbersUnique(topics)) {
     throw badRequest('Week numbers in topics must be unique')
   }
+}
+
+async function assertAcademicGroup(universityId: string, groupId: string) {
+  const group = await db<{ type: string }>('groups').select('type').where({ id: groupId, university_id: universityId }).first()
+  if (!group) throw notFound('Group not found')
+  if (group.type !== 'academic') {
+    throw forbidden('Course outlines are only available on academic groups', 'ACADEMIC_GROUP_REQUIRED')
+  }
+}
+
+async function fetchOutlineRow(groupId: string, universityId: string): Promise<CourseOutline | null> {
+  const row = await db<OutlineRow>('academic_course_outlines')
+    .where({ group_id: groupId, university_id: universityId })
+    .first()
+  if (!row) return null
+  const assessments = await db<AssessmentRow>('course_outline_assessments')
+    .where({ outline_id: row.id })
+    .orderBy('display_order')
+  const topics = await db<TopicRow>('course_outline_topics').where({ outline_id: row.id }).orderBy('week_number')
+  return toOutline(row, assessments, topics)
 }
 
 function toOutline(row: OutlineRow, assessments: AssessmentRow[], topics: TopicRow[]): CourseOutline {
@@ -128,16 +147,10 @@ function toOutline(row: OutlineRow, assessments: AssessmentRow[], topics: TopicR
 }
 
 export const courseOutlineService = {
-  async getOutline(groupId: string, universityId: string): Promise<CourseOutline | null> {
-    const row = await db<OutlineRow>('academic_course_outlines')
-      .where({ group_id: groupId, university_id: universityId })
-      .first()
-    if (!row) return null
-    const assessments = await db<AssessmentRow>('course_outline_assessments')
-      .where({ outline_id: row.id })
-      .orderBy('display_order')
-    const topics = await db<TopicRow>('course_outline_topics').where({ outline_id: row.id }).orderBy('week_number')
-    return toOutline(row, assessments, topics)
+  async getOutline(context: AuthContext, groupId: string): Promise<CourseOutline | null> {
+    await assertAcademicGroup(context.universityId, groupId)
+    await assertMemberAccess(context, groupId)
+    return fetchOutlineRow(groupId, context.universityId)
   },
 
   async createOutline(
@@ -147,6 +160,7 @@ export const courseOutlineService = {
   ): Promise<CourseOutline> {
     validateAssessments(input.assessments)
     validateTopics(input.topics)
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const existing = await db('academic_course_outlines').where({ group_id: groupId }).first()
     if (existing) throw badRequest('Course outline already exists for this group; use PUT to replace it')
@@ -205,13 +219,14 @@ export const courseOutlineService = {
     groupId: string,
     input: CreateCourseOutlineInput,
   ): Promise<CourseOutline | null> {
+    validateAssessments(input.assessments)
+    validateTopics(input.topics)
+    await assertAcademicGroup(context.universityId, groupId)
+    await assertGroupAdminAccess(context, groupId)
     const existing = await db<OutlineRow>('academic_course_outlines')
       .where({ group_id: groupId, university_id: context.universityId })
       .first()
     if (!existing) throw notFound('Course outline not found')
-    validateAssessments(input.assessments)
-    validateTopics(input.topics)
-    await assertGroupAdminAccess(context, groupId)
 
     await db.transaction(async (trx) => {
       await trx('academic_course_outlines')
@@ -250,7 +265,7 @@ export const courseOutlineService = {
         )
       }
     })
-    return this.getOutline(groupId, context.universityId)
+    return this.getOutline(context, groupId)
   },
 
   async updateAssessments(
@@ -258,12 +273,13 @@ export const courseOutlineService = {
     groupId: string,
     input: UpdateAssessmentsInput,
   ): Promise<CourseOutline | null> {
+    validateAssessments(input.assessments)
+    await assertAcademicGroup(context.universityId, groupId)
+    await assertGroupAdminAccess(context, groupId)
     const existing = await db<OutlineRow>('academic_course_outlines')
       .where({ group_id: groupId, university_id: context.universityId })
       .first()
     if (!existing) throw notFound('Course outline not found')
-    validateAssessments(input.assessments)
-    await assertGroupAdminAccess(context, groupId)
 
     await db.transaction(async (trx) => {
       await trx('course_outline_assessments').where({ outline_id: existing.id }).del()
@@ -279,16 +295,17 @@ export const courseOutlineService = {
         })),
       )
     })
-    return this.getOutline(groupId, context.universityId)
+    return this.getOutline(context, groupId)
   },
 
   async updateTopics(context: AuthContext, groupId: string, input: UpdateTopicsInput): Promise<CourseOutline | null> {
+    validateTopics(input.topics)
+    await assertAcademicGroup(context.universityId, groupId)
+    await assertGroupAdminAccess(context, groupId)
     const existing = await db<OutlineRow>('academic_course_outlines')
       .where({ group_id: groupId, university_id: context.universityId })
       .first()
     if (!existing) throw notFound('Course outline not found')
-    validateTopics(input.topics)
-    await assertGroupAdminAccess(context, groupId)
 
     await db.transaction(async (trx) => {
       await trx('course_outline_topics').where({ outline_id: existing.id }).del()
@@ -303,11 +320,11 @@ export const courseOutlineService = {
         )
       }
     })
-    return this.getOutline(groupId, context.universityId)
+    return this.getOutline(context, groupId)
   },
 
   async resolveAITopic(groupId: string, universityId: string): Promise<string> {
-    const outline = await this.getOutline(groupId, universityId)
+    const outline = await fetchOutlineRow(groupId, universityId)
     if (outline) {
       const currentWeek = getCurrentISOWeek()
       const weekTopic = outline.topics.find((t) => t.weekNumber === currentWeek)
