@@ -10,11 +10,15 @@ const LOCAL_DATE = new Date().toLocaleDateString('en-CA', { timeZone: 'UTC' })
 
 let studentId: string
 let slotId: string
+let originalProfile: { department: string | null; full_name: string; avatar_url: string | null }
 
 beforeAll(async () => {
   await db('universities').where({ id: TEST_UNIVERSITY_ID }).update({ timezone: 'UTC' })
 
   studentId = (await db('users').where({ email: CREDENTIALS.student.email }).first('id')).id
+  originalProfile = await db('profiles')
+    .where({ user_id: studentId })
+    .first('department', 'full_name', 'avatar_url')
   await db('profiles')
     .where({ user_id: studentId })
     .update({ department: DEPARTMENT, full_name: 'Leaderboard Test Student', avatar_url: 'https://example.com/avatar.png' })
@@ -43,7 +47,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db('daily_quiz_attempts').where({ slot_id: slotId }).delete()
   await db('daily_quiz_slots').where({ id: slotId }).delete()
-  await db('profiles').where({ user_id: studentId }).update({ department: null, full_name: 'Student', avatar_url: null })
+  await db('profiles').where({ user_id: studentId }).update(originalProfile)
 })
 
 describe('getTodayLeaderboard', () => {
