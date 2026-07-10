@@ -9,8 +9,10 @@ import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { gradebookService } from '../academic/gradebook.service'
 import { contentSyncService } from '../content-sync/service'
 import { logger } from '../../utils/logger'
+import { getPresignedUploadUrl, sanitizeFileName } from '../../services/upload.service'
 import type {
   AllowedRole,
+  Attachment,
   CreateFlashcardDeckInput,
   CreateFlashcardInput,
   CreateGroupInput,
@@ -210,6 +212,7 @@ interface SharedNoteRow {
   body: string
   created_at: Date
   updated_at: Date
+  attachments: Attachment[] | null
   creator_full_name: string | null
   creator_avatar_url: string | null
 }
@@ -1674,6 +1677,7 @@ export class GroupsService {
         created_by: context.userId,
         title: input.title,
         body: input.body,
+        attachments: JSON.stringify(input.attachments ?? []),
       })
       .returning<{ id: string }[]>('id')
 
@@ -1694,10 +1698,36 @@ export class GroupsService {
           title: input.title,
           body: input.body,
         }),
+        attachments: JSON.stringify(input.attachments ?? []),
         updated_at: new Date(),
       })
 
     return getSharedNote(context, groupId, noteId)
+  }
+
+  async getSharedNoteUploadUrl(context: AuthContext, groupId: string, fileName: string, contentType: string) {
+    await assertMemberAccess(context, groupId)
+
+    const ALLOWED_NOTE_UPLOAD_TYPES = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ]
+
+    if (!ALLOWED_NOTE_UPLOAD_TYPES.includes(contentType)) {
+      throw badRequest('Unsupported file type for shared notes', 'SHARED_NOTE_UPLOAD_TYPE_NOT_ALLOWED')
+    }
+
+    const key = `group-notes/${context.universityId}/${groupId}/${Date.now()}-${sanitizeFileName(fileName)}`
+    const presigned = await getPresignedUploadUrl(key, contentType)
+
+    return { ...presigned, maxSizeBytes: 26214400 }
   }
 
   async deleteSharedNote(context: AuthContext, groupId: string, noteId: string) {
@@ -2030,6 +2060,7 @@ function sharedNoteSelectQuery() {
       'group_shared_notes.body',
       'group_shared_notes.created_at',
       'group_shared_notes.updated_at',
+      'group_shared_notes.attachments',
       'cp.full_name as creator_full_name',
       'cp.avatar_url as creator_avatar_url',
     )
@@ -2318,6 +2349,7 @@ function toSharedNote(row: SharedNoteRow) {
     createdBy: row.created_by,
     title: row.title,
     body: row.body,
+    attachments: row.attachments ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     creator: row.created_by

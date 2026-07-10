@@ -207,3 +207,42 @@ describe('groupsService — pending AI content', () => {
     await cleanup(universityId)
   })
 })
+
+describe('groupService — shared note attachments', () => {
+  it('persists attachments on create and returns them via toSharedNote', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const context = { userId: faculty.id, universityId, role: 'faculty' as UserRole }
+
+    const note = await groupsService.createSharedNote(context, group.id, {
+      title: 'Lecture 1',
+      body: 'notes',
+      attachments: [{ name: 'lecture1.pdf', url: 'https://cdn.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
+    })
+
+    expect(note.attachments).toHaveLength(1)
+    expect(note.attachments[0].name).toBe('lecture1.pdf')
+
+    await cleanup(universityId)
+  })
+
+  it('rejects a presign request for a disallowed content type', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const context = { userId: faculty.id, universityId, role: 'faculty' as UserRole }
+
+    await expect(
+      groupsService.getSharedNoteUploadUrl(context, group.id, 'malware.exe', 'application/x-msdownload'),
+    ).rejects.toMatchObject({ statusCode: 400 })
+
+    await cleanup(universityId)
+  })
+})

@@ -13,6 +13,7 @@ import type {
   InviteToGroupInput,
   JoinRequestActionInput,
   MembersQuery,
+  NoteUploadUrlRequest,
   PaginationQuery,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
@@ -379,6 +380,12 @@ export const updateSharedNote = asyncHandler(async (req, res) => {
 export const deleteSharedNote = asyncHandler(async (req, res) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.deleteSharedNote(context, getGroupIdParam(req), getNoteIdParam(req)))
+})
+
+export const getSharedNoteUploadUrl = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const { fileName, contentType } = req.body as NoteUploadUrlRequest
+  sendSuccess(res, await groupsService.getSharedNoteUploadUrl(context, getGroupIdParam(req), fileName, contentType))
 })
 
 export const getAiSettings = asyncHandler(async (req, res) => {
