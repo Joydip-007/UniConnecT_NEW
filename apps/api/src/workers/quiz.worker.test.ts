@@ -81,4 +81,46 @@ describe('generateDailyQuizSlots — ai_quiz_pool priority', () => {
     const questions = typeof slot.questions === 'string' ? JSON.parse(slot.questions) : slot.questions
     expect(questions[0].q).not.toBe('AI Q')
   })
+
+  it('skips unapproved pool rows when ai_quiz_require_approval is true', async () => {
+    await db('daily_quiz_slots').where({ university_id: TEST_UNIVERSITY_ID, department: DEPARTMENT, date: LOCAL_DATE }).del()
+    
+    // Enable approval requirement
+    await db('university_settings').insert({
+      university_id: TEST_UNIVERSITY_ID,
+      ai_quiz_require_approval: true
+    }).onConflict('university_id').merge()
+
+    const [unapproved] = await db('ai_quiz_pool')
+      .insert({
+        university_id: TEST_UNIVERSITY_ID,
+        department: DEPARTMENT,
+        questions: JSON.stringify([{ q: 'Unapproved Q', options: ['a', 'b', 'c', 'd'], answer: 0 }]),
+        is_approved: null
+      })
+      .returning('id')
+
+    await generateDailyQuizSlots(INSTANT)
+
+    const slot = await db('daily_quiz_slots')
+      .where({ university_id: TEST_UNIVERSITY_ID, department: DEPARTMENT, date: LOCAL_DATE })
+      .first()
+    const questions = typeof slot.questions === 'string' ? JSON.parse(slot.questions) : slot.questions
+    // Should fall back since the row is unapproved
+    expect(questions[0].q).not.toBe('Unapproved Q')
+
+    // Approve the row, clear the slot, run again
+    await db('ai_quiz_pool').where({ id: unapproved.id }).update({ is_approved: true })
+    await db('daily_quiz_slots').where({ university_id: TEST_UNIVERSITY_ID, department: DEPARTMENT, date: LOCAL_DATE }).del()
+    
+    await generateDailyQuizSlots(INSTANT)
+    const newSlot = await db('daily_quiz_slots')
+      .where({ university_id: TEST_UNIVERSITY_ID, department: DEPARTMENT, date: LOCAL_DATE })
+      .first()
+    const newQuestions = typeof newSlot.questions === 'string' ? JSON.parse(newSlot.questions) : newSlot.questions
+    expect(newQuestions[0].q).toBe('Unapproved Q')
+
+    // Teardown
+    await db('university_settings').where({ university_id: TEST_UNIVERSITY_ID }).del()
+  })
 })

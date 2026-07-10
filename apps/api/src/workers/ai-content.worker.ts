@@ -147,14 +147,16 @@ export async function runGroupPosting(): Promise<void> {
   }
 }
 
-export async function runLearningPathGeneration(now: Date = new Date()): Promise<void> {
-  const universities = await db('universities').select<{ id: string }[]>('id')
+export async function runLearningPathGeneration(now: Date = new Date(), universityId?: string): Promise<void> {
+  const universities = universityId
+    ? await db('universities').where({ id: universityId }).select<{ id: string }[]>('id')
+    : await db('universities').select<{ id: string }[]>('id')
 
   for (const uni of universities) {
     try {
       const config = await learningAdminService.getConfig(uni.id)
       if (!config.enabled) continue
-      if (config.genHour !== now.getUTCHours()) continue
+      if (!universityId && config.genHour !== now.getUTCHours()) continue
       if (config.topics.length === 0) continue
 
       for (let i = 0; i < config.countPerRun; i++) {
@@ -231,6 +233,6 @@ aiContentQueue.process(async (job) => {
     await runGroupPosting()
   }
   if (job.data.task === 'learning-gen') {
-    await runLearningPathGeneration()
+    await runLearningPathGeneration(new Date(), job.data.universityId)
   }
 })

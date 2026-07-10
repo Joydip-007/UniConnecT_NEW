@@ -1,4 +1,6 @@
 import { db } from '../../config/db'
+import { notFound } from '../../utils/errors'
+import { aiContentQueue } from '../../queues/ai-content.queue'
 import type { LearningAdminConfigInput } from './schema'
 
 interface LearningTopic {
@@ -63,6 +65,53 @@ export class LearningAdminService {
 
     await db('university_settings').where({ university_id: universityId }).update(patch)
     return this.getConfig(universityId)
+  }
+
+  async listPendingPaths(universityId: string) {
+    return db('skill_paths').where({ university_id: universityId, source: 'ai', is_published: false })
+  }
+
+  async approvePath(universityId: string, pathId: string): Promise<void> {
+    const count = await db('skill_paths')
+      .where({ id: pathId, university_id: universityId, source: 'ai', is_published: false })
+      .update({ is_published: true })
+    if (count === 0) throw notFound()
+  }
+
+  async discardPath(universityId: string, pathId: string): Promise<void> {
+    const path = await db('skill_paths')
+      .where({ id: pathId, university_id: universityId, source: 'ai', is_published: false })
+      .first<{ id: string }>('id')
+    if (!path) throw notFound()
+
+    await db('skill_path_units').where({ path_id: pathId }).del()
+    await db('skill_paths').where({ id: pathId }).del()
+  }
+
+  async listPendingQuizBatches(universityId: string) {
+    const config = await this.getConfig(universityId)
+    if (!config.quizRequireApproval) return []
+    return db('ai_quiz_pool').where({ university_id: universityId }).whereNull('is_approved')
+  }
+
+  async approveQuizBatch(universityId: string, batchId: string): Promise<void> {
+    const count = await db('ai_quiz_pool')
+      .where({ id: batchId, university_id: universityId })
+      .whereNull('is_approved')
+      .update({ is_approved: true })
+    if (count === 0) throw notFound()
+  }
+
+  async discardQuizBatch(universityId: string, batchId: string): Promise<void> {
+    const count = await db('ai_quiz_pool')
+      .where({ id: batchId, university_id: universityId })
+      .whereNull('is_approved')
+      .update({ is_approved: false })
+    if (count === 0) throw notFound()
+  }
+
+  async triggerGenerateNow(universityId: string): Promise<void> {
+    await aiContentQueue.add({ task: 'learning-gen', universityId })
   }
 
   /** Ensures a university_settings row exists; returns the AI-learning columns. */

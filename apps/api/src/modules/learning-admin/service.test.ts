@@ -60,4 +60,92 @@ describe('learningAdminService', () => {
 
     await cleanup(universityId)
   })
+  it('lists and action pending paths correctly', async () => {
+    const universityId = await createUniversity()
+
+    // Create a path
+    const [path] = await db('skill_paths').insert({
+      university_id: universityId,
+      title: 'AI Path',
+      category: 'Computer Science',
+      description: 'Desc',
+      difficulty: 'beginner',
+      estimated_days: 7,
+      is_published: false,
+      source: 'ai'
+    }).returning('id')
+
+    await db('skill_path_units').insert({
+      path_id: path.id,
+      title: 'Unit 1',
+      display_order: 1,
+      type: 'quiz',
+      content: '{}'
+    })
+
+    const pending = await learningAdminService.listPendingPaths(universityId)
+    expect(pending.length).toBe(1)
+    expect(pending[0].id).toBe(path.id)
+
+    // Approve
+    await learningAdminService.approvePath(universityId, path.id)
+    const approved = await db('skill_paths').where({ id: path.id }).first()
+    expect(approved.is_published).toBe(true)
+
+    // Ensure list is now empty
+    const pendingAfterApprove = await learningAdminService.listPendingPaths(universityId)
+    expect(pendingAfterApprove.length).toBe(0)
+
+    // Discard
+    await db('skill_paths').where({ id: path.id }).update({ is_published: false }) // revert to test discard
+    await learningAdminService.discardPath(universityId, path.id)
+
+    const discardedPath = await db('skill_paths').where({ id: path.id }).first()
+    const discardedUnits = await db('skill_path_units').where({ path_id: path.id })
+    expect(discardedPath).toBeUndefined()
+    expect(discardedUnits.length).toBe(0)
+
+    await cleanup(universityId)
+  })
+
+  it('lists and action pending quiz batches correctly', async () => {
+    const universityId = await createUniversity()
+
+    // Must return empty if requireApproval is false
+    const [quiz] = await db('ai_quiz_pool').insert({
+      university_id: universityId,
+      department: 'Dept',
+      questions: '[]',
+      is_approved: null
+    }).returning('id')
+
+    let pending = await learningAdminService.listPendingQuizBatches(universityId)
+    expect(pending.length).toBe(0)
+
+    // Enable it
+    await learningAdminService.updateConfig(universityId, { quizRequireApproval: true })
+    pending = await learningAdminService.listPendingQuizBatches(universityId)
+    expect(pending.length).toBe(1)
+    expect(pending[0].id).toBe(quiz.id)
+
+    // Approve
+    await learningAdminService.approveQuizBatch(universityId, quiz.id)
+    const approved = await db('ai_quiz_pool').where({ id: quiz.id }).first()
+    expect(approved.is_approved).toBe(true)
+
+    // Discard another
+    const [quiz2] = await db('ai_quiz_pool').insert({
+      university_id: universityId,
+      department: 'Dept',
+      questions: '[]',
+      is_approved: null
+    }).returning('id')
+
+    await learningAdminService.discardQuizBatch(universityId, quiz2.id)
+    const discarded = await db('ai_quiz_pool').where({ id: quiz2.id }).first()
+    expect(discarded.is_approved).toBe(false)
+
+    await db('ai_quiz_pool').where({ university_id: universityId }).del()
+    await cleanup(universityId)
+  })
 })

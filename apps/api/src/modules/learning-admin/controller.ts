@@ -16,6 +16,46 @@ export const updateConfig = asyncHandler(async (req: Request, res: Response) => 
   sendSuccess(res, config)
 })
 
+export const listPendingPaths = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.listPendingPaths(universityId))
+})
+
+export const approvePath = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.approvePath(universityId, req.params.id as string)
+  sendSuccess(res, { success: true })
+})
+
+export const discardPath = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.discardPath(universityId, req.params.id as string)
+  sendSuccess(res, { success: true })
+})
+
+export const listPendingQuizBatches = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.listPendingQuizBatches(universityId))
+})
+
+export const approveQuizBatch = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.approveQuizBatch(universityId, req.params.id as string)
+  sendSuccess(res, { success: true })
+})
+
+export const discardQuizBatch = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.discardQuizBatch(universityId, req.params.id as string)
+  sendSuccess(res, { success: true })
+})
+
+export const triggerGenerateNow = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.triggerGenerateNow(universityId)
+  sendSuccess(res, { success: true })
+})
+
 function getContext(req: Request) {
   if (!req.user) throw unauthorized()
   return {

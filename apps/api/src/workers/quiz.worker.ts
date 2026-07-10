@@ -35,8 +35,17 @@ export async function generateDailyQuizSlots(now: Date): Promise<void> {
         .first<{ id: string }>('id')
       if (exists) continue
 
-      const pooled = await db('ai_quiz_pool')
+      const settings = await db('university_settings').where({ university_id: uni.id }).first<{ ai_quiz_require_approval: boolean }>('ai_quiz_require_approval')
+      const requireApproval = settings?.ai_quiz_require_approval ?? false
+
+      let poolQuery = db('ai_quiz_pool')
         .where({ university_id: uni.id, department, consumed_at: null })
+      
+      if (requireApproval) {
+        poolQuery = poolQuery.where({ is_approved: true })
+      }
+
+      const pooled = await poolQuery
         .orderBy('generated_at', 'asc')
         .first<{ id: string; questions: StoredQuestion[] | string }>()
 
