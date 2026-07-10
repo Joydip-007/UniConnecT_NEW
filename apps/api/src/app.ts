@@ -20,6 +20,7 @@ import { connectionsRouter } from './modules/connections'
 import { contentSyncRouter } from './modules/content-sync'
 import { draftsRouter } from './modules/drafts'
 import { learningRouter } from './modules/learning'
+import { learningAdminRouter } from './modules/learning-admin'
 import { quizRouter } from './modules/quiz'
 import { mentorshipRouter } from './modules/mentorship'
 import { moderationRouter } from './modules/moderation'
@@ -82,6 +83,7 @@ export function createApp() {
 
   app.use('/api/v1/admin', adminRouter)
   app.use('/api/v1/admin/content-sync', contentSyncRouter)
+  app.use('/api/v1/admin/learning', learningAdminRouter)
   app.use('/api/v1/auth', authRouter)
   app.use('/api/v1/users', usersRouter)
   app.use('/api/v1/upload', uploadRouter)
