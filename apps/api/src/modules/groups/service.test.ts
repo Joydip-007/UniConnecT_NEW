@@ -245,4 +245,28 @@ describe('groupService — shared note attachments', () => {
 
     await cleanup(universityId)
   })
+
+  it('does not wipe attachments on a partial update that omits the field', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const context = { userId: faculty.id, universityId, role: 'faculty' as UserRole }
+
+    const note = await groupsService.createSharedNote(context, group.id, {
+      title: 'Lecture 1',
+      body: 'notes',
+      attachments: [{ name: 'lecture1.pdf', url: 'https://cdn.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
+    })
+
+    const updated = await groupsService.updateSharedNote(context, group.id, note.id, { title: 'Lecture 1 (revised)' })
+
+    expect(updated.title).toBe('Lecture 1 (revised)')
+    expect(updated.attachments).toHaveLength(1)
+    expect(updated.attachments[0].name).toBe('lecture1.pdf')
+
+    await cleanup(universityId)
+  })
 })

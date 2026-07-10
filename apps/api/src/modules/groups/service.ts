@@ -10,6 +10,7 @@ import { gradebookService } from '../academic/gradebook.service'
 import { contentSyncService } from '../content-sync/service'
 import { logger } from '../../utils/logger'
 import { getPresignedUploadUrl, sanitizeFileName } from '../../services/upload.service'
+import { ALLOWED_NOTE_CONTENT_TYPES } from './schema'
 import type {
   AllowedRole,
   Attachment,
@@ -1697,8 +1698,8 @@ export class GroupsService {
         ...pickDefined({
           title: input.title,
           body: input.body,
+          attachments: input.attachments !== undefined ? JSON.stringify(input.attachments) : undefined,
         }),
-        attachments: JSON.stringify(input.attachments ?? []),
         updated_at: new Date(),
       })
 
@@ -1708,19 +1709,7 @@ export class GroupsService {
   async getSharedNoteUploadUrl(context: AuthContext, groupId: string, fileName: string, contentType: string) {
     await assertMemberAccess(context, groupId)
 
-    const ALLOWED_NOTE_UPLOAD_TYPES = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-    ]
-
-    if (!ALLOWED_NOTE_UPLOAD_TYPES.includes(contentType)) {
+    if (!(ALLOWED_NOTE_CONTENT_TYPES as readonly string[]).includes(contentType)) {
       throw badRequest('Unsupported file type for shared notes', 'SHARED_NOTE_UPLOAD_TYPE_NOT_ALLOWED')
     }
 

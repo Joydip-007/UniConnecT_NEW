@@ -152,7 +152,7 @@ export const AttachmentSchema = z.object({
   size: z.number().int().max(26214400),
 })
 
-const ALLOWED_NOTE_CONTENT_TYPES = [
+export const ALLOWED_NOTE_CONTENT_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -176,7 +176,7 @@ export const UpdateSharedNoteSchema = z
   .object({
     title: z.string().trim().min(1).max(160).optional(),
     body: z.string().trim().min(1).max(10000).optional(),
-    attachments: z.array(AttachmentSchema).max(5).optional().default([]),
+    attachments: z.array(AttachmentSchema).max(5).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' })
 
