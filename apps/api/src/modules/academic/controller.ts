@@ -3,7 +3,13 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { unauthorized } from '../../utils/errors'
 import { sendSuccess } from '../../utils/response'
 import { courseOutlineService } from './course-outline.service'
-import type { CreateCourseOutlineInput, UpdateAssessmentsInput, UpdateTopicsInput } from './schema'
+import { gradebookService } from './gradebook.service'
+import type {
+  CreateCourseOutlineInput,
+  UpdateAssessmentsInput,
+  UpdateTopicsInput,
+  UpsertGradebookEntriesInput,
+} from './schema'
 
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
@@ -64,4 +70,33 @@ export const updateTopics = asyncHandler(async (req: Request, res: Response) => 
     req.body as UpdateTopicsInput,
   )
   sendSuccess(res, outline)
+})
+
+export const getGradebook = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const gradebook = await gradebookService.getGradebook(context, getGroupIdParam(req))
+  sendSuccess(res, gradebook)
+})
+
+export const upsertGradebookEntries = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const gradebook = await gradebookService.upsertEntries(
+    context,
+    getGroupIdParam(req),
+    (req.body as UpsertGradebookEntriesInput).entries,
+  )
+  sendSuccess(res, gradebook)
+})
+
+export const getMyGradeCard = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const gradeCard = await gradebookService.getMyGradeCard(context, getGroupIdParam(req))
+  sendSuccess(res, gradeCard)
+})
+
+export const getStudentGradeCard = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const studentId = Array.isArray(req.params.studentId) ? req.params.studentId[0] : req.params.studentId
+  const gradeCard = await gradebookService.getStudentGradeCard(context, getGroupIdParam(req), studentId)
+  sendSuccess(res, gradeCard)
 })

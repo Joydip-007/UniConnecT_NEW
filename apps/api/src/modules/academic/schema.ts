@@ -75,8 +75,21 @@ export const UpdateTopicsSchema = z
     path: ['topics'],
   })
 
+export const UpsertGradebookEntriesSchema = z.object({
+  entries: z.array(
+    z.object({
+      studentId: z.string().uuid(),
+      assessmentId: z.string().uuid(),
+      instanceNumber: z.number().int().min(1),
+      marksObtained: z.number().nullable(),
+      notes: z.string().optional(),
+    }),
+  ),
+})
+
 export type CreateCourseOutlineInput = z.infer<typeof CreateCourseOutlineSchema>
 export type UpdateAssessmentsInput = z.infer<typeof UpdateAssessmentsSchema>
 export type UpdateTopicsInput = z.infer<typeof UpdateTopicsSchema>
 export type CreateAssessmentInput = z.infer<typeof CreateAssessmentSchema>
 export type CreateTopicInput = z.infer<typeof CreateTopicSchema>
+export type UpsertGradebookEntriesInput = z.infer<typeof UpsertGradebookEntriesSchema>
