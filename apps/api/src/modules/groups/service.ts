@@ -7,6 +7,8 @@ import { badgeQueue } from '../../queues/badge.queue'
 import { notificationQueue } from '../../queues/notification.queue'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { gradebookService } from '../academic/gradebook.service'
+import { contentSyncService } from '../content-sync/service'
+import { logger } from '../../utils/logger'
 import type {
   AllowedRole,
   CreateFlashcardDeckInput,
@@ -1737,6 +1739,91 @@ export class GroupsService {
     const merged = { ...(row.ai_settings ?? {}), ...patch }
     await db('groups').where({ id: groupId }).update({ ai_settings: merged })
     return this.getGroup(context, groupId)
+  }
+
+  async listPendingAiContent(context: AuthContext, groupId: string) {
+    await assertGroupAdminAccess(context, groupId)
+    const group = await db('groups').where({ id: groupId, university_id: context.universityId }).first()
+    if (!group) throw notFound('Group not found')
+    const settings: Record<string, unknown> = group.ai_settings ?? {}
+
+    const items: Array<{ id: string; type: 'flashcard_deck' | 'quiz'; title?: string; content?: unknown; createdAt?: Date }> = []
+    if (settings.pending_deck_id) {
+      const deck = await db('group_flashcard_decks').where({ id: settings.pending_deck_id as string }).first()
+      if (deck) items.push({ id: deck.id, type: 'flashcard_deck', title: deck.title, createdAt: deck.created_at })
+    }
+    if (settings.pending_quiz_content) {
+      items.push({ id: 'pending-quiz', type: 'quiz', content: settings.pending_quiz_content })
+    }
+    return items
+  }
+
+  async approvePendingAiContent(context: AuthContext, groupId: string, contentId: string) {
+    await assertGroupAdminAccess(context, groupId)
+    const group = await db('groups').where({ id: groupId, university_id: context.universityId }).first()
+    if (!group) throw notFound('Group not found')
+    const settings: Record<string, unknown> = group.ai_settings ?? {}
+
+    if (settings.pending_deck_id === contentId) {
+      await db('group_flashcard_decks').where({ id: contentId }).update({ is_archived: false })
+      await db('groups')
+        .where({ id: groupId })
+        .update({ ai_settings: { ...settings, pending_deck_id: null } })
+
+      // Announce the newly-approved deck to the group feed as the campus bot, best-effort.
+      const deck = await db('group_flashcard_decks').where({ id: contentId }).first()
+      try {
+        const botUserId = await contentSyncService.ensureCampusBotUser(context.universityId)
+        await feedService.createPost(
+          { userId: botUserId, universityId: context.universityId, role: 'faculty' },
+          {
+            type: 'post',
+            content: `New AI flashcard deck ready: ${deck?.title ?? 'Untitled deck'}`,
+            group_id: groupId,
+            media_urls: [],
+            is_published: true,
+          },
+        )
+      } catch (err) {
+        // Non-fatal: approval already succeeded. Announcement failures (e.g. bot user
+        // provisioning issues) should not roll back or fail the approval itself.
+        logger.warn('Failed to post AI content approval announcement', { groupId, contentId, error: err })
+      }
+      return { approved: true }
+    }
+
+    if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
+      await db('groups')
+        .where({ id: groupId })
+        .update({ ai_settings: { ...settings, pending_quiz_content: null } })
+      return { approved: true }
+    }
+
+    throw notFound('Pending content not found')
+  }
+
+  async discardPendingAiContent(context: AuthContext, groupId: string, contentId: string) {
+    await assertGroupAdminAccess(context, groupId)
+    const group = await db('groups').where({ id: groupId, university_id: context.universityId }).first()
+    if (!group) throw notFound('Group not found')
+    const settings: Record<string, unknown> = group.ai_settings ?? {}
+
+    if (settings.pending_deck_id === contentId) {
+      await db('group_flashcard_decks').where({ id: contentId }).delete()
+      await db('groups')
+        .where({ id: groupId })
+        .update({ ai_settings: { ...settings, pending_deck_id: null } })
+      return { discarded: true }
+    }
+
+    if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
+      await db('groups')
+        .where({ id: groupId })
+        .update({ ai_settings: { ...settings, pending_quiz_content: null } })
+      return { discarded: true }
+    }
+
+    throw notFound('Pending content not found')
   }
 }
 

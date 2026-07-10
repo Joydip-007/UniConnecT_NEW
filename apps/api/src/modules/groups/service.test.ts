@@ -144,3 +144,66 @@ describe('groupService — gradebook auto-population on join', () => {
     await cleanup(universityId)
   })
 })
+
+describe('groupsService — pending AI content', () => {
+  it('lists a pending deck awaiting approval', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+
+    const [deck] = await db('group_flashcard_decks')
+      .insert({ group_id: group.id, university_id: universityId, title: 'AI Deck', created_by: faculty.id, is_archived: true })
+      .returning<{ id: string }[]>('id')
+    await db('groups').where({ id: group.id }).update({ ai_settings: { pending_deck_id: deck.id } })
+
+    const pending = await groupsService.listPendingAiContent({ userId: faculty.id, universityId, role: 'faculty' }, group.id)
+    expect(pending).toHaveLength(1)
+    expect(pending[0].id).toBe(deck.id)
+
+    await cleanup(universityId)
+  })
+
+  it('approving a pending deck un-archives it and clears pending_deck_id', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const [deck] = await db('group_flashcard_decks')
+      .insert({ group_id: group.id, university_id: universityId, title: 'AI Deck', created_by: faculty.id, is_archived: true })
+      .returning<{ id: string }[]>('id')
+    await db('groups').where({ id: group.id }).update({ ai_settings: { pending_deck_id: deck.id } })
+
+    await groupsService.approvePendingAiContent({ userId: faculty.id, universityId, role: 'faculty' }, group.id, deck.id)
+
+    const updated = await db('group_flashcard_decks').where({ id: deck.id }).first()
+    expect(updated.is_archived).toBe(false)
+    const updatedGroup = await db('groups').where({ id: group.id }).first()
+    expect(updatedGroup.ai_settings.pending_deck_id).toBeNull()
+
+    await cleanup(universityId)
+  })
+
+  it('discarding a pending deck deletes it', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const [deck] = await db('group_flashcard_decks')
+      .insert({ group_id: group.id, university_id: universityId, title: 'AI Deck', created_by: faculty.id, is_archived: true })
+      .returning<{ id: string }[]>('id')
+    await db('groups').where({ id: group.id }).update({ ai_settings: { pending_deck_id: deck.id } })
+
+    await groupsService.discardPendingAiContent({ userId: faculty.id, universityId, role: 'faculty' }, group.id, deck.id)
+
+    expect(await db('group_flashcard_decks').where({ id: deck.id }).first()).toBeUndefined()
+
+    await cleanup(universityId)
+  })
+})

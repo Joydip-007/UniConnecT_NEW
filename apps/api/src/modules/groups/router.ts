@@ -4,6 +4,7 @@ import { requireAcademicGroup } from '../../middleware/requireAcademicGroup'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
+  approvePendingAiContent,
   cancelJoinRequest,
   createFlashcard,
   createFlashcardDeck,
@@ -17,6 +18,7 @@ import {
   deleteResource,
   deleteSharedNote,
   deleteStudySession,
+  discardPendingAiContent,
   getAiSettings,
   getFlashcardReviewQueue,
   getGroup,
@@ -33,6 +35,7 @@ import {
   listGroups,
   listJoinRequests,
   listMyGroups,
+  listPendingAiContent,
   listResources,
   listSharedNotes,
   listStudySessions,
@@ -172,3 +175,8 @@ groupsRouter.delete('/:groupId/shared-notes/:noteId', deleteSharedNote)
 // AI settings (academic groups only — enforced in the service layer)
 groupsRouter.get('/:groupId/ai-settings', getAiSettings)
 groupsRouter.patch('/:groupId/ai-settings', validate(UpdateGroupAISettingsSchema), updateAiSettings)
+
+// Pending AI content review (faculty admins approve/discard AI-generated decks/quizzes)
+groupsRouter.get('/:groupId/ai-settings/pending', listPendingAiContent)
+groupsRouter.post('/:groupId/ai-settings/pending/:contentId/approve', approvePendingAiContent)
+groupsRouter.delete('/:groupId/ai-settings/pending/:contentId', discardPendingAiContent)

@@ -394,6 +394,32 @@ export const updateAiSettings = asyncHandler(async (req, res) => {
   )
 })
 
+export const listPendingAiContent = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.listPendingAiContent(context, getGroupIdParam(req)))
+})
+
+export const approvePendingAiContent = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.approvePendingAiContent(context, getGroupIdParam(req), getContentIdParam(req)),
+  )
+})
+
+export const discardPendingAiContent = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.discardPendingAiContent(context, getGroupIdParam(req), getContentIdParam(req)),
+  )
+})
+
+function getContentIdParam(req: Request) {
+  const value = req.params.contentId
+  return Array.isArray(value) ? value[0] : value
+}
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 
