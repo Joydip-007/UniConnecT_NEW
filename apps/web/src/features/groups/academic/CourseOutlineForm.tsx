@@ -6,14 +6,27 @@ interface CourseOutlineFormProps {
   groupId: string
 }
 
+type KeyedAssessment = CourseOutlineAssessment & { _id: string }
+type KeyedTopic = CourseOutlineTopic & { _id: string }
+
+let localIdCounter = 0
+function nextLocalId() {
+  localIdCounter += 1
+  return `local-${localIdCounter}`
+}
+
 export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
   const { data: outline } = useCourseOutline(groupId)
   const save = useSaveCourseOutline(groupId, outline ? 'replace' : 'create')
 
   const [courseTitle, setCourseTitle] = useState(outline?.courseTitle ?? '')
   const [gradingScale, setGradingScale] = useState<'uiu' | 'ugc' | 'custom'>(outline?.gradingScale ?? 'uiu')
-  const [assessments, setAssessments] = useState<CourseOutlineAssessment[]>(outline?.assessments ?? [])
-  const [topics, setTopics] = useState<CourseOutlineTopic[]>(outline?.topics ?? [])
+  const [assessments, setAssessments] = useState<KeyedAssessment[]>(
+    (outline?.assessments ?? []).map((a) => ({ ...a, _id: nextLocalId() })),
+  )
+  const [topics, setTopics] = useState<KeyedTopic[]>(
+    (outline?.topics ?? []).map((t) => ({ ...t, _id: nextLocalId() })),
+  )
 
   const weightSum = assessments.reduce((sum, a) => sum + (a.weightPercent || 0), 0)
   const weightValid = Math.abs(weightSum - 100) < 0.01
@@ -21,7 +34,15 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
   function addAssessment() {
     setAssessments((prev) => [
       ...prev,
-      { categoryName: '', fullMarks: 0, weightPercent: 0, totalGiven: 1, bestNCounted: 1, displayOrder: prev.length + 1 },
+      {
+        categoryName: '',
+        fullMarks: 0,
+        weightPercent: 0,
+        totalGiven: 1,
+        bestNCounted: 1,
+        displayOrder: prev.length + 1,
+        _id: nextLocalId(),
+      },
     ])
   }
 
@@ -34,7 +55,17 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
   }
 
   async function handleSubmit() {
-    await save.mutateAsync({ courseTitle, gradingScale, assessments, topics })
+    const wireAssessments: CourseOutlineAssessment[] = assessments.map((a) => {
+      const { _id, ...rest } = a
+      void _id
+      return rest
+    })
+    const wireTopics: CourseOutlineTopic[] = topics.map((t) => {
+      const { _id, ...rest } = t
+      void _id
+      return rest
+    })
+    await save.mutateAsync({ courseTitle, gradingScale, assessments: wireAssessments, topics: wireTopics })
   }
 
   return (
@@ -71,7 +102,7 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
 
       <div className="flex flex-col gap-2">
         {assessments.map((a, i) => (
-          <div key={i} className="flex gap-2 items-center">
+          <div key={a._id} className="flex gap-2 items-center">
             <input
               aria-label="Category name"
               value={a.categoryName}
@@ -86,19 +117,29 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
             <span>
               Count best {a.bestNCounted} of {a.totalGiven} given
             </span>
-            <button type="button" onClick={() => removeAssessment(i)}>
+            <button
+              type="button"
+              onClick={() => removeAssessment(i)}
+              className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-2"
+              style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
+            >
               Remove
             </button>
           </div>
         ))}
-        <button type="button" onClick={addAssessment}>
+        <button
+          type="button"
+          onClick={addAssessment}
+          className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-2"
+          style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
+        >
           Add assessment
         </button>
       </div>
 
       <div className="flex flex-col gap-2">
         {topics.map((t, i) => (
-          <div key={i} className="flex gap-2 items-center">
+          <div key={t._id} className="flex gap-2 items-center">
             <input
               aria-label="Week number"
               type="number"
@@ -114,14 +155,21 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
                 setTopics((prev) => prev.map((p, idx) => (idx === i ? { ...p, title: e.target.value } : p)))
               }
             />
-            <button type="button" onClick={() => setTopics((prev) => prev.filter((_, idx) => idx !== i))}>
+            <button
+              type="button"
+              onClick={() => setTopics((prev) => prev.filter((_, idx) => idx !== i))}
+              className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-2"
+              style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
+            >
               Remove
             </button>
           </div>
         ))}
         <button
           type="button"
-          onClick={() => setTopics((prev) => [...prev, { weekNumber: prev.length + 1, title: '' }])}
+          onClick={() => setTopics((prev) => [...prev, { weekNumber: prev.length + 1, title: '', _id: nextLocalId() }])}
+          className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-2"
+          style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
         >
           Add topic
         </button>
