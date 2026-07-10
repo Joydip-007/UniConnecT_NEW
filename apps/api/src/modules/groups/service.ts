@@ -27,7 +27,7 @@ import type {
 } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
 
-type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other'
+type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
 type GroupRole = 'owner' | 'admin' | 'moderator' | 'member'
 
 interface AuthContext {
@@ -60,6 +60,7 @@ interface GroupRow {
   pinned_at: Date | null
   pinned_by: string | null
   rules_md: string | null
+  ai_settings: Record<string, unknown> | null
 }
 
 interface GroupAccessRow {
@@ -232,6 +233,10 @@ export class GroupsService {
   }
 
   async createGroup(context: AuthContext, input: CreateGroupInput) {
+    if (input.type === 'academic' && context.role !== 'faculty') {
+      throw forbidden('Only faculty members can create academic groups', 'ACADEMIC_GROUP_FACULTY_ONLY')
+    }
+
     const allowedRole = resolveAllowedRoleOnCreate(context.role, input.allowed_role)
 
     const groupId = await db.transaction(async (trx) => {
@@ -1813,6 +1818,7 @@ function groupSelectQuery(knex: Knex, userId: string) {
       'groups.pinned_text',
       'groups.pinned_at',
       'groups.pinned_by',
+      'groups.ai_settings',
     )
 }
 
@@ -2227,6 +2233,7 @@ function toGroup(row: GroupRow) {
     pinnedText: row.pinned_text,
     pinnedAt: row.pinned_at,
     pinnedBy: row.pinned_by,
+    aiSettings: row.ai_settings ?? {},
   }
 }
 

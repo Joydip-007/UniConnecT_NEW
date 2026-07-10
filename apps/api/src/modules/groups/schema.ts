@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const GroupTypeSchema = z.enum(['department', 'club', 'batch', 'research', 'interest', 'other'])
+export const GroupTypeSchema = z.enum(['department', 'club', 'batch', 'research', 'interest', 'other', 'academic'])
 export const GroupRoleSchema = z.enum(['owner', 'admin', 'moderator', 'member'])
 export const AllowedRoleSchema = z.enum(['student', 'alumni', 'faculty', 'admin'])
 
@@ -173,3 +173,20 @@ export type UpdateFlashcardInput = z.infer<typeof UpdateFlashcardSchema>
 export type FlashcardReviewInput = z.infer<typeof FlashcardReviewSchema>
 export type CreateSharedNoteInput = z.infer<typeof CreateSharedNoteSchema>
 export type UpdateSharedNoteInput = z.infer<typeof UpdateSharedNoteSchema>
+
+// ── AI settings (academic groups) ────────────────────────────
+export const AISettingsSchema = z.object({
+  ai_flashcards_enabled: z.boolean().default(false),
+  ai_quiz_enabled: z.boolean().default(false),
+  require_approval: z.boolean().default(false),
+  subject: z.string().max(255).optional(),
+  difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+  question_style: z.enum(['mcq', 'true_false', 'short_answer', 'mixed']).optional(),
+  language: z.enum(['en', 'bn']).default('en'),
+  custom_instructions: z.string().max(1000).optional(),
+})
+
+export const UpdateGroupAISettingsSchema = AISettingsSchema.partial()
+
+export type AISettingsInput = z.infer<typeof AISettingsSchema>
+export type UpdateGroupAISettingsInput = z.infer<typeof UpdateGroupAISettingsSchema>
