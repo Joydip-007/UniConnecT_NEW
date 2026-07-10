@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { MapPin, Globe, Plus } from 'lucide-react'
+import { MapPin, Globe, NotebookPen, Plus } from 'lucide-react'
 import {
   useStudySessions,
   useCreateStudySession,
   useRsvpStudySession,
   type StudySession,
 } from '@/features/groups'
+import { SessionNotesPanel } from './SessionNotesPanel'
 
 interface Props {
   groupId: string
@@ -15,6 +16,7 @@ interface Props {
 
 export function StudySessionsTab({ groupId, currentUserId, showCreateAction = true }: Props) {
   const [showCreate, setShowCreate] = useState(false)
+  const [activeNotesSessionId, setActiveNotesSessionId] = useState<string | null>(null)
   const { data, isLoading } = useStudySessions(groupId)
   const createMutation = useCreateStudySession(groupId)
   const rsvpMutation = useRsvpStudySession(groupId)
@@ -57,10 +59,13 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
                 {upcoming.map((s) => (
                   <SessionCard
                     key={s.id}
+                    groupId={groupId}
                     session={s}
                     currentUserId={currentUserId}
                     onRsvp={(status) => rsvpMutation.mutate({ sessionId: s.id, status })}
                     isRsvpPending={rsvpMutation.isPending}
+                    notesOpen={activeNotesSessionId === s.id}
+                    onToggleNotes={() => setActiveNotesSessionId((current) => (current === s.id ? null : s.id))}
                   />
                 ))}
               </div>
@@ -73,10 +78,13 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
                 {past.map((s) => (
                   <SessionCard
                     key={s.id}
+                    groupId={groupId}
                     session={s}
                     currentUserId={currentUserId}
                     onRsvp={(status) => rsvpMutation.mutate({ sessionId: s.id, status })}
                     isRsvpPending={rsvpMutation.isPending}
+                    notesOpen={activeNotesSessionId === s.id}
+                    onToggleNotes={() => setActiveNotesSessionId((current) => (current === s.id ? null : s.id))}
                   />
                 ))}
               </div>
@@ -93,60 +101,93 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
   )
 }
 
-function SessionCard({ session, onRsvp, isRsvpPending }: {
+function SessionCard({ groupId, session, currentUserId, onRsvp, isRsvpPending, notesOpen, onToggleNotes }: {
+  groupId: string
   session: StudySession
   currentUserId?: string
   onRsvp: (status: 'going' | 'not_going') => void
   isRsvpPending: boolean
+  notesOpen: boolean
+  onToggleNotes: () => void
 }) {
   const isGoing = session.ownRsvp === 'going'
   const d = new Date(session.startsAt)
   const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  const isCreator = !!currentUserId && session.createdBy === currentUserId
 
   return (
-    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-      {/* Date chip */}
-      <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)', padding: '6px 10px', textAlign: 'center', flexShrink: 0 }}>
-        <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>{dateStr}</p>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{timeStr}</p>
-      </div>
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        {/* Date chip */}
+        <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)', padding: '6px 10px', textAlign: 'center', flexShrink: 0 }}>
+          <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>{dateStr}</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{timeStr}</p>
+        </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{session.title}</p>
-        {session.description && (
-          <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>{session.description}</p>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
-          {session.isOnline ? <Globe size={11} strokeWidth={1.5} /> : <MapPin size={11} strokeWidth={1.5} />}
-          <span>{session.isOnline ? (session.onlineLink ?? 'Online') : (session.location ?? 'TBD')}</span>
-          {session.capacity != null && (
-            <span style={{ marginLeft: 6 }}>{session.rsvpCount}/{session.capacity} going</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{session.title}</p>
+          {session.description && (
+            <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>{session.description}</p>
           )}
-          {session.capacity == null && (
-            <span style={{ marginLeft: 6 }}>{session.rsvpCount} going</span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
+            {session.isOnline ? <Globe size={11} strokeWidth={1.5} /> : <MapPin size={11} strokeWidth={1.5} />}
+            <span>{session.isOnline ? (session.onlineLink ?? 'Online') : (session.location ?? 'TBD')}</span>
+            {session.capacity != null && (
+              <span style={{ marginLeft: 6 }}>{session.rsvpCount}/{session.capacity} going</span>
+            )}
+            {session.capacity == null && (
+              <span style={{ marginLeft: 6 }}>{session.rsvpCount} going</span>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+          <button
+            type="button"
+            disabled={isRsvpPending}
+            onClick={() => onRsvp(isGoing ? 'not_going' : 'going')}
+            style={{
+              padding: '5px 12px',
+              fontSize: 12,
+              fontWeight: 400,
+              borderRadius: 'var(--r-pill)',
+              border: isGoing ? 'none' : '0.5px solid var(--border-default)',
+              background: isGoing ? 'var(--uc-indigo)' : 'none',
+              color: isGoing ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+              cursor: isRsvpPending ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {isGoing ? 'Going ✓' : 'RSVP'}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleNotes}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '5px 12px',
+              fontSize: 12,
+              fontWeight: 400,
+              borderRadius: 'var(--r-pill)',
+              border: '0.5px solid var(--border-default)',
+              background: notesOpen ? 'var(--surface-raised)' : 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+            }}
+          >
+            <NotebookPen size={12} strokeWidth={1.5} />
+            Notes
+          </button>
         </div>
       </div>
 
-      <button
-        type="button"
-        disabled={isRsvpPending}
-        onClick={() => onRsvp(isGoing ? 'not_going' : 'going')}
-        style={{
-          padding: '5px 12px',
-          fontSize: 12,
-          fontWeight: 400,
-          borderRadius: 'var(--r-pill)',
-          border: isGoing ? 'none' : '0.5px solid var(--border-default)',
-          background: isGoing ? 'var(--uc-indigo)' : 'none',
-          color: isGoing ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-          cursor: isRsvpPending ? 'not-allowed' : 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        {isGoing ? 'Going ✓' : 'RSVP'}
-      </button>
+      {notesOpen && (
+        <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 10 }}>
+          <SessionNotesPanel groupId={groupId} sessionId={session.id} isCreator={isCreator} />
+        </div>
+      )}
     </div>
   )
 }

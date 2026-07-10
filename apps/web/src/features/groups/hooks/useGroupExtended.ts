@@ -14,6 +14,7 @@ import type {
   GradebookEntryInput,
   MyGradeCard,
   ReviewRating,
+  SessionNotes,
   SharedNote,
   Submission,
 } from '../types'
@@ -722,6 +723,63 @@ export function useDiscardPendingAiContent(groupId: string) {
         .then((r) => r.data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pendingAiContentKey(groupId) })
+    },
+  })
+}
+
+// ── Session notes (creator + private) ───────────────────────────────────────
+
+type SaveSessionNotesInput = { title?: string; body?: string; attachments?: Attachment[] }
+
+const sessionCreatorNotesKey = (groupId: string, sessionId: string) =>
+  ['groups', 'session-notes', 'creator', { groupId, sessionId }] as const
+const sessionPrivateNotesKey = (groupId: string, sessionId: string) =>
+  ['groups', 'session-notes', 'private', { groupId, sessionId }] as const
+
+export function useSessionCreatorNotes(groupId: string, sessionId: string) {
+  return useQuery({
+    queryKey: sessionCreatorNotesKey(groupId, sessionId),
+    queryFn: () =>
+      api
+        .get<{ data: SessionNotes | null }>(`/groups/${groupId}/study-sessions/${sessionId}/notes/creator`)
+        .then((r) => r.data.data),
+    enabled: !!groupId && !!sessionId,
+  })
+}
+
+export function useSaveSessionCreatorNotes(groupId: string, sessionId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: SaveSessionNotesInput) =>
+      api
+        .put<{ data: SessionNotes }>(`/groups/${groupId}/study-sessions/${sessionId}/notes/creator`, input)
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionCreatorNotesKey(groupId, sessionId) })
+    },
+  })
+}
+
+export function useMySessionPrivateNotes(groupId: string, sessionId: string) {
+  return useQuery({
+    queryKey: sessionPrivateNotesKey(groupId, sessionId),
+    queryFn: () =>
+      api
+        .get<{ data: SessionNotes | null }>(`/groups/${groupId}/study-sessions/${sessionId}/notes/private`)
+        .then((r) => r.data.data),
+    enabled: !!groupId && !!sessionId,
+  })
+}
+
+export function useSaveMySessionPrivateNotes(groupId: string, sessionId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: SaveSessionNotesInput) =>
+      api
+        .put<{ data: SessionNotes }>(`/groups/${groupId}/study-sessions/${sessionId}/notes/private`, input)
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: sessionPrivateNotesKey(groupId, sessionId) })
     },
   })
 }

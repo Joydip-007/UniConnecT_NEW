@@ -289,6 +289,15 @@ export interface Assignment {
   updatedAt: string
 }
 
+export interface SessionNotes {
+  id: string
+  title?: string | null
+  body?: string | null
+  attachments: Attachment[]
+  createdBy?: string | null
+  updatedAt: string
+}
+
 export interface Submission {
   id: string
   assignmentId: string
