@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { randomUUID } from 'node:crypto'
 import { db } from '../../config/db'
 import { groupsService } from './service'
+import { courseOutlineService } from '../academic/course-outline.service'
 import type { UserRole } from '@uniconnect/shared'
 
 async function createUniversity(): Promise<string> {
@@ -108,6 +109,37 @@ describe('groupService.updateAiSettings', () => {
         { ai_quiz_enabled: true },
       ),
     ).rejects.toMatchObject({ code: 'ACADEMIC_GROUP_REQUIRED' })
+
+    await cleanup(universityId)
+  })
+})
+
+describe('groupService — gradebook auto-population on join', () => {
+  it('creates gradebook_entries rows when a student joins an academic group with a course outline', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const student = await createUser({ universityId, role: 'student' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    await courseOutlineService.createOutline(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      group.id,
+      {
+        courseTitle: 'X',
+        gradingScale: 'uiu',
+        assessments: [
+          { categoryName: 'CT', fullMarks: 20, weightPercent: 100, totalGiven: 2, bestNCounted: 1, displayOrder: 1 },
+        ],
+        topics: [],
+      },
+    )
+
+    await groupsService.joinGroup({ userId: student.id, universityId, role: 'student' }, group.id)
+
+    const entries = await db('gradebook_entries').where({ group_id: group.id, student_id: student.id })
+    expect(entries).toHaveLength(2) // totalGiven = 2 instances
 
     await cleanup(universityId)
   })

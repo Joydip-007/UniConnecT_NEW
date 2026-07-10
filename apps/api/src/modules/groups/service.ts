@@ -6,6 +6,7 @@ import { notificationsService } from '../notifications/service'
 import { badgeQueue } from '../../queues/badge.queue'
 import { notificationQueue } from '../../queues/notification.queue'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
+import { gradebookService } from '../academic/gradebook.service'
 import type {
   AllowedRole,
   CreateFlashcardDeckInput,
@@ -408,6 +409,9 @@ export class GroupsService {
     }
 
     const group = await this.getGroup(context, groupId)
+    if (group.type === 'academic') {
+      await gradebookService.autoPopulateGradebook(groupId, context.universityId, context.userId)
+    }
     return { kind: 'joined' as const, group }
   }
 
@@ -483,6 +487,11 @@ export class GroupsService {
           updated_at: new Date(),
         })
       })
+
+      const group = await db('groups').where({ id: groupId }).first<{ type: string } | undefined>('type')
+      if (group?.type === 'academic') {
+        await gradebookService.autoPopulateGradebook(groupId, context.universityId, request.user_id)
+      }
 
       await notificationQueue.add({
         universityId: context.universityId,
