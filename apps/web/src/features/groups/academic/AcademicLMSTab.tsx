@@ -4,13 +4,14 @@ import { GradebookPanel } from './GradebookPanel'
 import { StudentGradeCard } from './StudentGradeCard'
 import { ModulesPanel } from './ModulesPanel'
 import { AssignmentsPanel } from './AssignmentsPanel'
+import { AISettingsPanel } from './AISettingsPanel'
 
 interface AcademicLMSTabProps {
   groupId: string
   isAdmin: boolean
 }
 
-type LMSSubTab = 'outline' | 'gradebook' | 'modules' | 'assignments'
+type LMSSubTab = 'outline' | 'gradebook' | 'modules' | 'assignments' | 'ai-settings'
 
 const subTabButtonStyle = {
   borderColor: 'var(--border-default)',
@@ -25,6 +26,7 @@ export function AcademicLMSTab({ groupId, isAdmin }: AcademicLMSTabProps) {
     { value: 'gradebook', label: 'Gradebook' },
     { value: 'modules', label: 'Modules' },
     { value: 'assignments', label: 'Assignments' },
+    ...(isAdmin ? ([{ value: 'ai-settings', label: 'AI settings' }] as const) : []),
   ]
 
   return (
@@ -53,6 +55,7 @@ export function AcademicLMSTab({ groupId, isAdmin }: AcademicLMSTabProps) {
       {subTab === 'gradebook' && (isAdmin ? <GradebookPanel groupId={groupId} /> : <StudentGradeCard groupId={groupId} />)}
       {subTab === 'modules' && <ModulesPanel groupId={groupId} isAdmin={isAdmin} />}
       {subTab === 'assignments' && <AssignmentsPanel groupId={groupId} isAdmin={isAdmin} />}
+      {subTab === 'ai-settings' && isAdmin && <AISettingsPanel groupId={groupId} />}
     </div>
   )
 }

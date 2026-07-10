@@ -609,6 +609,93 @@ export function useSubmissions(groupId: string, assignmentId: string) {
   })
 }
 
+// ── AI settings ──────────────────────────────────────────────────────────────
+
+export interface GroupAISettings {
+  ai_flashcards_enabled: boolean
+  ai_quiz_enabled: boolean
+  require_approval: boolean
+  subject?: string
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'
+  question_style?: 'mcq' | 'true_false' | 'short_answer' | 'mixed'
+  language: 'en' | 'bn'
+  custom_instructions?: string
+}
+
+export interface PendingAiContentItem {
+  id: string
+  type: 'flashcard_deck' | 'quiz'
+  title?: string
+  content?: unknown
+  createdAt?: string
+}
+
+type UpdateAiSettingsInput = Partial<GroupAISettings>
+
+const aiSettingsKey = (groupId: string) => ['groups', 'ai-settings', { groupId }] as const
+const pendingAiContentKey = (groupId: string) => ['groups', 'ai-settings', 'pending', { groupId }] as const
+
+export function useAiSettings(groupId: string) {
+  return useQuery({
+    queryKey: aiSettingsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { aiSettings: GroupAISettings } }>(`/groups/${groupId}/ai-settings`)
+        .then((r) => r.data.data.aiSettings),
+    enabled: !!groupId,
+  })
+}
+
+export function useUpdateAiSettings(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: UpdateAiSettingsInput) =>
+      api
+        .patch<{ data: { aiSettings: GroupAISettings } }>(`/groups/${groupId}/ai-settings`, patch)
+        .then((r) => r.data.data.aiSettings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiSettingsKey(groupId) })
+    },
+  })
+}
+
+export function usePendingAiContent(groupId: string) {
+  return useQuery({
+    queryKey: pendingAiContentKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: PendingAiContentItem[] }>(`/groups/${groupId}/ai-settings/pending`)
+        .then((r) => r.data.data),
+    enabled: !!groupId,
+  })
+}
+
+export function useApprovePendingAiContent(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (contentId: string) =>
+      api
+        .post<{ data: { approved: true } }>(`/groups/${groupId}/ai-settings/pending/${contentId}/approve`)
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pendingAiContentKey(groupId) })
+    },
+  })
+}
+
+export function useDiscardPendingAiContent(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (contentId: string) =>
+      api
+        .delete<{ data: { discarded: true } }>(`/groups/${groupId}/ai-settings/pending/${contentId}`)
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pendingAiContentKey(groupId) })
+    },
+  })
+}
+
 export function useGradeSubmission(groupId: string, assignmentId: string) {
   const queryClient = useQueryClient()
   return useMutation({
