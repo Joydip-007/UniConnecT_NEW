@@ -247,3 +247,49 @@ export interface CourseOutlineInput {
   assessments: CourseOutlineAssessment[]
   topics: CourseOutlineTopic[]
 }
+
+export interface FileUrlEntry {
+  name: string
+  url: string
+  contentType: string
+  size: number
+}
+
+export interface AcademicModule {
+  id: string
+  groupId: string
+  title: string
+  description?: string | null
+  weekNumber?: number | null
+  displayOrder: number
+  isPublished: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Assignment {
+  id: string
+  groupId: string
+  moduleId?: string | null
+  title: string
+  description?: string | null
+  fileUrls: FileUrlEntry[]
+  deadline?: string | null
+  maxScore: number
+  isPublished: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Submission {
+  id: string
+  assignmentId: string
+  userId: string
+  fileUrls: FileUrlEntry[]
+  textContent?: string | null
+  score?: number | null
+  feedback?: string | null
+  submittedAt: string
+  gradedAt?: string | null
+  isLate: boolean
+}

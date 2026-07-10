@@ -36,4 +36,24 @@ export { JoinRequestsTab } from './components/JoinRequestsTab'
 export { AboutTab } from './components/AboutTab'
 export { AdminStatsTab } from './components/AdminStatsTab'
 export { CourseOutlineForm } from './academic/CourseOutlineForm'
-export type { CourseOutline, CourseOutlineAssessment, CourseOutlineTopic, CourseOutlineInput } from './types'
+export { GradebookPanel } from './academic/GradebookPanel'
+export { StudentGradeCard } from './academic/StudentGradeCard'
+export { ModulesPanel } from './academic/ModulesPanel'
+export { AssignmentsPanel } from './academic/AssignmentsPanel'
+export { AcademicLMSTab } from './academic/AcademicLMSTab'
+export type {
+  CourseOutline,
+  CourseOutlineAssessment,
+  CourseOutlineTopic,
+  CourseOutlineInput,
+  Gradebook,
+  GradebookColumn,
+  GradebookCell,
+  GradebookRow,
+  GradebookEntryInput,
+  MyGradeCard,
+  AcademicModule,
+  Assignment,
+  Submission,
+  FileUrlEntry,
+} from './types'

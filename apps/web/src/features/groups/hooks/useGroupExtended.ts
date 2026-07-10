@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import type {
+  AcademicModule,
+  Assignment,
   CourseOutline,
   CourseOutlineInput,
   Flashcard,
@@ -12,6 +14,7 @@ import type {
   MyGradeCard,
   ReviewRating,
   SharedNote,
+  Submission,
 } from '../types'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -489,5 +492,135 @@ export function useMyGradeCard(groupId: string) {
     queryKey: myGradeCardKey(groupId),
     queryFn: () => api.get<{ data: MyGradeCard }>(`/groups/${groupId}/gradebook/me`).then((r) => r.data.data),
     enabled: !!groupId,
+  })
+}
+
+// ── Modules ──────────────────────────────────────────────────────────────────
+
+type CreateModuleInput = {
+  title: string
+  description?: string
+  weekNumber?: number
+  displayOrder?: number
+}
+
+const modulesKey = (groupId: string) => ['groups', 'modules', { groupId }] as const
+
+export function useModules(groupId: string) {
+  return useQuery({
+    queryKey: modulesKey(groupId),
+    queryFn: () => api.get<{ data: AcademicModule[] }>(`/groups/${groupId}/modules`).then((r) => r.data.data),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateModule(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateModuleInput) =>
+      api.post<{ data: AcademicModule }>(`/groups/${groupId}/modules`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: modulesKey(groupId) })
+    },
+  })
+}
+
+export function useTogglePublishModule(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (moduleId: string) =>
+      api.patch<{ data: AcademicModule }>(`/groups/${groupId}/modules/${moduleId}/publish`).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: modulesKey(groupId) })
+    },
+  })
+}
+
+export function useReorderModules(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (order: string[]) =>
+      api.patch<{ data: { updated: number } }>(`/groups/${groupId}/modules/reorder`, { order }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: modulesKey(groupId) })
+    },
+  })
+}
+
+// ── Assignments ──────────────────────────────────────────────────────────────
+
+type CreateAssignmentInput = {
+  title: string
+  description?: string
+  moduleId?: string
+  fileUrls?: Assignment['fileUrls']
+  deadline?: string
+  maxScore: number
+}
+
+type SubmitAssignmentInput = {
+  fileUrls?: Submission['fileUrls']
+  textContent?: string
+}
+
+const assignmentsKey = (groupId: string) => ['groups', 'assignments', { groupId }] as const
+const submissionsKey = (groupId: string, assignmentId: string) =>
+  ['groups', 'assignments', 'submissions', { groupId, assignmentId }] as const
+
+export function useAssignments(groupId: string) {
+  return useQuery({
+    queryKey: assignmentsKey(groupId),
+    queryFn: () => api.get<{ data: Assignment[] }>(`/groups/${groupId}/assignments`).then((r) => r.data.data),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateAssignment(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateAssignmentInput) =>
+      api.post<{ data: Assignment }>(`/groups/${groupId}/assignments`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentsKey(groupId) })
+    },
+  })
+}
+
+export function useSubmitAssignment(groupId: string, assignmentId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: SubmitAssignmentInput) =>
+      api.post<{ data: Submission }>(`/groups/${groupId}/assignments/${assignmentId}/submit`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentsKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: submissionsKey(groupId, assignmentId) })
+    },
+  })
+}
+
+export function useSubmissions(groupId: string, assignmentId: string) {
+  return useQuery({
+    queryKey: submissionsKey(groupId, assignmentId),
+    queryFn: () =>
+      api
+        .get<{ data: Submission[] }>(`/groups/${groupId}/assignments/${assignmentId}/submissions`)
+        .then((r) => r.data.data),
+    enabled: !!groupId && !!assignmentId,
+  })
+}
+
+export function useGradeSubmission(groupId: string, assignmentId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ submissionId, score, feedback }: { submissionId: string; score: number; feedback?: string }) =>
+      api
+        .patch<{ data: Submission }>(`/groups/${groupId}/assignments/${assignmentId}/submissions/${submissionId}/grade`, {
+          score,
+          feedback,
+        })
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: submissionsKey(groupId, assignmentId) })
+    },
   })
 }

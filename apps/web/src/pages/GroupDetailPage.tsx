@@ -9,12 +9,13 @@ import {
   EventsTab, FeedTab, GroupHeader, MembersTab,
   AnimatedTabBar, PinnedBanner,
   ResourcesTab, StudyToolsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
+  AcademicLMSTab,
   useJoinRequests,
   type TabDef,
 } from '@/features/groups'
 import type { Group } from '@/features/groups'
 
-type ActiveTab = 'feed' | 'resources' | 'study-sessions' | 'members' | 'events' | 'about' | 'stats' | 'join-requests'
+type ActiveTab = 'feed' | 'resources' | 'study-sessions' | 'members' | 'events' | 'about' | 'stats' | 'join-requests' | 'academic'
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -42,6 +43,7 @@ export default function GroupDetailPage() {
     { value: 'feed', label: 'Feed' },
     { value: 'resources', label: 'Resources' },
     { value: 'study-sessions', label: 'Study sessions' },
+    ...(group?.type === 'academic' ? [{ value: 'academic', label: 'Academic LMS' } as TabDef] : []),
     { value: 'members', label: 'Members' },
     { value: 'events', label: 'Events' },
     { value: 'about', label: 'About' },
@@ -126,6 +128,9 @@ export default function GroupDetailPage() {
         {id && activeTab === 'resources' && <ResourcesTab groupId={id} userRole={userRole} />}
         {id && activeTab === 'study-sessions' && (
           <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} groupType={group?.type} />
+        )}
+        {id && group?.type === 'academic' && activeTab === 'academic' && (
+          <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
         )}
         {id && group && activeTab === 'members' && <MembersTab group={group} />}
         {id && activeTab === 'events' && <EventsTab groupId={id} />}
