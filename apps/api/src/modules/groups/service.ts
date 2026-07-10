@@ -1373,6 +1373,7 @@ export class GroupsService {
     if (session.created_by !== context.userId) {
       throw forbidden('Only the session creator can edit these notes', 'SESSION_NOTES_CREATOR_ONLY')
     }
+    assertAttachmentsAreOwnUploads(input.attachments)
 
     const existing = await db('group_session_creator_notes').where({ session_id: sessionId }).first()
     if (existing) {
@@ -1405,6 +1406,7 @@ export class GroupsService {
   }
 
   async getSessionCreatorNotesUploadUrl(context: AuthContext, groupId: string, sessionId: string, fileName: string, contentType: string) {
+    await assertMemberAccess(context, groupId)
     const session = await db('group_study_sessions').where({ id: sessionId, group_id: groupId }).first()
     if (!session) throw notFound('Study session not found', 'STUDY_SESSION_NOT_FOUND')
     if (session.created_by !== context.userId) {
@@ -1425,6 +1427,7 @@ export class GroupsService {
 
   async putMySessionPrivateNotes(context: AuthContext, groupId: string, sessionId: string, input: PutSessionPrivateNotesInput) {
     await assertMemberAccess(context, groupId)
+    assertAttachmentsAreOwnUploads(input.attachments)
     const existing = await db('group_session_member_notes')
       .where({ session_id: sessionId, group_id: groupId, user_id: context.userId })
       .first()

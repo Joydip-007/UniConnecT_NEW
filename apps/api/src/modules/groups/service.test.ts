@@ -361,4 +361,55 @@ describe('groupsService — session notes', () => {
 
     await cleanup(universityId)
   })
+
+  it('rejects a creator note attachment whose URL does not point at our own upload bucket', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const session = await groupsService.createStudySession({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+      title: 'Session 1',
+      is_online: false,
+      starts_at: new Date(Date.now() + 3600000).toISOString(),
+      ends_at: new Date(Date.now() + 7200000).toISOString(),
+    })
+
+    await expect(
+      groupsService.putSessionCreatorNotes({ userId: faculty.id, universityId, role: 'faculty' }, group.id, session.id, {
+        title: 'Agenda',
+        body: 'Cover chapter 1',
+        attachments: [{ name: 'lecture1.pdf', url: 'https://evil.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400, code: 'SHARED_NOTE_ATTACHMENT_URL_INVALID' })
+
+    await cleanup(universityId)
+  })
+
+  it('rejects a private note attachment whose URL does not point at our own upload bucket', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const student = await createUser({ universityId, role: 'student' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const session = await groupsService.createStudySession({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+      title: 'Session 1',
+      is_online: false,
+      starts_at: new Date(Date.now() + 3600000).toISOString(),
+      ends_at: new Date(Date.now() + 7200000).toISOString(),
+    })
+    await groupsService.joinGroup({ userId: student.id, universityId, role: 'student' }, group.id)
+
+    await expect(
+      groupsService.putMySessionPrivateNotes({ userId: student.id, universityId, role: 'student' }, group.id, session.id, {
+        body: 'A private note',
+        attachments: [{ name: 'lecture1.pdf', url: 'https://evil.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400, code: 'SHARED_NOTE_ATTACHMENT_URL_INVALID' })
+
+    await cleanup(universityId)
+  })
 })
