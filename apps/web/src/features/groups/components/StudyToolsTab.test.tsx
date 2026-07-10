@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { StudyToolsTab } from './StudyToolsTab'
+import type { GroupType } from '../types'
 
 const mockUseStudySessions = vi.fn()
 const mockUseCreateStudySession = vi.fn()
@@ -47,8 +48,11 @@ function pendingMutation(mutate = vi.fn()) {
   return { mutate, isPending: false }
 }
 
-function renderStudyTools(userRole: 'owner' | 'admin' | 'moderator' | 'member' = 'member') {
-  render(<StudyToolsTab groupId="group-1" currentUserId="user-1" userRole={userRole} />)
+function renderStudyTools(
+  userRole: 'owner' | 'admin' | 'moderator' | 'member' = 'member',
+  groupType: string = 'academic',
+) {
+  render(<StudyToolsTab groupId="group-1" currentUserId="user-1" userRole={userRole} groupType={groupType as GroupType} />)
 }
 
 function deck(overrides = {}) {
@@ -266,5 +270,45 @@ describe('StudyToolsTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
 
     expect(refetch).toHaveBeenCalled()
+  })
+})
+
+describe('StudyToolsTab — academic gating', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseStudySessions.mockReturnValue({ data: { items: [], total: 0, page: 1, hasMore: false }, isLoading: false })
+    mockUseCreateStudySession.mockReturnValue(pendingMutation())
+    mockUseRsvpStudySession.mockReturnValue(pendingMutation())
+    mockUseFlashcardDecks.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() })
+    mockUseCreateFlashcardDeck.mockReturnValue(pendingMutation())
+    mockUseUpdateFlashcardDeck.mockReturnValue(pendingMutation())
+    mockUseDeleteFlashcardDeck.mockReturnValue(pendingMutation())
+    mockUseFlashcards.mockReturnValue({ data: [], isLoading: false })
+    mockUseCreateFlashcard.mockReturnValue(pendingMutation())
+    mockUseUpdateFlashcard.mockReturnValue(pendingMutation())
+    mockUseDeleteFlashcard.mockReturnValue(pendingMutation())
+    mockUseReviewQueue.mockReturnValue({ data: { items: [], total: 0, page: 1, hasMore: false }, isLoading: false })
+    mockUseReviewFlashcard.mockReturnValue(pendingMutation())
+    mockUseSharedNotes.mockReturnValue({ data: { items: [], total: 0, page: 1, hasMore: false }, isLoading: false })
+    mockUseCreateSharedNote.mockReturnValue(pendingMutation())
+    mockUseUpdateSharedNote.mockReturnValue(pendingMutation())
+    mockUseDeleteSharedNote.mockReturnValue(pendingMutation())
+  })
+
+  it('shows AcademicOnlyNotice on the decks tab for a non-academic group', () => {
+    renderStudyTools('member', 'club')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Decks' }))
+
+    expect(screen.getByText(/Flashcard decks are available in Academic Groups/i)).toBeInTheDocument()
+  })
+
+  it('shows StudyDecksPanel on the decks tab for an academic group', () => {
+    renderStudyTools('member', 'academic')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Decks' }))
+
+    expect(screen.queryByText(/Flashcard decks are available in Academic Groups/i)).not.toBeInTheDocument()
+    expect(screen.getByText('No decks yet')).toBeInTheDocument()
   })
 })

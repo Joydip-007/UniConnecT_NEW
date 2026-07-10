@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { MemberRole } from '../types'
+import type { GroupType, MemberRole } from '../types'
+import { AcademicOnlyNotice } from './StudyToolsPrimitives'
 import { StudyDecksPanel } from './StudyDecksPanel'
 import { StudyNotesPanel } from './StudyNotesPanel'
 import { StudySessionsTab } from './StudySessionsTab'
@@ -7,10 +8,11 @@ import { controlButton } from './StudyToolsStyles'
 
 type StudyMode = 'sessions' | 'decks' | 'notes'
 
-export function StudyToolsTab({ groupId, currentUserId, userRole }: {
+export function StudyToolsTab({ groupId, currentUserId, userRole, groupType }: {
   groupId: string
   currentUserId?: string
   userRole: MemberRole | null
+  groupType?: GroupType
 }) {
   const [mode, setMode] = useState<StudyMode>('sessions')
 
@@ -37,7 +39,16 @@ export function StudyToolsTab({ groupId, currentUserId, userRole }: {
         ))}
       </div>
       {mode === 'sessions' && <StudySessionsTab groupId={groupId} currentUserId={currentUserId} showCreateAction />}
-      {mode === 'decks' && <StudyDecksPanel groupId={groupId} currentUserId={currentUserId} userRole={userRole} />}
+      {mode === 'decks' && (
+        groupType === 'academic' ? (
+          <StudyDecksPanel groupId={groupId} currentUserId={currentUserId} userRole={userRole} />
+        ) : (
+          <AcademicOnlyNotice
+            message="Flashcard decks are available in Academic Groups created by faculty."
+            icon="🎓"
+          />
+        )
+      )}
       {mode === 'notes' && <StudyNotesPanel groupId={groupId} currentUserId={currentUserId} userRole={userRole} />}
     </div>
   )

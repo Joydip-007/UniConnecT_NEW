@@ -7,6 +7,7 @@ const TYPE_COLORS: Record<GroupType, { bg: string; border: string; text: string 
   research: { bg: 'var(--uc-mint-bg)', border: 'var(--uc-mint-bdr)', text: 'var(--uc-mint)' },
   interest: { bg: 'var(--uc-indigo-bg)', border: 'var(--uc-indigo-bdr)', text: 'var(--uc-indigo-xl)' },
   other: { bg: 'var(--surface-raised)', border: 'var(--border-default)', text: 'var(--text-secondary)' },
+  academic: { bg: 'var(--uc-mint-bg)', border: 'var(--uc-mint-bdr)', text: 'var(--uc-mint)' },
 }
 
 const ROLE_LABELS: Record<AllowedRole, string> = {

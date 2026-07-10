@@ -1,7 +1,21 @@
-export type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other'
+export type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
 export type AllowedRole = 'student' | 'alumni' | 'faculty' | 'admin'
 export type MemberRole = 'owner' | 'admin' | 'moderator' | 'member'
 export type ReviewRating = 'again' | 'hard' | 'good' | 'easy'
+
+export interface AISettings {
+  ai_flashcards_enabled: boolean
+  ai_quiz_enabled: boolean
+  require_approval: boolean
+  subject?: string
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'
+  question_style?: 'mcq' | 'true_false' | 'short_answer' | 'mixed'
+  language: 'en' | 'bn'
+  custom_instructions?: string
+  last_ai_post_date?: string
+  pending_deck_id?: string | null
+  pending_quiz_content?: unknown | null
+}
 
 export interface GroupUserSummary {
   id: string
@@ -28,6 +42,7 @@ export interface Group {
   pinnedAt?: string | null
   pinnedBy?: string | null
   rulesMd?: string | null
+  aiSettings?: AISettings
 }
 
 export interface GroupMember {

@@ -38,6 +38,15 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
   )
 }
 
+export function AcademicOnlyNotice({ message, icon }: { message: string; icon: string }) {
+  return (
+    <div style={{ minHeight: 130, padding: 16, borderTop: '0.5px solid var(--border-default)', display: 'grid', placeItems: 'center', gap: 10, textAlign: 'center' }}>
+      <span style={{ fontSize: 32 }}>{icon}</span>
+      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{message}</p>
+    </div>
+  )
+}
+
 export function ListSkeleton({ rows }: { rows: number }) {
   return (
     <>

@@ -16,6 +16,7 @@ const TYPES: { value: GroupType; label: string }[] = [
   { value: 'research', label: 'Research' },
   { value: 'interest', label: 'Interest' },
   { value: 'other', label: 'Other' },
+  { value: 'academic', label: 'Academic' },
 ]
 
 interface CreateGroupResponse {
@@ -32,6 +33,7 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
 
   const studentLock = user?.role === 'student'
+  const visibleTypes = TYPES.filter((t) => t.value !== 'academic' || user?.role === 'faculty')
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -93,7 +95,7 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
 
           <Field label="Type">
             <select value={type} onChange={(e) => setType(e.target.value as GroupType)} style={inputStyle}>
-              {TYPES.map((t) => (
+              {visibleTypes.map((t) => (
                 <option key={t.value} value={t.value}>
                   {t.label}
                 </option>
