@@ -145,15 +145,38 @@ export const FlashcardReviewSchema = z.object({
   rating: z.enum(['again', 'hard', 'good', 'easy']),
 })
 
+export const AttachmentSchema = z.object({
+  name: z.string().max(255),
+  url: z.string().url(),
+  contentType: z.string().max(100),
+  size: z.number().int().max(26214400),
+})
+
+const ALLOWED_NOTE_CONTENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+] as const
+
+export const NoteUploadUrlRequestSchema = z.object({
+  fileName: z.string().min(1),
+  contentType: z.enum(ALLOWED_NOTE_CONTENT_TYPES),
+})
+
 export const CreateSharedNoteSchema = z.object({
   title: z.string().trim().min(1).max(160),
   body: z.string().trim().min(1).max(10000),
+  attachments: z.array(AttachmentSchema).max(5).optional().default([]),
 })
 
 export const UpdateSharedNoteSchema = z
   .object({
     title: z.string().trim().min(1).max(160).optional(),
     body: z.string().trim().min(1).max(10000).optional(),
+    attachments: z.array(AttachmentSchema).max(5).optional().default([]),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' })
 
@@ -171,6 +194,8 @@ export type UpdateFlashcardDeckInput = z.infer<typeof UpdateFlashcardDeckSchema>
 export type CreateFlashcardInput = z.infer<typeof CreateFlashcardSchema>
 export type UpdateFlashcardInput = z.infer<typeof UpdateFlashcardSchema>
 export type FlashcardReviewInput = z.infer<typeof FlashcardReviewSchema>
+export type Attachment = z.infer<typeof AttachmentSchema>
+export type NoteUploadUrlRequest = z.infer<typeof NoteUploadUrlRequestSchema>
 export type CreateSharedNoteInput = z.infer<typeof CreateSharedNoteSchema>
 export type UpdateSharedNoteInput = z.infer<typeof UpdateSharedNoteSchema>
 
