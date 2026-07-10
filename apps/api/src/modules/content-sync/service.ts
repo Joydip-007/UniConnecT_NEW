@@ -2,6 +2,7 @@ import { CONTENT_SYNC_MAX_ENTRIES, type ContentSyncConfig, type ContentSyncConfi
 import { db } from '../../config/db'
 import { contentSyncQueue } from '../../queues/content-sync.queue'
 import { badRequest, conflict, notFound } from '../../utils/errors'
+import { generateUniqueUsername } from '../auth/service'
 
 /** Per-source fetch window for a one-time backfill run (vs the tenant's normal window). */
 const BACKFILL_PER_SOURCE = CONTENT_SYNC_MAX_ENTRIES
@@ -186,9 +187,12 @@ export class ContentSyncService {
     const existing = await db('users').where({ email }).first<{ id: string }>('id')
     if (existing) return existing.id
 
+    const username = await generateUniqueUsername(db, universityId, email)
+
     const [user] = await db('users')
       .insert({
         university_id: universityId,
+        username,
         email,
         password_hash: null,
         role: 'faculty',

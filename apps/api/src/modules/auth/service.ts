@@ -553,8 +553,8 @@ async function findUserWithProfileByEmail(email: string, universityId: string) {
  * as `usernameSchema`, then dedups within the tenant. The `(university_id,
  * lower(username))` unique index is the final guard against races.
  */
-async function generateUniqueUsername(
-  trx: Knex.Transaction,
+export async function generateUniqueUsername(
+  trx: Knex.Transaction | Knex,
   universityId: string,
   email: string,
 ): Promise<string> {
