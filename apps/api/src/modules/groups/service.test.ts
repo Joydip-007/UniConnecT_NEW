@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { db } from '../../config/db'
 import { groupsService } from './service'
 import { courseOutlineService } from '../academic/course-outline.service'
+import { getPublicUrlPrefix } from '../../services/upload.service'
 import type { UserRole } from '@uniconnect/shared'
 
 async function createUniversity(): Promise<string> {
@@ -221,7 +222,7 @@ describe('groupService — shared note attachments', () => {
     const note = await groupsService.createSharedNote(context, group.id, {
       title: 'Lecture 1',
       body: 'notes',
-      attachments: [{ name: 'lecture1.pdf', url: 'https://cdn.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
+      attachments: [{ name: 'lecture1.pdf', url: `${getPublicUrlPrefix()}group-notes/test/lecture1.pdf`, contentType: 'application/pdf', size: 1024 }],
     })
 
     expect(note.attachments).toHaveLength(1)
@@ -258,7 +259,7 @@ describe('groupService — shared note attachments', () => {
     const note = await groupsService.createSharedNote(context, group.id, {
       title: 'Lecture 1',
       body: 'notes',
-      attachments: [{ name: 'lecture1.pdf', url: 'https://cdn.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
+      attachments: [{ name: 'lecture1.pdf', url: `${getPublicUrlPrefix()}group-notes/test/lecture1.pdf`, contentType: 'application/pdf', size: 1024 }],
     })
 
     const updated = await groupsService.updateSharedNote(context, group.id, note.id, { title: 'Lecture 1 (revised)' })
@@ -266,6 +267,26 @@ describe('groupService — shared note attachments', () => {
     expect(updated.title).toBe('Lecture 1 (revised)')
     expect(updated.attachments).toHaveLength(1)
     expect(updated.attachments[0].name).toBe('lecture1.pdf')
+
+    await cleanup(universityId)
+  })
+
+  it('rejects an attachment whose URL does not point at our own upload bucket', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const context = { userId: faculty.id, universityId, role: 'faculty' as UserRole }
+
+    await expect(
+      groupsService.createSharedNote(context, group.id, {
+        title: 'Lecture 1',
+        body: 'notes',
+        attachments: [{ name: 'lecture1.pdf', url: 'https://evil.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400, code: 'SHARED_NOTE_ATTACHMENT_URL_INVALID' })
 
     await cleanup(universityId)
   })

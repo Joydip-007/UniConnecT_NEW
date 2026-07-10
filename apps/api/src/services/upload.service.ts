@@ -69,6 +69,13 @@ export function buildPublicUrl(key: string): string {
   return `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${encodeS3Key(key)}`
 }
 
+/** Base prefix every publicUrl returned by this service starts with — used to validate client-supplied URLs actually point at our own bucket. */
+export function getPublicUrlPrefix(): string {
+  return env.AWS_PUBLIC_URL
+    ? `${env.AWS_PUBLIC_URL.replace(/\/$/, '')}/`
+    : `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/`
+}
+
 export const uploadService = {
   getPresignedUploadUrl,
 }

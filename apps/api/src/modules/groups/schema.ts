@@ -145,13 +145,6 @@ export const FlashcardReviewSchema = z.object({
   rating: z.enum(['again', 'hard', 'good', 'easy']),
 })
 
-export const AttachmentSchema = z.object({
-  name: z.string().max(255),
-  url: z.string().url(),
-  contentType: z.string().max(100),
-  size: z.number().int().max(26214400),
-})
-
 export const ALLOWED_NOTE_CONTENT_TYPES = [
   'application/pdf',
   'application/msword',
@@ -160,6 +153,13 @@ export const ALLOWED_NOTE_CONTENT_TYPES = [
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
 ] as const
+
+export const AttachmentSchema = z.object({
+  name: z.string().max(255),
+  url: z.string().url(),
+  contentType: z.enum(ALLOWED_NOTE_CONTENT_TYPES),
+  size: z.number().int().max(26214400),
+})
 
 export const NoteUploadUrlRequestSchema = z.object({
   fileName: z.string().min(1),

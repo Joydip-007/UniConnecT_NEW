@@ -124,9 +124,10 @@ function NoteForm({ groupId, initial, isPending, onCancel, onSubmit }: {
           <input
             aria-label="Attach file"
             type="file"
+            accept="application/pdf,.doc,.docx,.ppt,.pptx,image/jpeg,image/png,image/gif,image/webp"
             onChange={(e) => { void handleFileSelect(e) }}
             disabled={uploadAttachment.isPending}
-            style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}
+            style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 }}
           />
         </label>
         {uploadAttachment.isError && (

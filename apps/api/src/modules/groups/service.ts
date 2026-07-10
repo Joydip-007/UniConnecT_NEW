@@ -9,7 +9,7 @@ import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { gradebookService } from '../academic/gradebook.service'
 import { contentSyncService } from '../content-sync/service'
 import { logger } from '../../utils/logger'
-import { getPresignedUploadUrl, sanitizeFileName } from '../../services/upload.service'
+import { getPresignedUploadUrl, getPublicUrlPrefix, sanitizeFileName } from '../../services/upload.service'
 import { ALLOWED_NOTE_CONTENT_TYPES } from './schema'
 import type {
   AllowedRole,
@@ -1670,6 +1670,7 @@ export class GroupsService {
 
   async createSharedNote(context: AuthContext, groupId: string, input: CreateSharedNoteInput) {
     await assertMemberAccess(context, groupId)
+    assertAttachmentsAreOwnUploads(input.attachments)
 
     const [note] = await db('group_shared_notes')
       .insert({
@@ -1691,6 +1692,7 @@ export class GroupsService {
     const access = await assertMemberAccess(context, groupId)
     const note = await getSharedNoteOwner(context, groupId, noteId)
     assertCanEditOwnedResource(access, note.created_by, context.userId)
+    assertAttachmentsAreOwnUploads(input.attachments)
 
     await db('group_shared_notes')
       .where({ id: noteId, group_id: groupId, university_id: context.universityId })
@@ -2502,6 +2504,16 @@ function sortEventsDesc(
   const aTime = a.kind === 'event' && a.startsAt ? a.startsAt.getTime() : a.createdAt.getTime()
   const bTime = b.kind === 'event' && b.startsAt ? b.startsAt.getTime() : b.createdAt.getTime()
   return bTime - aTime
+}
+
+function assertAttachmentsAreOwnUploads(attachments: Attachment[] | undefined) {
+  if (!attachments?.length) return
+  const prefix = getPublicUrlPrefix()
+  for (const attachment of attachments) {
+    if (!attachment.url.startsWith(prefix)) {
+      throw badRequest('Attachment URL must point to a file uploaded via the presign endpoint', 'SHARED_NOTE_ATTACHMENT_URL_INVALID')
+    }
+  }
 }
 
 function pickDefined<T extends Record<string, unknown>>(value: T) {
