@@ -199,6 +199,43 @@ export interface CourseOutline {
   topics: CourseOutlineTopic[]
 }
 
+export interface GradebookColumn {
+  assessmentId?: string
+  categoryName: string
+  fullMarks: number
+  bestNCounted: number
+  totalGiven: number
+  label: string
+}
+
+export interface GradebookCell {
+  marksObtained: number | null
+  graded: boolean
+}
+
+export interface GradebookRow {
+  student: { id: string; fullName: string; avatarUrl?: string; department?: string }
+  cells: Record<string, GradebookCell>
+  calculated: Record<string, number | string | null>
+}
+
+export interface Gradebook {
+  outline: CourseOutline
+  columns: GradebookColumn[]
+  rows: GradebookRow[]
+}
+
+export interface GradebookEntryInput {
+  studentId: string
+  assessmentId: string
+  instanceNumber: number
+  marksObtained: number | null
+}
+
+export interface MyGradeCard {
+  calculated: Record<string, number | string | null>
+}
+
 export interface CourseOutlineInput {
   courseCode?: string
   courseTitle: string

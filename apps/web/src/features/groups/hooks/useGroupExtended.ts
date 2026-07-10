@@ -7,6 +7,9 @@ import type {
   FlashcardDeck,
   FlashcardReviewItem,
   FlashcardReviewResult,
+  Gradebook,
+  GradebookEntryInput,
+  MyGradeCard,
   ReviewRating,
   SharedNote,
 } from '../types'
@@ -454,5 +457,37 @@ export function useSaveCourseOutline(groupId: string, mode: 'create' | 'replace'
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseOutlineKey(groupId) })
     },
+  })
+}
+
+// ── Gradebook ────────────────────────────────────────────────────────────────
+
+const gradebookKey = (groupId: string) => ['groups', 'gradebook', { groupId }] as const
+const myGradeCardKey = (groupId: string) => ['groups', 'gradebook', 'me', { groupId }] as const
+
+export function useGradebook(groupId: string) {
+  return useQuery({
+    queryKey: gradebookKey(groupId),
+    queryFn: () => api.get<{ data: Gradebook }>(`/groups/${groupId}/gradebook`).then((r) => r.data.data),
+    enabled: !!groupId,
+  })
+}
+
+export function useUpsertGradebookEntries(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (entries: GradebookEntryInput[]) =>
+      api.put<{ data: { updated: number } }>(`/groups/${groupId}/gradebook/entries`, { entries }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: gradebookKey(groupId) })
+    },
+  })
+}
+
+export function useMyGradeCard(groupId: string) {
+  return useQuery({
+    queryKey: myGradeCardKey(groupId),
+    queryFn: () => api.get<{ data: MyGradeCard }>(`/groups/${groupId}/gradebook/me`).then((r) => r.data.data),
+    enabled: !!groupId,
   })
 }
