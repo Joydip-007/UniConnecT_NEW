@@ -1,8 +1,10 @@
 import { aiContentQueue } from '../queues/ai-content.queue'
 import { db } from '../config/db'
-import { generateQuizQuestions } from '../services/ai.service'
+import { generateQuizQuestions, generateFlashcards } from '../services/ai.service'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
+import { courseOutlineService } from '../modules/academic/course-outline.service'
+import { feedService } from '../modules/feed/service'
 
 const AI_CALLS_PER_MINUTE = 12
 
@@ -49,15 +51,117 @@ export async function runQuizGeneration(): Promise<void> {
   }
 }
 
+interface AiSettings {
+  ai_flashcards_enabled?: boolean
+  ai_quiz_enabled?: boolean
+  require_approval?: boolean
+  subject?: string
+  difficulty?: string
+  language?: 'en' | 'bn'
+  custom_instructions?: string
+  last_ai_post_date?: string
+  pending_deck_id?: string | null
+}
+
+export async function runGroupPosting(): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const groups = await db('groups')
+    .where({ type: 'academic' })
+    .andWhere((builder) => {
+      builder
+        .whereRaw(`ai_settings->>'ai_flashcards_enabled' = 'true'`)
+        .orWhereRaw(`ai_settings->>'ai_quiz_enabled' = 'true'`)
+    })
+    .andWhere((builder) => {
+      builder
+        .whereRaw(`ai_settings->>'last_ai_post_date' IS NULL`)
+        .orWhereRaw(`ai_settings->>'last_ai_post_date' != ?`, [today])
+    })
+
+  for (const group of groups as Array<{ id: string; university_id: string; created_by: string; ai_settings: AiSettings | null }>) {
+    try {
+      const settings: AiSettings = group.ai_settings ?? {}
+      if (!settings.ai_flashcards_enabled) continue
+
+      const topic = await courseOutlineService.resolveAITopic(group.id, group.university_id)
+
+      const cards = await rateLimitedAICall(() =>
+        generateFlashcards({
+          topic,
+          count: 10,
+          difficulty: settings.difficulty,
+          language: settings.language,
+          customInstructions: settings.custom_instructions,
+        }),
+      )
+
+      const [deck] = await db('group_flashcard_decks')
+        .insert({
+          group_id: group.id,
+          university_id: group.university_id,
+          created_by: group.created_by,
+          title: `AI deck — ${topic}`,
+          is_archived: !!settings.require_approval,
+          card_count: cards.length,
+        })
+        .returning<{ id: string }[]>('*')
+
+      if (cards.length > 0) {
+        await db('group_flashcards').insert(
+          cards.map((c) => ({
+            deck_id: deck.id,
+            group_id: group.id,
+            university_id: group.university_id,
+            created_by: group.created_by,
+            front: c.front,
+            back: c.back,
+            hint: c.hint ?? null,
+          })),
+        )
+      }
+
+      if (settings.require_approval) {
+        await db('groups')
+          .where({ id: group.id })
+          .update({ ai_settings: { ...settings, pending_deck_id: deck.id, last_ai_post_date: today } })
+      } else {
+        await feedService.createPost(
+          { userId: group.created_by, universityId: group.university_id, role: 'faculty' },
+          {
+            type: 'post',
+            content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
+            group_id: group.id,
+            media_urls: [],
+            is_published: true,
+          },
+        )
+        await db('groups')
+          .where({ id: group.id })
+          .update({ ai_settings: { ...settings, last_ai_post_date: today } })
+      }
+    } catch (error) {
+      logger.error('AI group posting failed', { groupId: group.id, error })
+    }
+  }
+}
+
 if (env.AI_CONTENT_ENABLED) {
   void aiContentQueue.add(
     { task: 'quiz-gen' },
     { repeat: { cron: `0 ${env.AI_QUIZ_GEN_HOUR} * * *` }, jobId: 'ai-daily-quiz-gen' },
+  )
+  void aiContentQueue.add(
+    { task: 'group-post' },
+    { repeat: { cron: `0 ${env.AI_GROUP_POST_HOUR} * * *` }, jobId: 'ai-daily-group-post' },
   )
 }
 
 aiContentQueue.process(async (job) => {
   if (job.data.task === 'quiz-gen') {
     await runQuizGeneration()
+  }
+  if (job.data.task === 'group-post') {
+    await runGroupPosting()
   }
 })
