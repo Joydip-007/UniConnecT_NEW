@@ -3,27 +3,42 @@ import { requireAuth } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validate } from '../../middleware/validate'
 import {
+  CreateAssignmentSchema,
   CreateCourseOutlineSchema,
   CreateModuleSchema,
+  GradeSubmissionSchema,
   ReorderModulesSchema,
+  SubmitAssignmentSchema,
   UpdateAssessmentsSchema,
+  UpdateAssignmentSchema,
   UpdateModuleSchema,
   UpdateTopicsSchema,
+  UploadUrlRequestSchema,
   UpsertGradebookEntriesSchema,
 } from './schema'
 import {
+  createAssignment,
   createCourseOutline,
   createModule,
+  deleteAssignment,
   deleteModule,
+  getAssignment,
+  getAssignmentUploadUrl,
   getCourseOutline,
   getGradebook,
   getMyGradeCard,
   getStudentGradeCard,
+  getSubmissionUploadUrl,
+  gradeSubmission,
+  listAssignments,
   listModules,
+  listSubmissions,
   publishModule,
   replaceCourseOutline,
   reorderModules,
+  submitAssignment,
   updateAssessments,
+  updateAssignment,
   updateModule,
   updateTopics,
   upsertGradebookEntries,
@@ -49,3 +64,22 @@ academicRouter.patch('/:groupId/modules/reorder', validate(ReorderModulesSchema)
 academicRouter.patch('/:groupId/modules/:moduleId', validate(UpdateModuleSchema), updateModule)
 academicRouter.delete('/:groupId/modules/:moduleId', deleteModule)
 academicRouter.patch('/:groupId/modules/:moduleId/publish', publishModule)
+
+academicRouter.get('/:groupId/assignments', listAssignments)
+academicRouter.post('/:groupId/assignments', validate(CreateAssignmentSchema), createAssignment)
+academicRouter.post('/:groupId/assignments/upload-url', validate(UploadUrlRequestSchema), getAssignmentUploadUrl)
+academicRouter.get('/:groupId/assignments/:assignmentId', getAssignment)
+academicRouter.patch('/:groupId/assignments/:assignmentId', validate(UpdateAssignmentSchema), updateAssignment)
+academicRouter.delete('/:groupId/assignments/:assignmentId', deleteAssignment)
+academicRouter.get('/:groupId/assignments/:assignmentId/submissions', listSubmissions)
+academicRouter.post('/:groupId/assignments/:assignmentId/submit', validate(SubmitAssignmentSchema), submitAssignment)
+academicRouter.post(
+  '/:groupId/assignments/:assignmentId/submissions/upload-url',
+  validate(UploadUrlRequestSchema),
+  getSubmissionUploadUrl,
+)
+academicRouter.patch(
+  '/:groupId/assignments/:assignmentId/submissions/:submissionId/grade',
+  validate(GradeSubmissionSchema),
+  gradeSubmission,
+)

@@ -2,14 +2,19 @@ import type { Request, Response } from 'express'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { unauthorized } from '../../utils/errors'
 import { sendSuccess } from '../../utils/response'
+import { assignmentsService } from './assignments.service'
 import { courseOutlineService } from './course-outline.service'
 import { gradebookService } from './gradebook.service'
 import { modulesService } from './modules.service'
 import type {
+  CreateAssignmentInput,
   CreateCourseOutlineInput,
   CreateModuleInput,
+  GradeSubmissionInput,
   ReorderModulesInput,
+  SubmitAssignmentInput,
   UpdateAssessmentsInput,
+  UpdateAssignmentInput,
   UpdateModuleInput,
   UpdateTopicsInput,
   UpsertGradebookEntriesInput,
@@ -149,4 +154,95 @@ export const publishModule = asyncHandler(async (req: Request, res: Response) =>
   const context = getAuthContext(req)
   const module_ = await modulesService.togglePublish(context, getGroupIdParam(req), getModuleIdParam(req))
   sendSuccess(res, module_)
+})
+
+function getAssignmentIdParam(req: Request) {
+  const value = req.params.assignmentId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getSubmissionIdParam(req: Request) {
+  const value = req.params.submissionId
+  return Array.isArray(value) ? value[0] : value
+}
+
+export const listAssignments = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const assignments = await assignmentsService.list(context, getGroupIdParam(req))
+  sendSuccess(res, assignments)
+})
+
+export const getAssignment = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const assignment = await assignmentsService.get(context, getGroupIdParam(req), getAssignmentIdParam(req))
+  sendSuccess(res, assignment)
+})
+
+export const createAssignment = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const assignment = await assignmentsService.create(context, getGroupIdParam(req), req.body as CreateAssignmentInput)
+  sendSuccess(res, assignment, 201)
+})
+
+export const updateAssignment = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const assignment = await assignmentsService.update(
+    context,
+    getGroupIdParam(req),
+    getAssignmentIdParam(req),
+    req.body as UpdateAssignmentInput,
+  )
+  sendSuccess(res, assignment)
+})
+
+export const deleteAssignment = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  await assignmentsService.delete(context, getGroupIdParam(req), getAssignmentIdParam(req))
+  sendSuccess(res, { success: true })
+})
+
+export const getAssignmentUploadUrl = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await assignmentsService.getUploadUrl(context, getGroupIdParam(req), req.body.fileName, req.body.contentType)
+  sendSuccess(res, result)
+})
+
+export const listSubmissions = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const submissions = await assignmentsService.listSubmissions(context, getGroupIdParam(req), getAssignmentIdParam(req))
+  sendSuccess(res, submissions)
+})
+
+export const submitAssignment = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const submission = await assignmentsService.submit(
+    context,
+    getGroupIdParam(req),
+    getAssignmentIdParam(req),
+    req.body as SubmitAssignmentInput,
+  )
+  sendSuccess(res, submission, 201)
+})
+
+export const getSubmissionUploadUrl = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await assignmentsService.getSubmissionUploadUrl(
+    context,
+    getGroupIdParam(req),
+    req.body.fileName,
+    req.body.contentType,
+  )
+  sendSuccess(res, result)
+})
+
+export const gradeSubmission = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const graded = await assignmentsService.gradeSubmission(
+    context,
+    getGroupIdParam(req),
+    getAssignmentIdParam(req),
+    getSubmissionIdParam(req),
+    req.body as GradeSubmissionInput,
+  )
+  sendSuccess(res, graded)
 })
