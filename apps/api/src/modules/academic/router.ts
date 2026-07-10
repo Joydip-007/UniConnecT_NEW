@@ -4,18 +4,27 @@ import { resolveUniversity } from '../../middleware/university'
 import { validate } from '../../middleware/validate'
 import {
   CreateCourseOutlineSchema,
+  CreateModuleSchema,
+  ReorderModulesSchema,
   UpdateAssessmentsSchema,
+  UpdateModuleSchema,
   UpdateTopicsSchema,
   UpsertGradebookEntriesSchema,
 } from './schema'
 import {
   createCourseOutline,
+  createModule,
+  deleteModule,
   getCourseOutline,
   getGradebook,
   getMyGradeCard,
   getStudentGradeCard,
+  listModules,
+  publishModule,
   replaceCourseOutline,
+  reorderModules,
   updateAssessments,
+  updateModule,
   updateTopics,
   upsertGradebookEntries,
 } from './controller'
@@ -33,3 +42,10 @@ academicRouter.get('/:groupId/gradebook', getGradebook)
 academicRouter.put('/:groupId/gradebook/entries', validate(UpsertGradebookEntriesSchema), upsertGradebookEntries)
 academicRouter.get('/:groupId/gradebook/me', getMyGradeCard)
 academicRouter.get('/:groupId/gradebook/students/:studentId', getStudentGradeCard)
+
+academicRouter.get('/:groupId/modules', listModules)
+academicRouter.post('/:groupId/modules', validate(CreateModuleSchema), createModule)
+academicRouter.patch('/:groupId/modules/reorder', validate(ReorderModulesSchema), reorderModules)
+academicRouter.patch('/:groupId/modules/:moduleId', validate(UpdateModuleSchema), updateModule)
+academicRouter.delete('/:groupId/modules/:moduleId', deleteModule)
+academicRouter.patch('/:groupId/modules/:moduleId/publish', publishModule)

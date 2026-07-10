@@ -4,9 +4,13 @@ import { unauthorized } from '../../utils/errors'
 import { sendSuccess } from '../../utils/response'
 import { courseOutlineService } from './course-outline.service'
 import { gradebookService } from './gradebook.service'
+import { modulesService } from './modules.service'
 import type {
   CreateCourseOutlineInput,
+  CreateModuleInput,
+  ReorderModulesInput,
   UpdateAssessmentsInput,
+  UpdateModuleInput,
   UpdateTopicsInput,
   UpsertGradebookEntriesInput,
 } from './schema'
@@ -99,4 +103,50 @@ export const getStudentGradeCard = asyncHandler(async (req: Request, res: Respon
   const studentId = Array.isArray(req.params.studentId) ? req.params.studentId[0] : req.params.studentId
   const gradeCard = await gradebookService.getStudentGradeCard(context, getGroupIdParam(req), studentId)
   sendSuccess(res, gradeCard)
+})
+
+function getModuleIdParam(req: Request) {
+  const value = req.params.moduleId
+  return Array.isArray(value) ? value[0] : value
+}
+
+export const listModules = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const modules = await modulesService.list(context, getGroupIdParam(req))
+  sendSuccess(res, modules)
+})
+
+export const createModule = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const module_ = await modulesService.create(context, getGroupIdParam(req), req.body as CreateModuleInput)
+  sendSuccess(res, module_, 201)
+})
+
+export const updateModule = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const module_ = await modulesService.update(
+    context,
+    getGroupIdParam(req),
+    getModuleIdParam(req),
+    req.body as UpdateModuleInput,
+  )
+  sendSuccess(res, module_)
+})
+
+export const deleteModule = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  await modulesService.delete(context, getGroupIdParam(req), getModuleIdParam(req))
+  sendSuccess(res, { success: true })
+})
+
+export const reorderModules = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const modules = await modulesService.reorder(context, getGroupIdParam(req), req.body as ReorderModulesInput)
+  sendSuccess(res, modules)
+})
+
+export const publishModule = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const module_ = await modulesService.togglePublish(context, getGroupIdParam(req), getModuleIdParam(req))
+  sendSuccess(res, module_)
 })

@@ -93,3 +93,20 @@ export type UpdateTopicsInput = z.infer<typeof UpdateTopicsSchema>
 export type CreateAssessmentInput = z.infer<typeof CreateAssessmentSchema>
 export type CreateTopicInput = z.infer<typeof CreateTopicSchema>
 export type UpsertGradebookEntriesInput = z.infer<typeof UpsertGradebookEntriesSchema>
+
+export const CreateModuleSchema = z.object({
+  title: z.string().min(1).max(255),
+  description: z.string().optional(),
+  weekNumber: z.number().int().min(1).optional(),
+  displayOrder: z.number().int().min(1),
+})
+
+export const UpdateModuleSchema = CreateModuleSchema.partial()
+
+export const ReorderModulesSchema = z.object({
+  order: z.array(z.string().uuid()),
+})
+
+export type CreateModuleInput = z.infer<typeof CreateModuleSchema>
+export type UpdateModuleInput = z.infer<typeof UpdateModuleSchema>
+export type ReorderModulesInput = z.infer<typeof ReorderModulesSchema>
