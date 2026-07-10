@@ -1,4 +1,41 @@
 import { db } from '../../config/db'
+import { CREDENTIALS, TEST_UNIVERSITY_ID } from '../setup'
+
+/**
+ * Creates a group directly via `db('groups').insert(...)`, bypassing the
+ * service's faculty-only creation guard for test convenience, and adds the
+ * creator as an `owner` group member so membership-gated routes (e.g.
+ * flashcard decks, which call `assertMemberAccess`) work against the fixture.
+ */
+export async function createGroupFixture(overrides: {
+  type: 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
+  universityId?: string
+  creatorId?: string
+  name?: string
+  description?: string
+}) {
+  const universityId = overrides.universityId ?? TEST_UNIVERSITY_ID
+  const creatorId =
+    overrides.creatorId ?? (await db('users').where({ email: CREDENTIALS.faculty.email }).first('id')).id
+
+  const [row] = await db('groups')
+    .insert({
+      university_id: universityId,
+      created_by: creatorId,
+      name: overrides.name ?? `Test group ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      description: overrides.description ?? 'Fixture group for tests',
+      type: overrides.type,
+    })
+    .returning('*')
+
+  await db('group_members').insert({
+    group_id: row.id,
+    user_id: creatorId,
+    role: 'owner',
+  })
+
+  return row as { id: string; university_id: string; created_by: string; name: string; type: string }
+}
 
 export async function makeJoinRequest(overrides: {
   groupId: string

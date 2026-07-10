@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth } from '../../middleware/auth'
+import { requireAcademicGroup } from '../../middleware/requireAcademicGroup'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
@@ -120,20 +121,46 @@ groupsRouter.post('/:groupId/study-sessions', validate(CreateStudySessionSchema)
 groupsRouter.delete('/:groupId/study-sessions/:sessionId', deleteStudySession)
 groupsRouter.post('/:groupId/study-sessions/:sessionId/rsvp', validate(RsvpStudySessionSchema), rsvpStudySession)
 
-groupsRouter.get('/:groupId/flashcard-decks', listFlashcardDecks)
-groupsRouter.post('/:groupId/flashcard-decks', validate(CreateFlashcardDeckSchema), createFlashcardDeck)
-groupsRouter.patch('/:groupId/flashcard-decks/:deckId', validate(UpdateFlashcardDeckSchema), updateFlashcardDeck)
-groupsRouter.delete('/:groupId/flashcard-decks/:deckId', deleteFlashcardDeck)
-groupsRouter.get('/:groupId/flashcard-decks/:deckId/cards', listFlashcards)
-groupsRouter.post('/:groupId/flashcard-decks/:deckId/cards', validate(CreateFlashcardSchema), createFlashcard)
+groupsRouter.get('/:groupId/flashcard-decks', requireAcademicGroup, listFlashcardDecks)
+groupsRouter.post(
+  '/:groupId/flashcard-decks',
+  requireAcademicGroup,
+  validate(CreateFlashcardDeckSchema),
+  createFlashcardDeck,
+)
+groupsRouter.patch(
+  '/:groupId/flashcard-decks/:deckId',
+  requireAcademicGroup,
+  validate(UpdateFlashcardDeckSchema),
+  updateFlashcardDeck,
+)
+groupsRouter.delete('/:groupId/flashcard-decks/:deckId', requireAcademicGroup, deleteFlashcardDeck)
+groupsRouter.get('/:groupId/flashcard-decks/:deckId/cards', requireAcademicGroup, listFlashcards)
+groupsRouter.post(
+  '/:groupId/flashcard-decks/:deckId/cards',
+  requireAcademicGroup,
+  validate(CreateFlashcardSchema),
+  createFlashcard,
+)
 groupsRouter.get(
   '/:groupId/flashcard-decks/:deckId/review',
+  requireAcademicGroup,
   validateRequest({ query: PaginationQuerySchema }),
   getFlashcardReviewQueue,
 )
-groupsRouter.patch('/:groupId/flashcards/:cardId', validate(UpdateFlashcardSchema), updateFlashcard)
-groupsRouter.delete('/:groupId/flashcards/:cardId', deleteFlashcard)
-groupsRouter.post('/:groupId/flashcards/:cardId/review', validate(FlashcardReviewSchema), reviewFlashcard)
+groupsRouter.patch(
+  '/:groupId/flashcards/:cardId',
+  requireAcademicGroup,
+  validate(UpdateFlashcardSchema),
+  updateFlashcard,
+)
+groupsRouter.delete('/:groupId/flashcards/:cardId', requireAcademicGroup, deleteFlashcard)
+groupsRouter.post(
+  '/:groupId/flashcards/:cardId/review',
+  requireAcademicGroup,
+  validate(FlashcardReviewSchema),
+  reviewFlashcard,
+)
 groupsRouter.get('/:groupId/shared-notes', validateRequest({ query: PaginationQuerySchema }), listSharedNotes)
 groupsRouter.post('/:groupId/shared-notes', validate(CreateSharedNoteSchema), createSharedNote)
 groupsRouter.patch('/:groupId/shared-notes/:noteId', validate(UpdateSharedNoteSchema), updateSharedNote)
