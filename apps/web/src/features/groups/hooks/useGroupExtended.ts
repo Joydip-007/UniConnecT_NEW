@@ -3,6 +3,7 @@ import { api } from '@/lib/axios'
 import type {
   AcademicModule,
   Assignment,
+  Attachment,
   CourseOutline,
   CourseOutlineInput,
   Flashcard,
@@ -99,9 +100,16 @@ type UpdateFlashcardInput = Partial<CreateFlashcardInput>
 type CreateSharedNoteInput = {
   title: string
   body: string
+  attachments?: Attachment[]
 }
 
 type UpdateSharedNoteInput = Partial<CreateSharedNoteInput>
+
+interface NoteUploadUrlResponse {
+  uploadUrl: string
+  publicUrl: string
+  maxSizeBytes: number
+}
 
 const flashcardDecksKey = (groupId: string) => ['groups', 'flashcard-decks', { groupId }] as const
 const flashcardsKey = (groupId: string, deckId: string) =>
@@ -433,6 +441,28 @@ export function useDeleteSharedNote(groupId: string) {
       api.delete<{ data: { deleted: true } }>(`/groups/${groupId}/shared-notes/${noteId}`).then((r) => r.data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sharedNotesKey(groupId) })
+    },
+  })
+}
+
+export function useSharedNoteUpload(groupId: string) {
+  return useMutation({
+    mutationFn: async (file: File): Promise<Attachment> => {
+      const { data } = await api.post<{ data: NoteUploadUrlResponse }>(
+        `/groups/${groupId}/shared-notes/upload-url`,
+        { fileName: file.name, contentType: file.type },
+      )
+      const { uploadUrl, publicUrl, maxSizeBytes } = data.data
+      if (file.size > maxSizeBytes) {
+        throw new Error('File exceeds the 25MB limit')
+      }
+      const s3Res = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+      if (!s3Res.ok) throw new Error(`Upload failed: ${s3Res.status}`)
+      return { name: file.name, url: publicUrl, contentType: file.type, size: file.size }
     },
   })
 }

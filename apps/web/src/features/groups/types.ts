@@ -157,12 +157,20 @@ export interface FlashcardReviewResult {
   updatedAt: string
 }
 
+export interface Attachment {
+  name: string
+  url: string
+  contentType: string
+  size: number
+}
+
 export interface SharedNote {
   id: string
   groupId: string
   createdBy: string | null
   title: string
   body: string
+  attachments: Attachment[]
   createdAt: string
   updatedAt: string
   creator: GroupUserSummary | null
