@@ -16,6 +16,7 @@ import type {
   PaginationQuery,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
+  UpdateGroupAISettingsInput,
   UpdateGroupInput,
   UpdateMemberInput,
   UpdateSharedNoteInput,
@@ -378,6 +379,19 @@ export const updateSharedNote = asyncHandler(async (req, res) => {
 export const deleteSharedNote = asyncHandler(async (req, res) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.deleteSharedNote(context, getGroupIdParam(req), getNoteIdParam(req)))
+})
+
+export const getAiSettings = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.getAiSettings(context, getGroupIdParam(req)))
+})
+
+export const updateAiSettings = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateAiSettings(context, getGroupIdParam(req), req.body as UpdateGroupAISettingsInput),
+  )
 })
 
 function getAuthContext(req: Request) {

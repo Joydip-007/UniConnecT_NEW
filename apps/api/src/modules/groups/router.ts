@@ -17,6 +17,7 @@ import {
   deleteResource,
   deleteSharedNote,
   deleteStudySession,
+  getAiSettings,
   getFlashcardReviewQueue,
   getGroup,
   getGroupStats,
@@ -43,6 +44,7 @@ import {
   setRules,
   trackResource,
   updateFlashcard,
+  updateAiSettings,
   updateFlashcardDeck,
   updateGroup,
   updateMember,
@@ -68,6 +70,7 @@ import {
   SetRulesSchema,
   UpdateFlashcardDeckSchema,
   UpdateFlashcardSchema,
+  UpdateGroupAISettingsSchema,
   UpdateGroupSchema,
   UpdateMemberSchema,
   UpdateSharedNoteSchema,
@@ -165,3 +168,7 @@ groupsRouter.get('/:groupId/shared-notes', validateRequest({ query: PaginationQu
 groupsRouter.post('/:groupId/shared-notes', validate(CreateSharedNoteSchema), createSharedNote)
 groupsRouter.patch('/:groupId/shared-notes/:noteId', validate(UpdateSharedNoteSchema), updateSharedNote)
 groupsRouter.delete('/:groupId/shared-notes/:noteId', deleteSharedNote)
+
+// AI settings (academic groups only — enforced in the service layer)
+groupsRouter.get('/:groupId/ai-settings', getAiSettings)
+groupsRouter.patch('/:groupId/ai-settings', validate(UpdateGroupAISettingsSchema), updateAiSettings)

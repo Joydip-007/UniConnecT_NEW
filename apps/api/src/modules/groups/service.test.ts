@@ -72,3 +72,43 @@ describe('groupService.createGroup — academic type guard', () => {
     await cleanup(universityId)
   })
 })
+
+describe('groupService.updateAiSettings', () => {
+  it('merges partial ai_settings and requires owner/admin role', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+
+    const updated = await groupsService.updateAiSettings(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      group.id,
+      { ai_quiz_enabled: true, subject: 'Data Structures' },
+    )
+
+    expect(updated.aiSettings).toMatchObject({ ai_quiz_enabled: true, subject: 'Data Structures' })
+
+    await cleanup(universityId)
+  })
+
+  it('rejects updates on non-academic groups', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'Club', description: 'A club group', type: 'club', is_private: false },
+    )
+
+    await expect(
+      groupsService.updateAiSettings(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        group.id,
+        { ai_quiz_enabled: true },
+      ),
+    ).rejects.toMatchObject({ code: 'ACADEMIC_GROUP_REQUIRED' })
+
+    await cleanup(universityId)
+  })
+})

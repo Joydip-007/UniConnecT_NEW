@@ -1711,6 +1711,24 @@ export class GroupsService {
 
     return { rulesMd: content }
   }
+
+  async getAiSettings(context: AuthContext, groupId: string) {
+    const group = await this.getGroup(context, groupId)
+    return { aiSettings: group.aiSettings }
+  }
+
+  async updateAiSettings(context: AuthContext, groupId: string, patch: Record<string, unknown>) {
+    const row = await db('groups').where({ id: groupId, university_id: context.universityId }).first()
+    if (!row) throw notFound('Group not found')
+    if (row.type !== 'academic') {
+      throw forbidden('AI settings are only available on academic groups', 'ACADEMIC_GROUP_REQUIRED')
+    }
+    await assertGroupAdminAccess(context, groupId)
+
+    const merged = { ...(row.ai_settings ?? {}), ...patch }
+    await db('groups').where({ id: groupId }).update({ ai_settings: merged })
+    return this.getGroup(context, groupId)
+  }
 }
 
 export const groupsService = new GroupsService()
