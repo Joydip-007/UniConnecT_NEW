@@ -1,120 +1,63 @@
-# Task 2: services/ai.service.ts — Gemini wrapper
+# Task 2 Report: Migration 097_add_ai_learning_settings.ts
 
 **Status:** DONE
 
-**Commit:** fb2c8c2 feat(api): add Gemini AI service with retry, timeout, and JSON parsing
+**Commit:** b8c5572 feat(api): add AI learning-path preference columns to university_settings
 
-## What Was Implemented
+## Summary
+Successfully created and tested migration `097_add_ai_learning_settings.ts` adding AI learning preference columns to the `university_settings` table.
 
-Created a complete Gemini API wrapper service (`ai.service.ts`) with:
+## What Was Done
+1. Created migration file at `apps/api/src/database/migrations/097_add_ai_learning_settings.ts` with exact specifications from the task brief
+2. Added 9 columns to `university_settings` table:
+   - `ai_learning_enabled` (boolean, default false)
+   - `ai_learning_topics` (jsonb, default '[]')
+   - `ai_learning_difficulty` (string[20], default 'intermediate')
+   - `ai_learning_language` (string[2], default 'en')
+   - `ai_learning_est_days` (integer, default 7)
+   - `ai_learning_custom_instructions` (text, nullable)
+   - `ai_learning_gen_hour` (integer, default 2)
+   - `ai_learning_count_per_run` (integer, default 1)
+   - `ai_quiz_require_approval` (boolean, default false)
 
-### Functions Exported
-- `generateQuizQuestions(options)` — Generates multiple-choice quiz questions for a department/topic
-- `generateFlashcards(options)` — Generates study flashcards with front/back/hint
-- `generateSkillPath(options)` — Generates self-paced learning paths with units (read/video/exercise)
+## Migration Testing Results
 
-### Types Exported
-- `AIQuizQuestion` — Quiz question with options, answer index, and optional explanation
-- `AIFlashcard` — Flashcard with front, back, and optional hint
-- `AISkillPathUnit` — Individual learning unit with title, type, content, and estimated time
-- `AISkillPath` — Complete learning path with title, description, difficulty, estimated hours, and units
-
-### Implementation Features
-- **Retry logic:** 3 attempts with delays [0ms, 2s, 4s] — handles transient failures gracefully
-- **Timeout handling:** 15s max call duration via `Promise.race()`
-- **JSON parsing:** Strips markdown code fences (```json…```) before parsing
-- **Structured logging:** Uses existing `logger` service for warnings on retry
-- **Temperature config:** Set to 0.4 for deterministic responses via `getGenerativeModel({ temperature: 0.4 })`
-- **Environment:** Consumes `env.GEMINI_API_KEY` from config/env.ts
-
-### Files Created/Modified
-
-| File | Purpose |
-|------|---------|
-| `apps/api/src/services/ai.service.ts` | Main implementation (124 lines) |
-| `apps/api/src/services/ai.service.test.ts` | Unit tests with 4 test cases (66 lines) |
-| `apps/api/src/services/setup.ts` | Vitest setup to mock DB/Redis/Socket for unit tests |
-| `apps/api/vitest.services.config.ts` | Separate vitest config for service tests |
-
-## TDD Evidence
-
-### RED Phase
-```bash
-$ npx pnpm --filter api test src/services/ai.service.test.ts
-❯ Error: Failed to load url ./ai.service (resolved id: ./ai.service)
-  Does the file exist?
+### Migrate Up
 ```
-✓ Tests fail with expected "file not found" error
-
-### GREEN Phase
-```bash
-$ cd apps/api && npx vitest run --config vitest.services.config.ts src/services/ai.service.test.ts
-
-✓ src/services/ai.service.test.ts (4 tests) 8017ms
-  ✓ ai.service > parses a valid JSON response into AIQuizQuestion[]
-  ✓ ai.service > retries once on failure then succeeds 2006ms
-  ✓ ai.service > throws after exhausting retries 6007ms
-  ✓ ai.service > strips markdown code fences before parsing
-
-Test Files  1 passed (1)
-     Tests  4 passed (4)
+Batch 30 run: 1 migration(s)
+ ↑ 097_add_ai_learning_settings.ts
 ```
+**Result:** SUCCESS
 
-✓ All 4 tests pass, including:
-  - JSON parsing with typed response
-  - Retry logic (2 calls when first fails, second succeeds)
-  - Exhausted retries throw the last error (3 calls total)
-  - Markdown code fence stripping (both ```json variants handled)
+### Rollback Down
+```
+Batch 30 rolled back: 1 migration(s)
+ ↓ 097_add_ai_learning_settings.ts
+```
+**Result:** SUCCESS
 
-### Post-Implementation Verification
-```bash
+### Migrate Up Again (Idempotency)
+```
+Batch 30 run: 1 migration(s)
+ ↑ 097_add_ai_learning_settings.ts
+```
+**Result:** SUCCESS — Confirmed idempotency. All three operations (up → down → up) completed without errors.
+
+## TypeCheck Result
+```
 $ npx pnpm --filter api typecheck
-✓ No TypeScript errors
-
-$ npx pnpm --filter api lint
-✓ No ESLint errors
+$ tsc --noEmit
 ```
+**Result:** SUCCESS — No TypeScript errors detected.
 
-## Implementation Notes
+## Commit Details
+- **Hash:** `b8c5572`
+- **Message:** `feat(api): add AI learning-path preference columns to university_settings`
+- **File:** `apps/api/src/database/migrations/097_add_ai_learning_settings.ts`
+- **Changes:** 1 file created, 29 insertions
 
-### Logger Integration
-Verified `src/utils/logger.ts` exports `{ logger }` with methods `info(msg, meta?)`, `warn(msg, meta?)`, `error(msg, meta?)`. Used as-is in ai.service.ts.
-
-### Testing Approach
-- Initial vitest setup inherited database connection from `src/__tests__/setup.ts`
-- Created separate `vitest.services.config.ts` to exclude unit tests from integration setup
-- Created `src/services/setup.ts` with mocks for db, redis, socket to prevent connection attempts
-- Tests run in isolation without database dependency
-
-### Quality Checks
-- ✓ No `console.log` calls (uses `logger.warn` for retry diagnostics)
-- ✓ 100% test coverage of core logic: JSON parsing, retry delays, timeout
-- ✓ All type definitions match brief specification
-- ✓ Proper error handling: throws after exhausting retries, not swallowing errors
-
-## Self-Review
-
-### Completeness
-- ✓ All 3 functions with correct signatures
-- ✓ All 3 types/interfaces
-- ✓ Retry + timeout + JSON parsing + markdown stripping
-- ✓ 4 meaningful test cases covering edge cases
-
-### Quality
-- ✓ Follows existing code patterns (logger, error handling, async/await)
-- ✓ Prompts match task brief and are appropriate for Gemini
-- ✓ Configuration (temperature 0.4) suitable for educational content generation
-- ✓ No external dependencies beyond already-installed @google/generative-ai
-
-### Concerns
-None. The implementation matches the brief exactly and passes all tests with correct behavior.
-
-## Test Summary
-
-All 4 tests pass with correct behavior:
-1. JSON parsing test verifies structured data extraction
-2. Retry test confirms transient failures recover
-3. Exhausted retry test verifies proper error propagation
-4. Markdown stripping test handles both ```json and ``` code fence variants
-
-Commit SHA: `fb2c8c2`
+## Verification Summary
+✓ Migration up/down/up round-trip verified
+✓ TypeScript typecheck passed
+✓ Commit created with exact required message
+✓ No blockers or concerns
