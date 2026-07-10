@@ -114,7 +114,7 @@ export async function getTodayLeaderboard(context: AuthContext) {
   if (!slot) return []
 
   return db('daily_quiz_attempts as a')
-    .join('users as u', 'u.id', 'a.user_id')
+    .join('profiles as p', 'p.user_id', 'a.user_id')
     .where({ 'a.slot_id': slot.id })
     .orderBy('a.score', 'desc')
     .orderBy('a.completed_at', 'asc')
@@ -122,8 +122,8 @@ export async function getTodayLeaderboard(context: AuthContext) {
     .select(
       db.raw('ROW_NUMBER() OVER (ORDER BY a.score DESC, a.completed_at ASC) AS rank'),
       'a.user_id as userId',
-      'u.full_name as fullName',
-      'u.avatar_url as avatarUrl',
+      'p.full_name as fullName',
+      'p.avatar_url as avatarUrl',
       'a.score',
       'a.correct_count as correctCount',
     )
