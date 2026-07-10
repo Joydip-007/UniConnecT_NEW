@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
   Users, FileText, Mail, Flag, Trash2, X,
-  ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus,
+  ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus, GraduationCap
 } from 'lucide-react'
 import type { AccountDeletionRequest } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
@@ -17,6 +17,7 @@ import { PATHS } from '@/router/paths'
 import { ContentTab } from '@/pages/admin/ContentTab'
 import { ShuttleTab } from '@/pages/admin/ShuttleTab'
 import { ContentSyncPanel } from '@/features/content-sync'
+import { LearningAdminPanel } from '@/features/learning-admin'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -184,13 +185,14 @@ function ContentMetricsStrip({ stats }: { stats: Stats }) {
 
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'content-sync' | 'shuttle' | 'reports' | 'deletion'
+type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'content-sync' | 'learning' | 'shuttle' | 'reports' | 'deletion'
 const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Overview', value: 'overview', icon: <FileText size={14} /> },
   { label: 'Users', value: 'users', icon: <Users size={14} /> },
   { label: 'Invite', value: 'invitations', icon: <Mail size={14} /> },
   { label: 'Content', value: 'content', icon: <LayoutGrid size={14} /> },
   { label: 'Content sync', value: 'content-sync', icon: <RefreshCw size={14} /> },
+  { label: 'Learning', value: 'learning', icon: <GraduationCap size={14} /> },
   { label: 'Shuttle', value: 'shuttle', icon: <Bus size={14} /> },
   { label: 'Reports', value: 'reports', icon: <Flag size={14} /> },
   { label: 'Deletion requests', value: 'deletion', icon: <Trash2 size={14} /> },
@@ -1658,6 +1660,7 @@ export default function AdminPage() {
         {activeTab === 'invitations' && <InvitationsTab />}
         {activeTab === 'content' && <ContentTab />}
         {activeTab === 'content-sync' && <ContentSyncPanel />}
+        {activeTab === 'learning' && <LearningAdminPanel />}
         {activeTab === 'shuttle' && <ShuttleTab />}
         {activeTab === 'reports' && <ReportsTab />}
         {activeTab === 'deletion' && <DeletionRequestsTab />}
