@@ -107,10 +107,15 @@ export async function generateSkillPath(options: {
   category: string
   difficulty?: string
   language?: 'en' | 'bn'
+  estimatedDays?: number
+  customInstructions?: string
 }): Promise<AISkillPath> {
   const prompt = `Generate a self-paced learning path for the category "${options.category}". Difficulty: ${
     options.difficulty ?? 'intermediate'
-  }. Language: ${options.language ?? 'en'}.
+  }. Language: ${options.language ?? 'en'}.${
+    options.estimatedDays ? ` The path should be completable in about ${options.estimatedDays} days.` : ''
+  }
+${options.customInstructions ?? ''}
 Return ONLY valid JSON. No markdown. No explanation. JSON schema:
 { "title": string, "description": string, "difficulty": "beginner"|"intermediate"|"advanced", "estimatedHours": number,
   "units": [{ "title": string, "type": "read"|"video"|"exercise", "content": { "text": string }, "estimatedMinutes": number }] }`

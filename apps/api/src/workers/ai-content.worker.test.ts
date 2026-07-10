@@ -4,10 +4,11 @@ import { randomUUID } from 'node:crypto'
 vi.mock('../services/ai.service', () => ({
   generateQuizQuestions: vi.fn(),
   generateFlashcards: vi.fn(),
+  generateSkillPath: vi.fn(),
 }))
 
-import { generateQuizQuestions, generateFlashcards } from '../services/ai.service'
-import { runQuizGeneration, runGroupPosting } from './ai-content.worker'
+import { generateQuizQuestions, generateFlashcards, generateSkillPath } from '../services/ai.service'
+import { runQuizGeneration, runGroupPosting, runLearningPathGeneration } from './ai-content.worker'
 import { db } from '../config/db'
 import { groupsService } from '../modules/groups/service'
 
@@ -236,6 +237,96 @@ describe('runGroupPosting', () => {
       } finally {
         await cleanupGroups(universityId)
       }
+    },
+    30_000,
+  )
+})
+
+describe('runLearningPathGeneration', () => {
+  async function cleanupLearning(universityId: string): Promise<void> {
+    const pathIds = await db('skill_paths').where({ university_id: universityId }).pluck('id')
+    await db('skill_path_units').whereIn('path_id', pathIds).del()
+    await db('skill_paths').where({ university_id: universityId }).del()
+    await db('university_settings').where({ university_id: universityId }).del()
+    await cleanup(universityId)
+  }
+
+  it('skips when ai_learning_enabled is false', async () => {
+    const universityId = await createUniversity()
+    await db('university_settings').insert({
+      university_id: universityId,
+      ai_learning_enabled: false,
+      ai_learning_topics: JSON.stringify([{ category: 'Algorithms' }]),
+      ai_learning_gen_hour: new Date().getUTCHours(),
+    })
+
+    await runLearningPathGeneration(new Date())
+
+    const paths = await db('skill_paths').where({ university_id: universityId })
+    expect(paths).toHaveLength(0)
+
+    await cleanupLearning(universityId)
+  })
+
+  it("skips when genHour doesn't match current UTC hour", async () => {
+    const universityId = await createUniversity()
+    const now = new Date()
+    const mismatchedHour = (now.getUTCHours() + 5) % 24
+    await db('university_settings').insert({
+      university_id: universityId,
+      ai_learning_enabled: true,
+      ai_learning_topics: JSON.stringify([{ category: 'Algorithms' }]),
+      ai_learning_gen_hour: mismatchedHour,
+    })
+
+    await runLearningPathGeneration(now)
+
+    const paths = await db('skill_paths').where({ university_id: universityId })
+    expect(paths).toHaveLength(0)
+
+    await cleanupLearning(universityId)
+  })
+
+  it(
+    'inserts is_published=false, source=ai skill_paths + units when enabled and hour matches',
+    async () => {
+      const universityId = await createUniversity()
+      const now = new Date()
+      const category = `Algorithms ${randomUUID()}`
+      await db('university_settings').insert({
+        university_id: universityId,
+        ai_learning_enabled: true,
+        ai_learning_topics: JSON.stringify([{ category }]),
+        ai_learning_gen_hour: now.getUTCHours(),
+        ai_learning_count_per_run: 1,
+      })
+      ;(generateSkillPath as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { category: string }) =>
+        opts.category === category
+          ? {
+              title: 'Intro to Algorithms',
+              description: 'A path',
+              difficulty: 'beginner',
+              estimatedHours: 5,
+              units: [
+                { title: 'Unit 1', type: 'read', content: { text: 'hello' }, estimatedMinutes: 10 },
+                { title: 'Unit 2', type: 'exercise', content: { text: 'do it' }, estimatedMinutes: 15 },
+              ],
+            }
+          : { title: 'x', description: 'x', difficulty: 'beginner', estimatedHours: 1, units: [] },
+      )
+
+      await runLearningPathGeneration(now)
+
+      const path = await db('skill_paths').where({ university_id: universityId, category }).first()
+      expect(path).toBeTruthy()
+      expect(path.is_published).toBe(false)
+      expect(path.source).toBe('ai')
+
+      const units = await db('skill_path_units').where({ path_id: path.id }).orderBy('display_order')
+      expect(units).toHaveLength(2)
+      expect(units[0].title).toBe('Unit 1')
+
+      await cleanupLearning(universityId)
     },
     30_000,
   )

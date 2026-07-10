@@ -1,10 +1,11 @@
 import { aiContentQueue } from '../queues/ai-content.queue'
 import { db } from '../config/db'
-import { generateQuizQuestions, generateFlashcards } from '../services/ai.service'
+import { generateQuizQuestions, generateFlashcards, generateSkillPath } from '../services/ai.service'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
 import { courseOutlineService } from '../modules/academic/course-outline.service'
 import { feedService } from '../modules/feed/service'
+import { learningAdminService } from '../modules/learning-admin/service'
 
 const AI_CALLS_PER_MINUTE = 12
 
@@ -146,6 +147,67 @@ export async function runGroupPosting(): Promise<void> {
   }
 }
 
+export async function runLearningPathGeneration(now: Date = new Date()): Promise<void> {
+  const universities = await db('universities').select<{ id: string }[]>('id')
+
+  for (const uni of universities) {
+    try {
+      const config = await learningAdminService.getConfig(uni.id)
+      if (!config.enabled) continue
+      if (config.genHour !== now.getUTCHours()) continue
+      if (config.topics.length === 0) continue
+
+      for (let i = 0; i < config.countPerRun; i++) {
+        const topic = config.topics[i % config.topics.length]
+        try {
+          const path = await rateLimitedAICall(() =>
+            generateSkillPath({
+              category: topic.category,
+              difficulty: topic.difficulty ?? config.difficulty,
+              language: config.language as 'en' | 'bn',
+              estimatedDays: config.estimatedDays,
+              customInstructions: config.customInstructions ?? undefined,
+            }),
+          )
+
+          const [insertedPath] = await db('skill_paths')
+            .insert({
+              university_id: uni.id,
+              title: path.title,
+              description: path.description,
+              category: topic.category,
+              difficulty: path.difficulty,
+              estimated_days: config.estimatedDays,
+              is_published: false,
+              source: 'ai',
+            })
+            .returning<{ id: string }[]>('id')
+
+          if (path.units.length > 0) {
+            await db('skill_path_units').insert(
+              path.units.map((unit, index) => ({
+                path_id: insertedPath.id,
+                display_order: index,
+                title: unit.title,
+                type: unit.type,
+                content: JSON.stringify(unit.content),
+              })),
+            )
+          }
+        } catch (error) {
+          logger.error('AI learning path generation failed for topic', {
+            universityId: uni.id,
+            category: topic.category,
+            error,
+          })
+        }
+      }
+    } catch (error) {
+      logger.error('AI learning path generation failed for university', { universityId: uni.id, error })
+    }
+  }
+}
+
 if (env.AI_CONTENT_ENABLED) {
   void aiContentQueue.add(
     { task: 'quiz-gen' },
@@ -155,6 +217,10 @@ if (env.AI_CONTENT_ENABLED) {
     { task: 'group-post' },
     { repeat: { cron: `0 ${env.AI_GROUP_POST_HOUR} * * *` }, jobId: 'ai-daily-group-post' },
   )
+  void aiContentQueue.add(
+    { task: 'learning-gen' },
+    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-learning-gen' },
+  )
 }
 
 aiContentQueue.process(async (job) => {
@@ -163,5 +229,8 @@ aiContentQueue.process(async (job) => {
   }
   if (job.data.task === 'group-post') {
     await runGroupPosting()
+  }
+  if (job.data.task === 'learning-gen') {
+    await runLearningPathGeneration()
   }
 })
