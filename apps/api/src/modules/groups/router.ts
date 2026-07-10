@@ -23,6 +23,10 @@ import {
   getFlashcardReviewQueue,
   getGroup,
   getGroupStats,
+  getMySessionPrivateNotes,
+  getSessionCreatorNotes,
+  getSessionCreatorNotesUploadUrl,
+  getSessionPrivateNotesUploadUrl,
   getSharedNoteUploadUrl,
   inviteToGroup,
   joinOrRequestGroup,
@@ -40,6 +44,8 @@ import {
   listResources,
   listSharedNotes,
   listStudySessions,
+  putMySessionPrivateNotes,
+  putSessionCreatorNotes,
   removeMember,
   reviewFlashcard,
   reviewJoinRequest,
@@ -69,6 +75,8 @@ import {
   MembersQuerySchema,
   NoteUploadUrlRequestSchema,
   PaginationQuerySchema,
+  PutSessionCreatorNotesSchema,
+  PutSessionPrivateNotesSchema,
   ResourceListQuerySchema,
   RsvpStudySessionSchema,
   SetPinnedSchema,
@@ -79,6 +87,7 @@ import {
   UpdateGroupSchema,
   UpdateMemberSchema,
   UpdateSharedNoteSchema,
+  UploadUrlQuerySchema,
 } from './schema'
 
 export const groupsRouter = Router()
@@ -128,6 +137,28 @@ groupsRouter.get('/:groupId/study-sessions', validateRequest({ query: Pagination
 groupsRouter.post('/:groupId/study-sessions', validate(CreateStudySessionSchema), createStudySession)
 groupsRouter.delete('/:groupId/study-sessions/:sessionId', deleteStudySession)
 groupsRouter.post('/:groupId/study-sessions/:sessionId/rsvp', validate(RsvpStudySessionSchema), rsvpStudySession)
+groupsRouter.get('/:groupId/study-sessions/:sessionId/notes/creator', getSessionCreatorNotes)
+groupsRouter.put(
+  '/:groupId/study-sessions/:sessionId/notes/creator',
+  validate(PutSessionCreatorNotesSchema),
+  putSessionCreatorNotes,
+)
+groupsRouter.get(
+  '/:groupId/study-sessions/:sessionId/notes/creator/upload-url',
+  validateRequest({ query: UploadUrlQuerySchema }),
+  getSessionCreatorNotesUploadUrl,
+)
+groupsRouter.get('/:groupId/study-sessions/:sessionId/notes/private', getMySessionPrivateNotes)
+groupsRouter.put(
+  '/:groupId/study-sessions/:sessionId/notes/private',
+  validate(PutSessionPrivateNotesSchema),
+  putMySessionPrivateNotes,
+)
+groupsRouter.get(
+  '/:groupId/study-sessions/:sessionId/notes/private/upload-url',
+  validateRequest({ query: UploadUrlQuerySchema }),
+  getSessionPrivateNotesUploadUrl,
+)
 
 groupsRouter.get('/:groupId/flashcard-decks', requireAcademicGroup, listFlashcardDecks)
 groupsRouter.post(

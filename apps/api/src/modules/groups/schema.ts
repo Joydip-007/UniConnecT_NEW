@@ -215,3 +215,24 @@ export const UpdateGroupAISettingsSchema = AISettingsSchema.partial()
 
 export type AISettingsInput = z.infer<typeof AISettingsSchema>
 export type UpdateGroupAISettingsInput = z.infer<typeof UpdateGroupAISettingsSchema>
+
+// ── Session notes (creator + per-member private) ─────────────
+export const PutSessionCreatorNotesSchema = z.object({
+  title: z.string().max(255).optional(),
+  body: z.string().optional(),
+  attachments: z.array(AttachmentSchema).max(5).optional(),
+})
+
+export const PutSessionPrivateNotesSchema = z.object({
+  body: z.string().optional(),
+  attachments: z.array(AttachmentSchema).max(5).optional(),
+})
+
+export const UploadUrlQuerySchema = z.object({
+  fileName: z.string().min(1),
+  contentType: z.string().min(1),
+})
+
+export type PutSessionCreatorNotesInput = z.infer<typeof PutSessionCreatorNotesSchema>
+export type PutSessionPrivateNotesInput = z.infer<typeof PutSessionPrivateNotesSchema>
+export type UploadUrlQuery = z.infer<typeof UploadUrlQuerySchema>

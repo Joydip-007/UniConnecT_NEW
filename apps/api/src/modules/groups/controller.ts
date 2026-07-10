@@ -15,12 +15,15 @@ import type {
   MembersQuery,
   NoteUploadUrlRequest,
   PaginationQuery,
+  PutSessionCreatorNotesInput,
+  PutSessionPrivateNotesInput,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupAISettingsInput,
   UpdateGroupInput,
   UpdateMemberInput,
   UpdateSharedNoteInput,
+  UploadUrlQuery,
 } from './schema'
 
 export const listGroups = asyncHandler(async (req: Request, res: Response) => {
@@ -251,6 +254,60 @@ export const rsvpStudySession = asyncHandler(async (req, res) => {
       getSessionIdParam(req),
       (req.body as import('./schema').RsvpStudySessionInput).status,
     ),
+  )
+})
+
+export const getSessionCreatorNotes = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.getSessionCreatorNotes(context, getGroupIdParam(req), getSessionIdParam(req)))
+})
+
+export const putSessionCreatorNotes = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.putSessionCreatorNotes(
+      context,
+      getGroupIdParam(req),
+      getSessionIdParam(req),
+      req.body as PutSessionCreatorNotesInput,
+    ),
+  )
+})
+
+export const getSessionCreatorNotesUploadUrl = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const { fileName, contentType } = req.query as unknown as UploadUrlQuery
+  sendSuccess(
+    res,
+    await groupsService.getSessionCreatorNotesUploadUrl(context, getGroupIdParam(req), getSessionIdParam(req), fileName, contentType),
+  )
+})
+
+export const getMySessionPrivateNotes = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.getMySessionPrivateNotes(context, getGroupIdParam(req), getSessionIdParam(req)))
+})
+
+export const putMySessionPrivateNotes = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.putMySessionPrivateNotes(
+      context,
+      getGroupIdParam(req),
+      getSessionIdParam(req),
+      req.body as PutSessionPrivateNotesInput,
+    ),
+  )
+})
+
+export const getSessionPrivateNotesUploadUrl = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  const { fileName, contentType } = req.query as unknown as UploadUrlQuery
+  sendSuccess(
+    res,
+    await groupsService.getSessionPrivateNotesUploadUrl(context, getGroupIdParam(req), getSessionIdParam(req), fileName, contentType),
   )
 })
 

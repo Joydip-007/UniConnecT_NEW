@@ -291,3 +291,74 @@ describe('groupService — shared note attachments', () => {
     await cleanup(universityId)
   })
 })
+
+describe('groupsService — session notes', () => {
+  it('allows only the session creator to write creator notes', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const other = await createUser({ universityId, role: 'faculty' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const session = await groupsService.createStudySession({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+      title: 'Session 1',
+      is_online: false,
+      starts_at: new Date(Date.now() + 3600000).toISOString(),
+      ends_at: new Date(Date.now() + 7200000).toISOString(),
+    })
+
+    const notes = await groupsService.putSessionCreatorNotes(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      group.id,
+      session.id,
+      { title: 'Agenda', body: 'Cover chapter 1' },
+    )
+    expect(notes.body).toBe('Cover chapter 1')
+
+    await expect(
+      groupsService.putSessionCreatorNotes(
+        { userId: other.id, universityId, role: 'faculty' },
+        group.id,
+        session.id,
+        { title: 'Hijack', body: 'x' },
+      ),
+    ).rejects.toMatchObject({ statusCode: 403 })
+
+    await cleanup(universityId)
+  })
+
+  it('isolates private notes per member', async () => {
+    const universityId = await createUniversity()
+    const faculty = await createUser({ universityId, role: 'faculty' })
+    const studentA = await createUser({ universityId, role: 'student' })
+    const studentB = await createUser({ universityId, role: 'student' })
+    const group = await groupsService.createGroup(
+      { userId: faculty.id, universityId, role: 'faculty' },
+      { name: 'CS101', description: 'A course group', type: 'academic', is_private: false },
+    )
+    const session = await groupsService.createStudySession({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+      title: 'Session 1',
+      is_online: false,
+      starts_at: new Date(Date.now() + 3600000).toISOString(),
+      ends_at: new Date(Date.now() + 7200000).toISOString(),
+    })
+    await groupsService.joinGroup({ userId: studentA.id, universityId, role: 'student' }, group.id)
+    await groupsService.joinGroup({ userId: studentB.id, universityId, role: 'student' }, group.id)
+
+    await groupsService.putMySessionPrivateNotes({ userId: studentA.id, universityId, role: 'student' }, group.id, session.id, {
+      body: 'A private note',
+    })
+    await groupsService.putMySessionPrivateNotes({ userId: studentB.id, universityId, role: 'student' }, group.id, session.id, {
+      body: 'B private note',
+    })
+
+    const aNotes = await groupsService.getMySessionPrivateNotes({ userId: studentA.id, universityId, role: 'student' }, group.id, session.id)
+    const bNotes = await groupsService.getMySessionPrivateNotes({ userId: studentB.id, universityId, role: 'student' }, group.id, session.id)
+
+    expect(aNotes?.body).toBe('A private note')
+    expect(bNotes?.body).toBe('B private note')
+
+    await cleanup(universityId)
+  })
+})

@@ -24,6 +24,8 @@ import type {
   GroupListQuery,
   MembersQuery,
   PaginationQuery,
+  PutSessionCreatorNotesInput,
+  PutSessionPrivateNotesInput,
   ResourceListQuery,
   RsvpStudySessionInput,
   UpdateFlashcardDeckInput,
@@ -1260,7 +1262,7 @@ export class GroupsService {
     }
 
     const session = await db('group_study_sessions')
-      .where({ id: sessionId! })
+      .where({ 'group_study_sessions.id': sessionId! })
       .leftJoin('profiles as cp', 'cp.user_id', 'group_study_sessions.created_by')
       .leftJoin('group_study_session_rsvps as my_rsvp', function (this: Knex.JoinClause) {
         this.on('my_rsvp.session_id', '=', 'group_study_sessions.id')
@@ -1354,6 +1356,110 @@ export class GroupsService {
       .first()
 
     return { status, rsvpCount: updated?.rsvp_count ?? 0 }
+  }
+
+  async getSessionCreatorNotes(context: AuthContext, groupId: string, sessionId: string) {
+    await assertMemberAccess(context, groupId)
+    const row = await db('group_session_creator_notes').where({ session_id: sessionId, group_id: groupId }).first()
+    return row
+      ? { id: row.id, title: row.title, body: row.body, attachments: row.attachments, createdBy: row.created_by, updatedAt: row.updated_at }
+      : null
+  }
+
+  async putSessionCreatorNotes(context: AuthContext, groupId: string, sessionId: string, input: PutSessionCreatorNotesInput) {
+    await assertMemberAccess(context, groupId)
+    const session = await db('group_study_sessions').where({ id: sessionId, group_id: groupId }).first()
+    if (!session) throw notFound('Study session not found', 'STUDY_SESSION_NOT_FOUND')
+    if (session.created_by !== context.userId) {
+      throw forbidden('Only the session creator can edit these notes', 'SESSION_NOTES_CREATOR_ONLY')
+    }
+
+    const existing = await db('group_session_creator_notes').where({ session_id: sessionId }).first()
+    if (existing) {
+      const [row] = await db('group_session_creator_notes')
+        .where({ id: existing.id })
+        .update({
+          ...pickDefined({
+            title: input.title,
+            body: input.body,
+            attachments: input.attachments !== undefined ? JSON.stringify(input.attachments) : undefined,
+          }),
+          updated_at: new Date(),
+        })
+        .returning('*')
+      return { id: row.id, title: row.title, body: row.body, attachments: row.attachments, createdBy: row.created_by, updatedAt: row.updated_at }
+    }
+
+    const [row] = await db('group_session_creator_notes')
+      .insert({
+        session_id: sessionId,
+        group_id: groupId,
+        university_id: context.universityId,
+        created_by: context.userId,
+        title: input.title ?? null,
+        body: input.body ?? null,
+        attachments: JSON.stringify(input.attachments ?? []),
+      })
+      .returning('*')
+    return { id: row.id, title: row.title, body: row.body, attachments: row.attachments, createdBy: row.created_by, updatedAt: row.updated_at }
+  }
+
+  async getSessionCreatorNotesUploadUrl(context: AuthContext, groupId: string, sessionId: string, fileName: string, contentType: string) {
+    const session = await db('group_study_sessions').where({ id: sessionId, group_id: groupId }).first()
+    if (!session) throw notFound('Study session not found', 'STUDY_SESSION_NOT_FOUND')
+    if (session.created_by !== context.userId) {
+      throw forbidden('Only the session creator can upload here', 'SESSION_NOTES_CREATOR_ONLY')
+    }
+    const key = `session-notes/creator/${context.universityId}/${sessionId}/${Date.now()}-${sanitizeFileName(fileName)}`
+    const presigned = await getPresignedUploadUrl(key, contentType)
+    return { ...presigned, maxSizeBytes: 26214400 }
+  }
+
+  async getMySessionPrivateNotes(context: AuthContext, groupId: string, sessionId: string) {
+    await assertMemberAccess(context, groupId)
+    const row = await db('group_session_member_notes')
+      .where({ session_id: sessionId, group_id: groupId, user_id: context.userId })
+      .first()
+    return row ? { id: row.id, body: row.body, attachments: row.attachments, updatedAt: row.updated_at } : null
+  }
+
+  async putMySessionPrivateNotes(context: AuthContext, groupId: string, sessionId: string, input: PutSessionPrivateNotesInput) {
+    await assertMemberAccess(context, groupId)
+    const existing = await db('group_session_member_notes')
+      .where({ session_id: sessionId, group_id: groupId, user_id: context.userId })
+      .first()
+    if (existing) {
+      const [row] = await db('group_session_member_notes')
+        .where({ id: existing.id })
+        .update({
+          ...pickDefined({
+            body: input.body,
+            attachments: input.attachments !== undefined ? JSON.stringify(input.attachments) : undefined,
+          }),
+          updated_at: new Date(),
+        })
+        .returning('*')
+      return { id: row.id, body: row.body, attachments: row.attachments, updatedAt: row.updated_at }
+    }
+
+    const [row] = await db('group_session_member_notes')
+      .insert({
+        session_id: sessionId,
+        group_id: groupId,
+        university_id: context.universityId,
+        user_id: context.userId,
+        body: input.body ?? null,
+        attachments: JSON.stringify(input.attachments ?? []),
+      })
+      .returning('*')
+    return { id: row.id, body: row.body, attachments: row.attachments, updatedAt: row.updated_at }
+  }
+
+  async getSessionPrivateNotesUploadUrl(context: AuthContext, groupId: string, sessionId: string, fileName: string, contentType: string) {
+    await assertMemberAccess(context, groupId)
+    const key = `session-notes/private/${context.universityId}/${sessionId}/${context.userId}/${Date.now()}-${sanitizeFileName(fileName)}`
+    const presigned = await getPresignedUploadUrl(key, contentType)
+    return { ...presigned, maxSizeBytes: 26214400 }
   }
 
   async listFlashcardDecks(context: AuthContext, groupId: string) {
