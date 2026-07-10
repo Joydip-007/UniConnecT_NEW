@@ -167,3 +167,46 @@ export interface SharedNote {
   updatedAt: string
   creator: GroupUserSummary | null
 }
+
+export interface CourseOutlineAssessment {
+  id?: string
+  categoryName: string
+  fullMarks: number
+  weightPercent: number
+  totalGiven: number
+  bestNCounted: number
+  displayOrder: number
+}
+
+export interface CourseOutlineTopic {
+  id?: string
+  weekNumber: number
+  title: string
+  description?: string | null
+}
+
+export interface CourseOutline {
+  id: string
+  groupId: string
+  courseCode?: string | null
+  courseTitle: string
+  creditHours?: number | null
+  trimester?: string | null
+  description?: string | null
+  gradingScale: 'uiu' | 'ugc' | 'custom'
+  customScaleJson?: unknown
+  assessments: CourseOutlineAssessment[]
+  topics: CourseOutlineTopic[]
+}
+
+export interface CourseOutlineInput {
+  courseCode?: string
+  courseTitle: string
+  creditHours?: number | null
+  trimester?: string
+  description?: string
+  gradingScale: 'uiu' | 'ugc' | 'custom'
+  customScaleJson?: unknown
+  assessments: CourseOutlineAssessment[]
+  topics: CourseOutlineTopic[]
+}

@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import type {
+  CourseOutline,
+  CourseOutlineInput,
   Flashcard,
   FlashcardDeck,
   FlashcardReviewItem,
@@ -425,6 +427,32 @@ export function useDeleteSharedNote(groupId: string) {
       api.delete<{ data: { deleted: true } }>(`/groups/${groupId}/shared-notes/${noteId}`).then((r) => r.data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sharedNotesKey(groupId) })
+    },
+  })
+}
+
+// ── Course outline ───────────────────────────────────────────────────────────
+
+const courseOutlineKey = (groupId: string) => ['groups', 'course-outline', { groupId }] as const
+
+export function useCourseOutline(groupId: string) {
+  return useQuery({
+    queryKey: courseOutlineKey(groupId),
+    queryFn: () =>
+      api.get<{ data: CourseOutline | null }>(`/groups/${groupId}/course-outline`).then((r) => r.data.data),
+    enabled: !!groupId,
+  })
+}
+
+export function useSaveCourseOutline(groupId: string, mode: 'create' | 'replace') {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CourseOutlineInput) =>
+      mode === 'create'
+        ? api.post<{ data: CourseOutline }>(`/groups/${groupId}/course-outline`, input).then((r) => r.data.data)
+        : api.put<{ data: CourseOutline }>(`/groups/${groupId}/course-outline`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseOutlineKey(groupId) })
     },
   })
 }
