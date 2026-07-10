@@ -5,6 +5,7 @@ import helmet from 'helmet'
 import morgan from 'morgan'
 import { env } from './config/env'
 import { pingRedis } from './config/redis'
+import { academicRouter } from './modules/academic'
 import { adminRouter } from './modules/admin'
 import { authRouter } from './modules/auth'
 import { eventsRouter } from './modules/events'
@@ -89,6 +90,7 @@ export function createApp() {
   app.use('/api/v1/jobs', jobsRouter)
   app.use('/api/v1/events', eventsRouter)
   app.use('/api/v1/groups', groupsRouter)
+  app.use('/api/v1/groups', academicRouter)
   app.use('/api/v1/conversations', messagesRouter)
   app.use('/api/v1/notifications', notificationsRouter)
   app.use('/api/v1/push', pushRouter)

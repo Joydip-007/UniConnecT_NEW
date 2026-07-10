@@ -2044,13 +2044,13 @@ async function assertGroupAccess(context: AuthContext, groupId: string) {
   return group
 }
 
-async function assertMemberAccess(context: AuthContext, groupId: string) {
+export async function assertMemberAccess(context: AuthContext, groupId: string) {
   const group = await assertGroupAccess(context, groupId)
   if (!group.user_role) throw forbidden('You must be a group member', 'GROUP_MEMBER_REQUIRED')
   return group
 }
 
-async function assertGroupAdminAccess(context: AuthContext, groupId: string) {
+export async function assertGroupAdminAccess(context: AuthContext, groupId: string) {
   const group = await assertGroupAccess(context, groupId)
   assertCanAdminGroup(group.user_role)
   return group
