@@ -48,4 +48,13 @@ describe('modulesService', () => {
     const list = await modulesService.list(facultyCtx, group.id)
     expect(list.map((m) => m.id)).toEqual([m2.id, m1.id])
   })
+
+  it('rejects module creation on a non-academic group', async () => {
+    const facultyCtx = await getFacultyContext()
+    const group = await createGroupFixture({ type: 'club', creatorId: facultyCtx.userId })
+
+    await expect(
+      modulesService.create(facultyCtx, group.id, { title: 'Week 1', displayOrder: 1 }),
+    ).rejects.toMatchObject({ statusCode: 403, code: 'ACADEMIC_GROUP_REQUIRED' })
+  })
 })

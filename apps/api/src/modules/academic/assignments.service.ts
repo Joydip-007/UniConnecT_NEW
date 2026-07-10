@@ -1,8 +1,14 @@
 import { db } from '../../config/db'
 import type { AuthContext } from '../../types/auth'
 import { conflict, notFound } from '../../utils/errors'
-import { getPresignedUploadUrl, sanitizeFileName } from '../../services/upload.service'
+import {
+  assertAllowedUploadType,
+  assertAttachmentUrlsAreOwnUploads,
+  getPresignedUploadUrl,
+  sanitizeFileName,
+} from '../../services/upload.service'
 import { assertGroupAdminAccess, assertMemberAccess } from '../groups/service'
+import { assertAcademicGroup } from './course-outline.service'
 import type {
   CreateAssignmentInput,
   GradeSubmissionInput,
@@ -85,6 +91,7 @@ async function isGroupAdmin(context: AuthContext, groupId: string): Promise<bool
 
 export const assignmentsService = {
   async list(context: AuthContext, groupId: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertMemberAccess(context, groupId)
     const admin = await isGroupAdmin(context, groupId)
 
@@ -95,6 +102,7 @@ export const assignmentsService = {
   },
 
   async get(context: AuthContext, groupId: string, assignmentId: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertMemberAccess(context, groupId)
     const row = await db<AssignmentRow>('academic_assignments').where({ id: assignmentId, group_id: groupId }).first()
     if (!row) throw notFound('Assignment not found')
@@ -102,7 +110,9 @@ export const assignmentsService = {
   },
 
   async create(context: AuthContext, groupId: string, input: CreateAssignmentInput) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
+    assertAttachmentUrlsAreOwnUploads(input.fileUrls)
     const [row] = await db<AssignmentRow>('academic_assignments')
       .insert({
         group_id: groupId,
@@ -121,7 +131,9 @@ export const assignmentsService = {
   },
 
   async update(context: AuthContext, groupId: string, assignmentId: string, patch: UpdateAssignmentInput) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
+    assertAttachmentUrlsAreOwnUploads(patch.fileUrls)
     const existing = await db<AssignmentRow>('academic_assignments').where({ id: assignmentId, group_id: groupId }).first()
     if (!existing) throw notFound('Assignment not found')
 
@@ -142,26 +154,32 @@ export const assignmentsService = {
   },
 
   async delete(context: AuthContext, groupId: string, assignmentId: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const deleted = await db('academic_assignments').where({ id: assignmentId, group_id: groupId }).del()
     if (deleted === 0) throw notFound('Assignment not found')
   },
 
   async getUploadUrl(context: AuthContext, groupId: string, fileName: string, contentType: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertMemberAccess(context, groupId)
+    assertAllowedUploadType(contentType)
     const key = `academic-assignments/${context.universityId}/${groupId}/${Date.now()}-${sanitizeFileName(fileName)}`
     const presigned = await getPresignedUploadUrl(key, contentType)
     return { ...presigned, maxSizeBytes: MAX_UPLOAD_BYTES }
   },
 
   async listSubmissions(context: AuthContext, groupId: string, assignmentId: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const rows = await db<SubmissionRow>('academic_submissions').where({ assignment_id: assignmentId })
     return rows.map(toSubmission)
   },
 
   async submit(context: AuthContext, groupId: string, assignmentId: string, input: SubmitAssignmentInput) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertMemberAccess(context, groupId)
+    assertAttachmentUrlsAreOwnUploads(input.fileUrls)
     const assignment = await db<AssignmentRow>('academic_assignments').where({ id: assignmentId, group_id: groupId }).first()
     if (!assignment) throw notFound('Assignment not found')
 
@@ -186,7 +204,9 @@ export const assignmentsService = {
   },
 
   async getSubmissionUploadUrl(context: AuthContext, groupId: string, fileName: string, contentType: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertMemberAccess(context, groupId)
+    assertAllowedUploadType(contentType)
     const key = `academic-submissions/${context.universityId}/${groupId}/${context.userId}/${Date.now()}-${sanitizeFileName(fileName)}`
     const presigned = await getPresignedUploadUrl(key, contentType)
     return { ...presigned, maxSizeBytes: MAX_UPLOAD_BYTES }
@@ -199,6 +219,7 @@ export const assignmentsService = {
     submissionId: string,
     input: GradeSubmissionInput,
   ) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const existing = await db<SubmissionRow>('academic_submissions')
       .where({ id: submissionId, assignment_id: assignmentId })

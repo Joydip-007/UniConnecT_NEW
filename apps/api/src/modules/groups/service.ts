@@ -9,8 +9,12 @@ import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { gradebookService } from '../academic/gradebook.service'
 import { contentSyncService } from '../content-sync/service'
 import { logger } from '../../utils/logger'
-import { getPresignedUploadUrl, getPublicUrlPrefix, sanitizeFileName } from '../../services/upload.service'
-import { ALLOWED_NOTE_CONTENT_TYPES } from './schema'
+import {
+  assertAllowedUploadType,
+  assertAttachmentUrlsAreOwnUploads,
+  getPresignedUploadUrl,
+  sanitizeFileName,
+} from '../../services/upload.service'
 import type {
   AllowedRole,
   Attachment,
@@ -1412,6 +1416,7 @@ export class GroupsService {
     if (session.created_by !== context.userId) {
       throw forbidden('Only the session creator can upload here', 'SESSION_NOTES_CREATOR_ONLY')
     }
+    assertAllowedUploadType(contentType)
     const key = `session-notes/creator/${context.universityId}/${sessionId}/${Date.now()}-${sanitizeFileName(fileName)}`
     const presigned = await getPresignedUploadUrl(key, contentType)
     return { ...presigned, maxSizeBytes: 26214400 }
@@ -1460,6 +1465,7 @@ export class GroupsService {
 
   async getSessionPrivateNotesUploadUrl(context: AuthContext, groupId: string, sessionId: string, fileName: string, contentType: string) {
     await assertMemberAccess(context, groupId)
+    assertAllowedUploadType(contentType)
     const key = `session-notes/private/${context.universityId}/${sessionId}/${context.userId}/${Date.now()}-${sanitizeFileName(fileName)}`
     const presigned = await getPresignedUploadUrl(key, contentType)
     return { ...presigned, maxSizeBytes: 26214400 }
@@ -1819,10 +1825,7 @@ export class GroupsService {
 
   async getSharedNoteUploadUrl(context: AuthContext, groupId: string, fileName: string, contentType: string) {
     await assertMemberAccess(context, groupId)
-
-    if (!(ALLOWED_NOTE_CONTENT_TYPES as readonly string[]).includes(contentType)) {
-      throw badRequest('Unsupported file type for shared notes', 'SHARED_NOTE_UPLOAD_TYPE_NOT_ALLOWED')
-    }
+    assertAllowedUploadType(contentType)
 
     const key = `group-notes/${context.universityId}/${groupId}/${Date.now()}-${sanitizeFileName(fileName)}`
     const presigned = await getPresignedUploadUrl(key, contentType)
@@ -2616,13 +2619,7 @@ function sortEventsDesc(
 }
 
 function assertAttachmentsAreOwnUploads(attachments: Attachment[] | undefined) {
-  if (!attachments?.length) return
-  const prefix = getPublicUrlPrefix()
-  for (const attachment of attachments) {
-    if (!attachment.url.startsWith(prefix)) {
-      throw badRequest('Attachment URL must point to a file uploaded via the presign endpoint', 'SHARED_NOTE_ATTACHMENT_URL_INVALID')
-    }
-  }
+  assertAttachmentUrlsAreOwnUploads(attachments)
 }
 
 function pickDefined<T extends Record<string, unknown>>(value: T) {

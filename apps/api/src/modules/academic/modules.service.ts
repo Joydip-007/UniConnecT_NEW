@@ -2,6 +2,7 @@ import { db } from '../../config/db'
 import type { AuthContext } from '../../types/auth'
 import { notFound } from '../../utils/errors'
 import { assertGroupAdminAccess, assertMemberAccess } from '../groups/service'
+import { assertAcademicGroup } from './course-outline.service'
 import type { CreateModuleInput, ReorderModulesInput, UpdateModuleInput } from './schema'
 
 interface ModuleRow {
@@ -43,6 +44,7 @@ async function isGroupAdmin(context: AuthContext, groupId: string): Promise<bool
 
 export const modulesService = {
   async list(context: AuthContext, groupId: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertMemberAccess(context, groupId)
     const admin = await isGroupAdmin(context, groupId)
 
@@ -53,6 +55,7 @@ export const modulesService = {
   },
 
   async create(context: AuthContext, groupId: string, input: CreateModuleInput) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const [row] = await db<ModuleRow>('academic_group_modules')
       .insert({
@@ -69,6 +72,7 @@ export const modulesService = {
   },
 
   async update(context: AuthContext, groupId: string, moduleId: string, patch: UpdateModuleInput) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const existing = await db<ModuleRow>('academic_group_modules').where({ id: moduleId, group_id: groupId }).first()
     if (!existing) throw notFound('Module not found')
@@ -87,12 +91,14 @@ export const modulesService = {
   },
 
   async delete(context: AuthContext, groupId: string, moduleId: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const deleted = await db('academic_group_modules').where({ id: moduleId, group_id: groupId }).del()
     if (deleted === 0) throw notFound('Module not found')
   },
 
   async reorder(context: AuthContext, groupId: string, input: ReorderModulesInput) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     await db.transaction(async (trx) => {
       for (let i = 0; i < input.order.length; i++) {
@@ -105,6 +111,7 @@ export const modulesService = {
   },
 
   async togglePublish(context: AuthContext, groupId: string, moduleId: string) {
+    await assertAcademicGroup(context.universityId, groupId)
     await assertGroupAdminAccess(context, groupId)
     const existing = await db<ModuleRow>('academic_group_modules').where({ id: moduleId, group_id: groupId }).first()
     if (!existing) throw notFound('Module not found')

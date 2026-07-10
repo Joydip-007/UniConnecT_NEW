@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { env } from '../config/env'
+import { badRequest } from '../utils/errors'
 
 export const s3Client = new S3Client({
   region: env.AWS_REGION,
@@ -74,6 +75,45 @@ export function getPublicUrlPrefix(): string {
   return env.AWS_PUBLIC_URL
     ? `${env.AWS_PUBLIC_URL.replace(/\/$/, '')}/`
     : `https://${env.AWS_S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/`
+}
+
+/**
+ * Allowed content types for document/note/assignment-style attachment uploads (PDFs, office docs,
+ * images). Shared across modules (groups, academic) that presign uploads for these kinds of files —
+ * do not duplicate this list; import it or `assertAllowedUploadType` instead.
+ */
+export const ALLOWED_UPLOAD_CONTENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+] as const
+
+/** Throws badRequest if contentType is not in the shared upload allowlist. Call before presigning. */
+export function assertAllowedUploadType(contentType: string) {
+  if (!(ALLOWED_UPLOAD_CONTENT_TYPES as readonly string[]).includes(contentType)) {
+    throw badRequest('Unsupported file type', 'UPLOAD_TYPE_NOT_ALLOWED')
+  }
+}
+
+/**
+ * Verifies every attachment/file-url a client submits actually points at a file this tenant uploaded
+ * via the presign flow (our own bucket prefix) — prevents persisting arbitrary external/foreign URLs
+ * as "attachments". Call after auth checks, before persisting, on any client-supplied URL list.
+ */
+export function assertAttachmentUrlsAreOwnUploads(items: { url: string }[] | undefined) {
+  if (!items?.length) return
+  const prefix = getPublicUrlPrefix()
+  for (const item of items) {
+    if (!item.url.startsWith(prefix)) {
+      throw badRequest('Attachment URL must point to a file uploaded via the presign endpoint', 'ATTACHMENT_URL_INVALID')
+    }
+  }
 }
 
 export const uploadService = {

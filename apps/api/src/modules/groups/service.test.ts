@@ -286,7 +286,7 @@ describe('groupService — shared note attachments', () => {
         body: 'notes',
         attachments: [{ name: 'lecture1.pdf', url: 'https://evil.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
       }),
-    ).rejects.toMatchObject({ statusCode: 400, code: 'SHARED_NOTE_ATTACHMENT_URL_INVALID' })
+    ).rejects.toMatchObject({ statusCode: 400, code: 'ATTACHMENT_URL_INVALID' })
 
     await cleanup(universityId)
   })
@@ -382,7 +382,7 @@ describe('groupsService — session notes', () => {
         body: 'Cover chapter 1',
         attachments: [{ name: 'lecture1.pdf', url: 'https://evil.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
       }),
-    ).rejects.toMatchObject({ statusCode: 400, code: 'SHARED_NOTE_ATTACHMENT_URL_INVALID' })
+    ).rejects.toMatchObject({ statusCode: 400, code: 'ATTACHMENT_URL_INVALID' })
 
     await cleanup(universityId)
   })
@@ -408,7 +408,7 @@ describe('groupsService — session notes', () => {
         body: 'A private note',
         attachments: [{ name: 'lecture1.pdf', url: 'https://evil.example.com/lecture1.pdf', contentType: 'application/pdf', size: 1024 }],
       }),
-    ).rejects.toMatchObject({ statusCode: 400, code: 'SHARED_NOTE_ATTACHMENT_URL_INVALID' })
+    ).rejects.toMatchObject({ statusCode: 400, code: 'ATTACHMENT_URL_INVALID' })
 
     await cleanup(universityId)
   })

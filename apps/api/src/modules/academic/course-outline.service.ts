@@ -97,11 +97,11 @@ function validateTopics(topics: { weekNumber: number }[]) {
   }
 }
 
-async function assertAcademicGroup(universityId: string, groupId: string) {
+export async function assertAcademicGroup(universityId: string, groupId: string) {
   const group = await db<{ type: string }>('groups').select('type').where({ id: groupId, university_id: universityId }).first()
   if (!group) throw notFound('Group not found')
   if (group.type !== 'academic') {
-    throw forbidden('Course outlines are only available on academic groups', 'ACADEMIC_GROUP_REQUIRED')
+    throw forbidden('This feature is only available on academic groups', 'ACADEMIC_GROUP_REQUIRED')
   }
 }
 

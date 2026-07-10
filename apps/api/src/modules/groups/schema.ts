@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ALLOWED_UPLOAD_CONTENT_TYPES } from '../../services/upload.service'
 
 export const GroupTypeSchema = z.enum(['department', 'club', 'batch', 'research', 'interest', 'other', 'academic'])
 export const GroupRoleSchema = z.enum(['owner', 'admin', 'moderator', 'member'])
@@ -145,14 +146,7 @@ export const FlashcardReviewSchema = z.object({
   rating: z.enum(['again', 'hard', 'good', 'easy']),
 })
 
-export const ALLOWED_NOTE_CONTENT_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-] as const
+export const ALLOWED_NOTE_CONTENT_TYPES = ALLOWED_UPLOAD_CONTENT_TYPES
 
 export const AttachmentSchema = z.object({
   name: z.string().max(255),
@@ -230,7 +224,7 @@ export const PutSessionPrivateNotesSchema = z.object({
 
 export const UploadUrlQuerySchema = z.object({
   fileName: z.string().min(1),
-  contentType: z.string().min(1),
+  contentType: z.enum(ALLOWED_NOTE_CONTENT_TYPES),
 })
 
 export type PutSessionCreatorNotesInput = z.infer<typeof PutSessionCreatorNotesSchema>

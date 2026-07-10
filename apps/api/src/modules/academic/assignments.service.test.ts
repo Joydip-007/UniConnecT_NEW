@@ -92,4 +92,35 @@ describe('assignmentsService', () => {
     expect(graded.score).toBe(85)
     expect(graded.feedback).toBe('Good job')
   })
+
+  it('rejects assignment creation on a non-academic group', async () => {
+    const facultyCtx = await getFacultyContext()
+    const group = await createGroupFixture({ type: 'club', creatorId: facultyCtx.userId })
+
+    await expect(
+      assignmentsService.create(facultyCtx, group.id, { title: 'HW1', maxScore: 100 }),
+    ).rejects.toMatchObject({ statusCode: 403, code: 'ACADEMIC_GROUP_REQUIRED' })
+  })
+
+  it('rejects a disallowed content type on the assignment upload-url presign', async () => {
+    const facultyCtx = await getFacultyContext()
+    const group = await createGroupFixture({ type: 'academic', creatorId: facultyCtx.userId })
+
+    await expect(
+      assignmentsService.getUploadUrl(facultyCtx, group.id, 'malware.exe', 'application/x-msdownload'),
+    ).rejects.toMatchObject({ statusCode: 400, code: 'UPLOAD_TYPE_NOT_ALLOWED' })
+  })
+
+  it('rejects an assignment fileUrl that does not point at our own upload bucket', async () => {
+    const facultyCtx = await getFacultyContext()
+    const group = await createGroupFixture({ type: 'academic', creatorId: facultyCtx.userId })
+
+    await expect(
+      assignmentsService.create(facultyCtx, group.id, {
+        title: 'HW1',
+        maxScore: 100,
+        fileUrls: [{ name: 'evil.pdf', url: 'https://evil.example.com/evil.pdf', contentType: 'application/pdf', size: 100 }],
+      }),
+    ).rejects.toMatchObject({ statusCode: 400, code: 'ATTACHMENT_URL_INVALID' })
+  })
 })
