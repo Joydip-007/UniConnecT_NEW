@@ -586,6 +586,7 @@ Azure Portal → App Service → Configuration → Application Settings → add 
 | `AWS_PUBLIC_URL` | `https://files.uniconnectt.me` (or `https://pub-<hash>.r2.dev` if no custom domain yet) |
 | `RESEND_API_KEY` | From resend.com dashboard |
 | `RESEND_FROM_EMAIL` | `UniConnecT <noreply@uniconnectt.me>` |
+| `GEMINI_API_KEY` | Google Gemini API key for AI generation features |
 
 > **Custom domain for the API:** After deploy, add `api.uniconnectt.me` as a custom domain in
 > Azure Portal → App Service → Custom domains → Add custom domain. Point the DNS A record at

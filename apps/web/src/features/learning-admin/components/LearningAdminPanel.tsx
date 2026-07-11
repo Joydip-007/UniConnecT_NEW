@@ -211,22 +211,27 @@ export function LearningAdminPanel() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={labelStyle}>General difficulty</span>
-          <input
+          <select
             style={inputStyle}
             value={draft.difficulty}
             onChange={(e) => setDraft((d) => ({ ...d, difficulty: e.target.value }))}
-            placeholder="e.g. Undergraduate level"
-          />
+          >
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={labelStyle}>Language</span>
-          <input
+          <select
             style={inputStyle}
             value={draft.language}
             onChange={(e) => setDraft((d) => ({ ...d, language: e.target.value }))}
-            placeholder="e.g. English"
-          />
+          >
+            <option value="en">English (en)</option>
+            <option value="bn">Bengali (bn)</option>
+          </select>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
