@@ -23,8 +23,8 @@ export interface LearningAdminConfig {
 interface SettingsRow {
   ai_learning_enabled: boolean
   ai_learning_topics: LearningTopic[]
-  ai_learning_difficulty: string
-  ai_learning_language: string
+  ai_learning_difficulty: 'beginner' | 'intermediate' | 'advanced'
+  ai_learning_language: 'en' | 'bn'
   ai_learning_est_days: number
   ai_learning_custom_instructions: string | null
   ai_learning_gen_hour: number
