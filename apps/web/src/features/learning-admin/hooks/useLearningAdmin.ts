@@ -42,6 +42,7 @@ export function usePendingPaths() {
     queryKey: ['learning-admin', 'pending-paths'],
     queryFn: () =>
       api.get<{ data: PendingPath[] }>('/admin/learning/pending-paths').then((r) => r.data.data),
+    refetchInterval: 5000,
   })
 }
 
@@ -73,6 +74,7 @@ export function usePendingQuizBatches() {
     queryKey: ['learning-admin', 'pending-quiz-batches'],
     queryFn: () =>
       api.get<{ data: PendingQuizBatch[] }>('/admin/learning/pending-quiz').then((r) => r.data.data),
+    refetchInterval: 5000,
   })
 }
 

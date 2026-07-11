@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
@@ -1513,7 +1513,9 @@ function Spinner() {
 
 export default function AdminPage() {
   const user = useAuthStore((s) => s.user)
-  const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = (searchParams.get('tab') as Tab) || 'overview'
+  const setActiveTab = (tab: Tab) => setSearchParams({ tab })
 
   if (user && user.role !== 'admin') {
     return <Navigate to={PATHS.FEED} replace />
