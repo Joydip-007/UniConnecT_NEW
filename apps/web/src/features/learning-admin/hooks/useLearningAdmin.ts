@@ -49,7 +49,7 @@ export function useApprovePath() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
-      api.patch(`/admin/learning/paths/${id}/approve`).then((r) => r.data),
+      api.post(`/admin/learning/pending-paths/${id}/approve`).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin', 'pending-paths'] })
       void qc.invalidateQueries({ queryKey: ['learning'] })
@@ -61,7 +61,7 @@ export function useDiscardPath() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
-      api.delete(`/admin/learning/paths/${id}`).then((r) => r.data),
+      api.post(`/admin/learning/pending-paths/${id}/discard`).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin', 'pending-paths'] })
     },
@@ -72,7 +72,7 @@ export function usePendingQuizBatches() {
   return useQuery<PendingQuizBatch[]>({
     queryKey: ['learning-admin', 'pending-quiz-batches'],
     queryFn: () =>
-      api.get<{ data: PendingQuizBatch[] }>('/admin/learning/pending-quiz-batches').then((r) => r.data.data),
+      api.get<{ data: PendingQuizBatch[] }>('/admin/learning/pending-quiz').then((r) => r.data.data),
   })
 }
 
@@ -80,7 +80,7 @@ export function useApproveQuizBatch() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
-      api.patch(`/admin/learning/quiz-batches/${id}/approve`).then((r) => r.data),
+      api.post(`/admin/learning/pending-quiz/${id}/approve`).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin', 'pending-quiz-batches'] })
       void qc.invalidateQueries({ queryKey: ['quiz'] })
@@ -92,7 +92,7 @@ export function useDiscardQuizBatch() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
-      api.delete(`/admin/learning/quiz-batches/${id}`).then((r) => r.data),
+      api.post(`/admin/learning/pending-quiz/${id}/discard`).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin', 'pending-quiz-batches'] })
     },
