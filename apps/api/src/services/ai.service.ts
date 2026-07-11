@@ -3,7 +3,7 @@ import { env } from '../config/env'
 import { logger } from '../utils/logger'
 
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash', generationConfig: { temperature: 0.4 } })
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationConfig: { temperature: 0.4 } })
 
 export interface AIQuizQuestion {
   q: string
