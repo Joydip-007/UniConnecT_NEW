@@ -9,7 +9,7 @@ import { learningAdminService } from '../modules/learning-admin/service'
 
 function describeAiError(error: unknown): string {
   if (error instanceof AIQuotaExceededError) {
-    return 'AI quota reached — all configured models have exhausted their quota. Generation will resume once quota resets.'
+    return 'AI quota reached — all configured models hit their rate limit or free-tier daily cap. This is usually the per-day free-tier quota (separate from billing/paid quota) and typically resets within 24 hours; generation will resume automatically on the next scheduled run.'
   }
   return `AI generation failed: ${error instanceof Error ? error.message : String(error)}`
 }

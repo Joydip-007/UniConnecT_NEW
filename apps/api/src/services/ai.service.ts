@@ -5,7 +5,7 @@ import { logger } from '../utils/logger'
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
 
 /** Tried in order; on quota exhaustion for one model, the next is used. */
-const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-flash']
+const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
 
 const modelCache = new Map<string, ReturnType<typeof genAI.getGenerativeModel>>()
 function getModel(name: string) {
