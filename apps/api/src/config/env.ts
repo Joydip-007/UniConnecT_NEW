@@ -38,7 +38,6 @@ const envSchema = z.object({
   // AI / Academic LMS
   GEMINI_API_KEY: z.string().min(1),
   AI_CONTENT_ENABLED: z.coerce.boolean().default(true),
-  AI_QUIZ_GEN_HOUR: z.coerce.number().int().min(0).max(23).default(1),
   AI_GROUP_POST_HOUR: z.coerce.number().int().min(0).max(23).default(8),
 })
 

@@ -26,8 +26,10 @@ async function rateLimitedAICall<T>(fn: () => Promise<T>): Promise<T> {
   return fn()
 }
 
-export async function runQuizGeneration(): Promise<void> {
-  const universities = await db('universities').select<{ id: string }[]>('id')
+export async function runQuizGeneration(universityId?: string, now: Date = new Date()): Promise<void> {
+  const universities = universityId
+    ? await db('universities').where({ id: universityId }).select<{ id: string }[]>('id')
+    : await db('universities').select<{ id: string }[]>('id')
 
   for (const uni of universities) {
     const departments = await db('profiles as p')
@@ -39,6 +41,7 @@ export async function runQuizGeneration(): Promise<void> {
 
     const config = await learningAdminService.getConfig(uni.id)
     if (!config.enabled) continue
+    if (!universityId && config.genHour !== now.getUTCHours()) continue
 
     for (const department of departments) {
       try {
@@ -222,7 +225,7 @@ export async function runLearningPathGeneration(now: Date = new Date(), universi
 if (env.AI_CONTENT_ENABLED) {
   void aiContentQueue.add(
     { task: 'quiz-gen' },
-    { repeat: { cron: `0 ${env.AI_QUIZ_GEN_HOUR} * * *` }, jobId: 'ai-daily-quiz-gen' },
+    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-quiz-gen' },
   )
   void aiContentQueue.add(
     { task: 'group-post' },
@@ -236,7 +239,7 @@ if (env.AI_CONTENT_ENABLED) {
 
 aiContentQueue.process(async (job) => {
   if (job.data.task === 'quiz-gen') {
-    await runQuizGeneration()
+    await runQuizGeneration(job.data.universityId, new Date())
   }
   if (job.data.task === 'group-post') {
     await runGroupPosting()

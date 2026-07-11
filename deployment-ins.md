@@ -213,7 +213,6 @@ Portal → `uniconnect-api` → **Configuration → Application settings** → *
 | `RESEND_FROM_EMAIL` | `UniConnecT <noreply@uniconnectt.me>` |
 | `GEMINI_API_KEY` | From [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — powers AI flashcards, quiz generation, and course outlines |
 | `AI_CONTENT_ENABLED` | `true` — enables the daily AI content cron (quiz generation + academic-group flashcard posting) |
-| `AI_QUIZ_GEN_HOUR` | `0`-`23`, e.g. `6` — hour (server time) the daily quiz-slot generation cron runs |
 | `AI_GROUP_POST_HOUR` | `0`-`23`, e.g. `8` — hour (server time) the daily AI flashcard group-posting cron runs |
 
 Click **Save** → the app restarts automatically.

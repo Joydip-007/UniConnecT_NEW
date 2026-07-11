@@ -37,7 +37,12 @@ const RETRY_DELAYS_MS = [0, 2000, 4000]
 const CALL_TIMEOUT_MS = 15000
 
 function stripCodeFences(text: string): string {
-  return text.replace(/^```(json)?\s*/i, '').replace(/```\s*$/, '').trim()
+  const cleaned = text.trim()
+  const match = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (match) {
+    return match[1].trim()
+  }
+  return cleaned.replace(/^```(json)?\s*/i, '').replace(/```\s*$/, '').trim()
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {

@@ -128,6 +128,7 @@ export class LearningAdminService {
 
   async triggerGenerateNow(universityId: string): Promise<void> {
     await aiContentQueue.add({ task: 'learning-gen', universityId })
+    await aiContentQueue.add({ task: 'quiz-gen', universityId })
   }
 
   /** Ensures a university_settings row exists; returns the AI-learning columns. */
