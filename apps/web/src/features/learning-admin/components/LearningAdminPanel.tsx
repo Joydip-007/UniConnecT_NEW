@@ -47,7 +47,7 @@ export function LearningAdminPanel() {
   const approvePath = useApprovePath()
   const discardPath = useDiscardPath()
 
-  const { data: pendingQuizBatches } = usePendingQuizBatches()
+  const { data: pendingQuizBatches } = usePendingQuizBatches(config?.quizRequireApproval ?? false)
   const approveQuizBatch = useApproveQuizBatch()
   const discardQuizBatch = useDiscardQuizBatch()
 
