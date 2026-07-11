@@ -40,7 +40,7 @@ export async function runQuizGeneration(universityId?: string, now: Date = new D
       .then((rows) => rows.map((r) => r.department))
 
     const config = await learningAdminService.getConfig(uni.id)
-    if (!config.enabled) continue
+    if (!config.quizEnabled) continue
     if (!universityId && config.genHour !== now.getUTCHours()) continue
 
     for (const department of departments) {

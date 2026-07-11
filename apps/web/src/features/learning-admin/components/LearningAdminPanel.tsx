@@ -60,6 +60,7 @@ export function LearningAdminPanel() {
     customInstructions: '',
     genHour: 0,
     countPerRun: 0,
+    quizEnabled: false,
     quizRequireApproval: false,
     quizDifficulty: '',
     quizLanguage: '',
@@ -81,6 +82,7 @@ export function LearningAdminPanel() {
         customInstructions: config.customInstructions ?? '',
         genHour: config.genHour ?? 0,
         countPerRun: config.countPerRun ?? 1,
+        quizEnabled: config.quizEnabled ?? false,
         quizRequireApproval: config.quizRequireApproval ?? false,
         quizDifficulty: config.quizDifficulty ?? '',
         quizLanguage: config.quizLanguage ?? '',
@@ -102,6 +104,7 @@ export function LearningAdminPanel() {
         customInstructions: draft.customInstructions || null,
         genHour: draft.genHour,
         countPerRun: draft.countPerRun,
+        quizEnabled: draft.quizEnabled,
         quizRequireApproval: draft.quizRequireApproval,
         quizDifficulty: draft.quizDifficulty,
         quizLanguage: draft.quizLanguage,
@@ -130,6 +133,7 @@ export function LearningAdminPanel() {
         customInstructions: draft.customInstructions || null,
         genHour: draft.genHour,
         countPerRun: draft.countPerRun,
+        quizEnabled: draft.quizEnabled,
         quizRequireApproval: draft.quizRequireApproval,
         quizDifficulty: draft.quizDifficulty,
         quizLanguage: draft.quizLanguage,
@@ -148,7 +152,7 @@ export function LearningAdminPanel() {
   if (isLoading) return <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
 
   const hasTopics = draft.topics.length > 0
-  const canGenerate = draft.enabled && hasTopics
+  const canGenerate = (draft.enabled && hasTopics) || draft.quizEnabled
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -305,7 +309,16 @@ export function LearningAdminPanel() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
           <h4 style={{ fontSize: 15, fontWeight: 500, margin: 0, color: 'var(--text-primary)' }}>Quiz Settings</h4>
         </div>
-        
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={draft.quizEnabled}
+            onChange={(e) => setDraft((d) => ({ ...d, quizEnabled: e.target.checked }))}
+          />
+          <span style={{ fontSize: 14 }}>Enable quiz generation</span>
+        </label>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={labelStyle}>Quiz difficulty</span>
           <select

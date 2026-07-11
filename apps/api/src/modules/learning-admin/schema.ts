@@ -14,6 +14,7 @@ export const LearningAdminConfigSchema = z.object({
   customInstructions: z.string().max(2000).nullable().optional(),
   genHour: z.number().int().min(0).max(23).optional(),
   countPerRun: z.number().int().min(1).max(5).optional(),
+  quizEnabled: z.boolean().optional(),
   quizRequireApproval: z.boolean().optional(),
   quizDifficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
   quizLanguage: z.enum(['en', 'bn']).optional(),

@@ -12,6 +12,7 @@ export interface LearningAdminConfig {
   customInstructions: string | null
   genHour: number
   countPerRun: number
+  quizEnabled: boolean
   quizRequireApproval: boolean
   quizDifficulty: string
   quizLanguage: string

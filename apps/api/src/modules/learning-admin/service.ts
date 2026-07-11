@@ -17,6 +17,7 @@ export interface LearningAdminConfig {
   customInstructions: string | null
   genHour: number
   countPerRun: number
+  quizEnabled: boolean
   quizRequireApproval: boolean
   quizDifficulty: 'beginner' | 'intermediate' | 'advanced'
   quizLanguage: 'en' | 'bn'
@@ -33,6 +34,7 @@ interface SettingsRow {
   ai_learning_custom_instructions: string | null
   ai_learning_gen_hour: number
   ai_learning_count_per_run: number
+  ai_quiz_enabled: boolean
   ai_quiz_require_approval: boolean
   ai_quiz_difficulty: 'beginner' | 'intermediate' | 'advanced'
   ai_quiz_language: 'en' | 'bn'
@@ -53,6 +55,7 @@ export class LearningAdminService {
       customInstructions: row.ai_learning_custom_instructions,
       genHour: row.ai_learning_gen_hour,
       countPerRun: row.ai_learning_count_per_run,
+      quizEnabled: row.ai_quiz_enabled,
       quizRequireApproval: row.ai_quiz_require_approval,
       quizDifficulty: row.ai_quiz_difficulty,
       quizLanguage: row.ai_quiz_language,
@@ -73,6 +76,7 @@ export class LearningAdminService {
     if (input.customInstructions !== undefined) patch.ai_learning_custom_instructions = input.customInstructions
     if (input.genHour !== undefined) patch.ai_learning_gen_hour = input.genHour
     if (input.countPerRun !== undefined) patch.ai_learning_count_per_run = input.countPerRun
+    if (input.quizEnabled !== undefined) patch.ai_quiz_enabled = input.quizEnabled
     if (input.quizRequireApproval !== undefined) patch.ai_quiz_require_approval = input.quizRequireApproval
     if (input.quizDifficulty !== undefined) patch.ai_quiz_difficulty = input.quizDifficulty
     if (input.quizLanguage !== undefined) patch.ai_quiz_language = input.quizLanguage
@@ -144,6 +148,7 @@ export class LearningAdminService {
         'ai_learning_custom_instructions',
         'ai_learning_gen_hour',
         'ai_learning_count_per_run',
+        'ai_quiz_enabled',
         'ai_quiz_require_approval',
         'ai_quiz_difficulty',
         'ai_quiz_language',
@@ -163,6 +168,7 @@ export class LearningAdminService {
       ai_learning_custom_instructions: null,
       ai_learning_gen_hour: 2,
       ai_learning_count_per_run: 1,
+      ai_quiz_enabled: false,
       ai_quiz_require_approval: false,
       ai_quiz_difficulty: 'intermediate',
       ai_quiz_language: 'en',
