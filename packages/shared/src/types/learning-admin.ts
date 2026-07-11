@@ -13,6 +13,10 @@ export interface LearningAdminConfig {
   genHour: number
   countPerRun: number
   quizRequireApproval: boolean
+  quizDifficulty: string
+  quizLanguage: string
+  quizCount: number
+  quizCustomInstructions: string | null
 }
 
 export type LearningAdminConfigInput = Partial<LearningAdminConfig>

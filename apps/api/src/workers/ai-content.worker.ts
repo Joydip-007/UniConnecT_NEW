@@ -37,9 +37,18 @@ export async function runQuizGeneration(): Promise<void> {
       .distinct<{ department: string }[]>('p.department as department')
       .then((rows) => rows.map((r) => r.department))
 
+    const config = await learningAdminService.getConfig(uni.id)
+    if (!config.enabled) continue
+
     for (const department of departments) {
       try {
-        const questions = await rateLimitedAICall(() => generateQuizQuestions({ department, count: 5 }))
+        const questions = await rateLimitedAICall(() => generateQuizQuestions({ 
+          department, 
+          count: config.quizCount,
+          difficulty: config.quizDifficulty,
+          language: config.quizLanguage as 'en' | 'bn',
+          customInstructions: config.quizCustomInstructions ?? undefined,
+        }))
         await db('ai_quiz_pool').insert({
           university_id: uni.id,
           department,

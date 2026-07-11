@@ -61,6 +61,10 @@ export function LearningAdminPanel() {
     genHour: 0,
     countPerRun: 0,
     quizRequireApproval: false,
+    quizDifficulty: '',
+    quizLanguage: '',
+    quizCount: 0,
+    quizCustomInstructions: '',
   })
 
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
@@ -78,6 +82,10 @@ export function LearningAdminPanel() {
         genHour: config.genHour ?? 0,
         countPerRun: config.countPerRun ?? 1,
         quizRequireApproval: config.quizRequireApproval ?? false,
+        quizDifficulty: config.quizDifficulty ?? '',
+        quizLanguage: config.quizLanguage ?? '',
+        quizCount: config.quizCount ?? 5,
+        quizCustomInstructions: config.quizCustomInstructions ?? '',
       })
     }
   }, [config])
@@ -95,6 +103,10 @@ export function LearningAdminPanel() {
         genHour: draft.genHour,
         countPerRun: draft.countPerRun,
         quizRequireApproval: draft.quizRequireApproval,
+        quizDifficulty: draft.quizDifficulty,
+        quizLanguage: draft.quizLanguage,
+        quizCount: draft.quizCount,
+        quizCustomInstructions: draft.quizCustomInstructions || null,
       },
       {
         onSuccess: () => {
@@ -119,6 +131,10 @@ export function LearningAdminPanel() {
         genHour: draft.genHour,
         countPerRun: draft.countPerRun,
         quizRequireApproval: draft.quizRequireApproval,
+        quizDifficulty: draft.quizDifficulty,
+        quizLanguage: draft.quizLanguage,
+        quizCount: draft.quizCount,
+        quizCustomInstructions: draft.quizCustomInstructions || null,
       })
     } catch (e) {
       setError(extractError(e, 'Could not save settings.'))
@@ -285,8 +301,59 @@ export function LearningAdminPanel() {
           />
           <span style={{ fontSize: 14 }}>Require approval for AI-generated quizzes</span>
         </label>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+          <h4 style={{ fontSize: 15, fontWeight: 500, margin: 0, color: 'var(--text-primary)' }}>Quiz Settings</h4>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={labelStyle}>Quiz difficulty</span>
+          <select
+            style={inputStyle}
+            value={draft.quizDifficulty}
+            onChange={(e) => setDraft((d) => ({ ...d, quizDifficulty: e.target.value }))}
+          >
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={labelStyle}>Quiz language</span>
+          <select
+            style={inputStyle}
+            value={draft.quizLanguage}
+            onChange={(e) => setDraft((d) => ({ ...d, quizLanguage: e.target.value }))}
+          >
+            <option value="en">English (en)</option>
+            <option value="bn">Bengali (bn)</option>
+          </select>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={labelStyle}>Questions per department run</span>
+          <input
+            style={inputStyle}
+            type="number"
+            min={1}
+            max={20}
+            value={draft.quizCount}
+            onChange={(e) => setDraft((d) => ({ ...d, quizCount: Number(e.target.value) }))}
+          />
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={labelStyle}>Quiz custom instructions (to prevent repetition)</span>
+          <textarea
+            style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+            value={draft.quizCustomInstructions}
+            onChange={(e) => setDraft((d) => ({ ...d, quizCustomInstructions: e.target.value }))}
+            placeholder="e.g. Ensure the quiz asks about varied sub-topics to avoid repeating yesterday's questions."
+          />
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 12 }}>
           <input
             type="checkbox"
             checked={draft.enabled}

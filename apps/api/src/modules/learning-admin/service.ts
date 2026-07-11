@@ -18,6 +18,10 @@ export interface LearningAdminConfig {
   genHour: number
   countPerRun: number
   quizRequireApproval: boolean
+  quizDifficulty: 'beginner' | 'intermediate' | 'advanced'
+  quizLanguage: 'en' | 'bn'
+  quizCount: number
+  quizCustomInstructions: string | null
 }
 
 interface SettingsRow {
@@ -30,6 +34,10 @@ interface SettingsRow {
   ai_learning_gen_hour: number
   ai_learning_count_per_run: number
   ai_quiz_require_approval: boolean
+  ai_quiz_difficulty: 'beginner' | 'intermediate' | 'advanced'
+  ai_quiz_language: 'en' | 'bn'
+  ai_quiz_count: number
+  ai_quiz_custom_instructions: string | null
 }
 
 export class LearningAdminService {
@@ -46,6 +54,10 @@ export class LearningAdminService {
       genHour: row.ai_learning_gen_hour,
       countPerRun: row.ai_learning_count_per_run,
       quizRequireApproval: row.ai_quiz_require_approval,
+      quizDifficulty: row.ai_quiz_difficulty,
+      quizLanguage: row.ai_quiz_language,
+      quizCount: row.ai_quiz_count,
+      quizCustomInstructions: row.ai_quiz_custom_instructions,
     }
   }
 
@@ -62,6 +74,10 @@ export class LearningAdminService {
     if (input.genHour !== undefined) patch.ai_learning_gen_hour = input.genHour
     if (input.countPerRun !== undefined) patch.ai_learning_count_per_run = input.countPerRun
     if (input.quizRequireApproval !== undefined) patch.ai_quiz_require_approval = input.quizRequireApproval
+    if (input.quizDifficulty !== undefined) patch.ai_quiz_difficulty = input.quizDifficulty
+    if (input.quizLanguage !== undefined) patch.ai_quiz_language = input.quizLanguage
+    if (input.quizCount !== undefined) patch.ai_quiz_count = input.quizCount
+    if (input.quizCustomInstructions !== undefined) patch.ai_quiz_custom_instructions = input.quizCustomInstructions
 
     await db('university_settings').where({ university_id: universityId }).update(patch)
     return this.getConfig(universityId)
@@ -128,6 +144,10 @@ export class LearningAdminService {
         'ai_learning_gen_hour',
         'ai_learning_count_per_run',
         'ai_quiz_require_approval',
+        'ai_quiz_difficulty',
+        'ai_quiz_language',
+        'ai_quiz_count',
+        'ai_quiz_custom_instructions',
       )
     if (existing) return existing
 
@@ -143,6 +163,10 @@ export class LearningAdminService {
       ai_learning_gen_hour: 2,
       ai_learning_count_per_run: 1,
       ai_quiz_require_approval: false,
+      ai_quiz_difficulty: 'intermediate',
+      ai_quiz_language: 'en',
+      ai_quiz_count: 5,
+      ai_quiz_custom_instructions: null,
     }
   }
 }
