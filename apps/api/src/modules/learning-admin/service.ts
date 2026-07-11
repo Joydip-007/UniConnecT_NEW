@@ -23,6 +23,8 @@ export interface LearningAdminConfig {
   quizLanguage: 'en' | 'bn'
   quizCount: number
   quizCustomInstructions: string | null
+  lastAiError: string | null
+  lastAiErrorAt: string | null
 }
 
 interface SettingsRow {
@@ -40,6 +42,8 @@ interface SettingsRow {
   ai_quiz_language: 'en' | 'bn'
   ai_quiz_count: number
   ai_quiz_custom_instructions: string | null
+  ai_last_error: string | null
+  ai_last_error_at: string | null
 }
 
 export class LearningAdminService {
@@ -61,7 +65,23 @@ export class LearningAdminService {
       quizLanguage: row.ai_quiz_language,
       quizCount: row.ai_quiz_count,
       quizCustomInstructions: row.ai_quiz_custom_instructions,
+      lastAiError: row.ai_last_error,
+      lastAiErrorAt: row.ai_last_error_at,
     }
+  }
+
+  /** Records the most recent AI generation failure so the admin panel can surface it (e.g. quota reached). */
+  async recordAiError(universityId: string, message: string): Promise<void> {
+    await db('university_settings')
+      .where({ university_id: universityId })
+      .update({ ai_last_error: message, ai_last_error_at: db.fn.now() })
+  }
+
+  /** Clears the last-error banner after a successful generation. */
+  async clearAiError(universityId: string): Promise<void> {
+    await db('university_settings')
+      .where({ university_id: universityId })
+      .update({ ai_last_error: null, ai_last_error_at: null })
   }
 
   async updateConfig(universityId: string, input: LearningAdminConfigInput): Promise<LearningAdminConfig> {
@@ -154,6 +174,8 @@ export class LearningAdminService {
         'ai_quiz_language',
         'ai_quiz_count',
         'ai_quiz_custom_instructions',
+        'ai_last_error',
+        'ai_last_error_at',
       )
     if (existing) return existing
 
@@ -174,6 +196,8 @@ export class LearningAdminService {
       ai_quiz_language: 'en',
       ai_quiz_count: 5,
       ai_quiz_custom_instructions: null,
+      ai_last_error: null,
+      ai_last_error_at: null,
     }
   }
 }

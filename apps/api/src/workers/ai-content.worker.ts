@@ -1,11 +1,18 @@
 import { aiContentQueue } from '../queues/ai-content.queue'
 import { db } from '../config/db'
-import { generateQuizQuestions, generateFlashcards, generateSkillPath } from '../services/ai.service'
+import { generateQuizQuestions, generateFlashcards, generateSkillPath, AIQuotaExceededError } from '../services/ai.service'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
 import { courseOutlineService } from '../modules/academic/course-outline.service'
 import { feedService } from '../modules/feed/service'
 import { learningAdminService } from '../modules/learning-admin/service'
+
+function describeAiError(error: unknown): string {
+  if (error instanceof AIQuotaExceededError) {
+    return 'AI quota reached — all configured models have exhausted their quota. Generation will resume once quota resets.'
+  }
+  return `AI generation failed: ${error instanceof Error ? error.message : String(error)}`
+}
 
 const AI_CALLS_PER_MINUTE = 12
 
@@ -57,8 +64,10 @@ export async function runQuizGeneration(universityId?: string, now: Date = new D
           department,
           questions: JSON.stringify(questions),
         })
+        await learningAdminService.clearAiError(uni.id)
       } catch (error) {
         logger.error('AI quiz generation failed for department', { universityId: uni.id, department, error })
+        await learningAdminService.recordAiError(uni.id, describeAiError(error))
       }
     }
   }
@@ -153,8 +162,10 @@ export async function runGroupPosting(): Promise<void> {
           .where({ id: group.id })
           .update({ ai_settings: { ...settings, last_ai_post_date: today } })
       }
+      await learningAdminService.clearAiError(group.university_id)
     } catch (error) {
       logger.error('AI group posting failed', { groupId: group.id, error })
+      await learningAdminService.recordAiError(group.university_id, describeAiError(error))
     }
   }
 }
@@ -208,16 +219,19 @@ export async function runLearningPathGeneration(now: Date = new Date(), universi
               })),
             )
           }
+          await learningAdminService.clearAiError(uni.id)
         } catch (error) {
           logger.error('AI learning path generation failed for topic', {
             universityId: uni.id,
             category: topic.category,
             error,
           })
+          await learningAdminService.recordAiError(uni.id, describeAiError(error))
         }
       }
     } catch (error) {
       logger.error('AI learning path generation failed for university', { universityId: uni.id, error })
+      await learningAdminService.recordAiError(uni.id, describeAiError(error))
     }
   }
 }

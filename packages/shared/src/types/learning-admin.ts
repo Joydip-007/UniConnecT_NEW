@@ -18,6 +18,8 @@ export interface LearningAdminConfig {
   quizLanguage: string
   quizCount: number
   quizCustomInstructions: string | null
+  lastAiError: string | null
+  lastAiErrorAt: string | null
 }
 
 export type LearningAdminConfigInput = Partial<LearningAdminConfig>

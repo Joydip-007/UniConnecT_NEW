@@ -156,6 +156,31 @@ export function LearningAdminPanel() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {config?.lastAiError && (
+        <div
+          style={{
+            ...card,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            border: '0.5px solid var(--uc-red-bdr)',
+            background: 'var(--uc-red-bg)',
+          }}
+        >
+          <AlertTriangle size={16} style={{ color: 'var(--uc-red)', flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--uc-red)' }}>
+              {config.lastAiError.toLowerCase().includes('quota') ? 'AI quota reached' : 'AI generation error'}
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+              {config.lastAiError}
+              {config.lastAiErrorAt &&
+                ` — ${formatDistanceToNow(new Date(config.lastAiErrorAt), { addSuffix: true })}`}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div style={card}>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Learning AI preferences</h3>

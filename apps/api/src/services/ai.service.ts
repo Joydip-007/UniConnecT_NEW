@@ -3,7 +3,32 @@ import { env } from '../config/env'
 import { logger } from '../utils/logger'
 
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest', generationConfig: { temperature: 0.4 } })
+
+/** Tried in order; on quota exhaustion for one model, the next is used. */
+const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-flash']
+
+const modelCache = new Map<string, ReturnType<typeof genAI.getGenerativeModel>>()
+function getModel(name: string) {
+  let model = modelCache.get(name)
+  if (!model) {
+    model = genAI.getGenerativeModel({ model: name, generationConfig: { temperature: 0.4 } })
+    modelCache.set(name, model)
+  }
+  return model
+}
+
+/** Thrown when every model in the fallback chain has exhausted its quota. */
+export class AIQuotaExceededError extends Error {
+  constructor(message = 'AI quota reached for all configured models') {
+    super(message)
+    this.name = 'AIQuotaExceededError'
+  }
+}
+
+function isQuotaError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /RESOURCE_EXHAUSTED|quota|status:\s*429|\[429/i.test(message)
+}
 
 export interface AIQuizQuestion {
   q: string
@@ -54,16 +79,30 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 async function callGemini(prompt: string): Promise<unknown> {
   let lastError: unknown
-  for (const delay of RETRY_DELAYS_MS) {
-    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
-    try {
-      const result = await withTimeout(model.generateContent(prompt), CALL_TIMEOUT_MS)
-      const text = stripCodeFences(result.response.text())
-      return JSON.parse(text)
-    } catch (error) {
-      lastError = error
-      logger.warn('Gemini call failed, will retry if attempts remain', { error })
+  let sawQuotaError = false
+
+  for (const modelName of MODEL_FALLBACK_CHAIN) {
+    const model = getModel(modelName)
+    for (const delay of RETRY_DELAYS_MS) {
+      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
+      try {
+        const result = await withTimeout(model.generateContent(prompt), CALL_TIMEOUT_MS)
+        const text = stripCodeFences(result.response.text())
+        return JSON.parse(text)
+      } catch (error) {
+        lastError = error
+        if (isQuotaError(error)) {
+          sawQuotaError = true
+          logger.warn('Gemini quota reached for model, switching to next fallback model', { model: modelName })
+          break
+        }
+        logger.warn('Gemini call failed, will retry if attempts remain', { model: modelName, error })
+      }
     }
+  }
+
+  if (sawQuotaError) {
+    throw new AIQuotaExceededError()
   }
   throw lastError
 }
