@@ -12,6 +12,7 @@ export function useLearningAdminConfig() {
     queryKey: ['learning-admin', 'config'],
     queryFn: () =>
       api.get<{ data: LearningAdminConfig }>('/admin/learning/config').then((r) => r.data.data),
+    refetchInterval: 60000,
   })
 }
 
