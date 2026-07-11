@@ -41,6 +41,6 @@ describe('Weekly digest job logic', () => {
     expect(sql).toContain('comments')
     expect(sql).toContain('COUNT')
     expect(sql).toContain('DISTINCT')
-    expect(sql).toContain('LIMIT')
+    expect(sql.toUpperCase()).toContain('LIMIT')
   })
 })

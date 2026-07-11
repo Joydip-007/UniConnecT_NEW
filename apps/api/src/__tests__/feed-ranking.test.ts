@@ -17,7 +17,7 @@ beforeAll(async () => {
 describe('GET /api/v1/posts?sort=top', () => {
   it('defaults to recent and returns a paginated feed', async () => {
     const res = await api.get('/api/v1/posts').set(auth(studentToken))
-    expect(res.status).toBe(200)
+    console.log(res.body); expect(res.status).toBe(200)
     expect(res.body.data).toMatchObject({ items: expect.any(Array), page: 1 })
   })
 

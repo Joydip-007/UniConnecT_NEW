@@ -83,7 +83,7 @@ describe('content-sync config', () => {
 
 describe('POST /api/v1/admin/content-sync/run', () => {
   it('returns 400 when sync is disabled', async () => {
-    const res = await api.post('/api/v1/admin/content-sync/run').set(UNI).set('Authorization', `Bearer ${adminToken}`)
+    const res = await api.post('/api/v1/admin/content-sync/run').set(UNI).set('Authorization', `Bearer ${adminToken}`).send({})
     expect(res.status).toBe(400)
     expect(res.body.code).toBe('CONTENT_SYNC_DISABLED')
   })
@@ -94,7 +94,7 @@ describe('POST /api/v1/admin/content-sync/run', () => {
       .onConflict('university_id')
       .merge({ content_sync_enabled: true })
 
-    const res = await api.post('/api/v1/admin/content-sync/run').set(UNI).set('Authorization', `Bearer ${adminToken}`)
+    const res = await api.post('/api/v1/admin/content-sync/run').set(UNI).set('Authorization', `Bearer ${adminToken}`).send({})
     expect(res.status).toBe(400)
     expect(res.body.code).toBe('CONTENT_SYNC_NO_SOURCES')
   })
@@ -115,7 +115,7 @@ describe('POST /api/v1/admin/content-sync/run', () => {
       status: 'running',
     })
 
-    const res = await api.post('/api/v1/admin/content-sync/run').set(UNI).set('Authorization', `Bearer ${adminToken}`)
+    const res = await api.post('/api/v1/admin/content-sync/run').set(UNI).set('Authorization', `Bearer ${adminToken}`).send({})
     expect(res.status).toBe(409)
     expect(res.body.code).toBe('CONTENT_SYNC_RUNNING')
   })

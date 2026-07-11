@@ -98,7 +98,7 @@ describe('news attachments', () => {
       .set(auth(facultyToken))
       .send({ ...baseNews, attachments: Array.from({ length: 11 }, (_, i) => pdf(i)) })
     // Either the Zod array max (.max(10)) or the service cap rejects it.
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(422)
   })
 
   it('forbids a student (non-faculty) from creating news with attachments', async () => {

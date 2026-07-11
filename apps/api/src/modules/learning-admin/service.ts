@@ -11,8 +11,8 @@ interface LearningTopic {
 export interface LearningAdminConfig {
   enabled: boolean
   topics: LearningTopic[]
-  difficulty: string
-  language: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  language: 'en' | 'bn'
   estimatedDays: number
   customInstructions: string | null
   genHour: number

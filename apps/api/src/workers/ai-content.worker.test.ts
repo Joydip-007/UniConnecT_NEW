@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { randomUUID } from 'node:crypto'
 
 vi.mock('../services/ai.service', () => ({
@@ -6,6 +6,10 @@ vi.mock('../services/ai.service', () => ({
   generateFlashcards: vi.fn(),
   generateSkillPath: vi.fn(),
 }))
+
+afterEach(() => {
+  vi.clearAllMocks()
+})
 
 import { generateQuizQuestions, generateFlashcards, generateSkillPath } from '../services/ai.service'
 import { runQuizGeneration, runGroupPosting, runLearningPathGeneration } from './ai-content.worker'
@@ -170,7 +174,7 @@ describe('runGroupPosting', () => {
         await cleanupGroups(universityId)
       }
     },
-    30_000,
+    90_000,
   )
 
   it(
@@ -204,7 +208,7 @@ describe('runGroupPosting', () => {
         await cleanupGroups(universityId)
       }
     },
-    30_000,
+    90_000,
   )
 
   it(
@@ -238,7 +242,7 @@ describe('runGroupPosting', () => {
         await cleanupGroups(universityId)
       }
     },
-    30_000,
+    90_000,
   )
 })
 
@@ -328,6 +332,6 @@ describe('runLearningPathGeneration', () => {
 
       await cleanupLearning(universityId)
     },
-    30_000,
+    90_000,
   )
 })

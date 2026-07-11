@@ -26,6 +26,8 @@ describe('POST /api/v1/auth/register', () => {
       password: 'TestPass@1234',
       full_name: 'Test Register',
       role: 'student',
+      department: 'CSE',
+      batch_year: 'Fall 2023'
     })
 
     if (res.status !== 201) console.log(res.body)
@@ -41,7 +43,7 @@ describe('POST /api/v1/auth/register', () => {
     const email = `dup.${Date.now()}@bscse.uiu.ac.bd`
     createdUserEmails.push(email)
 
-    const payload = { email, password: 'TestPass@1234', full_name: 'Dup User', role: 'student' }
+    const payload = { email, password: 'TestPass@1234', full_name: 'Dup User', role: 'student', department: 'CSE', batch_year: 'Fall 2023' }
     await api.post('/api/v1/auth/register').set(UNI).send(payload)
     const res = await api.post('/api/v1/auth/register').set(UNI).send(payload)
 
@@ -58,6 +60,7 @@ describe('POST /api/v1/auth/register', () => {
       full_name: 'Dept Tester',
       role: 'student',
       department: 'EEE',
+      batch_year: 'Fall 2023'
     })
 
     expect(res.status).toBe(201)
@@ -84,6 +87,8 @@ describe('POST /api/v1/auth/verify-otp', () => {
       password: 'TestPass@1234',
       full_name: 'OTP Tester',
       role: 'student',
+      department: 'CSE',
+      batch_year: 'Fall 2023'
     })
     expect(reg.status).toBe(201)
 

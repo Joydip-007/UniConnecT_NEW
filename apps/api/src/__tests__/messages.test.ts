@@ -27,6 +27,13 @@ beforeAll(async () => {
   ])
   studentId = (stMe.body as { data: { id: string } }).data.id
   alumniId = (alMe.body as { data: { id: string } }).data.id
+
+  await db('profiles').where({ user_id: studentId }).update({ is_open_to_msg: true })
+  await db('profiles').where({ user_id: alumniId }).update({ is_open_to_msg: true })
+
+  // Also update user_settings which override is_open_to_msg
+  await db('user_settings').where({ user_id: studentId }).update({ privacy_preferences: { messages: 'everyone' } })
+  await db('user_settings').where({ user_id: alumniId }).update({ privacy_preferences: { messages: 'everyone' } })
 })
 
 afterAll(async () => {

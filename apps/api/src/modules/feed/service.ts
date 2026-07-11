@@ -170,9 +170,9 @@ export class FeedService {
                 WHERE c.status = 'accepted' AND c.university_id = ?
                   AND ((c.requester_id = ? AND c.addressee_id = posts.author_id)
                     OR (c.addressee_id = ? AND c.requester_id = posts.author_id))
-              ) THEN ? ELSE 0 END)
-          + (CASE WHEN ?::text IS NOT NULL AND profiles.department = ? THEN ? ELSE 0 END)
-          + (CASE WHEN ?::text IS NOT NULL AND profiles.batch_year = ? THEN ? ELSE 0 END)
+              ) THEN ? ELSE 0.0 END)
+          + (CASE WHEN ?::text IS NOT NULL AND profiles.department = ? THEN ? ELSE 0.0 END)
+          + (CASE WHEN ?::text IS NOT NULL AND profiles.batch_year = ? THEN ? ELSE 0.0 END)
         ) DESC`,
         [
           universityId,

@@ -23,6 +23,11 @@ export async function generateDailyQuizSlots(now: Date): Promise<void> {
   for (const uni of universities) {
     const localDate = now.toLocaleDateString('en-CA', { timeZone: uni.timezone })
 
+    const settings = await db('university_settings')
+      .where({ university_id: uni.id })
+      .first<{ ai_quiz_require_approval: boolean }>('ai_quiz_require_approval')
+    const requireApproval = settings?.ai_quiz_require_approval ?? false
+
     const departments = await db('profiles as p')
       .join('users as u', 'u.id', 'p.user_id')
       .where('u.university_id', uni.id)
@@ -35,14 +40,15 @@ export async function generateDailyQuizSlots(now: Date): Promise<void> {
         .first<{ id: string }>('id')
       if (exists) continue
 
-      const settings = await db('university_settings').where({ university_id: uni.id }).first<{ ai_quiz_require_approval: boolean }>('ai_quiz_require_approval')
-      const requireApproval = settings?.ai_quiz_require_approval ?? false
-
       let poolQuery = db('ai_quiz_pool')
         .where({ university_id: uni.id, department, consumed_at: null })
-      
+        
       if (requireApproval) {
         poolQuery = poolQuery.where({ is_approved: true })
+      } else {
+        poolQuery = poolQuery.where(function () {
+          this.whereNull('is_approved').orWhere('is_approved', true)
+        })
       }
 
       const pooled = await poolQuery
@@ -120,6 +126,8 @@ learningQueue.on('completed', async () => {
 })
 
 // Run once on startup so today's slots exist immediately after deploy/restart.
-void generateDailyQuizSlots(new Date()).catch((err) => {
-  logger.error('quiz slot startup generation failed', { err })
-})
+if (process.env.NODE_ENV !== 'test') {
+  void generateDailyQuizSlots(new Date()).catch((err) => {
+    logger.error('quiz slot startup generation failed', { err })
+  })
+}

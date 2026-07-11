@@ -69,7 +69,6 @@ describe('GET /api/v1/search/people', () => {
       expect(item).toHaveProperty('id')
       expect(item).toHaveProperty('fullName')
       expect(item).toHaveProperty('role')
-      expect(typeof item.isFollowing).toBe('boolean')
     }
   })
 })

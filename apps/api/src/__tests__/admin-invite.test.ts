@@ -27,13 +27,14 @@ afterAll(async () => {
 
 describe('POST /api/v1/admin/invitations', () => {
   it('returns 201 with invitation data including token', async () => {
-    const email = `inv.test.${Date.now()}@uiu.ac.bd`
+    const email = `inv.test.${Date.now()}@bscse.uiu.ac.bd`
     const res = await api
       .post('/api/v1/admin/invitations')
       .set(UNI)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ email, role: 'student', expires_in_days: 7 })
 
+    if (res.status === 400) console.log(res.body)
     expect(res.status).toBe(201)
     expect(res.body.data).toMatchObject({ email, role: 'student' })
     expect(res.body.data).toHaveProperty('id')
@@ -44,7 +45,7 @@ describe('POST /api/v1/admin/invitations', () => {
     const res = await api
       .post('/api/v1/admin/invitations')
       .set(UNI)
-      .send({ email: 'noauth@uiu.ac.bd', role: 'student', expires_in_days: 7 })
+      .send({ email: 'noauth@bscse.uiu.ac.bd', role: 'student', expires_in_days: 7 })
 
     expect(res.status).toBe(401)
   })
@@ -53,13 +54,14 @@ describe('POST /api/v1/admin/invitations', () => {
 describe('POST /api/v1/admin/invitations/bulk', () => {
   it('returns 201 with created count and emails list', async () => {
     const ts = Date.now()
-    const emails = [`bulk.test.a.${ts}@uiu.ac.bd`, `bulk.test.b.${ts}@uiu.ac.bd`]
+    const emails = [`bulk.test.a.${ts}@bscse.uiu.ac.bd`, `bulk.test.b.${ts}@bscse.uiu.ac.bd`]
     const res = await api
       .post('/api/v1/admin/invitations/bulk')
       .set(UNI)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ emails, role: 'alumni', expires_in_days: 7 })
 
+    if (res.status === 400) console.log(res.body)
     expect(res.status).toBe(201)
     expect(res.body.data.created).toBe(2)
     expect(res.body.data.emails).toEqual(expect.arrayContaining(emails))
@@ -67,13 +69,14 @@ describe('POST /api/v1/admin/invitations/bulk', () => {
 
   it('deduplicates emails and counts only unique', async () => {
     const ts = Date.now()
-    const email = `bulk.test.dup.${ts}@uiu.ac.bd`
+    const email = `bulk.test.dup.${ts}@bscse.uiu.ac.bd`
     const res = await api
       .post('/api/v1/admin/invitations/bulk')
       .set(UNI)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ emails: [email, email, email], role: 'student', expires_in_days: 7 })
 
+    if (res.status === 400) console.log(res.body)
     expect(res.status).toBe(201)
     expect(res.body.data.created).toBe(1)
   })
@@ -89,7 +92,7 @@ describe('POST /api/v1/admin/invitations/bulk', () => {
   })
 
   it('returns 422 when emails array exceeds 50', async () => {
-    const emails = Array.from({ length: 51 }, (_, i) => `bulk.test.over${i}@uiu.ac.bd`)
+    const emails = Array.from({ length: 51 }, (_, i) => `bulk.test.over${i}@bscse.uiu.ac.bd`)
     const res = await api
       .post('/api/v1/admin/invitations/bulk')
       .set(UNI)
@@ -104,7 +107,7 @@ describe('POST /api/v1/admin/invitations/bulk', () => {
       .post('/api/v1/admin/invitations/bulk')
       .set(UNI)
       .set('Authorization', `Bearer ${facultyToken}`)
-      .send({ emails: [`bulk.test.faculty.${Date.now()}@uiu.ac.bd`], role: 'student', expires_in_days: 7 })
+      .send({ emails: [`bulk.test.faculty.${Date.now()}@bscse.uiu.ac.bd`], role: 'student', expires_in_days: 7 })
 
     expect(res.status).toBe(403)
   })

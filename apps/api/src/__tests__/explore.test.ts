@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest'
 import supertest from 'supertest'
-import { app, loginAs, CREDENTIALS } from './setup'
+import { app, loginAs, CREDENTIALS, DOMAIN } from './setup'
 
 const api = supertest(app)
 
@@ -17,7 +17,7 @@ function auth(token: string) {
 
 describe('GET /api/v1/explore/discovery', () => {
   it('returns 401 without auth', async () => {
-    const res = await api.get('/api/v1/explore/discovery')
+    const res = await api.get('/api/v1/explore/discovery').set('x-university-domain', DOMAIN)
     expect(res.status).toBe(401)
   })
 

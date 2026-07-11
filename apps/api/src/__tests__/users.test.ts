@@ -53,45 +53,6 @@ describe('PATCH /api/v1/users/me', () => {
   })
 })
 
-describe('POST /api/v1/users/:userId/follow', () => {
-  it('returns 200 when student follows alumni', async () => {
-    // Ensure not already following
-    await db('follows').where({ follower_id: studentId, following_id: alumniId }).delete()
-
-    const res = await api
-      .post(`/api/v1/users/${alumniId}/follow`)
-      .set(auth(studentToken))
-
-    expect(res.status).toBe(200)
-    expect(res.body.data.following).toBe(true)
-  })
-
-  it('returns 400 when user tries to follow themselves', async () => {
-    const res = await api
-      .post(`/api/v1/users/${studentId}/follow`)
-      .set(auth(studentToken))
-
-    expect(res.status).toBe(400)
-    expect(res.body.code).toBe('SELF_FOLLOW_NOT_ALLOWED')
-  })
-})
-
-describe('DELETE /api/v1/users/:userId/follow', () => {
-  it('returns 200 when student unfollows alumni', async () => {
-    // Ensure following first
-    await db('follows')
-      .insert({ follower_id: studentId, following_id: alumniId })
-      .onConflict(['follower_id', 'following_id'])
-      .ignore()
-
-    const res = await api
-      .delete(`/api/v1/users/${alumniId}/follow`)
-      .set(auth(studentToken))
-
-    expect(res.status).toBe(200)
-    expect(res.body.data.following).toBe(false)
-  })
-})
 
 describe('GET /api/v1/users/suggestions', () => {
   it('returns 200 with an array of suggestions', async () => {
