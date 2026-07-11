@@ -59,7 +59,7 @@ export interface AISkillPath {
 }
 
 const RETRY_DELAYS_MS = [0, 2000, 4000]
-const CALL_TIMEOUT_MS = 15000
+const CALL_TIMEOUT_MS = 45000
 
 function stripCodeFences(text: string): string {
   const cleaned = text.trim()
