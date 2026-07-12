@@ -856,7 +856,7 @@ select:focus-visible {
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
-  transform: translate(-50%, 4px);
+  transform: translate(-50%, 4px) translateZ(0);
   opacity: 0;
   pointer-events: none;
   padding: 5px 9px;
@@ -876,7 +876,11 @@ select:focus-visible {
   white-space: nowrap;
   z-index: var(--z-popover);
   /* Forces its own compositor layer instead of being rasterized inline with the
-     surrounding card content — avoids the incomplete-paint case above. */
+     surrounding card content — observed incomplete paint for the tip nearest the
+     pinned announcement card even with correct opacity/position/z-index; promoting
+     it off the shared raster tile avoids sharing a rasterization boundary with the
+     adjacent card. */
+  will-change: opacity, transform;
   backface-visibility: hidden;
   transition:
     opacity var(--dur-med) var(--ease-out-expo),
@@ -884,7 +888,7 @@ select:focus-visible {
 }
 .role-badge:hover .role-badge__tip {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translate(-50%, 0) translateZ(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
