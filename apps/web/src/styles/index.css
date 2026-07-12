@@ -855,7 +855,10 @@ select:focus-visible {
   padding: 5px 9px;
   border-radius: var(--r-pill);
   border: 0.5px solid var(--role-c-bdr);
-  background: var(--surface-raised);
+  /* surface-hover (not surface-raised) — the tip floats over cards that are already
+     surface-raised-adjacent in tone, so surface-raised alone reads as near-invisible;
+     surface-hover gives it real separation from the card underneath. */
+  background: var(--surface-hover);
   background-image: linear-gradient(var(--role-c-bg), var(--role-c-bg));
   color: var(--role-c-text);
   font-size: 11px;
