@@ -826,6 +826,13 @@ select:focus-visible {
    so the shared rules below stay role-agnostic. */
 .role-badge {
   position: relative;
+  /* Explicit local stacking context — without a z-index here, the tip's z-index:100
+     only ever gets compared within whatever ancestor stacking context happens to be
+     nearest, which can put it in unstable/ambiguous paint order against a neighboring
+     sibling card (observed: incomplete paint for the tip nearest the pinned announcement
+     card). Isolating each badge fixes that regardless of DOM position. */
+  z-index: 1;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -868,6 +875,9 @@ select:focus-visible {
   line-height: 1;
   white-space: nowrap;
   z-index: var(--z-popover);
+  /* Forces its own compositor layer instead of being rasterized inline with the
+     surrounding card content — avoids the incomplete-paint case above. */
+  backface-visibility: hidden;
   transition:
     opacity var(--dur-med) var(--ease-out-expo),
     transform var(--dur-med) var(--ease-out-expo);
