@@ -64,3 +64,27 @@ export interface PendingPathDetail extends PendingPath {
 export interface PendingQuizBatchDetail extends PendingQuizBatch {
   questions: PendingQuizQuestion[]
 }
+
+export interface UpcomingQuizzes {
+  today: Array<{ department: string; date: string; attemptCount: number }>
+  queuedByDepartment: Array<{ department: string; queuedBatches: number }>
+}
+
+export interface LearningAnalytics {
+  windowDays: number
+  paths: Array<{
+    pathId: string
+    title: string
+    unitCount: number
+    enrolledCount: number
+    completedCount: number
+    completionRate: number
+    avgUnitScore: number | null
+  }>
+  quizzes: Array<{
+    department: string
+    attemptCount: number
+    avgScore: number
+    passRate: number
+  }>
+}

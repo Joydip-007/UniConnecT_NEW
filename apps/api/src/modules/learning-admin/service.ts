@@ -176,6 +176,104 @@ export class LearningAdminService {
     await aiContentQueue.add({ task: 'quiz-gen', universityId })
   }
 
+  /**
+   * Quiz slots are generated reactively (today only, per department) by the quiz worker —
+   * there's no forward date-scheduled row to query for "next N days". So "upcoming" here
+   * means: today's already-generated slots (with live attempt counts), plus the AI-generated
+   * question pool sitting unconsumed per department — that pool is what tomorrow's/future
+   * slots will be built from, so its per-department count is the closest honest signal of
+   * what's queued for upcoming days.
+   */
+  async getUpcomingQuizzes(universityId: string) {
+    const [todaySlots, pooled] = await Promise.all([
+      db('daily_quiz_slots as s')
+        .where('s.university_id', universityId)
+        .whereRaw('s.date = CURRENT_DATE')
+        .leftJoin('daily_quiz_attempts as a', 'a.slot_id', 's.id')
+        .groupBy('s.id', 's.department', 's.date')
+        .select<{ id: string; department: string; date: string; attemptCount: string }[]>(
+          's.id',
+          's.department',
+          's.date',
+          db.raw('count(a.id) as "attemptCount"'),
+        ),
+      // Queued = not yet consumed into a slot, and not explicitly discarded (is_approved false).
+      db('ai_quiz_pool')
+        .where({ university_id: universityId })
+        .whereNull('consumed_at')
+        .where((qb) => qb.whereNull('is_approved').orWhere('is_approved', true))
+        .groupBy('department')
+        .select<{ department: string; queuedBatches: string }[]>('department', db.raw('count(*) as "queuedBatches"')),
+    ])
+
+    return {
+      today: todaySlots.map((row) => ({
+        department: row.department,
+        date: row.date,
+        attemptCount: Number(row.attemptCount),
+      })),
+      queuedByDepartment: pooled.map((row) => ({
+        department: row.department,
+        queuedBatches: Number(row.queuedBatches),
+      })),
+    }
+  }
+
+  /** Participation + outcome analytics for learning paths and daily quizzes, last `days`. */
+  async getAnalytics(universityId: string, days: number) {
+    const [pathStats, quizStats] = await Promise.all([
+      db('skill_paths as p')
+        .where('p.university_id', universityId)
+        .where('p.is_published', true)
+        .leftJoin('skill_path_units as u', 'u.path_id', 'p.id')
+        .leftJoin('skill_path_enrollments as e', 'e.path_id', 'p.id')
+        .leftJoin('unit_completions as c', function () {
+          this.on('c.path_id', '=', 'p.id').andOn('c.completed_at', '>=', db.raw(`now() - interval '${days} days'`))
+        })
+        .groupBy('p.id', 'p.title')
+        .select<
+          { id: string; title: string; unitCount: string; enrolledCount: string; completedCount: string; avgScore: string | null }[]
+        >(
+          'p.id',
+          'p.title',
+          db.raw('count(distinct u.id) as "unitCount"'),
+          db.raw('count(distinct e.id) as "enrolledCount"'),
+          db.raw("count(distinct e.id) filter (where e.status = 'completed') as \"completedCount\""),
+          db.raw('avg(c.score) as "avgScore"'),
+        ),
+      db('daily_quiz_slots as s')
+        .where('s.university_id', universityId)
+        .where('s.date', '>=', db.raw(`CURRENT_DATE - interval '${days} days'`))
+        .join('daily_quiz_attempts as a', 'a.slot_id', 's.id')
+        .groupBy('s.department')
+        .select<{ department: string; attemptCount: string; avgScore: string; passCount: string }[]>(
+          's.department',
+          db.raw('count(a.id) as "attemptCount"'),
+          db.raw('avg(a.score) as "avgScore"'),
+          db.raw("count(*) filter (where a.correct_count::float / nullif(a.total_questions, 0) >= 0.6) as \"passCount\""),
+        ),
+    ])
+
+    return {
+      windowDays: days,
+      paths: pathStats.map((row) => ({
+        pathId: row.id,
+        title: row.title,
+        unitCount: Number(row.unitCount),
+        enrolledCount: Number(row.enrolledCount),
+        completedCount: Number(row.completedCount),
+        completionRate: Number(row.enrolledCount) > 0 ? Number(row.completedCount) / Number(row.enrolledCount) : 0,
+        avgUnitScore: row.avgScore !== null ? Number(row.avgScore) : null,
+      })),
+      quizzes: quizStats.map((row) => ({
+        department: row.department,
+        attemptCount: Number(row.attemptCount),
+        avgScore: Number(row.avgScore),
+        passRate: Number(row.attemptCount) > 0 ? Number(row.passCount) / Number(row.attemptCount) : 0,
+      })),
+    }
+  }
+
   /** Ensures a university_settings row exists; returns the AI-learning columns. */
   private async ensureSettingsRow(universityId: string): Promise<SettingsRow> {
     const existing = await db('university_settings')

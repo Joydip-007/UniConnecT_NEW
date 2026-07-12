@@ -14,6 +14,8 @@ import {
   approveQuizBatch,
   discardQuizBatch,
   triggerGenerateNow,
+  getUpcomingQuizzes,
+  getAnalytics,
 } from './controller'
 import { LearningAdminConfigSchema } from './schema'
 
@@ -36,3 +38,6 @@ learningAdminRouter.post('/pending-quiz/:id/approve', approveQuizBatch)
 learningAdminRouter.post('/pending-quiz/:id/discard', discardQuizBatch)
 
 learningAdminRouter.post('/generate', triggerGenerateNow)
+
+learningAdminRouter.get('/upcoming-quizzes', getUpcomingQuizzes)
+learningAdminRouter.get('/analytics', getAnalytics)

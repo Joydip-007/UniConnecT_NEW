@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   LearningAdminConfig,
   LearningAdminConfigInput,
+  LearningAnalytics,
   PendingPath,
   PendingPathDetail,
   PendingQuizBatch,
   PendingQuizBatchDetail,
+  UpcomingQuizzes,
 } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 
@@ -120,5 +122,28 @@ export function useDiscardQuizBatch() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin', 'pending-quiz-batches'] })
     },
+  })
+}
+
+/** Today's already-generated quiz slots (with live attempt counts) plus the AI question
+ *  pool queued per department — slots aren't pre-scheduled ahead of today, so the queued
+ *  pool is the closest honest signal of what upcoming days will draw from. */
+export function useUpcomingQuizzes() {
+  return useQuery<UpcomingQuizzes>({
+    queryKey: ['learning-admin', 'upcoming-quizzes'],
+    queryFn: () =>
+      api.get<{ data: UpcomingQuizzes }>('/admin/learning/upcoming-quizzes').then((r) => r.data.data),
+    refetchInterval: 60000,
+  })
+}
+
+export function useLearningAnalytics(days: number) {
+  return useQuery<LearningAnalytics>({
+    queryKey: ['learning-admin', 'analytics', days],
+    queryFn: () =>
+      api
+        .get<{ data: LearningAnalytics }>('/admin/learning/analytics', { params: { days } })
+        .then((r) => r.data.data),
+    refetchInterval: 60000,
   })
 }

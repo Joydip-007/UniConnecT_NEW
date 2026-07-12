@@ -66,6 +66,17 @@ export const triggerGenerateNow = asyncHandler(async (req: Request, res: Respons
   sendSuccess(res, { success: true })
 })
 
+export const getUpcomingQuizzes = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.getUpcomingQuizzes(universityId))
+})
+
+export const getAnalytics = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  const days = Math.min(90, Math.max(1, Number(req.query.days) || 14))
+  sendSuccess(res, await learningAdminService.getAnalytics(universityId, days))
+})
+
 function getContext(req: Request) {
   if (!req.user) throw unauthorized()
   return {

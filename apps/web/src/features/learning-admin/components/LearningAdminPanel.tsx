@@ -13,6 +13,8 @@ import {
   usePendingQuizBatches,
   useApproveQuizBatch,
   useDiscardQuizBatch,
+  useUpcomingQuizzes,
+  useLearningAnalytics,
 } from '../hooks/useLearningAdmin'
 import { PendingPathPreviewModal } from './PendingPathPreviewModal'
 import { PendingQuizPreviewModal } from './PendingQuizPreviewModal'
@@ -52,6 +54,10 @@ export function LearningAdminPanel() {
   const { data: pendingQuizBatches } = usePendingQuizBatches(config?.quizRequireApproval ?? false)
   const approveQuizBatch = useApproveQuizBatch()
   const discardQuizBatch = useDiscardQuizBatch()
+
+  const { data: upcomingQuizzes } = useUpcomingQuizzes()
+  const [analyticsDays, setAnalyticsDays] = useState(14)
+  const { data: analytics, isLoading: analyticsLoading } = useLearningAnalytics(analyticsDays)
 
   const [draft, setDraft] = useState({
     enabled: false,
@@ -565,6 +571,158 @@ export function LearningAdminPanel() {
           )}
         </div>
       )}
+
+      <div style={card}>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Upcoming quizzes</h3>
+          <p style={{ ...labelStyle, marginTop: 4 }}>
+            Quiz slots generate one day at a time, so there's no future-dated schedule to show — this is
+            today's generated slots plus the AI question pool queued per department for the days ahead.
+          </p>
+        </div>
+
+        <div>
+          <p style={{ ...labelStyle, marginBottom: 8, fontWeight: 500 }}>Today</p>
+          {!upcomingQuizzes || upcomingQuizzes.today.length === 0 ? (
+            <p style={labelStyle}>No quiz slots generated today yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {upcomingQuizzes.today.map((slot) => (
+                <div
+                  key={`${slot.department}-${slot.date}`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--r-md)',
+                    border: '0.5px solid var(--border-default)',
+                    background: 'var(--surface-page)',
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{slot.department}</span>
+                  <span style={labelStyle}>{slot.attemptCount} attempt{slot.attemptCount === 1 ? '' : 's'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p style={{ ...labelStyle, marginBottom: 8, fontWeight: 500 }}>Queued for upcoming days</p>
+          {!upcomingQuizzes || upcomingQuizzes.queuedByDepartment.length === 0 ? (
+            <p style={labelStyle}>No approved questions queued.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {upcomingQuizzes.queuedByDepartment.map((row) => (
+                <div
+                  key={row.department}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--r-md)',
+                    border: '0.5px solid var(--border-default)',
+                    background: 'var(--surface-page)',
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{row.department}</span>
+                  <span style={labelStyle}>{row.queuedBatches} batch{row.queuedBatches === 1 ? '' : 'es'} queued</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Participation &amp; outcomes</h3>
+            <p style={{ ...labelStyle, marginTop: 4 }}>
+              Learning path completion and quiz performance across students.
+            </p>
+          </div>
+          <select
+            value={analyticsDays}
+            onChange={(e) => setAnalyticsDays(Number(e.target.value))}
+            style={{ ...inputStyle, width: 'auto' }}
+          >
+            <option value={7}>Last 7 days</option>
+            <option value={14}>Last 14 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
+          </select>
+        </div>
+
+        {analyticsLoading || !analytics ? (
+          <p style={labelStyle}>Loading…</p>
+        ) : (
+          <>
+            <div>
+              <p style={{ ...labelStyle, marginBottom: 8, fontWeight: 500 }}>Learning paths</p>
+              {analytics.paths.length === 0 ? (
+                <p style={labelStyle}>No published paths yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {analytics.paths.map((p) => (
+                    <div
+                      key={p.pathId}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        padding: '10px 12px',
+                        borderRadius: 'var(--r-md)',
+                        border: '0.5px solid var(--border-default)',
+                        background: 'var(--surface-page)',
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{p.title}</span>
+                      <span style={labelStyle}>
+                        {p.enrolledCount} enrolled · {p.completedCount} completed (
+                        {Math.round(p.completionRate * 100)}%)
+                        {p.avgUnitScore !== null ? ` · avg unit score ${Math.round(p.avgUnitScore)}` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <p style={{ ...labelStyle, marginBottom: 8, fontWeight: 500 }}>Daily quizzes</p>
+              {analytics.quizzes.length === 0 ? (
+                <p style={labelStyle}>No quiz attempts in this window.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {analytics.quizzes.map((q) => (
+                    <div
+                      key={q.department}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                        padding: '10px 12px',
+                        borderRadius: 'var(--r-md)',
+                        border: '0.5px solid var(--border-default)',
+                        background: 'var(--surface-page)',
+                      }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {q.department}
+                      </span>
+                      <span style={labelStyle}>
+                        {q.attemptCount} attempt{q.attemptCount === 1 ? '' : 's'} · avg score{' '}
+                        {Math.round(q.avgScore)} · {Math.round(q.passRate * 100)}% pass rate
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
 
       <PendingPathPreviewModal
         pathId={previewPathId}
