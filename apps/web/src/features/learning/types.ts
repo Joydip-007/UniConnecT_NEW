@@ -24,7 +24,9 @@ export interface LearningUnit {
   title: string
   type: 'read' | 'video' | 'exercise' | 'quiz'
   completed: boolean
-  content?: { body?: string; questions?: QuizQuestion[] }
+  // `text` is a legacy shape (pre-fix AI generations wrote `{ text }` instead of `{ body }`) —
+  // kept readable here so already-generated units still render; new generations write `body`.
+  content?: { body?: string; text?: string; questions?: QuizQuestion[] }
   completion_rule?: { passScore?: number }
 }
 

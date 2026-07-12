@@ -46,7 +46,7 @@ export interface AIFlashcard {
 export interface AISkillPathUnit {
   title: string
   type: 'read' | 'video' | 'exercise'
-  content: { text: string }
+  content: { body: string }
   estimatedMinutes: number
 }
 
@@ -162,7 +162,7 @@ export async function generateSkillPath(options: {
 ${options.customInstructions ?? ''}
 Return ONLY valid JSON. No markdown. No explanation. JSON schema:
 { "title": string, "description": string, "difficulty": "beginner"|"intermediate"|"advanced", "estimatedHours": number,
-  "units": [{ "title": string, "type": "read"|"video"|"exercise", "content": { "text": string }, "estimatedMinutes": number }] }`
+  "units": [{ "title": string, "type": "read"|"video"|"exercise", "content": { "body": string }, "estimatedMinutes": number }] }`
 
   const parsed = await callGemini(prompt)
   return parsed as AISkillPath

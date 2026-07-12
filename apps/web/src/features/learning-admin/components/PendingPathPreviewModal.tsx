@@ -77,7 +77,7 @@ export function PendingPathPreviewModal({ pathId, open, onClose }: PendingPathPr
                         </div>
                       ))}
                     </div>
-                  ) : unit.content?.body ? (
+                  ) : unit.content?.body || unit.content?.text ? (
                     <p
                       style={{
                         margin: 0,
@@ -87,7 +87,7 @@ export function PendingPathPreviewModal({ pathId, open, onClose }: PendingPathPr
                         whiteSpace: 'pre-wrap',
                       }}
                     >
-                      {unit.content.body}
+                      {unit.content.body ?? unit.content.text}
                     </p>
                   ) : null}
                 </div>

@@ -312,8 +312,8 @@ describe('runLearningPathGeneration', () => {
               difficulty: 'beginner',
               estimatedHours: 5,
               units: [
-                { title: 'Unit 1', type: 'read', content: { text: 'hello' }, estimatedMinutes: 10 },
-                { title: 'Unit 2', type: 'exercise', content: { text: 'do it' }, estimatedMinutes: 15 },
+                { title: 'Unit 1', type: 'read', content: { body: 'hello' }, estimatedMinutes: 10 },
+                { title: 'Unit 2', type: 'exercise', content: { body: 'do it' }, estimatedMinutes: 15 },
               ],
             }
           : { title: 'x', description: 'x', difficulty: 'beginner', estimatedHours: 1, units: [] },
@@ -329,6 +329,7 @@ describe('runLearningPathGeneration', () => {
       const units = await db('skill_path_units').where({ path_id: path.id }).orderBy('display_order')
       expect(units).toHaveLength(2)
       expect(units[0].title).toBe('Unit 1')
+      expect(units[0].content.body).toBe('hello')
 
       await cleanupLearning(universityId)
     },

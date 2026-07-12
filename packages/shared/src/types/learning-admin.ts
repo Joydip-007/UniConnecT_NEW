@@ -51,7 +51,9 @@ export interface PendingPathUnit {
   display_order: number
   title: string
   type: 'read' | 'video' | 'exercise' | 'quiz'
-  content: { body?: string; questions?: PendingQuizQuestion[] } | null
+  // `text` is a legacy shape (pre-fix AI generations wrote `{ text }` instead of `{ body }`) —
+  // kept readable here so already-pending rows still preview; new generations write `body`.
+  content: { body?: string; text?: string; questions?: PendingQuizQuestion[] } | null
   completion_rule: { passScore?: number } | null
 }
 

@@ -100,7 +100,7 @@ export function TodayCard({
         </div>
       ) : (
         <div style={{ marginTop: 12 }}>
-          {unit.content?.body ? (
+          {unit.content?.body || unit.content?.text ? (
             <button
               type="button"
               onClick={() => setExpanded((e) => !e)}
@@ -118,9 +118,9 @@ export function TodayCard({
               {expanded ? 'Hide content' : 'Show content'}
             </button>
           ) : null}
-          {expanded && unit.content?.body ? (
+          {expanded && (unit.content?.body || unit.content?.text) ? (
             <div style={{ marginBottom: 12 }}>
-              {unit.content.body.split('\n').filter(Boolean).map((para) => (
+              {(unit.content.body ?? unit.content.text ?? '').split('\n').filter(Boolean).map((para) => (
                 <p
                   key={para}
                   style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}
