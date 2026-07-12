@@ -6,9 +6,11 @@ import {
   getConfig,
   updateConfig,
   listPendingPaths,
+  getPendingPathDetail,
   approvePath,
   discardPath,
   listPendingQuizBatches,
+  getPendingQuizDetail,
   approveQuizBatch,
   discardQuizBatch,
   triggerGenerateNow,
@@ -24,10 +26,12 @@ learningAdminRouter.get('/config', getConfig)
 learningAdminRouter.patch('/config', validate(LearningAdminConfigSchema), updateConfig)
 
 learningAdminRouter.get('/pending-paths', listPendingPaths)
+learningAdminRouter.get('/pending-paths/:id', getPendingPathDetail)
 learningAdminRouter.post('/pending-paths/:id/approve', approvePath)
 learningAdminRouter.post('/pending-paths/:id/discard', discardPath)
 
 learningAdminRouter.get('/pending-quiz', listPendingQuizBatches)
+learningAdminRouter.get('/pending-quiz/:id', getPendingQuizDetail)
 learningAdminRouter.post('/pending-quiz/:id/approve', approveQuizBatch)
 learningAdminRouter.post('/pending-quiz/:id/discard', discardQuizBatch)
 

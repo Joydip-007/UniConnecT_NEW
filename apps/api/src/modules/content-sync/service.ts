@@ -96,6 +96,16 @@ export class ContentSyncService {
   }
 
   /**
+   * Heals attachments for already-imported news/events that a normal (or backfill-widened)
+   * sync run can never reach again because they've scrolled past the source's recency
+   * window. Looks each one up directly by its own source URL instead of the feed listing,
+   * and retries any attachment stuck in `failed`. Runs async on the queue; no run row.
+   */
+  async backfillAttachments(universityId: string): Promise<void> {
+    await contentSyncQueue.add({ kind: 'attachment-backfill', universityId })
+  }
+
+  /**
    * Imported drafts awaiting admin review. Imported items are authored by the campus bot,
    * so they never appear in any author's "Drafts" view — this is the admin review queue.
    */

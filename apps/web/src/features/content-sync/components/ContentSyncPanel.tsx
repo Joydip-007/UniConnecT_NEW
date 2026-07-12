@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { formatDistanceToNow } from 'date-fns'
 import { RefreshCw, Check, AlertTriangle } from 'lucide-react'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import {
+  useBackfillAttachments,
   useContentSyncConfig,
   usePendingImported,
   usePublishAllImported,
@@ -13,6 +14,7 @@ import {
   useTriggerSync,
   useUpdateContentSyncConfig,
 } from '../hooks/useContentSync'
+import { ImportPreviewModal, type ImportPreviewTarget } from './ImportPreviewModal'
 
 const card: React.CSSProperties = {
   background: 'var(--surface-card)',
@@ -43,7 +45,7 @@ const SOURCES = [
 ] as const
 
 export function ContentSyncPanel() {
-  const navigate = useNavigate()
+  const qc = useQueryClient()
   const { data: config, isLoading } = useContentSyncConfig()
   const { data: runs } = useSyncRuns()
   const { data: pending } = usePendingImported()
@@ -51,11 +53,25 @@ export function ContentSyncPanel() {
   const publishAll = usePublishAllImported()
   const updateConfig = useUpdateContentSyncConfig()
   const triggerSync = useTriggerSync()
+  const backfillAttachments = useBackfillAttachments()
 
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [draft, setDraft] = useState({ newsUrl: '', noticeUrl: '', eventUrl: '', enabled: false, entriesPerSource: 5 })
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewTarget, setPreviewTarget] = useState<ImportPreviewTarget | null>(null)
+
+  // useSyncRuns polls while a run is 'running', but only its own query key refreshes —
+  // re-fetch pending/config once we observe a run finish so the page updates without a manual reload.
+  const lastSeenRunStatus = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    const status = runs?.[0]?.status
+    if (status && status !== 'running' && lastSeenRunStatus.current === 'running') {
+      void qc.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
+      void qc.invalidateQueries({ queryKey: ['content-sync', 'config'] })
+    }
+    lastSeenRunStatus.current = status
+  }, [runs, qc])
 
   useEffect(() => {
     if (config) {
@@ -173,10 +189,27 @@ export function ContentSyncPanel() {
           <GhostBtn
             onClick={() => void sync(true)}
             disabled={!draft.enabled || !hasSource || isRunning || triggerSync.isPending || updateConfig.isPending}
-            title="Fetch a larger window so older items and their attachments get imported"
+            title="Widen the fetch window so recently-scrolled-past items get imported"
           >
             <RefreshCw size={14} style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }} />
-            Backfill attachments
+            {isRunning ? 'Syncing…' : 'Widen fetch window'}
+          </GhostBtn>
+          <GhostBtn
+            onClick={() => {
+              setError(null)
+              backfillAttachments.mutate(undefined, {
+                onSuccess: () => {
+                  setSavedMsg('Attachment backfill queued — check back shortly.')
+                  setTimeout(() => setSavedMsg(null), 6000)
+                },
+                onError: (e) => setError(extractError(e, 'Could not queue attachment backfill.')),
+              })
+            }}
+            disabled={backfillAttachments.isPending}
+            title="Re-fetch every already-imported item by its own URL to pull attachments the recency window can no longer reach, and retry any failed downloads"
+          >
+            <RefreshCw size={14} style={{ marginRight: 6, display: 'inline', verticalAlign: 'middle' }} />
+            {backfillAttachments.isPending ? 'Queuing…' : 'Backfill attachments'}
           </GhostBtn>
           {savedMsg && (
             <span style={{ fontSize: 13, color: 'var(--uc-mint)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -275,9 +308,7 @@ export function ContentSyncPanel() {
                       <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{item.meta}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                      <GhostBtn
-                        onClick={() => navigate(item.kind === 'news' ? `/news/${item.id}` : `/events/${item.id}`)}
-                      >
+                      <GhostBtn onClick={() => setPreviewTarget({ kind: item.kind, id: item.id })}>
                         Review
                       </GhostBtn>
                       <PrimaryBtn
@@ -333,6 +364,15 @@ export function ContentSyncPanel() {
           </div>
         )}
       </div>
+
+      <ImportPreviewModal
+        target={previewTarget}
+        onClose={() => setPreviewTarget(null)}
+        publishing={publishImported.isPending}
+        onPublish={(target) =>
+          publishImported.mutate(target, { onSuccess: () => setPreviewTarget(null) })
+        }
+      />
     </div>
   )
 }

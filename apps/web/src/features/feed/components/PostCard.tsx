@@ -53,6 +53,8 @@ function PinnedBar() {
       style={{
         background: 'var(--uc-orange-bg)',
         borderBottom: '0.5px solid var(--uc-orange-bdr)',
+        borderTopLeftRadius: 'var(--r-lg)',
+        borderTopRightRadius: 'var(--r-lg)',
         padding: '7px 16px',
       }}
     >
@@ -388,7 +390,6 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
-        overflow: 'hidden',
         transition: 'border-color 200ms ease',
         outline: 'none',
       }}

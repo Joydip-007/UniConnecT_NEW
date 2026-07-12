@@ -22,8 +22,13 @@ UniConnecT is a multi-tenant monorepo with a React SPA frontend, an Express REST
 │  └──────┬───────┘  └──────┬───────┘  └────────┬───────────┘   │
 │         │                 │                   │                │
 │  ┌──────▼─────────────────▼───────────────────▼───────────┐   │
-│  │                    Service Layer                        │   │
-│  │   posts · jobs · events · auth · notifications · …     │   │
+│  │                    Modules (apps/api/src/modules/)       │   │
+│  │  academic · admin · auth · campus · connections ·        │   │
+│  │  content-sync · drafts · events · explore · feed ·       │   │
+│  │  groups · jobs · klipy · learning · learning-admin ·     │   │
+│  │  mentorship · messages · moderation · news ·             │   │
+│  │  notifications · presence · push · quiz · search ·       │   │
+│  │  upload · users                                          │   │
 │  └──────┬─────────────────────────────────────────────────┘   │
 │         │                                                       │
 │  ┌──────▼──────────┐   ┌────────────┐   ┌──────────────────┐  │
@@ -137,12 +142,16 @@ Long-running or deferrable work lives in Bull queues, not HTTP handlers.
 | Queue | Triggered by | Worker action |
 |-------|-------------|--------------|
 | `email` | Registration, OTP, job application status | Send via Resend |
-| `notifications` | Post reactions, comments, mentions, follows | Write `notifications` rows + emit to `user:{userId}` room |
-| `badge-awards` | Post created, job applied, follow count | Check trigger conditions, award `user_badges` rows |
-| `feed-fan-out` | New post by high-follower user | Pre-cache feed entries in Redis |
+| `notification` | Post reactions, comments, mentions, connection requests | Write `notifications` rows + emit to `user:{userId}` room |
+| `badge` | Post created, job applied, mentorship milestones | Check trigger conditions, award `user_badges` rows |
+| `group-digest` | Weekly cron | Compile and send weekly group activity digest emails |
+| `mentorship` | Mentorship request accepted / pending | 48h alumni reminder (`request_reminder`) and 7-day auto-expiry (`request_expire`) |
+| `push` | Notification created while user has a push subscription | Web Push (VAPID) fan-out via `push_subscriptions` |
+| `content-sync` | Admin-triggered import run | Fetch external university news/notices/events (WordPress API, Skyvern fallback) |
+| `feed-ranking` | Cron | Recompute `posts.hot_score` for the "Top" feed sort |
 
-Queue definitions: `apps/api/src/queues/`
-Workers: `apps/api/src/workers/`
+There are eight Bull queues in total, all backed by Redis. Queue definitions: `apps/api/src/queues/`
+Workers: `apps/api/src/workers/` — run as a **separate process** in development (`npx pnpm --filter api worker`); in production, workers run in-process with the API server.
 
 ---
 
@@ -168,6 +177,49 @@ Cache invalidation: on any write to the relevant domain, call `cache.invalidate(
 - Every service function signature begins: `(db: Knex, universityId: string, ...)`.
 - Services throw `AppError` for expected failures; unexpected errors bubble to the global error handler.
 - Services emit Socket.io events **after** a successful DB write — never before.
+
+---
+
+## Backend Modules
+
+Every feature module under `apps/api/src/modules/` follows the same shape: `router.ts`, `controller.ts`, `service.ts`, `schema.ts`, `index.ts`.
+
+| Module | Responsibility |
+|--------|-----------------|
+| `academic` | Academic records/programs data backing the learning features |
+| `admin` | Platform admin: stats, user/role management, invitations, content-report review, allowed email domains |
+| `auth` | Login, invite-token registration, OTP verification, JWT + refresh-token session flow |
+| `campus` | Lost-and-found items and shuttle schedules (`driver`-role GPS broadcast) |
+| `connections` | Bidirectional LinkedIn-style connection graph (request/accept/decline/remove, mutual connections) — replaces the dropped `follows` table |
+| `content-sync` | Admin-triggered import of external university news/notices/events (WordPress REST + Skyvern fallback) |
+| `drafts` | Unified list of the current user's own unpublished posts/jobs/news/events |
+| `events` | Campus events CRUD and RSVPs |
+| `explore` | Discovery/browse surface across feed content |
+| `feed` | Social feed posts, reactions, comments, hot-score ranking |
+| `groups` | Groups with join requests, member roles, resources, study sessions, pinned posts, rules |
+| `jobs` | Job board postings and applications |
+| `klipy` | GIF/media picker integration |
+| `learning` | Student-facing learning/course content |
+| `learning-admin` | Admin management of learning content and AI configuration |
+| `mentorship` | Mentorship request lifecycle, points economy, gift-card redemption, per-session tracking, auto-created mentorship conversations |
+| `messages` | Direct, group, and mentorship conversations/messages |
+| `moderation` | Content moderation and reporting workflows |
+| `news` | University news/notices |
+| `notifications` | In-app notification records and preferences |
+| `presence` | Redis-backed online/offline presence tracking, respecting privacy tiers |
+| `push` | Web Push (VAPID) subscription management |
+| `quiz` | Quiz/assessment content tied to learning |
+| `search` | Full-text search (Postgres generated `search_vector` columns + pg_trgm fallback) |
+| `upload` | Presigned S3 upload URL issuance |
+| `users` | User/profile CRUD, experience, education, featured items, analytics, viewers, settings, privacy, account preferences |
+
+## Frontend Feature Bundles
+
+Each bundle under `apps/web/src/features/{domain}/` follows `components/`, `hooks/`, `index.ts`.
+
+`connections`, `content-sync`, `drafts`, `events`, `explore`, `feed`, `groups`, `jobs`, `landing`, `learning`, `learning-admin`, `lost-found`, `mentorship`, `messages`, `moderation`, `news`, `notifications`, `onboarding`, `presence`, `profile`, `quiz`, `search`, `settings`, `share`, `shuttle`
+
+`lost-found` and `shuttle` are frontend-only feature names — both are served by the backend `campus` module (there is no separate `lost-found` or `shuttle` backend module).
 
 ---
 

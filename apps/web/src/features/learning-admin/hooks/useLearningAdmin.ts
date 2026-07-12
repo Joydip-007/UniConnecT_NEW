@@ -3,7 +3,9 @@ import type {
   LearningAdminConfig,
   LearningAdminConfigInput,
   PendingPath,
+  PendingPathDetail,
   PendingQuizBatch,
+  PendingQuizBatchDetail,
 } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 
@@ -47,6 +49,15 @@ export function usePendingPaths() {
   })
 }
 
+export function usePendingPathDetail(pathId: string | null) {
+  return useQuery<PendingPathDetail>({
+    queryKey: ['learning-admin', 'pending-path', pathId],
+    queryFn: () =>
+      api.get<{ data: PendingPathDetail }>(`/admin/learning/pending-paths/${pathId}`).then((r) => r.data.data),
+    enabled: !!pathId,
+  })
+}
+
 export function useApprovePath() {
   const qc = useQueryClient()
   return useMutation({
@@ -77,6 +88,15 @@ export function usePendingQuizBatches(enabled: boolean) {
       api.get<{ data: PendingQuizBatch[] }>('/admin/learning/pending-quiz').then((r) => r.data.data),
     refetchInterval: 60000,
     enabled,
+  })
+}
+
+export function usePendingQuizBatchDetail(batchId: string | null) {
+  return useQuery<PendingQuizBatchDetail>({
+    queryKey: ['learning-admin', 'pending-quiz-batch', batchId],
+    queryFn: () =>
+      api.get<{ data: PendingQuizBatchDetail }>(`/admin/learning/pending-quiz/${batchId}`).then((r) => r.data.data),
+    enabled: !!batchId,
   })
 }
 

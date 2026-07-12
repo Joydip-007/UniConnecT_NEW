@@ -17,6 +17,11 @@ export interface AttachmentDownloadJob {
   universityId: string
 }
 
-export type ContentSyncJob = SyncRunJob | AttachmentDownloadJob
+export interface AttachmentBackfillJob {
+  kind: 'attachment-backfill'
+  universityId: string
+}
+
+export type ContentSyncJob = SyncRunJob | AttachmentDownloadJob | AttachmentBackfillJob
 
 export const contentSyncQueue = new Queue<ContentSyncJob>('content-sync', bullQueueOptions)

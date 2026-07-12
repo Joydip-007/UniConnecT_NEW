@@ -43,7 +43,6 @@ export function OriginalPostEmbed({ post }: Props) {
       style={{
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-md)',
-        overflow: 'hidden',
         marginTop: 8,
       }}
     >
@@ -117,7 +116,14 @@ export function OriginalPostEmbed({ post }: Props) {
 
       {/* First media thumbnail */}
       {post.mediaUrls && post.mediaUrls.length > 0 && (
-        <div style={{ maxHeight: 200, overflow: 'hidden' }}>
+        <div
+          style={{
+            maxHeight: 200,
+            overflow: 'hidden',
+            borderBottomLeftRadius: 'var(--r-md)',
+            borderBottomRightRadius: 'var(--r-md)',
+          }}
+        >
           <img
             src={post.mediaUrls[0]}
             alt=""

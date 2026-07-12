@@ -39,3 +39,26 @@ export interface PendingQuizBatch {
   department: string
   generated_at: string
 }
+
+export interface PendingQuizQuestion {
+  q: string
+  options: string[]
+  answer: number
+}
+
+export interface PendingPathUnit {
+  id: string
+  display_order: number
+  title: string
+  type: 'read' | 'video' | 'exercise' | 'quiz'
+  content: { body?: string; questions?: PendingQuizQuestion[] } | null
+  completion_rule: { passScore?: number } | null
+}
+
+export interface PendingPathDetail extends PendingPath {
+  units: PendingPathUnit[]
+}
+
+export interface PendingQuizBatchDetail extends PendingQuizBatch {
+  questions: PendingQuizQuestion[]
+}

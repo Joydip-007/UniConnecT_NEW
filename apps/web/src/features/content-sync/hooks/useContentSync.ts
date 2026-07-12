@@ -41,6 +41,14 @@ export function useTriggerSync() {
   })
 }
 
+/** Heals attachments for already-imported items the source's recency window can no
+ *  longer reach (looked up directly by their own source URL) and retries failed downloads. */
+export function useBackfillAttachments() {
+  return useMutation({
+    mutationFn: () => api.post('/admin/content-sync/backfill-attachments').then((r) => r.data),
+  })
+}
+
 export interface PendingImported {
   news: Array<{ id: string; title: string; category: string; createdAt: string }>
   events: Array<{ id: string; title: string; startsAt: string; createdAt: string }>

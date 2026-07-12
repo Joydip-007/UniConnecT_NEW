@@ -1,8 +1,8 @@
 # API Reference
 
-**Base URL:** `https://api.uniconnect.app/api/v1` (production) · `http://localhost:4000/api/v1` (dev)
+**Base URL:** `https://api.uniconnect.app/api/v1` (production) · `http://localhost:3001/api/v1` (dev)
 
-All endpoints return JSON. Authentication uses a Bearer token in the `Authorization` header unless noted.
+All endpoints return JSON. Authentication uses a Bearer token in the `Authorization` header unless noted. Every request must also include `x-university-domain` (e.g. `uiu.ac.bd`) so the `resolveUniversity` middleware can scope the request to a tenant.
 
 ---
 
@@ -12,6 +12,7 @@ All endpoints return JSON. Authentication uses a Bearer token in the `Authorizat
 ```
 Authorization: Bearer <accessToken>
 Content-Type: application/json
+x-university-domain: uiu.ac.bd
 ```
 
 ### Success response
@@ -38,23 +39,52 @@ Content-Type: application/json
 | `CONFLICT` | 409 | Unique constraint violation |
 
 ### Pagination
-List endpoints accept `?page=1&limit=20`. Response includes:
+List endpoints accept `?page=1&limit=20`. Response:
 ```json
-{
-  "data": { "items": [...], "total": 120, "page": 1, "limit": 20, "hasMore": true }
-}
+{ "data": { "items": [...], "total": 120, "page": 1, "limit": 20, "hasMore": true } }
 ```
+
+### Mount paths — not all routers live at `/api/v1/<moduleName>`
+A few modules are mounted at a base path that differs from their directory name under `apps/api/src/modules/`. This table is ground truth (from `apps/api/src/app.ts`):
+
+| Module dir | Mounted at |
+|---|---|
+| `feed` | `/api/v1/posts` (+ a second router `pollsRouter` at `/api/v1/polls`) |
+| `messages` | `/api/v1/conversations` |
+| `content-sync` | `/api/v1/admin/content-sync` |
+| `learning-admin` | `/api/v1/admin/learning` |
+| `academic` | `/api/v1/groups` (mounted alongside `groupsRouter`, `mergeParams: true`, so its routes are `/groups/:groupId/course-outline`, etc.) |
+| `campus` | `/api/v1` (bare — its own routes start with `/lost-found`, `/shuttle/...`, `/courses...`, so there is **no** `/api/v1/campus` prefix) |
+| `drafts` | `/api/v1/me/drafts` |
+| everything else | `/api/v1/<moduleName>` |
 
 ---
 
-## Auth
+## Auth (`/api/v1/auth`)
+No `requireAuth` on the whole router — only on `/me`, `/change-password`, `/sessions*`.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/auth/register` | Register with an invitation token; sends email OTP | — |
+| POST | `/auth/verify-otp` | Verify registration OTP | — (rate limited) |
+| POST | `/auth/login` | Login → `{ accessToken, user }` directly (no OTP step for verified users); sets refresh cookie | — (rate limited: 10/min/IP) |
+| POST | `/auth/verify-login-otp` | Verify OTP for an unverified user attempting login | — (rate limited) |
+| POST | `/auth/resend-otp` | Resend a 6-digit OTP | — (rate limited) |
+| POST | `/auth/refresh` | Issue new access token from refresh cookie | — |
+| POST | `/auth/logout` | Revoke refresh token | — |
+| POST | `/auth/forgot-password` | Send password-reset email | — |
+| POST | `/auth/reset-password` | Reset password with token | — (rate limited) |
+| GET | `/auth/me` | Current user + profile | required |
+| POST | `/auth/change-password` | Change password (old + new) | required |
+| GET | `/auth/sessions` | List active `user_sessions` | required |
+| DELETE | `/auth/sessions` | Revoke all sessions except current | required |
+| DELETE | `/auth/sessions/:sessionId` | Revoke a specific session | required |
+| GET | `/auth/invitation/:token` | Look up invitation details (email, role) before registering | — |
 
 ### `POST /auth/register`
-Create a new user account (requires a valid invitation token). Registration issues auth tokens and sends a 6-digit email OTP through Resend when the user is not verified.
 ```json
 // body
 { "token": "inv_abc123", "password": "min8chars", "fullName": "Joydip Datta" }
-
 // response 201
 { "data": { "user": { "id": "uuid", "email": "jd@uiu.ac.bd", "role": "student" }, "accessToken": "..." } }
 ```
@@ -63,582 +93,527 @@ Create a new user account (requires a valid invitation token). Registration issu
 ```json
 // body
 { "email": "jd@uiu.ac.bd", "password": "..." }
-
-// response 200  — also sets httpOnly refreshToken cookie; unverified users receive a fresh OTP when cooldown permits
+// response 200 — also sets httpOnly refreshToken cookie
 { "data": { "user": {...}, "accessToken": "..." } }
 ```
 
-### `POST /auth/logout`
-Revokes the refresh token. Requires auth.
-```json
-// response 204 — no body
-```
+---
 
-### `POST /auth/refresh`
-Issue a new access token using the refresh token cookie. No body required.
-```json
-// response 200
-{ "data": { "accessToken": "..." } }
-```
+## Users & Profiles (`/api/v1/users`)
+All routes require auth.
 
-### `POST /auth/verify-otp`
-Requires auth. Verifies the signed-in user's email OTP.
-```json
-// body
-{ "email": "jd@uiu.ac.bd", "otp": "481923" }
-// response 200
-{ "data": { "verified": true } }
-```
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/users/me` | Own profile | required |
+| PATCH | `/users/me` | Update own profile | required |
+| PATCH | `/users/me/preferences` | Theme / locale prefs | required |
+| POST | `/users/me/deactivate` | Sets `users.deactivated_at` | required |
+| GET | `/users/me/export` | Export own data | required |
+| GET | `/users/me/deletion-request` | Get own pending account-deletion request | required |
+| POST | `/users/me/deletion-request` | Request account deletion (admin reviews) | required |
+| DELETE | `/users/me/deletion-request` | Cancel own pending deletion request | required |
+| GET | `/users/me/privacy` | Get privacy preferences | required |
+| PUT | `/users/me/privacy` | Update privacy preferences | required |
+| GET | `/users/me/progress` | Learning-progress summary | required |
+| GET | `/users/suggestions` | People-you-may-know | required |
+| GET | `/users/username-available` | Check if `?username=` is free | required |
+| GET | `/users/by-username/:username` | Look up user by vanity username | required |
+| GET | `/users/` | Paginated user list/search | required |
+| GET | `/users/:userId` | Public profile (also upserts a `profile_views` row as a side effect) | required |
+| GET | `/users/:userId/experience` | List a user's experience entries | required |
+| POST | `/users/me/experience` | Create own experience entry | required |
+| PATCH | `/users/me/experience/:entryId` | Update own experience entry | required |
+| DELETE | `/users/me/experience/:entryId` | Delete own experience entry | required |
+| GET | `/users/:userId/education` | List a user's education entries | required |
+| POST | `/users/me/education` | Create own education entry | required |
+| PATCH | `/users/me/education/:entryId` | Update own education entry | required |
+| DELETE | `/users/me/education/:entryId` | Delete own education entry | required |
+| GET | `/users/:userId/featured` | List a user's featured items | required |
+| POST | `/users/me/featured` | Add a featured item (max 5) | required |
+| DELETE | `/users/me/featured/:entryId` | Delete a featured item | required |
+| PATCH | `/users/me/featured/reorder` | Reorder featured items | required |
+| GET | `/users/me/analytics` | 7/30/90-day profile-view counts | required |
+| GET | `/users/me/viewers` | Paginated recent profile viewers (last 90 days) | required |
+| GET | `/users/:userId/connections` | Public list of a user's accepted connections | required |
 
-### `POST /auth/resend-otp`
-Requires auth. Sends a new 6-digit OTP through Resend for the signed-in, unverified user. Rate limited by `OTP_RESEND_COOLDOWN_SECONDS`.
-```json
-// body
-{ "email": "jd@uiu.ac.bd" }
-// response 204 — no body
-```
-
-### `GET /auth/me`
-Returns the authenticated user + profile.
-```json
-{ "data": { "id": "uuid", "email": "...", "role": "student", "profile": { ... } } }
-```
+Note: static paths (`/me`, `/suggestions`, `/username-available`, `/by-username/:username`) are declared before the catch-all `GET /:userId` in the router, so they are not shadowed.
 
 ---
 
-## Users & Profiles
+## Connections (`/api/v1/connections`)
+Bidirectional connection graph (the old `follows` table was dropped in migration `052`). All routes require auth.
 
-### `GET /users/:id`
-Public profile of any user in the same university.
-```json
-{ "data": { "id": "uuid", "fullName": "...", "role": "student", "profile": {...}, "followersCount": 94 } }
-```
-
-### `PATCH /users/me`
-Update own profile. Requires auth.
-```json
-// body (all optional)
-{
-  "fullName": "Joydip Datta",
-  "bio": "CSE student, building UniConnecT",
-  "avatarUrl": "https://s3.amazonaws.com/...",
-  "coverUrl": "https://s3.amazonaws.com/...",
-  "headline": "Software Engineer @ UIU",
-  "department": "CSE",
-  "batchYear": "2022",
-  "linkedinUrl": "https://linkedin.com/in/...",
-  "phone": "+8801...",
-  "skills": ["React", "Node.js", "PostgreSQL"],
-  "isOpenToWork": true
-}
-```
-
-### `POST /users/:id/follow`
-Follow a user. Requires auth.
-```json
-// response 201
-{ "data": { "following": true } }
-```
-
-### `DELETE /users/:id/follow`
-```json
-// response 200
-{ "data": { "following": false } }
-```
-
-### `GET /users/:id/followers`
-```json
-{ "data": { "items": [{ "id": "uuid", "fullName": "...", "profile": {...} }], ... } }
-```
-
-### `GET /users/:id/following`
-Same shape as followers.
-
-### `GET /users/suggestions`
-People you may know (mutual connections, same department/batch). Requires auth.
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/connections/request/:userId` | Send a connection request (optional `note`) | required (rate limited) |
+| DELETE | `/connections/request/:userId` | Withdraw a sent request | required |
+| POST | `/connections/:connectionId/accept` | Accept a received request | required |
+| POST | `/connections/:connectionId/decline` | Decline a received request | required |
+| DELETE | `/connections/:userId` | Remove an existing connection | required |
+| GET | `/connections/` | My accepted connections | required |
+| GET | `/connections/pending` | Requests received (pending) | required |
+| GET | `/connections/sent` | Requests sent (pending) | required |
+| GET | `/connections/mutual/:userId` | Mutual connections with a user | required |
 
 ---
 
-## Posts
+## Posts / Feed (mounted at `/api/v1/posts`, module dir `feed`)
+All routes require auth. Static paths (`/trending`, `/archived`) are declared before `/:postId` in the router.
 
-### `GET /posts`
-Home feed. Requires auth. Supports `?type=post|announcement|event_promo&groupId=uuid`.
-```json
-{ "data": { "items": [<Post>, ...], "total": 342, "page": 1, ... } }
-```
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/posts` | Home/group feed, supports `type`, `groupId`, ranking sort | required |
+| POST | `/posts` | Create a post (rate limited) | required |
+| GET | `/posts/trending` | Trending posts | required |
+| GET | `/posts/archived` | Own archived posts | required |
+| GET | `/posts/:postId` | Get a post | required |
+| PATCH | `/posts/:postId` | Update own post | required |
+| DELETE | `/posts/:postId` | Delete own post | required |
+| POST | `/posts/:postId/archive` | Archive a post | required |
+| POST | `/posts/:postId/unarchive` | Unarchive a post | required |
+| POST | `/posts/:postId/reactions` | React to a post | required |
+| DELETE | `/posts/:postId/reactions` | Remove own reaction | required |
+| GET | `/posts/:postId/reactions` | List reactions on a post | required |
+| GET | `/posts/:postId/comments` | List comments (supports `parentId`) | required |
+| POST | `/posts/:postId/comments` | Create a comment (rate limited) | required |
+| DELETE | `/posts/:postId/comments/:commentId` | Delete own comment | required |
+| POST | `/posts/:postId/comments/:commentId/reactions` | React to a comment | required |
+| DELETE | `/posts/:postId/comments/:commentId/reactions` | Remove comment reaction | required |
+| POST | `/posts/:postId/poll/vote` | Vote in a post's poll | required |
+| POST | `/posts/:postId/save` | Save post | required |
+| DELETE | `/posts/:postId/save` | Unsave post | required |
+| POST | `/posts/:postId/share` | Share/repost (rate limited) | required |
+| DELETE | `/posts/:postId/share` | Unshare | required |
 
-**Post object:**
-```json
-{
-  "id": "uuid",
-  "type": "post",
-  "content": "Just shipped the prototype!",
-  "mediaUrls": [],
-  "author": { "id": "uuid", "fullName": "Joydip Datta", "profile": {...} },
-  "isPinned": false,
-  "viewCount": 142,
-  "reactionCounts": { "like": 48, "love": 3, "insightful": 12, "celebrate": 5 },
-  "myReaction": "like",
-  "commentCount": 12,
-  "isSaved": false,
-  "poll": null,
-  "createdAt": "2026-05-11T10:00:00Z"
-}
-```
-
-### `POST /posts`
-```json
-// body
-{
-  "type": "post",
-  "content": "...",
-  "mediaUrls": ["https://s3..."],
-  "groupId": null,
-  "poll": {
-    "question": "Which stack?",
-    "options": ["React + Node", "Next.js + Supabase"],
-    "expiresAt": "2026-05-18T00:00:00Z"
-  }
-}
-// response 201 → Post object
-```
-
-### `GET /posts/:id` · `PATCH /posts/:id` · `DELETE /posts/:id`
-Owner or admin only for PATCH/DELETE.
-
-### `POST /posts/:id/reactions`
-```json
-// body
-{ "reactionType": "like" }  // like | love | insightful | celebrate
-// response 201 or 200 (updates existing reaction)
-```
-
-### `DELETE /posts/:id/reactions`
-Remove own reaction. Response 204.
-
-### `POST /posts/:id/save` · `DELETE /posts/:id/save`
-Save or unsave a post for the authenticated user.
-
-### `GET /posts/:id/comments`
-Supports `?parentId=uuid` to fetch replies for a specific comment.
-```json
-{ "data": { "items": [<Comment>, ...] } }
-```
-
-**Comment object:** `{ "id", "content", "author", "parentId", "replyCount", "createdAt" }`
-
-### `POST /posts/:id/comments`
-```json
-// body
-{ "content": "Great work!", "parentId": null }
-// response 201 → Comment object
-```
-
-### `POST /polls/:pollId/vote`
-```json
-// body
-{ "optionId": "uuid" }
-// response 201 · 409 CONFLICT if already voted
-```
+### Polls (mounted at `/api/v1/polls`)
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/polls/:pollId/vote` | Vote directly by poll id | required |
 
 ---
 
-## Jobs
+## Jobs (`/api/v1/jobs`)
+All routes require auth.
 
-### `GET /jobs`
-```
-?type=full_time|part_time|internship|remote|contract
-?isActive=true
-?search=engineer
-```
-
-**Job object:**
-```json
-{
-  "id": "uuid",
-  "title": "Software Engineering Intern",
-  "company": "Pathao Bangladesh",
-  "location": "Remote",
-  "type": "internship",
-  "description": "...",
-  "requirements": ["React.js", "Node.js"],
-  "salaryRange": "15,000–20,000 BDT/month",
-  "applicationUrl": null,
-  "deadline": "2026-06-01T00:00:00Z",
-  "postedBy": { "id": "uuid", "fullName": "Saem Ferdous", "profile": {...} },
-  "applicationCount": 23,
-  "myApplication": null,
-  "isSaved": false,
-  "viewCount": 312
-}
-```
-
-### `POST /jobs`
-Alumni and staff only.
-```json
-// body
-{
-  "title": "...", "company": "...", "location": "...", "type": "internship",
-  "description": "...", "requirements": [...], "salaryRange": "...",
-  "applicationUrl": null, "deadline": "2026-06-01T00:00:00Z"
-}
-// response 201 → Job object
-```
-
-### `GET /jobs/:id` · `PATCH /jobs/:id` · `DELETE /jobs/:id`
-
-### `POST /jobs/:id/apply`
-Student only. `409 CONFLICT` if already applied.
-```json
-// body
-{ "resumeUrl": "https://s3...", "coverLetter": "..." }
-// response 201 → JobApplication object
-```
-
-### `GET /jobs/:id/applications`
-Job poster / admin only. Returns list of `JobApplication` objects.
-
-### `PATCH /jobs/:id/applications/:applicationId`
-Update application status. Job poster / admin only.
-```json
-// body
-{ "status": "shortlisted", "notes": "Strong React background" }
-// status enum: pending | reviewed | shortlisted | interviewed | offered | rejected
-```
-
-### `POST /jobs/:id/save` · `DELETE /jobs/:id/save`
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/jobs/` | List jobs (filters, search) | required |
+| POST | `/jobs/` | Create a job posting | `alumni`, `faculty`, `admin` |
+| GET | `/jobs/saved` | My saved jobs | required |
+| GET | `/jobs/my` | Jobs I posted | required |
+| GET | `/jobs/applications/my` | My job applications | required |
+| GET | `/jobs/:jobId` | Get a job | required |
+| PATCH | `/jobs/:jobId` | Update a job | `alumni`, `faculty`, `admin` |
+| DELETE | `/jobs/:jobId` | Delete a job | `alumni`, `faculty`, `admin` |
+| POST | `/jobs/:jobId/apply` | Apply to a job | required |
+| GET | `/jobs/:jobId/applications` | List applicants | `alumni`, `faculty`, `admin` |
+| PATCH | `/jobs/:jobId/applications/:appId` | Update application status | `alumni`, `faculty`, `admin` |
+| POST | `/jobs/:jobId/save` | Save a job | required |
+| DELETE | `/jobs/:jobId/save` | Unsave a job | required |
 
 ---
 
-## Events
+## Events (`/api/v1/events`)
+All routes require auth.
 
-### `GET /events`
-```
-?type=general|career_fair|seminar|alumni_meetup|workshop|club
-?from=2026-05-01&to=2026-06-30
-```
-
-**Event object:**
-```json
-{
-  "id": "uuid",
-  "title": "Career Fair 2026",
-  "description": "...",
-  "location": "UIU Campus, Madani Ave",
-  "isOnline": false,
-  "onlineLink": null,
-  "coverUrl": "https://s3...",
-  "startsAt": "2026-05-16T10:00:00Z",
-  "endsAt": "2026-05-16T16:00:00Z",
-  "capacity": 500,
-  "type": "career_fair",
-  "organizer": { "id": "uuid", "fullName": "UIU Career Club" },
-  "rsvpCounts": { "going": 148, "maybe": 34, "not_going": 12 },
-  "myRsvp": "going"
-}
-```
-
-### `POST /events`
-Staff / admin only.
-
-### `GET /events/:id` · `PATCH /events/:id` · `DELETE /events/:id`
-
-### `POST /events/:id/rsvp`
-```json
-// body
-{ "status": "going" }  // going | maybe | not_going
-// response 201 or 200 (updates existing RSVP)
-```
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/events/` | List events | required |
+| POST | `/events/` | Create an event | `faculty`, `admin` |
+| GET | `/events/my` | My RSVP'd / organized events | required |
+| GET | `/events/:eventId` | Get an event | required |
+| PATCH | `/events/:eventId` | Update an event | `faculty`, `admin` |
+| DELETE | `/events/:eventId` | Delete an event | `faculty`, `admin` |
+| PATCH | `/events/:eventId/publish` | Publish a draft/scheduled event | `faculty`, `admin` |
+| POST | `/events/:eventId/rsvp` | RSVP | required |
+| DELETE | `/events/:eventId/rsvp` | Remove RSVP | required |
+| GET | `/events/:eventId/attendees` | List attendees | required |
+| GET | `/events/:eventId/ical` | Download `.ics` calendar file | required |
 
 ---
 
-## Groups
+## Groups (`/api/v1/groups`)
+The largest module. All routes require auth.
 
-### `GET /groups`
-Lists all groups in the university. Supports `?type=department|club|batch|research|interest`.
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/groups/` | List groups | required |
+| POST | `/groups/` | Create a group | required |
+| GET | `/groups/my` | My groups | required |
+| GET | `/groups/:groupId` | Get a group | required |
+| PATCH | `/groups/:groupId` | Update a group | owner/admin (service-enforced) |
+| DELETE | `/groups/:groupId` | Delete a group | owner/admin |
+| POST | `/groups/:groupId/join` | Join or request to join (private groups) | required |
+| DELETE | `/groups/:groupId/leave` | Leave group | required |
+| POST | `/groups/:groupId/members` | Alias of join (same handler as `/join`) | required |
+| DELETE | `/groups/:groupId/members/me` | Alias of leave (same handler) | required |
+| GET | `/groups/:groupId/members` | List members | required |
+| PATCH | `/groups/:groupId/members/:userId` | Change a member's role | admin/moderator |
+| DELETE | `/groups/:groupId/members/:userId` | Remove a member | admin/moderator |
+| GET | `/groups/:groupId/join-requests` | List pending join requests | admin/moderator |
+| PATCH | `/groups/:groupId/join-requests/:requestId` | Approve/reject a join request | admin/moderator |
+| DELETE | `/groups/:groupId/join-requests/me` | Cancel my own join request | required |
+| GET | `/groups/:groupId/posts` | Group's posts | required |
+| GET | `/groups/:groupId/events` | Group's events | required |
+| GET | `/groups/:groupId/collaborations` | Group's collaboration items | required |
+| POST | `/groups/:groupId/invitations` | Invite a user to the group | required |
+| GET | `/groups/:groupId/resources` | List resources | required |
+| POST | `/groups/:groupId/resources` | Add a resource (file link) | required |
+| DELETE | `/groups/:groupId/resources/:resourceId` | Delete a resource | required |
+| PATCH | `/groups/:groupId/resources/:resourceId/track` | Record a resource view | required |
+| PATCH | `/groups/:groupId/pinned` | Set pinned announcement/post | admin/moderator |
+| PATCH | `/groups/:groupId/rules` | Set group rules | admin/moderator |
+| GET | `/groups/:groupId/stats` | Analytics stats | required |
+| GET | `/groups/:groupId/study-sessions` | List study sessions | required |
+| POST | `/groups/:groupId/study-sessions` | Create a study session | required |
+| DELETE | `/groups/:groupId/study-sessions/:sessionId` | Delete a study session | creator/admin |
+| POST | `/groups/:groupId/study-sessions/:sessionId/rsvp` | RSVP to a study session | required |
+| GET | `/groups/:groupId/study-sessions/:sessionId/notes/creator` | Get session creator notes | required |
+| PUT | `/groups/:groupId/study-sessions/:sessionId/notes/creator` | Set session creator notes | creator |
+| GET | `/groups/:groupId/study-sessions/:sessionId/notes/creator/upload-url` | Presign upload URL for creator notes attachment | creator |
+| GET | `/groups/:groupId/study-sessions/:sessionId/notes/private` | Get my private session notes | required |
+| PUT | `/groups/:groupId/study-sessions/:sessionId/notes/private` | Set my private session notes | required |
+| GET | `/groups/:groupId/study-sessions/:sessionId/notes/private/upload-url` | Presign upload URL for private notes attachment | required |
+| GET | `/groups/:groupId/flashcard-decks` | List flashcard decks | required, `requireAcademicGroup` |
+| POST | `/groups/:groupId/flashcard-decks` | Create a flashcard deck | required, `requireAcademicGroup` |
+| PATCH | `/groups/:groupId/flashcard-decks/:deckId` | Update a deck | required, `requireAcademicGroup` |
+| DELETE | `/groups/:groupId/flashcard-decks/:deckId` | Delete a deck | required, `requireAcademicGroup` |
+| GET | `/groups/:groupId/flashcard-decks/:deckId/cards` | List cards in a deck | required, `requireAcademicGroup` |
+| POST | `/groups/:groupId/flashcard-decks/:deckId/cards` | Create a card in a deck | required, `requireAcademicGroup` |
+| GET | `/groups/:groupId/flashcard-decks/:deckId/review` | Get spaced-repetition review queue | required, `requireAcademicGroup` |
+| PATCH | `/groups/:groupId/flashcards/:cardId` | Update a card | required, `requireAcademicGroup` |
+| DELETE | `/groups/:groupId/flashcards/:cardId` | Delete a card | required, `requireAcademicGroup` |
+| POST | `/groups/:groupId/flashcards/:cardId/review` | Submit a review (SM-2 style) | required, `requireAcademicGroup` |
+| GET | `/groups/:groupId/shared-notes` | List shared notes | required |
+| POST | `/groups/:groupId/shared-notes` | Create a shared note | required |
+| PATCH | `/groups/:groupId/shared-notes/:noteId` | Update a shared note | author/admin |
+| DELETE | `/groups/:groupId/shared-notes/:noteId` | Delete a shared note | author/admin |
+| POST | `/groups/:groupId/shared-notes/upload-url` | Presign upload URL for a shared note attachment | required |
+| GET | `/groups/:groupId/ai-settings` | Get AI-content settings (academic groups only) | required |
+| PATCH | `/groups/:groupId/ai-settings` | Update AI-content settings | admin/moderator |
+| GET | `/groups/:groupId/ai-settings/pending` | List pending AI-generated content for review | admin/moderator |
+| POST | `/groups/:groupId/ai-settings/pending/:contentId/approve` | Approve pending AI content | admin/moderator |
+| DELETE | `/groups/:groupId/ai-settings/pending/:contentId` | Discard pending AI content | admin/moderator |
 
-**Group object:**
-```json
-{
-  "id": "uuid",
-  "name": "CSE Batch 2022",
-  "description": "...",
-  "type": "batch",
-  "avatarUrl": "...",
-  "isPrivate": false,
-  "memberCount": 87,
-  "myRole": "member"
-}
-```
+### Academic sub-router (mounted with `mergeParams` under `/api/v1/groups`)
+Course-management endpoints for academic groups. All under `/groups/:groupId/...`, all require auth.
 
-### `POST /groups`
-Any authenticated user.
-```json
-// body
-{ "name": "...", "description": "...", "type": "club", "isPrivate": false }
-```
-
-### `GET /groups/:id` · `PATCH /groups/:id` · `DELETE /groups/:id`
-PATCH/DELETE: owner or admin only.
-
-### `POST /groups/:id/join` · `DELETE /groups/:id/leave`
-
-### `GET /groups/:id/members`
-Returns members with their roles.
-
-### `PATCH /groups/:id/members/:userId`
-Group owner / group admin only.
-```json
-// body
-{ "role": "admin" }  // admin | moderator | member
-```
-
----
-
-## Conversations & Messages
-
-### `GET /conversations`
-Lists all conversations for the authenticated user, ordered by last message.
-
-**Conversation object:**
-```json
-{
-  "id": "uuid",
-  "name": null,
-  "isGroup": false,
-  "participants": [{ "id": "uuid", "fullName": "...", "profile": {...}, "isOnline": true }],
-  "lastMessage": { "content": "Let's meet tomorrow", "sentAt": "...", "senderId": "uuid" },
-  "unreadCount": 2
-}
-```
-
-### `POST /conversations`
-Start a new DM or group chat.
-```json
-// body
-{ "participantIds": ["uuid", "uuid"], "name": null }
-// Response 201 → Conversation object (or existing DM if already exists)
-```
-
-### `GET /conversations/:id`
-
-### `GET /conversations/:id/messages`
-Supports `?before=messageId` for cursor-based pagination (newest first).
-
-**Message object:**
-```json
-{
-  "id": "uuid",
-  "content": "Hey, are you available?",
-  "mediaUrls": [],
-  "type": "text",
-  "sender": { "id": "uuid", "fullName": "...", "profile": {...} },
-  "replyTo": null,
-  "isDeleted": false,
-  "createdAt": "2026-05-11T10:32:00Z"
-}
-```
-
-### `POST /conversations/:id/messages`
-```json
-// body
-{ "content": "...", "mediaUrls": [], "replyToId": null }
-// response 201 → Message object
-// Also emits socket event to conv:{conversationId} room
-```
-
-### `DELETE /conversations/:id/messages/:messageId`
-Sets `isDeleted = true`. Content replaced with "Message deleted" on client.
-
-### `POST /conversations/:id/read`
-Mark all messages as read up to now. Updates `last_read_at` in `conversation_participants`.
+| Method | Path | Description |
+|---|---|---|
+| GET | `/groups/:groupId/course-outline` | Get course outline |
+| POST | `/groups/:groupId/course-outline` | Create course outline |
+| PUT | `/groups/:groupId/course-outline` | Replace course outline |
+| PATCH | `/groups/:groupId/course-outline/assessments` | Update assessment weights |
+| PATCH | `/groups/:groupId/course-outline/topics` | Update topic list |
+| GET | `/groups/:groupId/gradebook` | Get gradebook |
+| PUT | `/groups/:groupId/gradebook/entries` | Upsert gradebook entries |
+| GET | `/groups/:groupId/gradebook/me` | My grade card |
+| GET | `/groups/:groupId/gradebook/students/:studentId` | A specific student's grade card |
+| GET | `/groups/:groupId/modules` | List modules |
+| POST | `/groups/:groupId/modules` | Create a module |
+| PATCH | `/groups/:groupId/modules/reorder` | Reorder modules |
+| PATCH | `/groups/:groupId/modules/:moduleId` | Update a module |
+| DELETE | `/groups/:groupId/modules/:moduleId` | Delete a module |
+| PATCH | `/groups/:groupId/modules/:moduleId/publish` | Publish a module |
+| GET | `/groups/:groupId/assignments` | List assignments |
+| POST | `/groups/:groupId/assignments` | Create an assignment |
+| POST | `/groups/:groupId/assignments/upload-url` | Presign upload URL for assignment attachment |
+| GET | `/groups/:groupId/assignments/:assignmentId` | Get an assignment |
+| PATCH | `/groups/:groupId/assignments/:assignmentId` | Update an assignment |
+| DELETE | `/groups/:groupId/assignments/:assignmentId` | Delete an assignment |
+| GET | `/groups/:groupId/assignments/:assignmentId/submissions` | List submissions |
+| POST | `/groups/:groupId/assignments/:assignmentId/submit` | Submit an assignment |
+| POST | `/groups/:groupId/assignments/:assignmentId/submissions/upload-url` | Presign upload URL for a submission |
+| PATCH | `/groups/:groupId/assignments/:assignmentId/submissions/:submissionId/grade` | Grade a submission |
 
 ---
 
-## Notifications
+## Conversations & Messages (mounted at `/api/v1/conversations`, module dir `messages`)
+All routes require auth.
 
-### `GET /notifications`
-Supports `?isRead=false` to filter unread.
-```json
-{
-  "data": {
-    "items": [{
-      "id": "uuid",
-      "type": "like",
-      "content": "Saem liked your post",
-      "actor": { "id": "uuid", "fullName": "Saem Ferdous", "profile": {...} },
-      "referenceId": "post-uuid",
-      "referenceType": "post",
-      "isRead": false,
-      "createdAt": "..."
-    }],
-    "unreadCount": 7
-  }
-}
-```
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/conversations/` | List my conversations | required |
+| POST | `/conversations/` | Start a new DM/group chat (rate limited) | required |
+| GET | `/conversations/:convId` | Get a conversation | required |
+| PATCH | `/conversations/:convId` | Update conversation (rename group, etc.) | required |
+| DELETE | `/conversations/:convId/leave` | Leave a conversation | required |
+| GET | `/conversations/:convId/messages` | List messages (cursor pagination) | required |
+| POST | `/conversations/:convId/messages` | Send a message | required |
+| PATCH | `/conversations/:convId/messages/:msgId` | Edit own message | required |
+| DELETE | `/conversations/:convId/messages/:msgId` | Delete own message | required |
+| POST | `/conversations/:convId/messages/:msgId/reactions` | React to a message (rate limited) | required |
+| DELETE | `/conversations/:convId/messages/:msgId/reactions` | Remove message reaction | required |
+| POST | `/conversations/:convId/read` | Mark conversation read | required |
 
-### `PATCH /notifications/:id/read`
-### `POST /notifications/read-all`
+`conversations.type` discriminates `direct` / `group` / `mentorship` (auto-created on mentorship-request acceptance).
 
 ---
 
-## News
+## Moderation (`/api/v1/moderation`)
+All routes require auth.
 
-### `GET /news`
-Supports `?category=academic|events|campus`.
-
-### `POST /news`
-Staff / admin only.
-```json
-// body
-{ "title": "...", "body": "...", "coverUrl": "...", "category": "academic", "isPublished": true }
-```
-
-### `GET /news/:id` · `PATCH /news/:id` · `DELETE /news/:id`
-
----
-
-## Lost & Found
-
-### `GET /lost-found`
-Supports `?type=lost|found&isResolved=false`.
-
-### `POST /lost-found`
-```json
-// body
-{
-  "type": "lost",
-  "itemName": "UIU ID Card",
-  "description": "Has a blue sticker on bottom-right corner",
-  "images": ["https://s3..."],
-  "locationDetail": "Floor 4 cafeteria",
-  "contactInfo": "+880 1700 000000"
-}
-```
-
-### `PATCH /lost-found/:id/resolve`
-Sets `isResolved = true`. Owner only.
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/moderation/blocks` | List blocked users | required |
+| POST | `/moderation/block/:userId` | Block a user (rate limited) | required |
+| DELETE | `/moderation/block/:userId` | Unblock a user | required |
+| GET | `/moderation/mutes` | List muted users | required |
+| POST | `/moderation/mute/:userId` | Mute a user (rate limited) | required |
+| DELETE | `/moderation/mute/:userId` | Unmute a user | required |
+| POST | `/moderation/report` | Report content/a user (rate limited) | required |
 
 ---
 
-## Mentorship
+## Notifications (`/api/v1/notifications`)
+All routes require auth.
 
-### `GET /mentorship/requests`
-Students see their sent requests. Alumni see received requests.
-
-### `POST /mentorship/request`
-Student only.
-```json
-// body
-{ "alumniId": "uuid", "message": "I'd love advice on transitioning to product management." }
-```
-
-### `PATCH /mentorship/:id`
-Alumni updates status.
-```json
-// body
-{ "status": "accepted", "sessionNotes": "Discussed PM transition roadmap." }
-// status: accepted | declined | completed
-```
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/notifications/preferences` | Get notification preferences | required |
+| PUT | `/notifications/preferences` | Update notification preferences | required |
+| GET | `/notifications/` | List notifications | required |
+| PATCH | `/notifications/:notificationId/read` | Mark one as read | required |
+| POST | `/notifications/read-all` | Mark all as read | required |
+| DELETE | `/notifications/:notificationId` | Delete a notification | required |
+| POST | `/notifications/:notificationId/accept` | Accept a group invitation notification | required |
 
 ---
 
-## Shuttle Tracker
+## News (`/api/v1/news`)
+All routes require auth.
 
-### `GET /shuttle/routes`
-Returns all active routes with stop names and schedule.
-
-### `GET /shuttle/locations`
-Returns latest GPS location for each active route's bus.
-
-### `POST /shuttle/locations`
-Driver only — authenticated user with shuttle driver permissions.
-```json
-// body
-{ "routeId": "uuid", "lat": 23.8041, "lng": 90.4152, "speedKmh": 28.5, "headingDeg": 180.0 }
-```
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/news/` | List news items | required |
+| POST | `/news/` | Create a news item | `faculty`, `admin` |
+| GET | `/news/:newsId` | Get a news item | required |
+| PATCH | `/news/:newsId` | Update a news item | `faculty`, `admin` |
+| DELETE | `/news/:newsId` | Delete a news item | `faculty`, `admin` |
 
 ---
 
-## Badges & Gamification
+## Campus — Lost & Found, Shuttle, Courses (mounted bare at `/api/v1`, module dir `campus`)
+**No `/campus` prefix** — routes hang directly off `/api/v1`. All require auth.
 
-### `GET /badges`
-All available badges with trigger conditions and points.
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/lost-found` | List lost/found items | required |
+| POST | `/lost-found` | Report a lost/found item | required |
+| GET | `/lost-found/:itemId` | Get an item | required |
+| PATCH | `/lost-found/:itemId` | Update an item | any authenticated role (owner-checked in service) |
+| PATCH | `/lost-found/:itemId/resolve` | Mark resolved | any authenticated role (owner-checked in service) |
+| GET | `/shuttle/routes` | List shuttle routes | required |
+| POST | `/shuttle/routes` | Create a route | `faculty`, `admin` |
+| PATCH | `/shuttle/routes/:routeId` | Update a route | `faculty`, `admin` |
+| DELETE | `/shuttle/routes/:routeId` | Delete a route | `faculty`, `admin` |
+| GET | `/shuttle/locations` | Latest GPS per active route | required |
+| POST | `/shuttle/locations` | Broadcast live GPS | `driver`, `admin` |
+| GET | `/courses` | List courses | required |
+| POST | `/courses` | Create a course | `faculty`, `admin` |
+| PATCH | `/courses/:courseId` | Update a course | `faculty`, `admin` |
+| POST | `/courses/:courseId/enroll` | Enroll in a course | required |
+| GET | `/courses/my` | My enrolled courses | required |
 
-### `GET /users/:id/badges`
-Earned badges for a user.
-
----
-
-## Upload
-
-### `POST /upload/presign`
-Returns a presigned S3 PUT URL. See [Architecture — File Upload Flow](architecture.md#file-upload-flow).
-```json
-// body
-{ "fileName": "avatar.jpg", "fileType": "image/jpeg", "folder": "avatars" }
-
-// response 200
-{
-  "data": {
-    "uploadUrl": "https://s3.amazonaws.com/...?X-Amz-Signature=...",
-    "publicUrl": "https://cdn.uniconnect.app/avatars/uuid.jpg",
-    "expiresIn": 300
-  }
-}
-```
+Shuttle routes carry client-side estimation params (`est_duration_min`, `cycle_minutes`) so the browser can interpolate a bus along the route between GPS pings.
 
 ---
 
-## Admin
+## Mentorship (`/api/v1/mentorship`)
+Points economy (`POINTS_PER_SESSION = 10`, `POINTS_PER_USD = 100`), gift-card redemption, Bull lifecycle jobs (48h reminder, 7d auto-expiry). All routes require auth.
 
-All admin routes require `role: admin`.
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/mentorship/alumni` | List alumni open to mentoring | required |
+| POST | `/mentorship/requests` | Create a mentorship request | `student` |
+| GET | `/mentorship/requests/mine` | My sent requests | `student` |
+| GET | `/mentorship/requests/incoming` | Requests received | `alumni`, `admin` |
+| PATCH | `/mentorship/requests/:id` | Accept/decline/update a request (status transitions; accepting auto-creates a `mentorship` conversation) | `alumni`, `admin` |
+| DELETE | `/mentorship/requests/:id` | Withdraw a request | `student` |
+| GET | `/mentorship/requests/:id/sessions` | List sessions on a request | required (either party) |
+| POST | `/mentorship/requests/:id/sessions` | Create a session (date/duration/topic/notes) | required |
+| PATCH | `/mentorship/requests/:id/sessions/:sid` | Update a session | required (either party) |
+| DELETE | `/mentorship/requests/:id/sessions/:sid` | Delete a session | required (either party) |
+| GET | `/mentorship/requests/:id/feedback` | Get feedback for a request | required |
+| POST | `/mentorship/requests/:id/feedback` | Submit feedback | required |
+| GET | `/mentorship/rewards/me` | My points/rewards | `alumni` |
+| GET | `/mentorship/gift-cards` | List redeemable gift cards | required |
+| POST | `/mentorship/redeem` | Redeem points for a gift card | `alumni` |
 
-### `GET /admin/users`
-Paginated user list with filters: `?role=student&isActive=true&search=joydip`.
+Note: the actual routes differ from a naive guess — creation/list are `/requests`, `/requests/mine`, `/requests/incoming` (not a single `/requests` shared by both roles), and gift-card redemption is `POST /mentorship/redeem` (not `POST /gift-cards`).
 
-### `PATCH /admin/users/:id`
-```json
-// body
-{ "isActive": false, "role": "staff" }
-```
-
-### `GET /admin/stats`
-```json
-{
-  "data": {
-    "totalUsers": 1420, "activeToday": 234,
-    "postsThisWeek": 312, "jobsActive": 18,
-    "eventsUpcoming": 4, "reportsPending": 2
-  }
-}
-```
-
-### `PATCH /admin/settings`
-Updates `university_settings` for the tenant.
-```json
-// body
-{ "primaryColor": "#1a56db", "allowAlumniJobs": true, "allowPublicFeed": false }
-```
-
-### `GET /admin/reports`
-Content moderation queue. Supports `?status=pending`.
-
-### `PATCH /admin/reports/:id`
-```json
-// body
-{ "status": "resolved" }  // reviewed | resolved | dismissed
-```
+Alumni capacity is enforced via `max_mentees` on `profiles` (default 3) at accept time.
 
 ---
 
-## Search
+## Presence (`/api/v1/presence`)
+Tracked in Redis, not Postgres. All routes require auth.
 
-### `GET /search`
-```
-?q=joydip&type=users|posts|jobs|events|groups
-```
-Returns up to 5 results per type (or 20 if type is specified). All results scoped to the authenticated user's university.
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/presence/?userIds=...` | Online status for a set of users (respects each user's privacy tier) | required |
+| GET | `/presence/online` | Online connections | required |
+
+---
+
+## Push (`/api/v1/push`)
+Web Push (VAPID) subscriptions. All routes require auth.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| POST | `/push/subscribe` | Register a push subscription | required |
+| DELETE | `/push/subscribe` | Remove a push subscription | required |
+
+Delivery is enqueued on the `push` Bull queue and sent by the `push` worker.
+
+---
+
+## Drafts (mounted at `/api/v1/me/drafts`, module dir `drafts`)
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/me/drafts/` | Own unpublished drafts unified across posts, jobs, news, events | required |
+
+---
+
+## Explore (`/api/v1/explore`)
+All routes require auth.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/explore/discovery` | Discovery feed (mixed content) | required |
+| GET | `/explore/tags/:tag` | Posts by hashtag/tag | required |
+
+---
+
+## Search (`/api/v1/search`)
+Rate limited (`searchLimiter`). All routes require auth.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/search/` | Search across all types (`?q=`) | required |
+| GET | `/search/people` | Search people | required |
+| GET | `/search/posts` | Search posts | required |
+| GET | `/search/jobs` | Search jobs | required |
+| GET | `/search/events` | Search events | required |
+| GET | `/search/groups` | Search groups | required |
+
+Backed by Postgres generated `search_vector` columns (GIN-indexed) with `pg_trgm` fuzzy fallback.
+
+---
+
+## Upload (`/api/v1/upload`)
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/upload/presign` | Get a presigned S3/R2 PUT URL (query params define file type/folder) | required (rate limited) |
+
+File bytes never pass through the API server — the client PUTs directly to S3/R2 after presigning.
+
+---
+
+## Learning (`/api/v1/learning`)
+Gamified micro-learning paths. All routes require auth.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/learning/paths` | List learning paths | required |
+| GET | `/learning/paths/:pathId` | Get a path | required |
+| POST | `/learning/paths/:pathId/enroll` | Enroll in a path | required |
+| POST | `/learning/paths/:pathId/abandon` | Abandon a path | required |
+| GET | `/learning/me/today` | Today's unit/assignment | required |
+| GET | `/learning/me/stats` | My learning stats | required |
+| POST | `/learning/units/:unitId/complete` | Mark a unit complete | required |
+| GET | `/learning/me/badges` | My earned badges | required |
+| PUT | `/learning/me/badges/showcase` | Set showcased badge(s) | required |
+| GET | `/learning/users/:userId/badges` | A user's earned badges | required |
+
+---
+
+## Learning Admin (mounted at `/api/v1/admin/learning`, module dir `learning-admin`, admin only)
+Mirrors the `content-sync` admin pattern for AI-generated learning content.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/admin/learning/config` | Get learning-admin config | `admin` |
+| PATCH | `/admin/learning/config` | Update config | `admin` |
+| GET | `/admin/learning/pending-paths` | List AI-generated paths pending review | `admin` |
+| POST | `/admin/learning/pending-paths/:id/approve` | Approve a pending path | `admin` |
+| POST | `/admin/learning/pending-paths/:id/discard` | Discard a pending path | `admin` |
+| GET | `/admin/learning/pending-quiz` | List AI-generated quiz batches pending review | `admin` |
+| POST | `/admin/learning/pending-quiz/:id/approve` | Approve a quiz batch | `admin` |
+| POST | `/admin/learning/pending-quiz/:id/discard` | Discard a quiz batch | `admin` |
+| POST | `/admin/learning/generate` | Trigger on-demand AI generation | `admin` |
+
+---
+
+## Quiz (`/api/v1/quiz`)
+Daily quiz slot + leaderboard. All routes require auth.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/quiz/today` | Today's quiz slot | required |
+| GET | `/quiz/today/leaderboard` | Today's leaderboard | required |
+| POST | `/quiz/today/:slotId/attempt` | Submit answers for today's slot | required |
+| GET | `/quiz/me/history` | My quiz history | required |
+
+---
+
+## Klipy (`/api/v1/klipy`)
+GIF/sticker media search (Klipy provider). All routes require auth.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/klipy/:media/trending` | Trending items for a media type (`gifs`\|`stickers`\|`clips`) | required |
+| GET | `/klipy/:media/search` | Search items | required |
+| GET | `/klipy/:media/categories` | List categories | required |
+| POST | `/klipy/:media/share/:slug` | Record a share event | required |
+
+---
+
+## Admin (`/api/v1/admin`)
+Requires `faculty` or `admin` role on every route; several sub-routes additionally require `admin` only (marked below). Admin actions are recorded in `university_audit_log`.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/admin/stats` | Dashboard stats | `admin` only |
+| GET | `/admin/users` | Paginated user list | `faculty`/`admin` |
+| PATCH | `/admin/users/:userId/role` | Change a user's role | `admin` only |
+| PATCH | `/admin/users/:userId/status` | Activate/suspend a user | `admin` only |
+| DELETE | `/admin/users/:userId` | Delete a user | `admin` only |
+| POST | `/admin/users/driver` | Create a `driver`-role user | `admin` only |
+| GET | `/admin/reports` | Content-report queue | `faculty`/`admin` |
+| PATCH | `/admin/reports/:reportId` | Resolve a report | `faculty`/`admin` |
+| GET | `/admin/deletion-requests` | List account-deletion requests | `faculty`/`admin` |
+| PATCH | `/admin/deletion-requests/:requestId` | Approve/reject a deletion request | `admin` only |
+| POST | `/admin/invitations/bulk` | Bulk-create invitations | `admin` only |
+| POST | `/admin/invitations` | Create an invitation | `faculty`/`admin` |
+| GET | `/admin/invitations` | List invitations | `faculty`/`admin` |
+| DELETE | `/admin/invitations/:invitationId` | Delete an invitation | `admin` only |
+| GET | `/admin/university/domains` | List allowed email domains | `admin` only |
+| PATCH | `/admin/university/domains` | Update allowed email domains | `admin` only |
+| GET | `/admin/content/:kind` | List content by kind (`post`\|`job`\|`event`\|`news`\|etc.) with filters | `faculty`/`admin` |
+| DELETE | `/admin/content/:kind/:id` | Delete a content item | `faculty`/`admin` |
+| PATCH | `/admin/content/:kind/:id/pin` | Toggle pin | `faculty`/`admin` |
+| PATCH | `/admin/content/:kind/:id/publish` | Toggle publish | `faculty`/`admin` |
+| PATCH | `/admin/content/:kind/:id/active` | Toggle active | `faculty`/`admin` |
+| GET | `/admin/mentorship/mentors` | List alumni mentors (paginated) | `faculty`/`admin` |
+| GET | `/admin/mentorship/mentors/:alumniId` | A mentor's request history | `faculty`/`admin` |
+| GET | `/admin/mentorship/redemptions` | List gift-card redemptions | `admin` only |
+| PATCH | `/admin/mentorship/redemptions/:redemptionId` | Fulfill/update a redemption | `admin` only |
+
+---
+
+## Content Sync (mounted at `/api/v1/admin/content-sync`, module dir `content-sync`, admin only)
+Imports external university news/notices/events via WordPress REST API with a Skyvern browser-automation fallback.
+
+| Method | Path | Description | Auth |
+|---|---|---|---|
+| GET | `/admin/content-sync/config` | Get sync config | `admin` |
+| PATCH | `/admin/content-sync/config` | Update sync config | `admin` |
+| POST | `/admin/content-sync/run` | Enqueue a sync run on the `content-sync` queue | `admin` |
+| GET | `/admin/content-sync/pending` | Imported-but-unpublished items for review | `admin` |
+| GET | `/admin/content-sync/runs` | Run history (`content_sync_runs`) | `admin` |
 
 ---
 
@@ -646,8 +621,9 @@ Returns up to 5 results per type (or 20 if type is specified). All results scope
 
 | Route group | Limit |
 |-------------|-------|
-| `/auth/login` | 10 req / 15 min per IP |
-| `/auth/register` | 5 req / hour per IP |
-| `/upload/presign` | 30 req / hour per user |
-| General API | 300 req / min per user |
-| Search | 60 req / min per user |
+| `/auth/login` | 10 req / min per IP |
+| `/auth/*` OTP routes (verify/resend/reset) | 12 req / min per IP |
+| `/upload/presign` | rate limited via `uploadLimiter` |
+| `/search/*` | rate limited via `searchLimiter` |
+| Post/comment/share/connection-request/message-reaction/block/mute/report writes | rate limited via `writeLimiter` |
+| General API | `globalLimiter` applied to all of `/api/v1` |

@@ -10,7 +10,7 @@ import { db } from '../config/db'
 import { contentSyncQueue, type ContentSyncJob } from '../queues/content-sync.queue'
 import { notificationQueue } from '../queues/notification.queue'
 import { contentSyncService } from '../modules/content-sync'
-import { fetchContentItems } from '../services/content-source.service'
+import { fetchContentItems, fetchWordPressItemByUrl } from '../services/content-source.service'
 import { buildPublicUrl, createUploadKey, s3Client, sanitizeFileName } from '../services/upload.service'
 import { env } from '../config/env'
 import { getIo } from '../socket'
@@ -22,6 +22,7 @@ contentSyncQueue.process(3, async (job) => {
   const data = job.data
   if (data.kind === 'sync-run') return runSync(data)
   if (data.kind === 'attachment-download') return downloadAttachment(data)
+  if (data.kind === 'attachment-backfill') return backfillAttachments(data)
 })
 
 contentSyncQueue.on('failed', (job, error) => {
@@ -96,6 +97,81 @@ async function runSync(job: Extract<ContentSyncJob, { kind: 'sync-run' }>) {
     logger.error('Content sync failed', { universityId, runId, error: message })
     throw error
   }
+}
+
+// ---------------------------------------------------------------------------
+// attachment-backfill
+// ---------------------------------------------------------------------------
+
+/**
+ * Heals attachments for already-imported news/events that `runSync` can never reach
+ * again — entries that have scrolled past the source's recency window so they no
+ * longer appear in a normal (or even backfill-widened) listing scrape. Looks each
+ * one up directly by its own source URL via WordPress's `?slug=` endpoint, independent
+ * of feed position. Also retries any attachment stuck in `failed` from a prior download.
+ */
+async function backfillAttachments(job: Extract<ContentSyncJob, { kind: 'attachment-backfill' }>) {
+  const { universityId } = job
+  const config = await contentSyncService.getConfig(universityId)
+
+  const [newsRows, eventRows] = await Promise.all([
+    db('news')
+      .where({ university_id: universityId, is_imported: true })
+      .whereNotNull('source_url')
+      .select<{ id: string; source_url: string; category: string }[]>('id', 'source_url', 'category'),
+    db('events')
+      .where({ university_id: universityId, is_imported: true })
+      .whereNotNull('source_url')
+      .select<{ id: string; source_url: string }[]>('id', 'source_url'),
+  ])
+
+  const doneEntityIds = new Set(
+    await db('content_attachments')
+      .where({ university_id: universityId, download_status: 'done' })
+      .pluck<string[]>('entity_id'),
+  )
+
+  let healed = 0
+  for (const row of newsRows) {
+    if (doneEntityIds.has(row.id)) continue
+    const isNotice = row.category === 'notice'
+    const listUrl = isNotice ? config.noticeUrl : config.newsUrl
+    if (!listUrl) continue
+    const raw = await fetchWordPressItemByUrl(isNotice ? 'notice' : 'news', listUrl, row.source_url)
+    const parsed = raw && skyvernItemSchema.safeParse(raw)
+    if (parsed && parsed.success && parsed.data.attachments.length > 0) {
+      await enqueueAttachments(universityId, 'news', row.id, parsed.data)
+      healed += 1
+    }
+  }
+  for (const row of eventRows) {
+    if (doneEntityIds.has(row.id)) continue
+    if (!config.eventUrl) continue
+    const raw = await fetchWordPressItemByUrl('event', config.eventUrl, row.source_url)
+    const parsed = raw && skyvernItemSchema.safeParse(raw)
+    if (parsed && parsed.success && parsed.data.attachments.length > 0) {
+      await enqueueAttachments(universityId, 'event', row.id, parsed.data)
+      healed += 1
+    }
+  }
+
+  // Retry attachments that failed to download previously (e.g. transient fetch/S3 error).
+  const failed = await db('content_attachments')
+    .where({ university_id: universityId, download_status: 'failed' })
+    .select<{ id: string }[]>('id')
+  for (const row of failed) {
+    await db('content_attachments').where({ id: row.id }).update({ download_status: 'pending' })
+    await contentSyncQueue.add(
+      { kind: 'attachment-download', attachmentId: row.id, universityId },
+      { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+    )
+  }
+
+  logger.info('Attachment backfill finished', {
+    universityId,
+    entitiesHealed: healed,
+    failedRetried: failed.length,
+  })
 }
 
 type ImportedEntityRef = { entityType: 'news' | 'event'; entityId: string }

@@ -21,6 +21,11 @@ export const listPendingPaths = asyncHandler(async (req: Request, res: Response)
   sendSuccess(res, await learningAdminService.listPendingPaths(universityId))
 })
 
+export const getPendingPathDetail = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.getPendingPathDetail(universityId, req.params.id as string))
+})
+
 export const approvePath = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
   await learningAdminService.approvePath(universityId, req.params.id as string)
@@ -36,6 +41,11 @@ export const discardPath = asyncHandler(async (req: Request, res: Response) => {
 export const listPendingQuizBatches = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
   sendSuccess(res, await learningAdminService.listPendingQuizBatches(universityId))
+})
+
+export const getPendingQuizDetail = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.getPendingQuizDetail(universityId, req.params.id as string))
 })
 
 export const approveQuizBatch = asyncHandler(async (req: Request, res: Response) => {

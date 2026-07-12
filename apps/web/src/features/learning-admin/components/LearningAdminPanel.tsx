@@ -14,6 +14,8 @@ import {
   useApproveQuizBatch,
   useDiscardQuizBatch,
 } from '../hooks/useLearningAdmin'
+import { PendingPathPreviewModal } from './PendingPathPreviewModal'
+import { PendingQuizPreviewModal } from './PendingQuizPreviewModal'
 import { formatDistanceToNow } from 'date-fns'
 
 const card: React.CSSProperties = {
@@ -70,6 +72,8 @@ export function LearningAdminPanel() {
 
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewPathId, setPreviewPathId] = useState<string | null>(null)
+  const [previewQuizBatchId, setPreviewQuizBatchId] = useState<string | null>(null)
 
   useEffect(() => {
     if (config) {
@@ -461,6 +465,14 @@ export function LearningAdminPanel() {
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <button
                     type="button"
+                    onClick={() => setPreviewPathId(item.id)}
+                    className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-1"
+                    style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
+                  >
+                    Review
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => approvePath.mutate(item.id)}
                     disabled={approvePath.isPending}
                     className="rounded-[var(--r-pill)] px-4 py-1"
@@ -522,6 +534,14 @@ export function LearningAdminPanel() {
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                     <button
                       type="button"
+                      onClick={() => setPreviewQuizBatchId(item.id)}
+                      className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-1"
+                      style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
+                    >
+                      Review
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => approveQuizBatch.mutate(item.id)}
                       disabled={approveQuizBatch.isPending}
                       className="rounded-[var(--r-pill)] px-4 py-1"
@@ -545,6 +565,17 @@ export function LearningAdminPanel() {
           )}
         </div>
       )}
+
+      <PendingPathPreviewModal
+        pathId={previewPathId}
+        open={previewPathId !== null}
+        onClose={() => setPreviewPathId(null)}
+      />
+      <PendingQuizPreviewModal
+        batchId={previewQuizBatchId}
+        open={previewQuizBatchId !== null}
+        onClose={() => setPreviewQuizBatchId(null)}
+      />
     </div>
   )
 }

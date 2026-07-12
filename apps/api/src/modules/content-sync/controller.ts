@@ -23,6 +23,12 @@ export const triggerRun = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await contentSyncService.triggerRun(universityId, userId, { backfill }), 202)
 })
 
+export const backfillAttachments = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await contentSyncService.backfillAttachments(universityId)
+  sendSuccess(res, { queued: true }, 202)
+})
+
 export const listPendingImported = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
   sendSuccess(res, await contentSyncService.listPendingImported(universityId))

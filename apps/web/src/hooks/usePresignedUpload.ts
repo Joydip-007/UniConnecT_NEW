@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { api } from '@/lib/axios'
+import { normalizeImageForUpload } from '@/lib/normalizeImage'
 
 interface PresignResponse {
   uploadUrl: string
@@ -17,15 +18,16 @@ export function usePresignedUpload(folder: string) {
       setUploading(true)
       setError(null)
       try {
+        const uploadFile = await normalizeImageForUpload(file)
         const { data } = await api.get<{ data: PresignResponse }>('/upload/presign', {
-          params: { filename: file.name, contentType: file.type, folder },
+          params: { filename: uploadFile.name, contentType: uploadFile.type, folder },
         })
         const { uploadUrl, publicUrl } = data.data
 
         const s3Res = await fetch(uploadUrl, {
           method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type },
+          body: uploadFile,
+          headers: { 'Content-Type': uploadFile.type },
         })
         if (!s3Res.ok) throw new Error(`S3 upload failed: ${s3Res.status}`)
 

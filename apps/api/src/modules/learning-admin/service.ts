@@ -111,6 +111,17 @@ export class LearningAdminService {
     return db('skill_paths').where({ university_id: universityId, source: 'ai', is_published: false })
   }
 
+  /** Full path + ordered units, for the admin review-before-publish preview. */
+  async getPendingPathDetail(universityId: string, pathId: string) {
+    const path = await db('skill_paths')
+      .where({ id: pathId, university_id: universityId, source: 'ai', is_published: false })
+      .first()
+    if (!path) throw notFound()
+
+    const units = await db('skill_path_units').where('path_id', pathId).orderBy('display_order', 'asc')
+    return { ...path, units }
+  }
+
   async approvePath(universityId: string, pathId: string): Promise<void> {
     const count = await db('skill_paths')
       .where({ id: pathId, university_id: universityId, source: 'ai', is_published: false })
@@ -132,6 +143,16 @@ export class LearningAdminService {
     const config = await this.getConfig(universityId)
     if (!config.quizRequireApproval) return []
     return db('ai_quiz_pool').where({ university_id: universityId }).whereNull('is_approved')
+  }
+
+  /** Full quiz batch including its generated questions, for the admin review-before-publish preview. */
+  async getPendingQuizDetail(universityId: string, batchId: string) {
+    const batch = await db('ai_quiz_pool')
+      .where({ id: batchId, university_id: universityId })
+      .whereNull('is_approved')
+      .first()
+    if (!batch) throw notFound()
+    return batch
   }
 
   async approveQuizBatch(universityId: string, batchId: string): Promise<void> {

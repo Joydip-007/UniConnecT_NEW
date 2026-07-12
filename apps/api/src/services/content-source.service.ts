@@ -212,6 +212,62 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * Fetches a single already-imported item by its own source URL, independent of the
+ * source's recency window — WordPress's REST API supports `?slug=` lookups regardless
+ * of where the post now sits in the feed. Used to heal attachments for entities that
+ * have scrolled past `entriesPerSource` and so never reappear in a normal/backfill run.
+ * Returns null if the source isn't WordPress, the slug can't be resolved, or the post
+ * is gone.
+ */
+export async function fetchWordPressItemByUrl(
+  source: ContentSyncSource,
+  listUrl: string,
+  sourceUrl: string,
+  timeoutMs = DEFAULT_HTTP_TIMEOUT_MS,
+): Promise<RawItem | null> {
+  let origin: string
+  let postType: string
+  let slug: string
+  try {
+    const parsedList = new URL(listUrl)
+    origin = parsedList.origin
+    postType = parsedList.pathname.split('/').filter(Boolean).pop() ?? ''
+    const parsedSource = new URL(sourceUrl)
+    slug = parsedSource.pathname.split('/').filter(Boolean).pop() ?? ''
+  } catch {
+    return null
+  }
+  if (!postType || !slug) return null
+
+  const endpoint = `${origin}/wp-json/wp/v2/${encodeURIComponent(postType)}?slug=${encodeURIComponent(slug)}&_embed=1`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(endpoint, {
+      signal: controller.signal,
+      headers: {
+        'user-agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        accept: 'application/json',
+      },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!Array.isArray(data) || data.length === 0) return null
+    return mapWordPressItem(source, data[0] as RawItem)
+  } catch (error) {
+    logger.warn('Single-item WordPress lookup failed', {
+      source,
+      sourceUrl,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** Newest-first by published date (events fall back to their start date). Undated items sort last. */
 function sortByDateDesc(items: RawItem[]): RawItem[] {
   return [...items].sort((a, b) => itemDateMs(b) - itemDateMs(a))
