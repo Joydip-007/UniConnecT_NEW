@@ -1,0 +1,30 @@
+{
+  "projectId": "6005a296-b3bf-4965-bbcf-230e9d7e8387",
+  "pkg": "web",
+  "globalName": "UniConnecT",
+  "shape": "package",
+  "srcDir": "src/components",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".ds-compiled/tailwind-compiled.css",
+  "componentSrcMap": {
+    "RootErrorBoundary": null
+  },
+  "overrides": {
+    "Modal": {"cardMode": "single", "viewport": "600x400"},
+    "FeedLayout": {"cardMode": "column"},
+    "MobileBottomNav": {"cardMode": "single", "viewport": "390x800"},
+    "Drawer": {"cardMode": "single", "viewport": "600x500"},
+    "ShareMenu": {"cardMode": "single", "viewport": "500x400"},
+    "EmptyState": {"cardMode": "column"},
+    "ImageLightbox": {"cardMode": "single", "viewport": "760x500"}
+  },
+  "extraEntries": ["react-router-dom", "@tanstack/react-query", "./src/ds-query-client.ts"],
+  "provider": {
+    "component": "MemoryRouter",
+    "inner": {"component": "QueryClientProvider", "props": {"client": {"$ref": "dsQueryClient"}}}
+  },
+  "readmeHeader": ".design-sync/conventions.md",
+  "libOverrides": {
+    "bundle.mjs": "tsconfigPathsPlugin extension probe checked bare directory match before /index.ts; existsSync() is true for dirs too, so @/-alias directory imports resolved to the directory instead of its index file"
+  }
+}

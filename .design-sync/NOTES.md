@@ -1,0 +1,55 @@
+# design-sync notes for UniConnecT
+
+## Repo shape
+- `apps/web` is the app itself (Vite SPA), not a standalone component library — no `dist`/`main`/`module` entry, no Storybook. The converter runs in **synth-entry mode** against `apps/web/src/components/**`.
+- `pkg: "web"` is a monorepo-local package name that never gets self-installed under `node_modules/web`. A symlink at `apps/web/node_modules/web -> ..` stands in for it so `PKG_DIR` resolution works without `--entry` (passing `--entry` gets reused as the literal JS entry point, not just for locating `package.json` — don't do that here). Recreate the symlink on a fresh clone: `ln -sfn .. apps/web/node_modules/web`.
+- `srcDir`/`tsconfig`/`componentSrcMap` paths in config.json are **PKG_DIR-relative** (i.e. relative to `apps/web`), not repo-root-relative — `cfgPath()` resolves via `resolve(PKG_DIR, rel)`.
+
+## Styling — Tailwind, not shipped as static CSS
+- Components use Tailwind utility classes with arbitrary `var(--token)` values (e.g. `rounded-[var(--r-pill)]`) — these only exist as real CSS after a Tailwind build, not from copying `tokens.css` alone.
+- `cssEntry` points at `apps/web/.ds-compiled/tailwind-compiled.css`, a copy of the hashed `dist/assets/index-*.css` Vite produces. **Before every design-sync build, regenerate it:**
+  ```sh
+  cd apps/web && npx vite build && cp dist/assets/index-*.css .ds-compiled/tailwind-compiled.css
+  ```
+  The hash changes every build — always re-copy to the stable filename `cssEntry` points at. `apps/web/dist/` and `apps/web/.ds-compiled/` are gitignored (build artifacts).
+
+## Fixed via `.design-sync/overrides/bundle.mjs`
+- `tsconfigPathsPlugin`'s extension-probe order tried the bare directory match (`''`) before `/index.ts`. `existsSync()` is true for directories too, so any `@/`-alias directory import (e.g. `@/features/notifications`, which has an `index.ts`) resolved to the directory itself and esbuild hard-failed with "Cannot read file ...: is a directory". Forked file adds an `existsAsFile` check. Declared in `cfg.libOverrides`.
+- The fork's `import '../../.ds-sync/lib/common.mjs'` needs the fork symlink: `ln -sfn ../.ds-sync/node_modules .design-sync/node_modules` (recreate on fresh clone — gitignored).
+
+## Config notes
+- `componentSrcMap: {"RootErrorBoundary": null}` — `ErrorBoundary.tsx`'s default export (`RootErrorBoundary`) never lands in the synth entry's `export * from` re-export, so it can't reach `window.UniConnecT` ([BUNDLE_EXPORT] error). The named export `ErrorBoundary` (a separate class in the same file) is unaffected and stays in scope.
+- Discovered **52 components**, not the ~26 top-level files — synth-entry scanning picks up every named PascalCase export per file (e.g. `Button.tsx` → `PrimaryBtn`/`OrangeBtn`/`MintBtn`/`GhostBtn`/`ContextualBtn`/`ReactionBtn`), plus `emoji/` and `skeletons/` subdirectories under `src/components`. User confirmed proceeding with all 52 at full fidelity rather than grouping variants.
+
+## Known render warns (fonts)
+- `[FONT_MISSING]` fires for "Satoshi" and "JetBrains Mono" on every build — accepted, not a bug to chase (user confirmed 2026-07-16). Satoshi loads via a remote `@import url('https://api.fontshare.com/...')` already present in `_ds_bundle.css`; it renders correctly at runtime, the check just doesn't look past the top-level `styles.css`. JetBrains Mono is only a monospace fallback (`--font-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace`) with no local files anywhere in the repo — system monospace fallback is visually fine.
+
+## Known render warns (capture flake on portal/animated overlays)
+- `Modal`'s `package-capture.mjs` review screenshot (`_screenshots/review/raw/general__Modal__Default.png`) came back blank white across repeated re-captures, even with `--force`. Verified the component itself is fine: `package-validate.mjs`'s render check (`_screenshots/general__Modal.png`, no `?story=` query) shows it rendering perfectly — title, body copy, close button, backdrop blur, correct tokens — and a standalone Playwright script replicating capture.mjs's exact navigate→settle→screenshot sequence against the same server also rendered it correctly every time. Root cause not pinned down (suspect a `?story=`-path-specific race between `networkidle` and the portal/framer-motion mount, since the component portals to `document.body` and animates in) — graded `good` from the render-check evidence instead. Any future overlay/portal component (Drawer, ShareMenu menus, dialogs) that shows blank in `_screenshots/review/` but fine in the main render check should be treated the same way: trust the render-check screenshot, don't chase it as a real defect.
+- Confirmed the same flake on `Drawer` and `ShareMenu` (both `createPortal` + `AnimatePresence`/`motion.div`) — graded `good` from the `package-validate.mjs` render-check screenshots (`ds-bundle/_screenshots/general__{Drawer,ShareMenu}.png`), which show them rendering perfectly. `ShareMenu` has no `isOpen` prop (internal `toggle()` state); its preview forces the popover open via a small `AutoOpenTrigger` helper that calls `toggle()` in a `useEffect` on mount — a reusable pattern for other internally-stateful popovers. Both also got a `cardMode: "single"` override (they tripped `[GRID_OVERFLOW]` — fixed/portal content can't be presented in a grid cell) — that fixes the grid-overflow warning but does NOT fix the review-capture blank; the two issues are independent, don't expect the override to "solve" the flake.
+
+## Global providers wired in for all components
+- `cfg.provider` wraps every preview in `<MemoryRouter><QueryClientProvider client={dsQueryClient}>...</QueryClientProvider></MemoryRouter>` — needed because `TopNav`/sidebars/`MinimalPageFooter` use `react-router-dom`'s `<Link>`/`useLocation`, and several components (`StickerDrawer`, `RightSidebar`, etc.) use TanStack Query's `useQuery`/`useMutation`.
+- **Real bug hit and fixed once already**: `extraEntries` initially only had `"./src/ds-query-client.ts"` (the wrapper module exporting a `dsQueryClient` instance) but NOT `"@tanstack/react-query"` itself — so `QueryClientProvider` the component was never attached to `window.UniConnecT`, and EVERY preview in the bundle crashed with `Element type is invalid ... got undefined` inside the provider chain (confirmed via `grep -c "window.UniConnecT.QueryClientProvider" ds-bundle/components/*/*/*.html` matching all ~50 files). Fixed by adding `"@tanstack/react-query"` to `extraEntries` directly. **If adding another provider that needs a class/instance prop (not a plain JSON literal), always add BOTH the provider's own package name AND any small wrapper module to `extraEntries`** — the wrapper alone is not enough.
+- `apps/web/src/ds-query-client.ts` is a 2-line file (`export const dsQueryClient = new QueryClient()`) added specifically for this — not part of the app itself, don't delete it as dead code in a future cleanup pass.
+
+## Known limitation — AnimatedIcon ships as a floor card, not authored
+- `AnimatedIcon.tsx` does `const Lottie = lazy(() => import('lottie-react'))`. In this synth-entry IIFE bundle, esbuild's inlined dynamic `import()` resolves to something React.lazy rejects at runtime: `Error: Element type is invalid. Received a promise that resolves to: [object Object]. Lazy element type must resolve to a class or function.` Confirmed via a direct Playwright pageerror capture — the whole preview cell crashes (not just the Lottie subtree), including plain sibling markup with no Lottie dependency. This is an IIFE-format/dynamic-import interop gap in the converter's bundler, not a component or asset defect (a real `.json` Lottie asset from the repo was tried, no difference). No config override fixes this — `cfg.overrides.<Name>.skip` only skips individual *stories* within an otherwise-working component, and here every story hits the same crash. Left unauthored (no `.design-sync/previews/AnimatedIcon.tsx`) so it ships the honest floor card. If the converter ever gains a "pre-bundle lazy imports as static" mode, revisit.
+
+## Two card-mode overrides applied after preview authoring
+- `FeedLayout`: `cardMode: "column"` — full-page shell (TopNav + sidebar + content), overflows a normal grid cell.
+- `MobileBottomNav`: `cardMode: "single", viewport: "390x800"` — the component is `display:none` above ~767px via a real CSS media query in `src/styles/index.css`; without a mobile-width viewport override every capture shows an empty box even though the component is correct.
+- `RightSidebar` fires 4 sequential `useQuery` calls that need longer than the default capture settle time to reach their fallback/skeleton UI — confirmed correct with a longer manual wait, graded `good` on that evidence, but a future re-sync's auto-capture may need `package-capture.mjs`'s settle timing bumped if this component's screenshot looks blank again.
+
+## Known render warns (final validate pass, all benign)
+- `[RENDER_ERRORS] ErrorBoundary` — expected: the preview intentionally renders a child that throws (`Boom()`) so the fallback UI actually shows. The "error" the check reports IS the point of this preview.
+- `[RENDER_BLANK] MobileBottomNav` — this specific warning is from `package-validate.mjs`'s full render-check pass at its default (desktop) viewport, where the component is legitimately `display:none` by a real CSS media query. The authored preview + `cardMode:"single", viewport:"390x800"` override renders it correctly (graded `good` from that evidence) — this warning line is just the validator checking the default viewport, not the overridden one.
+- `[RENDER_THIN] RoleBadge` — icon-only component (14-28px glyph, no text), graded `good` earlier from its actual screenshot. The "no text/paint" heuristic is a false positive for small icon components generally — same pattern seen with the social brand icons.
+- `[FONT_MISSING]` Satoshi/JetBrains Mono — see above, accepted.
+
+Card-mode overrides applied in total: `Modal`, `Drawer`, `ShareMenu`, `ImageLightbox` (all `cardMode:"single"` — portal/fixed content that escapes a grid cell), `FeedLayout`, `EmptyState` (`cardMode:"column"` — full card width), `MobileBottomNav` (`cardMode:"single"` + mobile viewport).
+
+## Re-sync risks
+- The Tailwind CSS entry is a snapshot from a full `apps/web` app build, not the DS's own isolated build — a component preview that uses a class not exercised anywhere else in the live app could be pruned. Watch for `[RENDER_BLANK]`/unstyled previews on niche components and re-check against `.ds-compiled/tailwind-compiled.css` before assuming a genuine styling bug.
+- No dist/library build exists for this package — every re-sync is effectively a synth-entry build; there's no "did the DS's own build change" signal beyond the source files themselves.
+- The `bundle.mjs` fork should be periodically diffed against the upstream `lib/bundle.mjs` in case the extension-probe order bug gets fixed upstream (the fork would then be redundant but harmless).
