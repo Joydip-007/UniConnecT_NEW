@@ -99,6 +99,14 @@ function EventRow({
   return (
     <div
       onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
       style={{
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
@@ -122,7 +130,7 @@ function EventRow({
         }}
       >
         <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--uc-indigo-xl)', lineHeight: 1 }}>{day}</div>
-        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2, letterSpacing: '0.05em' }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, letterSpacing: '0.05em' }}>
           {month}
         </div>
       </div>

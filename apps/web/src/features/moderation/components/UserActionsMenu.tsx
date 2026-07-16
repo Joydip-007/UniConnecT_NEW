@@ -55,7 +55,12 @@ export function UserActionsMenu({ userId, userName, isMuted }: Props) {
       <AnimatePresence>
         {open && (
           <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 1099 }} onClick={close} />
+            <button
+              type="button"
+              aria-label="Close menu"
+              onClick={close}
+              style={{ position: 'fixed', inset: 0, zIndex: 1099, background: 'transparent', border: 'none', padding: 0, cursor: 'default' }}
+            />
             <motion.div
               role="menu"
               initial={{ opacity: 0, scale: 0.96, y: -4 }}

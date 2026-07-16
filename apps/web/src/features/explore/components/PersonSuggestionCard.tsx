@@ -6,53 +6,57 @@ import type { UserSuggestion } from '../types'
 
 interface Props {
   person: UserSuggestion
+  isLast?: boolean
 }
 
-export function PersonSuggestionCard({ person }: Props) {
+export function PersonSuggestionCard({ person, isLast = false }: Props) {
+  const subtitle = person.headline ?? person.department
+
   return (
     <div
       style={{
-        flexShrink: 0,
-        width: 148,
-        scrollSnapAlign: 'start',
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '14px 12px',
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
+        padding: '8px 0',
+        borderBottom: isLast ? 'none' : '0.5px solid var(--border-default)',
       }}
     >
+      <Link to={`/profile/${person.id}`} style={{ flexShrink: 0, lineHeight: 0 }} aria-label={`View ${person.fullName}'s profile`}>
+        <Avatar src={person.avatarUrl ?? undefined} initials={getInitials(person.fullName)} color={avatarColor(person.id)} size={36} />
+      </Link>
       <Link
         to={`/profile/${person.id}`}
-        style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
+        style={{ flex: 1, minWidth: 0, textDecoration: 'none' }}
       >
-        <Avatar src={person.avatarUrl ?? undefined} initials={getInitials(person.fullName)} color={avatarColor(person.id)} size={44} />
-        <div style={{ textAlign: 'center' }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: 'var(--text-primary)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {person.fullName}
+        </div>
+        {subtitle && (
           <div
             style={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              lineHeight: 1.3,
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              marginTop: 1,
+              whiteSpace: 'nowrap',
               overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
+              textOverflow: 'ellipsis',
             }}
           >
-            {person.fullName}
+            {subtitle}
           </div>
-          {(person.headline || person.department) && (
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-              {person.headline ?? person.department}
-            </div>
-          )}
-        </div>
+        )}
       </Link>
-      <div style={{ width: '100%', marginTop: 'auto' }}>
+      <div style={{ flexShrink: 0 }}>
         <ConnectButton
           targetUserId={person.id}
           targetName={person.fullName}

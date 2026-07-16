@@ -26,7 +26,6 @@ export default function LoginPage() {
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [inviteToken, setInviteToken] = useState('')
   const [error, setError]       = useState<string | null>(null)
   const [loading, setLoading]   = useState(false)
 
@@ -57,13 +56,6 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false)
-    }
-  }
-
-  function handleRegisterNav(e: FormEvent) {
-    e.preventDefault()
-    if (inviteToken.trim()) {
-      navigate(PATHS.REGISTER.replace(':token', inviteToken.trim()))
     }
   }
 
@@ -206,45 +198,15 @@ export default function LoginPage() {
         </div>
 
         {/* Invite / register section */}
-        <div style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-xl)',
-          padding: '20px 28px',
-        }}>
-          <p style={{
-            margin: '0 0 12px',
-            fontSize: 13,
-            color: 'var(--text-secondary)',
-          }}>
-            Have an invitation? Enter your invite code to register.
-          </p>
-          <form onSubmit={handleRegisterNav} style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              value={inviteToken}
-              onChange={(e) => setInviteToken(e.target.value)}
-              placeholder="Invite code"
-              style={{ ...inputStyle, flex: 1, fontSize: 13 }}
-            />
-            <PrimaryBtn
-              type="submit"
-              disabled={!inviteToken.trim()}
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              Register
-            </PrimaryBtn>
-          </form>
-          <p style={{ margin: '12px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Or{' '}
-            <Link
-              to={PATHS.REGISTER_ENTRY}
-              style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
-            >
-              go to register page
-            </Link>
-          </p>
-        </div>
+        <p style={{ margin: 0, textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)' }}>
+          Have an invitation?{' '}
+          <Link
+            to={PATHS.REGISTER_ENTRY}
+            style={{ color: 'var(--uc-indigo-l)', textDecoration: 'none', fontWeight: 500 }}
+          >
+            Create your account
+          </Link>
+        </p>
       </div>
       </div>
       <MinimalPageFooter />

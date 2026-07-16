@@ -95,7 +95,27 @@ export function ShareMenu({ entityType, entityId, title, children, onShareToProf
         <AnimatePresence>
           {open && pos && (
             <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 1099 }} onClick={close} />
+              <button
+                type="button"
+                aria-label="Close share menu"
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 1099,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  margin: 0,
+                  cursor: 'default',
+                }}
+                onClick={close}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                  }
+                }}
+              />
               <motion.div
                 role="menu"
                 initial={{ opacity: 0, scale: 0.96, y: pos.up ? 4 : -4 }}

@@ -56,7 +56,7 @@ function AlumniCard({ person }: { person: UserSuggestion }) {
         {person.headline && (
           <div
             style={{
-              fontSize: 11,
+              fontSize: 12,
               color: 'var(--text-secondary)',
               marginTop: 2,
               overflow: 'hidden',
@@ -69,7 +69,7 @@ function AlumniCard({ person }: { person: UserSuggestion }) {
           </div>
         )}
         {meta && (
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
             {meta}
           </div>
         )}

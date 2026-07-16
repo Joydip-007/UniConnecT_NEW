@@ -471,31 +471,48 @@ export default function ExplorePage() {
           {discoveryLoading && <DiscoverySkeleton />}
           {discovery && (
             <>
-              <DiscoverySection label="Trending" seeAllTo={PATHS.FEED}>
-                <TrendingPosts posts={discovery.trendingPosts} />
-              </DiscoverySection>
+              {discovery.trendingPosts.length === 0 &&
+              discovery.peopleSuggestions.length === 0 &&
+              discovery.activeGroups.length === 0 &&
+              discovery.upcomingEvents.length === 0 &&
+              discovery.featuredAlumni.length === 0 ? (
+                <EmptyState
+                  icon={<Search size={28} strokeWidth={1.5} />}
+                  title="Your campus is just getting started"
+                  message="Be one of the first to post, join a group, or invite classmates — this page fills in as your network grows."
+                />
+              ) : (
+                <>
+                  <DiscoverySection label="Trending" seeAllTo={PATHS.FEED} isEmpty={discovery.trendingPosts.length === 0}>
+                    <TrendingPosts posts={discovery.trendingPosts} />
+                  </DiscoverySection>
 
-              <DiscoverySection
-                label="People you may know"
-                seeAllTo={PATHS.CONNECTIONS}
-              >
-                <PeopleSuggestions people={discovery.peopleSuggestions} />
-              </DiscoverySection>
+                  <DiscoverySection
+                    label="People you may know"
+                    seeAllTo={PATHS.CONNECTIONS}
+                    isEmpty={discovery.peopleSuggestions.length === 0}
+                    layout="list"
+                  >
+                    <PeopleSuggestions people={discovery.peopleSuggestions} />
+                  </DiscoverySection>
 
-              <DiscoverySection label="Active groups" seeAllTo={PATHS.GROUPS} seeAllLabel="Browse">
-                <ActiveGroups groups={discovery.activeGroups} />
-              </DiscoverySection>
+                  <DiscoverySection label="Active groups" seeAllTo={PATHS.GROUPS} seeAllLabel="Browse" isEmpty={discovery.activeGroups.length === 0}>
+                    <ActiveGroups groups={discovery.activeGroups} />
+                  </DiscoverySection>
 
-              <DiscoverySection label="Upcoming events" seeAllTo={PATHS.EVENTS}>
-                <UpcomingEvents events={discovery.upcomingEvents} />
-              </DiscoverySection>
+                  <DiscoverySection label="Upcoming events" seeAllTo={PATHS.EVENTS} isEmpty={discovery.upcomingEvents.length === 0}>
+                    <UpcomingEvents events={discovery.upcomingEvents} />
+                  </DiscoverySection>
 
-              <DiscoverySection
-                label="Featured alumni"
-                seeAllTo={`${PATHS.EXPLORE}?view=search&tab=people&role=alumni`}
-              >
-                <FeaturedAlumni alumni={discovery.featuredAlumni} />
-              </DiscoverySection>
+                  <DiscoverySection
+                    label="Featured alumni"
+                    seeAllTo={`${PATHS.EXPLORE}?view=search&tab=people&role=alumni`}
+                    isEmpty={discovery.featuredAlumni.length === 0}
+                  >
+                    <FeaturedAlumni alumni={discovery.featuredAlumni} />
+                  </DiscoverySection>
+                </>
+              )}
             </>
           )}
         </>

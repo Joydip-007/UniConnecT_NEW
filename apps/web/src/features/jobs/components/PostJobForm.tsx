@@ -116,7 +116,7 @@ function RequirementsInput({
   }
 
   return (
-    <div
+    <label
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -128,10 +128,6 @@ function RequirementsInput({
         cursor: 'text',
         transition: 'border-color 150ms',
         minHeight: 42,
-      }}
-      onClick={(e) => {
-        const input = (e.currentTarget as HTMLElement).querySelector('input')
-        input?.focus()
       }}
       onFocusCapture={(e) => {
         ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--uc-indigo-bdr)'
@@ -183,7 +179,6 @@ function RequirementsInput({
           minWidth: 80,
           background: 'none',
           border: 'none',
-          outline: 'none',
           fontSize: 13,
           fontWeight: 400,
           color: 'var(--text-primary)',
@@ -191,7 +186,7 @@ function RequirementsInput({
           padding: '1px 2px',
         }}
       />
-    </div>
+    </label>
   )
 }
 
@@ -252,12 +247,23 @@ export function PostJobForm({ onClose }: Props) {
     if (e.target === overlayRef.current) onClose()
   }
 
+  function handleOverlayKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current && (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      onClose()
+    }
+  }
+
   const isValid = form.title && form.company && form.location && form.type && form.description
 
   return (
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
+      onKeyDown={handleOverlayKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label="Close dialog"
       style={{
         position: 'fixed',
         inset: 0,
@@ -378,6 +384,7 @@ export function PostJobForm({ onClose }: Props) {
             <select
               id="pjf-type"
               required
+              aria-label="Job type"
               value={form.type}
               onChange={(e) => set('type', e.target.value)}
               style={{
@@ -424,7 +431,7 @@ export function PostJobForm({ onClose }: Props) {
             <Label htmlFor="pjf-reqs">Required skills</Label>
             <RequirementsInput tags={requirements} onChange={setRequirements} />
             <span
-              style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 2 }}
+              style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 2 }}
             >
               Press Enter or comma to add each skill
             </span>
@@ -450,6 +457,7 @@ export function PostJobForm({ onClose }: Props) {
               <input
                 id="pjf-deadline"
                 type="date"
+                aria-label="Application deadline"
                 min={new Date().toISOString().slice(0, 10)}
                 value={form.deadline}
                 onChange={(e) => set('deadline', e.target.value)}
@@ -469,6 +477,7 @@ export function PostJobForm({ onClose }: Props) {
             <input
               id="pjf-url"
               type="url"
+              aria-label="External application URL"
               placeholder="https://careers.company.com/apply/…"
               value={form.applicationUrl}
               onChange={(e) => set('applicationUrl', e.target.value)}

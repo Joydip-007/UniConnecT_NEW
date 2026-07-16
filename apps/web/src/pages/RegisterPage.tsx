@@ -334,6 +334,7 @@ export default function RegisterPage() {
                     value={batchSemester}
                     onChange={(e) => setBatchSemester(e.target.value)}
                     required
+                    aria-label={role === 'alumni' ? 'Graduation semester' : 'Admission semester'}
                     style={selectStyle}
                   >
                     <option value="">Semester</option>
@@ -351,6 +352,7 @@ export default function RegisterPage() {
                     value={batchYear}
                     onChange={(e) => setBatchYear(e.target.value)}
                     required
+                    aria-label={role === 'alumni' ? 'Graduation year' : 'Admission year'}
                     style={selectStyle}
                   >
                     <option value="">Year</option>

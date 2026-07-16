@@ -30,15 +30,6 @@ interface MoreItem {
   external?: boolean
 }
 
-const FOCUSABLE_SELECTOR = [
-  'button:not([disabled])',
-  '[href]',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',')
-
 export function MobileBottomNav() {
   const navigate = useViewTransitionNavigate()
   const { pathname } = useLocation()
@@ -46,7 +37,7 @@ export function MobileBottomNav() {
   const { messageCount, notificationCount } = useNotificationsStore()
   const [moreOpen, setMoreOpen] = useState(false)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
-  const sheetRef = useRef<HTMLDivElement>(null)
+  const sheetRef = useRef<HTMLDialogElement>(null)
 
   const profilePath = user ? PATHS.PROFILE.replace(':id', user.id) : PATHS.FEED
 
@@ -91,40 +82,27 @@ export function MobileBottomNav() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
+  // Open/close the native <dialog> to match state; the browser provides the
+  // focus trap, Escape-to-close, and ::backdrop for free.
   useEffect(() => {
-    if (!moreOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    window.requestAnimationFrame(() => {
-      sheetRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus()
-    })
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        closeMore({ restoreFocus: true })
-        return
-      }
-      if (e.key !== 'Tab') return
-      const focusable = Array.from(
-        sheetRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
-      )
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
+    const dialog = sheetRef.current
+    if (!dialog) return
+    if (moreOpen && !dialog.open) dialog.showModal()
+    if (!moreOpen && dialog.open) dialog.close()
+  }, [moreOpen])
+
+  // Native "close" fires on Escape, backdrop cancel, or dialog.close() —
+  // keep React state and focus restoration in sync with it.
+  useEffect(() => {
+    const dialog = sheetRef.current
+    if (!dialog) return
+    function onClose() {
+      setMoreOpen(false)
+      window.requestAnimationFrame(() => moreButtonRef.current?.focus())
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.body.style.overflow = prev
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [closeMore, moreOpen])
+    dialog.addEventListener('close', onClose)
+    return () => dialog.removeEventListener('close', onClose)
+  }, [])
 
   function handleMoreItem(item: MoreItem) {
     if (item.external) {
@@ -190,7 +168,7 @@ export function MobileBottomNav() {
                       borderRadius: 'var(--r-pill)',
                       background: 'var(--uc-red)',
                       color: 'var(--text-primary)',
-                      fontSize: 9,
+                      fontSize: 12,
                       fontWeight: 500,
                       display: 'flex',
                       alignItems: 'center',
@@ -204,7 +182,7 @@ export function MobileBottomNav() {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: 10, fontWeight: active ? 500 : 400, lineHeight: 1 }}>
+              <span style={{ fontSize: 12, fontWeight: active ? 500 : 400, lineHeight: 1 }}>
                 {label}
               </span>
             </button>
@@ -237,110 +215,115 @@ export function MobileBottomNav() {
           }}
         >
           <LayoutGrid size={22} strokeWidth={moreActive ? 2 : 1.5} />
-          <span style={{ fontSize: 10, fontWeight: moreActive ? 500 : 400, lineHeight: 1 }}>
+          <span style={{ fontSize: 12, fontWeight: moreActive ? 500 : 400, lineHeight: 1 }}>
             More
           </span>
         </button>
       </nav>
 
-      {moreOpen && (
+      <dialog
+        ref={sheetRef}
+        aria-label="More navigation"
+        onClick={(e) => {
+          // Clicking the backdrop (the dialog element itself, outside the
+          // sheet content) closes it — clicks on the sheet content stop
+          // propagation below.
+          if (e.target === e.currentTarget) closeMore({ restoreFocus: true })
+        }}
+        onClose={() => setMoreOpen(false)}
+        className={moreOpen ? 'sheet-enter' : undefined}
+        style={{
+          position: 'fixed',
+          inset: 'auto 0 0 0',
+          margin: 0,
+          zIndex: 'var(--z-modal)',
+          width: '100%',
+          maxWidth: 'none',
+          border: 'none',
+          padding: 0,
+          background: 'transparent',
+        }}
+      >
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="More navigation"
-          onClick={() => closeMore({ restoreFocus: true })}
+          onClick={(e) => e.stopPropagation()}
           style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 'var(--z-modal)',
-            background: 'var(--overlay-bg)',
-            display: 'flex',
-            alignItems: 'flex-end',
+            width: '100%',
+            background: 'var(--surface-card)',
+            borderTopLeftRadius: 'var(--r-xl)',
+            borderTopRightRadius: 'var(--r-xl)',
+            borderTop: '0.5px solid var(--border-default)',
+            padding: '14px 16px calc(env(safe-area-inset-bottom, 0px) + 20px)',
           }}
         >
           <div
-            ref={sheetRef}
-            className="sheet-enter"
-            onClick={(e) => e.stopPropagation()}
+            aria-hidden="true"
             style={{
-              width: '100%',
-              background: 'var(--surface-card)',
-              borderTopLeftRadius: 'var(--r-xl)',
-              borderTopRightRadius: 'var(--r-xl)',
-              borderTop: '0.5px solid var(--border-default)',
-              padding: '14px 16px calc(env(safe-area-inset-bottom, 0px) + 20px)',
+              width: 40,
+              height: 4,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--border-strong)',
+              margin: '0 auto 14px',
+            }}
+          />
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 4,
             }}
           >
-            <div
-              aria-hidden="true"
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 'var(--r-pill)',
-                background: 'var(--border-strong)',
-                margin: '0 auto 14px',
-              }}
-            />
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: 4,
-              }}
-            >
-              {moreItems.map((item) => {
-                const Icon = item.icon
-                const active = !item.external && isActive(item.path)
-                return (
-                  <button
-                    key={item.label}
-                    onClick={() => handleMoreItem(item)}
-                    aria-current={active ? 'page' : undefined}
-                    className="interactive-surface"
+            {moreItems.map((item) => {
+              const Icon = item.icon
+              const active = !item.external && isActive(item.path)
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => handleMoreItem(item)}
+                  aria-current={active ? 'page' : undefined}
+                  className="interactive-surface"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '12px 4px',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: 'var(--r-md)',
+                    cursor: 'pointer',
+                    color: active ? 'var(--uc-orange-l)' : 'var(--text-secondary)',
+                  }}
+                >
+                  <div
                     style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '12px 4px',
-                      background: 'none',
-                      border: 'none',
+                      width: 44,
+                      height: 44,
                       borderRadius: 'var(--r-md)',
-                      cursor: 'pointer',
-                      color: active ? 'var(--uc-orange-l)' : 'var(--text-secondary)',
+                      background: active ? 'var(--uc-orange-bg)' : 'var(--surface-raised)',
+                      border: '0.5px solid ' + (active ? 'var(--uc-orange-bdr)' : 'var(--border-default)'),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 'var(--r-md)',
-                        background: active ? 'var(--uc-orange-bg)' : 'var(--surface-raised)',
-                        border: '0.5px solid ' + (active ? 'var(--uc-orange-bdr)' : 'var(--border-default)'),
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Icon size={20} strokeWidth={1.5} />
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 500,
-                        textAlign: 'center',
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {item.label}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+                    <Icon size={20} strokeWidth={1.5} />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 500,
+                      textAlign: 'center',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
-      )}
+      </dialog>
     </>
   )
 }

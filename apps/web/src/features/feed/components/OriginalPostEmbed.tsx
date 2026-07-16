@@ -67,7 +67,7 @@ export function OriginalPostEmbed({ post }: Props) {
             </Link>
           </div>
           {post.createdAt && (
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)' }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
               {formatDistanceToNow(
                 typeof post.createdAt === 'string' ? parseISO(post.createdAt) : new Date(post.createdAt as unknown as string),
                 { addSuffix: true },

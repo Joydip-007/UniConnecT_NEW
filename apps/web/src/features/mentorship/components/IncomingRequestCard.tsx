@@ -111,7 +111,7 @@ export function IncomingRequestCard({
         </div>
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 400,
             color: 'var(--text-tertiary)',
             flexShrink: 0,
@@ -158,13 +158,14 @@ export function IncomingRequestCard({
 
       {request.status === 'accepted' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>
+          <label htmlFor={`session-notes-${request.id}`} style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>
             Session notes{' '}
             {isSavingNotes && (
               <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>— saving…</span>
             )}
           </label>
           <textarea
+            id={`session-notes-${request.id}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             onBlur={() => void saveNotes()}
@@ -180,7 +181,6 @@ export function IncomingRequestCard({
               fontWeight: 400,
               padding: '10px 12px',
               resize: 'vertical',
-              outline: 'none',
               fontFamily: 'inherit',
               lineHeight: 1.6,
               boxSizing: 'border-box',

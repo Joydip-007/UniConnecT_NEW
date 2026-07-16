@@ -61,7 +61,7 @@ export function PostResultCard({ post, query }: Props) {
           <span style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-primary)' }}>
             {post.author.fullName}
           </span>
-          <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{timeAgo(post.createdAt)}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{timeAgo(post.createdAt)}</span>
         </div>
         <div
           style={{
@@ -76,7 +76,7 @@ export function PostResultCard({ post, query }: Props) {
         >
           {highlightMatch(post.content, query)}
         </div>
-        <div style={{ marginTop: 4, display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-secondary)' }}>
+        <div style={{ marginTop: 4, display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
           <span>{post.reactionCount} reactions</span>
           <span>{post.commentCount} comments</span>
         </div>

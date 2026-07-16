@@ -56,7 +56,7 @@ export default function GroupDetailPage() {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 Join requests
                 {pendingCount > 0 && (
-                  <span style={{ padding: '1px 6px', fontSize: 10, fontWeight: 500, borderRadius: 'var(--r-pill)', background: 'var(--uc-orange-bg)', color: 'var(--uc-orange-l)' }}>
+                  <span style={{ padding: '1px 6px', fontSize: 12, fontWeight: 500, borderRadius: 'var(--r-pill)', background: 'var(--uc-orange-bg)', color: 'var(--uc-orange-l)' }}>
                     {pendingCount}
                   </span>
                 )}

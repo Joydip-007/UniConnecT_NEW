@@ -55,15 +55,17 @@ function FieldRow({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-        {label}
-        {optional && (
-          <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 4 }}>
-            (optional)
-          </span>
-        )}
+      <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span>
+          {label}
+          {optional && (
+            <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 4 }}>
+              (optional)
+            </span>
+          )}
+        </span>
+        {children}
       </label>
-      {children}
     </div>
   )
 }
@@ -98,6 +100,8 @@ function TagInput({
 
   return (
     <div
+      role="group"
+      aria-label="Tags"
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -177,7 +181,6 @@ function TagInput({
           minWidth: 120,
           background: 'transparent',
           border: 'none',
-          outline: 'none',
           fontSize: 13,
           fontWeight: 400,
           color: 'var(--text-primary)',
@@ -191,12 +194,13 @@ function TagInput({
 
 // ── Toggle ─────────────────────────────────────────────────────────────────────
 
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={value}
+      aria-label={label}
       onClick={() => onChange(!value)}
       style={{
         position: 'relative',
@@ -392,7 +396,7 @@ export function EditProfileModal({ onClose }: Props) {
               {coverPreview ? (
                 <img
                   src={coverPreview}
-                  alt="Cover photo preview"
+                  alt="Cover preview"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
               ) : (
@@ -661,7 +665,7 @@ export function EditProfileModal({ onClose }: Props) {
               <p
                 style={{
                   margin: '4px 0 0',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 400,
                   color: 'var(--text-tertiary)',
                 }}
@@ -698,7 +702,7 @@ export function EditProfileModal({ onClose }: Props) {
                   Let recruiters know you're looking for opportunities
                 </p>
               </div>
-              <Toggle value={isOpenToWork} onChange={setIsOpenToWork} />
+              <Toggle value={isOpenToWork} onChange={setIsOpenToWork} label="Open to work" />
             </div>
 
             <div
@@ -729,7 +733,7 @@ export function EditProfileModal({ onClose }: Props) {
                   Allow anyone to send you a direct message
                 </p>
               </div>
-              <Toggle value={isOpenToMsg} onChange={setIsOpenToMsg} />
+              <Toggle value={isOpenToMsg} onChange={setIsOpenToMsg} label="Open to messages" />
             </div>
           </div>
 

@@ -29,7 +29,7 @@ function StatBox({ label, value, icon }: { label: string; value: number; icon: R
       >
         {value.toLocaleString()}
       </span>
-      <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.4 }}>
+      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.4 }}>
         {label}
       </span>
     </div>
@@ -124,7 +124,7 @@ export function ProfileAnalytics() {
         </div>
       )}
 
-      <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
         Only you can see your analytics.
       </p>
     </div>

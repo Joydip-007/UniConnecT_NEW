@@ -24,7 +24,7 @@ export function MemberRoleTag({
         alignItems: 'center',
         padding: '2px 8px',
         borderRadius: 'var(--r-pill)',
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 500,
         background: s.bg,
         border: `0.5px solid ${s.border}`,

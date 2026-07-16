@@ -124,7 +124,6 @@ export default function GroupsPage() {
               flex: 1,
               background: 'transparent',
               border: 'none',
-              outline: 'none',
               color: 'var(--text-primary)',
               fontSize: 13,
               fontWeight: 400,

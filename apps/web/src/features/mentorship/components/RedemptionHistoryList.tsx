@@ -57,7 +57,7 @@ function HistoryRow({ row }: { row: RedemptionHistory }) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 500,
             color: tone,
           }}
@@ -75,7 +75,7 @@ function HistoryRow({ row }: { row: RedemptionHistory }) {
         )}
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12,
             color: 'var(--text-tertiary)',
             marginLeft: 'auto',
             whiteSpace: 'nowrap',
@@ -115,7 +115,7 @@ function HistoryRow({ row }: { row: RedemptionHistory }) {
         </p>
       )}
 
-      <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)' }}>
+      <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
         Spent {row.pointsSpent.toLocaleString()} pts
       </p>
     </div>

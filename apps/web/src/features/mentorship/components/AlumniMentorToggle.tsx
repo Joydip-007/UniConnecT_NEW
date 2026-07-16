@@ -102,7 +102,6 @@ export function AlumniMentorToggle({
             cursor: isUpdating ? 'wait' : 'pointer',
             position: 'relative',
             transition: 'background 200ms',
-            outline: 'none',
             opacity: isUpdating ? 0.7 : 1,
           }}
         >

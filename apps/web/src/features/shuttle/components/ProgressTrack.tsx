@@ -64,7 +64,7 @@ export function ProgressTrack({ progress, hasLocation, firstStop, lastStop }: Pr
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 400,
             color: 'var(--text-secondary)',
             overflow: 'hidden',
@@ -75,12 +75,12 @@ export function ProgressTrack({ progress, hasLocation, firstStop, lastStop }: Pr
         >
           {firstStop}
         </span>
-        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
           {Math.round(pct)}% complete
         </span>
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 400,
             color: 'var(--text-secondary)',
             overflow: 'hidden',

@@ -106,7 +106,7 @@ export function GiftCardGrid({ balance, enabled, addToast }: GiftCardGridProps) 
                   <p
                     style={{
                       margin: 0,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 500,
                       color: 'var(--text-tertiary)',
                     }}
@@ -164,7 +164,7 @@ export function GiftCardGrid({ balance, enabled, addToast }: GiftCardGridProps) 
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 400,
                       color: 'var(--text-tertiary)',
                     }}

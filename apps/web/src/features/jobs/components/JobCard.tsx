@@ -143,20 +143,33 @@ export function JobCard({ job, queryKey }: { job: Job; queryKey: unknown[] }) {
   return (
     <>
       <article
-        onClick={() => navigate(`/jobs/${job.id}`)}
         className="card-hover-border"
         style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-lg)',
           padding: '16px',
-          cursor: 'pointer',
           transition: 'border-color 200ms',
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
         }}
       >
+        <button
+          type="button"
+          onClick={() => navigate(`/jobs/${job.id}`)}
+          aria-label={`View job: ${job.title} at ${job.company}`}
+          style={{
+            display: 'contents',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            margin: 0,
+            font: 'inherit',
+            textAlign: 'inherit',
+            cursor: 'pointer',
+          }}
+        >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           {/* Company logo */}
@@ -230,7 +243,7 @@ export function JobCard({ job, queryKey }: { job: Job; queryKey: unknown[] }) {
               </span>
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 500,
                   padding: '1px 8px',
                   borderRadius: 'var(--r-pill)',
@@ -254,6 +267,7 @@ export function JobCard({ job, queryKey }: { job: Job; queryKey: unknown[] }) {
             ))}
           </div>
         )}
+        </button>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
         <div

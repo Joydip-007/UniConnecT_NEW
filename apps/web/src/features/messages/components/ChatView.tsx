@@ -72,6 +72,58 @@ function pendingToMessage(p: PendingMsg): Message {
   }
 }
 
+// ── Static styles (module scope — MessageBubble renders once per message) ─────
+
+const dateDividerRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, margin: '6px 0', flexShrink: 0 }
+const dateDividerLineStyle: React.CSSProperties = { flex: 1, height: '0.5px', background: 'var(--border-default)' }
+const dateDividerLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', flexShrink: 0 }
+
+const deletedMsgLabelStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontStyle: 'italic',
+  fontWeight: 400,
+  color: 'var(--text-tertiary)',
+  padding: '5px 12px',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-lg)',
+}
+const avatarSpacerStyle: React.CSSProperties = { width: 28, flexShrink: 0 }
+const senderNameStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', paddingLeft: 10 }
+const replyIndicatorStyle: React.CSSProperties = {
+  maxWidth: '100%',
+  padding: '4px 10px',
+  borderRadius: 'var(--r-sm)',
+  background: 'var(--uc-indigo-bg)',
+  border: '0.5px solid var(--uc-indigo-bdr)',
+  overflow: 'hidden',
+}
+const replySenderNameStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: 'var(--uc-indigo-xl)', marginBottom: 1 }
+const replyBodyStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 400,
+  color: 'var(--text-tertiary)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
+const timestampRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, paddingInline: 2 }
+const timestampLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }
+const sendingSpinnerStyle: React.CSSProperties = { color: 'var(--text-tertiary)' }
+const retryBtnStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  padding: '9px 14px',
+  marginTop: 2,
+  borderRadius: 'var(--r-pill)',
+  background: 'var(--uc-red-bg)',
+  border: '0.5px solid var(--uc-red-bdr)',
+  color: 'var(--uc-red)',
+  fontSize: 12,
+  fontWeight: 500,
+  cursor: 'pointer',
+}
+
 // ── DateDivider ───────────────────────────────────────────────────────────────
 
 function dateLabel(iso: string | null | undefined): string {
@@ -83,27 +135,12 @@ function dateLabel(iso: string | null | undefined): string {
 
 function DateDivider({ label }: { label: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        margin: '6px 0',
-        flexShrink: 0,
-      }}
-    >
-      <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 500,
-          color: 'var(--text-tertiary)',
-          flexShrink: 0,
-        }}
-      >
+    <div style={dateDividerRowStyle}>
+      <div style={dateDividerLineStyle} />
+      <span style={dateDividerLabelStyle}>
         {label}
       </span>
-      <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
+      <div style={dateDividerLineStyle} />
     </div>
   )
 }
@@ -160,17 +197,7 @@ function MessageBubble({
           padding: '2px 0',
         }}
       >
-        <span
-          style={{
-            fontSize: 12,
-            fontStyle: 'italic',
-            fontWeight: 400,
-            color: 'var(--text-tertiary)',
-            padding: '5px 12px',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-          }}
-        >
+        <span style={deletedMsgLabelStyle}>
           Message deleted
         </span>
       </div>
@@ -219,7 +246,7 @@ function MessageBubble({
               size={28}
             />
           )
-          : <div style={{ width: 28, flexShrink: 0 }} />
+          : <div style={avatarSpacerStyle} />
       )}
 
       {/* Bubble column */}
@@ -234,50 +261,18 @@ function MessageBubble({
       >
         {/* Sender name — first message of a run only */}
         {!isOwn && showName && (
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              color: 'var(--text-tertiary)',
-              paddingLeft: 10,
-            }}
-          >
+          <span style={senderNameStyle}>
             {message.sender.fullName}
           </span>
         )}
 
         {/* Reply indicator */}
         {message.replyTo && (
-          <div
-            style={{
-              maxWidth: '100%',
-              padding: '4px 10px',
-              borderRadius: 'var(--r-sm)',
-              background: 'var(--uc-indigo-bg)',
-              border: '0.5px solid var(--uc-indigo-bdr)',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: 'var(--uc-indigo-xl)',
-                marginBottom: 1,
-              }}
-            >
+          <div style={replyIndicatorStyle}>
+            <div style={replySenderNameStyle}>
               {message.replyTo.senderName}
             </div>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 400,
-                color: 'var(--text-tertiary)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <div style={replyBodyStyle}>
               {message.replyTo.body}
             </div>
           </div>
@@ -323,15 +318,8 @@ function MessageBubble({
         )}
 
         {/* Timestamp + sending spinner */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            paddingInline: 2,
-          }}
-        >
-          <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+        <div style={timestampRowStyle}>
+          <span style={timestampLabelStyle}>
             {timeLabel}
           </span>
 
@@ -340,7 +328,7 @@ function MessageBubble({
               size={10}
               strokeWidth={1.5}
               className="spin"
-              style={{ color: 'var(--text-tertiary)' }}
+              style={sendingSpinnerStyle}
             />
           )}
         </div>
@@ -350,20 +338,7 @@ function MessageBubble({
           <button
             type="button"
             onClick={onRetry}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '9px 14px',
-              marginTop: 2,
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--uc-red-bg)',
-              border: '0.5px solid var(--uc-red-bdr)',
-              color: 'var(--uc-red)',
-              fontSize: 12,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
+            style={retryBtnStyle}
           >
             <RotateCcw size={11} strokeWidth={1.5} />
             Retry

@@ -40,7 +40,7 @@ export function PathCard({ path, onOpen }: PathCardProps) {
         {status && (
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 500,
               color: status === 'completed' ? 'var(--uc-mint)' : 'var(--uc-indigo-l)',
               background: status === 'completed' ? 'var(--uc-mint-bg)' : 'var(--uc-indigo-bg)',

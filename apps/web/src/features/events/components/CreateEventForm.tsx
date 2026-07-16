@@ -231,6 +231,9 @@ export function CreateEventForm({ onClose, initial }: Props) {
   if (role !== 'faculty' && role !== 'admin') {
     return (
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close dialog"
         style={{
           position: 'fixed',
           inset: 0,
@@ -241,6 +244,12 @@ export function CreateEventForm({ onClose, initial }: Props) {
           zIndex: 200,
         }}
         onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+            e.preventDefault()
+            onClose()
+          }
+        }}
       >
         <div
           style={{
@@ -268,7 +277,16 @@ export function CreateEventForm({ onClose, initial }: Props) {
   return (
     <div
       ref={overlayRef}
+      role="button"
+      tabIndex={0}
+      aria-label="Close dialog"
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      onKeyDown={(e) => {
+        if (e.target === overlayRef.current && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape')) {
+          e.preventDefault()
+          onClose()
+        }
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -341,6 +359,7 @@ export function CreateEventForm({ onClose, initial }: Props) {
             <select
               id="cef-type"
               required
+              aria-label="Event type"
               value={form.type}
               onChange={(e) => set('type', e.target.value as EventTypeOption | '')}
               style={{
@@ -581,6 +600,7 @@ export function CreateEventForm({ onClose, initial }: Props) {
                 id="cef-starts"
                 type="datetime-local"
                 required
+                aria-label="Starts at"
                 value={form.startsAt}
                 onChange={(e) => set('startsAt', e.target.value)}
                 style={{ ...fieldStyle, colorScheme: 'dark' }}
@@ -594,6 +614,7 @@ export function CreateEventForm({ onClose, initial }: Props) {
                 id="cef-ends"
                 type="datetime-local"
                 required
+                aria-label="Ends at"
                 min={form.startsAt || undefined}
                 value={form.endsAt}
                 onChange={(e) => set('endsAt', e.target.value)}
@@ -606,7 +627,7 @@ export function CreateEventForm({ onClose, initial }: Props) {
                 onBlur={blurBorder}
               />
               {dateErr && (
-                <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--uc-red)', marginTop: -2 }}>
+                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-red)', marginTop: -2 }}>
                   {dateErr}
                 </span>
               )}
@@ -628,7 +649,7 @@ export function CreateEventForm({ onClose, initial }: Props) {
               onFocus={focusBorder}
               onBlur={blurBorder}
             />
-            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', marginTop: -2 }}>
+            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', marginTop: -2 }}>
               Leave empty for unlimited attendance
             </span>
           </div>

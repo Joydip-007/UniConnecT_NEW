@@ -77,7 +77,7 @@ export function LiveTrackerCard({
           <span
             style={{
               flexShrink: 0,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 500,
               color: 'var(--uc-orange-l)',
               background: 'var(--uc-orange-bg)',
@@ -141,7 +141,7 @@ export function LiveTrackerCard({
         <p
           style={{
             margin: 0,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 400,
             color: 'var(--text-tertiary)',
             textAlign: 'right',

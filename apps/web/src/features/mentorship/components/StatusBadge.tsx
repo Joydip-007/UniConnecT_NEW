@@ -11,7 +11,7 @@ export function StatusBadge({ status }: { status: RequestStatus }) {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 500,
           lineHeight: 1,
           padding: '2px 9px',
@@ -30,7 +30,7 @@ export function StatusBadge({ status }: { status: RequestStatus }) {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 500,
         lineHeight: 1,
         padding: '2px 9px',

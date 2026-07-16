@@ -29,10 +29,11 @@ export function AboutTab({ groupId, rulesMd, canEdit }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             maxLength={5000}
             rows={12}
-            style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 400, background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-sm)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.6 }}
+            aria-label="Group about and rules"
+            style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 400, background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-sm)', color: 'var(--text-primary)', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.6 }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{draft.length} / 5 000</span>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{draft.length} / 5 000</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={() => { setEditing(false); setDraft(rulesMd ?? '') }}
                 style={{ padding: '5px 12px', fontSize: 12, fontWeight: 400, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>

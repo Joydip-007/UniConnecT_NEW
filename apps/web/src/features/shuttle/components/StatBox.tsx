@@ -22,7 +22,7 @@ export function StatBox({ icon, label, value }: StatBoxProps) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         {icon}
-        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>{label}</span>
       </div>
       <span
         style={{

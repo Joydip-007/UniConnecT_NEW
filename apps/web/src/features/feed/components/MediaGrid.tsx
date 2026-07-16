@@ -189,16 +189,19 @@ function Slot({ url, index, onOpen, aspectRatio, maxHeight, fill }: SlotProps) {
       </div>
     </div>
   ) : (
-    <img
-      src={url}
-      alt={`Media ${index + 1}`}
-      loading="lazy"
-      style={style}
+    <button
+      type="button"
       onClick={handleClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick() } }}
-      role="button"
-      tabIndex={0}
-    />
+      style={{ display: 'contents', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}
+      aria-label={`Open media ${index + 1}`}
+    >
+      <img
+        src={url}
+        alt={`Media ${index + 1}`}
+        loading="lazy"
+        style={style}
+      />
+    </button>
   )
 
   if (fill) {

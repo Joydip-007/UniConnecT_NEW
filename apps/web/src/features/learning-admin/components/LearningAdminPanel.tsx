@@ -215,6 +215,7 @@ export function LearningAdminPanel() {
               />
               <select
                 style={{ ...inputStyle, width: 140 }}
+                aria-label="Topic difficulty"
                 value={topic.difficulty ?? ''}
                 onChange={(e) => {
                   const newTopics = [...draft.topics]
@@ -268,6 +269,7 @@ export function LearningAdminPanel() {
           <span style={labelStyle}>General difficulty</span>
           <select
             style={inputStyle}
+            aria-label="General difficulty"
             value={draft.difficulty}
             onChange={(e) => setDraft((d) => ({ ...d, difficulty: e.target.value }))}
           >
@@ -281,6 +283,7 @@ export function LearningAdminPanel() {
           <span style={labelStyle}>Language</span>
           <select
             style={inputStyle}
+            aria-label="Language"
             value={draft.language}
             onChange={(e) => setDraft((d) => ({ ...d, language: e.target.value }))}
           >
@@ -294,6 +297,7 @@ export function LearningAdminPanel() {
           <input
             style={inputStyle}
             type="number"
+            aria-label="Estimated days per path"
             value={draft.estimatedDays}
             onChange={(e) => setDraft((d) => ({ ...d, estimatedDays: Number(e.target.value) }))}
           />
@@ -306,6 +310,7 @@ export function LearningAdminPanel() {
             type="number"
             min={0}
             max={23}
+            aria-label="Generation hour"
             value={draft.genHour}
             onChange={(e) => setDraft((d) => ({ ...d, genHour: Number(e.target.value) }))}
           />
@@ -317,6 +322,7 @@ export function LearningAdminPanel() {
             style={inputStyle}
             type="number"
             min={1}
+            aria-label="Count per run"
             value={draft.countPerRun}
             onChange={(e) => setDraft((d) => ({ ...d, countPerRun: Number(e.target.value) }))}
           />
@@ -326,6 +332,7 @@ export function LearningAdminPanel() {
           <span style={labelStyle}>Custom instructions</span>
           <textarea
             style={{ ...inputStyle, minHeight: 80, resize: 'vertical' }}
+            aria-label="Custom instructions"
             value={draft.customInstructions}
             onChange={(e) => setDraft((d) => ({ ...d, customInstructions: e.target.value }))}
             placeholder="Additional context for the AI"
@@ -358,6 +365,7 @@ export function LearningAdminPanel() {
           <span style={labelStyle}>Quiz difficulty</span>
           <select
             style={inputStyle}
+            aria-label="Quiz difficulty"
             value={draft.quizDifficulty}
             onChange={(e) => setDraft((d) => ({ ...d, quizDifficulty: e.target.value }))}
           >
@@ -371,6 +379,7 @@ export function LearningAdminPanel() {
           <span style={labelStyle}>Quiz language</span>
           <select
             style={inputStyle}
+            aria-label="Quiz language"
             value={draft.quizLanguage}
             onChange={(e) => setDraft((d) => ({ ...d, quizLanguage: e.target.value }))}
           >
@@ -386,6 +395,7 @@ export function LearningAdminPanel() {
             type="number"
             min={1}
             max={20}
+            aria-label="Questions per department run"
             value={draft.quizCount}
             onChange={(e) => setDraft((d) => ({ ...d, quizCount: Number(e.target.value) }))}
           />
@@ -645,6 +655,7 @@ export function LearningAdminPanel() {
           <select
             value={analyticsDays}
             onChange={(e) => setAnalyticsDays(Number(e.target.value))}
+            aria-label="Analytics time range"
             style={{ ...inputStyle, width: 'auto' }}
           >
             <option value={7}>Last 7 days</option>

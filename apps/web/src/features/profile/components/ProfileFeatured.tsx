@@ -110,7 +110,7 @@ function FeaturedCard({
               gap: 4,
               color: 'var(--uc-indigo-xl)',
               textDecoration: 'none',
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 400,
             }}
           >

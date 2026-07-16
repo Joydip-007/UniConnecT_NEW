@@ -129,7 +129,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
                 borderRadius: 'var(--r-pill)',
                 background: 'var(--uc-indigo)',
                 color: 'var(--text-primary)',
-                fontSize: 9,
+                fontSize: 12,
                 fontWeight: 500,
                 display: 'flex',
                 alignItems: 'center',
@@ -159,7 +159,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
               borderRadius: 'var(--r-pill)',
               background: 'var(--uc-indigo)',
               color: 'var(--text-primary)',
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 500,
               display: 'flex',
               alignItems: 'center',
@@ -457,7 +457,7 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
                       {value}
                     </span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{label}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{label}</span>
                   </div>
                 ))}
               </div>
@@ -512,7 +512,7 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
         {!collapsed && (
           <div
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 500,
               color: 'var(--text-tertiary)',
               padding: '0 6px 6px',

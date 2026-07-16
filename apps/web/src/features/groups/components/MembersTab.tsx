@@ -90,11 +90,11 @@ export function MembersTab({ group }: { group: Group }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search members…"
+            aria-label="Search members"
             style={{
               flex: 1,
               background: 'transparent',
               border: 'none',
-              outline: 'none',
               color: 'var(--text-primary)',
               fontSize: 13,
               fontWeight: 400,
@@ -104,6 +104,7 @@ export function MembersTab({ group }: { group: Group }) {
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
+          aria-label="Filter by role"
           style={{
             padding: '7px 10px',
             fontSize: 12,
@@ -112,7 +113,6 @@ export function MembersTab({ group }: { group: Group }) {
             border: '0.5px solid var(--border-default)',
             borderRadius: 'var(--r-pill)',
             color: roleFilter ? 'var(--text-primary)' : 'var(--text-secondary)',
-            outline: 'none',
             cursor: 'pointer',
           }}
         >

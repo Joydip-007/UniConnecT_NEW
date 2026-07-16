@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, Search, Users, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -113,7 +113,7 @@ function UserResultRow({
           <p
             style={{
               margin: 0,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 400,
               color: 'var(--text-tertiary)',
               overflow: 'hidden',
@@ -193,8 +193,14 @@ export function NewConversationModal({ onClose }: Props) {
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [selectedUsers, setSelectedUsers] = useState<UserResult[]>([])
   const [groupName, setGroupName] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const isGroup = selectedUsers.length > 1
+
+  // Focus the search input when the modal opens
+  useEffect(() => {
+    searchInputRef.current?.focus()
+  }, [])
 
   // Debounce search query (300 ms)
   useEffect(() => {
@@ -312,7 +318,7 @@ export function NewConversationModal({ onClose }: Props) {
             }}
           />
           <input
-            autoFocus
+            ref={searchInputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -396,7 +402,7 @@ export function NewConversationModal({ onClose }: Props) {
               </label>
               <span
                 aria-live="polite"
-                style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}
+                style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}
               >
                 {groupName.length}/60
               </span>

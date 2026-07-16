@@ -121,6 +121,12 @@ export function RadialOrbitalTimeline({
       aria-label={label}
       data-motion-active={shouldAutoRotate ? 'true' : 'false'}
       onClick={handleBgClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && expanded !== null) {
+          setExpanded(null)
+          setAutoRotate(true)
+        }
+      }}
       style={{
         position: 'relative',
         width: '100%',
@@ -327,7 +333,7 @@ export function RadialOrbitalTimeline({
                 left: '50%',
                 transform: `translateX(-50%) translateY(${isHovered ? -3 : 0}px) scale(${isExpanded ? 1.1 : 1})`,
                 whiteSpace: 'nowrap',
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: isHovered ? 500 : 400,
                 letterSpacing: '0.2px',
                 color: (isExpanded || isHovered)
@@ -389,7 +395,7 @@ export function RadialOrbitalTimeline({
                       border: `0.5px solid ${node.accentBdr}`,
                       borderRadius: 'var(--r-pill)',
                       padding: '2px 9px',
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: 500,
                       color: node.accent,
                     }}
@@ -426,7 +432,7 @@ export function RadialOrbitalTimeline({
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
-                      fontSize: 10,
+                      fontSize: 12,
                       color: 'var(--text-tertiary)',
                       marginBottom: 5,
                     }}
@@ -479,7 +485,7 @@ export function RadialOrbitalTimeline({
                               border: '0.5px solid var(--border-hover)',
                               borderRadius: 'var(--r-pill)',
                               padding: '3px 9px',
-                              fontSize: 10,
+                              fontSize: 12,
                               color: 'var(--text-secondary)',
                               cursor: 'pointer',
                               fontFamily: 'inherit',

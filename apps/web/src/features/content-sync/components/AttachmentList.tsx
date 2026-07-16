@@ -113,7 +113,7 @@ function FileCard({ attachment }: { attachment: ContentAttachment }) {
           {attachment.fileName}
         </p>
         {attachment.sizeBytes != null && (
-          <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
+          <p style={{ margin: '1px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
             {formatSize(attachment.sizeBytes)}
           </p>
         )}

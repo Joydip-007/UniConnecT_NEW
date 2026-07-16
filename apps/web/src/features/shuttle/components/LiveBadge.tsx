@@ -10,7 +10,7 @@ export function LiveBadge({ updatedAt }: { updatedAt: string | null }) {
         gap: 5,
         padding: '3px 9px',
         borderRadius: 'var(--r-pill)',
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 500,
         flexShrink: 0,
         background: live ? 'var(--uc-mint-bg)' : 'var(--surface-raised)',

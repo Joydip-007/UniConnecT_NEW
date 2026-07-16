@@ -300,7 +300,7 @@ export function TopNav() {
                 right: 10,
                 top: '50%',
                 transform: 'translateY(-50%)',
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: 400,
                 color: 'var(--text-tertiary)',
                 border: '0.5px solid var(--border-default)',

@@ -125,7 +125,7 @@ export default function TagPage() {
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
               {post.authorName}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
               {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
             </span>
           </div>
@@ -143,7 +143,7 @@ export default function TagPage() {
           >
             {post.content}
           </p>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
             {post.reactionCount} reactions · {post.commentCount} comments
           </div>
         </div>

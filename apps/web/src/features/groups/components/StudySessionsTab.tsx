@@ -54,7 +54,7 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
         <>
           {upcoming.length > 0 && (
             <section>
-              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)' }}>Upcoming</p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>Upcoming</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {upcoming.map((s) => (
                   <SessionCard
@@ -73,7 +73,7 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
           )}
           {past.length > 0 && (
             <section>
-              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)' }}>Past</p>
+              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>Past</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {past.map((s) => (
                   <SessionCard
@@ -121,7 +121,7 @@ function SessionCard({ groupId, session, currentUserId, onRsvp, isRsvpPending, n
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         {/* Date chip */}
         <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)', padding: '6px 10px', textAlign: 'center', flexShrink: 0 }}>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>{dateStr}</p>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>{dateStr}</p>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{timeStr}</p>
         </div>
 
@@ -230,7 +230,7 @@ function CreateSessionForm({ onSubmit, onCancel, isPending }: {
         ? <input placeholder="Online link" type="url" value={onlineLink} onChange={(e) => setOnlineLink(e.target.value)} style={inputStyle} />
         : <input placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} style={inputStyle} />
       }
-      <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required style={inputStyle} />
+      <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required style={inputStyle} aria-label="Session start date and time" />
       <input placeholder="Capacity (optional)" type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} style={inputStyle} />
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" onClick={onCancel} style={{ padding: '6px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancel</button>

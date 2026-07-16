@@ -108,7 +108,7 @@ export function MyRequestRow({ request }: MyRequestRowProps) {
               border: '0.5px solid var(--border-default)',
             }}
           >
-            <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 500, color: 'var(--uc-mint)' }}>
+            <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 500, color: 'var(--uc-mint)' }}>
               Session notes
             </p>
             <p
@@ -221,7 +221,7 @@ export function MyRequestRow({ request }: MyRequestRowProps) {
 
       <span
         style={{
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 400,
           color: 'var(--text-tertiary)',
           flexShrink: 0,

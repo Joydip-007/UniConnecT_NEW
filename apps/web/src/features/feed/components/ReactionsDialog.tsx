@@ -247,8 +247,19 @@ export function ReactionsDialog({ postId, counts, onClose }: Props) {
 
   return createPortal(
     <AnimatePresence>
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 1099, background: 'var(--overlay-bg-soft)' }}
+      <button
+        type="button"
+        aria-label="Close reactions dialog"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1099,
+          background: 'var(--overlay-bg-soft)',
+          border: 'none',
+          padding: 0,
+          margin: 0,
+          cursor: 'default',
+        }}
         onClick={onClose}
       />
       <div
@@ -333,6 +344,7 @@ export function ReactionsDialog({ postId, counts, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close"
             style={{
               marginLeft: 'auto',
               background: 'none',

@@ -271,7 +271,7 @@ function LocationPickerModal({
           <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
             Pick stop location
           </span>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}>
             <X size={16} />
           </button>
         </div>
@@ -289,7 +289,7 @@ function LocationPickerModal({
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--r-pill)',
               padding: '3px 10px',
-              fontSize: 11, fontWeight: 500,
+              fontSize: 12, fontWeight: 500,
               color: 'var(--text-secondary)',
               cursor: 'pointer',
               fontFamily: 'inherit',
@@ -459,12 +459,14 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               type="color"
+              aria-label="Route color picker"
               value={e.color}
               onChange={(ev) => set('color', ev.target.value)}
               style={{ width: 36, height: 36, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
             />
             <input
               style={{ ...inputSt, width: 90, fontFamily: 'monospace' }}
+              aria-label="Route color hex value"
               value={e.color}
               onChange={(ev) => set('color', ev.target.value)}
               maxLength={7}
@@ -477,6 +479,9 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
           <button
             type="button"
             onClick={() => set('isActive', !e.isActive)}
+            role="switch"
+            aria-checked={e.isActive}
+            aria-label="Route active"
             style={{
               width: 44,
               height: 24,
@@ -509,6 +514,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
             <div style={labelSt}>Schedule type</div>
             <select
               value={e.scheduleType}
+              aria-label="Schedule type"
               onChange={(ev) => set('scheduleType', ev.target.value as 'fixed' | 'continuous')}
               style={{ ...inputSt, width: 'auto', cursor: 'pointer' }}
             >
@@ -546,11 +552,11 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={labelSt}>Start</div>
-                <input style={{ ...inputSt, width: 100 }} type="time" value={e.opStart} onChange={(ev) => set('opStart', ev.target.value)} />
+                <input style={{ ...inputSt, width: 100 }} type="time" aria-label="Operating start time" value={e.opStart} onChange={(ev) => set('opStart', ev.target.value)} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={labelSt}>End</div>
-                <input style={{ ...inputSt, width: 100 }} type="time" value={e.opEnd} onChange={(ev) => set('opEnd', ev.target.value)} />
+                <input style={{ ...inputSt, width: 100 }} type="time" aria-label="Operating end time" value={e.opEnd} onChange={(ev) => set('opEnd', ev.target.value)} />
               </div>
             </>
           )}
@@ -653,6 +659,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
                 <button
                   type="button"
                   title="Pick on map"
+                  aria-label="Pick on map"
                   onClick={() => setPickingStopIdx(idx)}
                   style={{
                     background: 'none',
@@ -669,6 +676,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
                 <button
                   type="button"
                   onClick={() => removeStop(idx)}
+                  aria-label="Remove stop"
                   style={{
                     background: 'none',
                     border: 'none',
@@ -919,7 +927,7 @@ export function ShuttleTab() {
                 </span>
                 {!r.isActive && (
                   <span style={{
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: 500,
                     color: 'var(--text-tertiary)',
                     background: 'var(--surface-raised)',

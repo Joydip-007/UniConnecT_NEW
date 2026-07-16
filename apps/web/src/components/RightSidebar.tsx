@@ -164,6 +164,7 @@ function PersonRow({
 
   return (
     <motion.div
+      layout
       exit={{ opacity: 0, height: 0 }}
       transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
       style={{ overflow: 'hidden' }}
@@ -288,7 +289,7 @@ function EventMini({ event, isLast = false }: { event: EventItem; isLast?: boole
         }}
       >
         <span style={{ fontSize: 16, fontWeight: 500, color: 'var(--uc-indigo-xl)' }}>{day}</span>
-        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--uc-indigo-l)', marginTop: 2 }}>
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-indigo-l)', marginTop: 2 }}>
           {month}
         </span>
       </div>
@@ -368,12 +369,12 @@ function BadgeProgressRow({ item }: { item: BadgeProgressItem }) {
           {item.label}
         </span>
         {item.state === 'in-progress' && item.progress != null && item.total != null && (
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
             {item.progress}/{item.total}
           </span>
         )}
         {item.state === 'done' && (
-          <span style={{ fontSize: 11, color: 'var(--uc-mint)' }}>Done</span>
+          <span style={{ fontSize: 12, color: 'var(--uc-mint)' }}>Done</span>
         )}
       </div>
 
@@ -412,7 +413,7 @@ function TrendingTagStrip({ tags }: { tags: TrendingTag[] }) {
     <div style={{ padding: '14px 4px 0', borderTop: '0.5px solid var(--border-default)' }}>
       <div
         style={{
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 500,
           color: 'var(--text-tertiary)',
           letterSpacing: 0,
@@ -561,7 +562,7 @@ export function RightSidebar() {
       {/* Your progress — hero widget when incomplete, one last "complete" moment, then hidden */}
       <AnimatePresence>
         {loadingProgress ? (
-          <motion.div key="progress-loading" variants={listItem} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+          <motion.div key="progress-loading" layout variants={listItem} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
             <Widget>
               <SectionHeader title="Your progress" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -577,6 +578,7 @@ export function RightSidebar() {
         ) : justCompleted && progress ? (
           <motion.div
             key="progress-complete"
+            layout
             variants={listItem}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
@@ -590,7 +592,7 @@ export function RightSidebar() {
             </Widget>
           </motion.div>
         ) : progressIncomplete && progress ? (
-          <motion.div key="progress-incomplete" variants={listItem} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
+          <motion.div key="progress-incomplete" layout variants={listItem} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
             <Widget>
               <SectionHeader title="Your progress" />
               <div>
@@ -625,7 +627,7 @@ export function RightSidebar() {
                   <BadgeProgressRow key={item.label} item={item} />
                 ))}
               </div>
-              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '10px 0 0', lineHeight: 1.5 }}>
                 Finish your profile to unlock the campus directory.
               </p>
             </Widget>

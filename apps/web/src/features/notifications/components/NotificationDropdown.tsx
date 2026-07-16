@@ -96,7 +96,7 @@ function NotificationRow({
         <p
           style={{
             margin: '3px 0 0',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 400,
             color: 'var(--text-tertiary)',
           }}
@@ -195,7 +195,7 @@ export function NotificationDropdown({ onClose }: Props) {
             <span
               style={{
                 marginLeft: 6,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 500,
                 padding: '1px 6px',
                 borderRadius: 'var(--r-pill)',

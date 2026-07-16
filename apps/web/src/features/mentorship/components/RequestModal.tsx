@@ -44,10 +44,11 @@ export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) 
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
+          <label htmlFor="mentorship-request-message" style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
             Your message
           </label>
           <textarea
+            id="mentorship-request-message"
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, MAX_CHARS))}
             placeholder="Introduce yourself and describe what kind of guidance you're looking for…"
@@ -62,7 +63,6 @@ export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) 
               fontWeight: 400,
               padding: '10px 12px',
               resize: 'vertical',
-              outline: 'none',
               fontFamily: 'inherit',
               lineHeight: 1.6,
               boxSizing: 'border-box',

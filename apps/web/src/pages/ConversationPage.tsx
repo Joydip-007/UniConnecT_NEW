@@ -156,7 +156,7 @@ export default function ConversationPage() {
                       flexShrink: 0,
                       padding: '2px 8px',
                       borderRadius: 'var(--r-pill)',
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 500,
                       background: 'var(--uc-orange-bg)',
                       border: '0.5px solid var(--uc-orange-bdr)',
@@ -172,7 +172,7 @@ export default function ConversationPage() {
                 <p
                   style={{
                     margin: 0,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 400,
                     color: 'var(--text-secondary)',
                     display: 'flex',

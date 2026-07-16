@@ -22,7 +22,7 @@ export function StopList({ route, hasLocation, derived, atFinalStop }: StopListP
         <h3 style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
           All stops
         </h3>
-        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
           {route.stops.length} stops on this route
         </span>
       </div>
@@ -122,7 +122,7 @@ function Pill({ bg, border, color, text }: { bg: string; border: string; color: 
   return (
     <span
       style={{
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 500,
         padding: '2px 8px',
         borderRadius: 'var(--r-pill)',

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, CheckCircle2, Circle, FileText, PenLine, UserPlus, X, type LucideIcon } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -22,6 +23,21 @@ interface Step {
   onClick: () => void
 }
 
+// Matches the .feed-layout-right breakpoint in index.css — below this, the
+// right rail (and its compact progress widget) is hidden entirely.
+const RIGHT_RAIL_QUERY = '(min-width: 1101px)'
+
+function useHasRightRail() {
+  const [hasRail, setHasRail] = useState(() => window.matchMedia(RIGHT_RAIL_QUERY).matches)
+  useEffect(() => {
+    const mql = window.matchMedia(RIGHT_RAIL_QUERY)
+    const onChange = () => setHasRail(mql.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
+  return hasRail
+}
+
 /**
  * First-run checklist shown at the top of the feed. Unlike the desktop-only
  * right-rail progress widget, this is mobile-visible, actionable (each step
@@ -32,6 +48,7 @@ export function OnboardingChecklist() {
   const myId = useAuthStore((s) => s.user?.id)
   const { dismissed, dismiss } = useOnboardingDismissed()
   const { data: progress } = useProfileProgress()
+  const hasRightRail = useHasRightRail()
 
   const goToProfile = () => myId && navigate(PATHS.PROFILE.replace(':id', myId))
 
@@ -49,8 +66,11 @@ export function OnboardingChecklist() {
   const allDone = steps.length > 0 && completedCount === steps.length
   const needsConnections = progress != null && progress.connectionCount < 3
 
-  // Hidden when dismissed, before data loads, or once everything is complete.
-  if (dismissed || !progress || allDone) return null
+  // Hidden when dismissed, before data loads, once complete, or (on desktop,
+  // where the right rail's compact widget is visible) once the user has made
+  // any progress — so this full card doesn't linger as a second checklist.
+  // On mobile the rail doesn't exist, so this stays the only progress surface.
+  if (dismissed || !progress || allDone || (hasRightRail && completedCount >= 1)) return null
 
   const pct = Math.round((completedCount / steps.length) * 100)
 

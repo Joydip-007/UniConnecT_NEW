@@ -123,7 +123,7 @@ export function ProfileHeader({
                   borderRadius: 'var(--r-pill)',
                   background: 'var(--uc-orange-bg)',
                   border: '0.5px solid var(--uc-orange-bdr)',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 400,
                   color: 'var(--uc-orange-l)',
                 }}

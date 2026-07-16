@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BarChart2, Bold, Image, Italic, Link, Sparkles, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import type { AttachmentInput, FeedPost } from '@uniconnect/shared'
+import type { AttachmentInput, FeedPost, ProfileProgress } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { AttachmentPicker } from '@/components/AttachmentPicker'
@@ -77,9 +77,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
     queryKey: ['users', 'me', 'progress'],
     queryFn: () =>
       api
-        .get<{ data: { profileScore: number; hasMadePost: boolean; followerCount: number; isVerified: boolean } }>(
-          '/users/me/progress',
-        )
+        .get<{ data: ProfileProgress }>('/users/me/progress')
         .then((r) => r.data.data),
     staleTime: 30_000,
   })
@@ -90,7 +88,16 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
       return false
     }
   })
-  const showFirstPostHint = !isEditMode && progress != null && !progress.hasMadePost && !firstHintDismissed
+  // Only surface this once the rest of the profile is filled in — otherwise it
+  // competes with the onboarding checklist's own "share your first post" step.
+  const showFirstPostHint =
+    !isEditMode &&
+    progress != null &&
+    !progress.hasMadePost &&
+    progress.hasAvatar &&
+    progress.hasHeadline &&
+    progress.hasBio &&
+    !firstHintDismissed
   function dismissFirstPostHint() {
     setFirstHintDismissed(true)
     try {
@@ -416,9 +423,25 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
           }}
         >
           {/* Backdrop */}
-          <div
-            style={{ position: 'absolute', inset: 0, background: 'var(--overlay-bg-strong)' }}
+          <button
+            type="button"
+            aria-label="Close composer"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'var(--overlay-bg-strong)',
+              border: 'none',
+              padding: 0,
+              margin: 0,
+              cursor: 'default',
+            }}
             onClick={() => handleClose()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                handleClose()
+              }
+            }}
           />
 
           {/* Modal panel — full-screen composer on mobile (see .create-post-panel in index.css) */}
@@ -510,6 +533,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
               <button
                 type="button"
                 onClick={() => handleClose()}
+                aria-label="Close composer"
                 className="press-feedback row-hover-bg"
                 style={{
                   background: 'transparent',
@@ -568,7 +592,6 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                   minHeight: 120,
                   background: 'transparent',
                   border: 'none',
-                  outline: 'none',
                   resize: 'none',
                   color: 'var(--text-primary)',
                   fontSize: 15,
@@ -603,6 +626,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                           <button
                             type="button"
                             onClick={() => removePhoto(p.previewUrl)}
+                            aria-label="Remove photo"
                             className="press-feedback"
                             style={{
                               position: 'absolute',
@@ -710,6 +734,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                 >
                   <input
                     type="text"
+                    aria-label="Poll question"
                     value={pollQuestion}
                     onChange={(e) => setPollQuestion(e.target.value)}
                     placeholder="Ask a question…"
@@ -720,6 +745,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                     <div key={opt.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input
                         type="text"
+                        aria-label={`Poll option ${idx + 1}`}
                         value={opt.text}
                         onChange={(e) => updatePollOption(opt.id, e.target.value)}
                         placeholder={`Option ${idx + 1}`}
@@ -729,6 +755,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
                         <button
                           type="button"
                           onClick={() => removePollOption(opt.id)}
+                          aria-label="Remove poll option"
                           className="press-feedback"
                           style={{
                             background: 'transparent',

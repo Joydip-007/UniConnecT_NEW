@@ -109,7 +109,7 @@ export function FeaturesSection() {
                       border: '0.5px solid var(--border-default)',
                       borderRadius: 'var(--r-pill)',
                       padding: '0.125rem 0.625rem',
-                      fontSize: '0.6875rem',
+                      fontSize: '0.75rem',
                       color: 'var(--uc-indigo-l)',
                     }}
                   >
@@ -121,7 +121,7 @@ export function FeaturesSection() {
                       border: '0.5px solid var(--border-default)',
                       borderRadius: 'var(--r-pill)',
                       padding: '0.125rem 0.625rem',
-                      fontSize: '0.6875rem',
+                      fontSize: '0.75rem',
                       color: 'var(--uc-cyan)',
                     }}
                   >
@@ -164,7 +164,7 @@ export function FeaturesSection() {
                       <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                         {title}
                       </p>
-                      <p style={{ margin: 0, fontSize: '0.6875rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>
                         {company}
                       </p>
                     </div>

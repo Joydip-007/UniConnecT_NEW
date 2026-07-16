@@ -143,7 +143,7 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
             >
               {comment.author.fullName}
             </Link>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
               {formatDistanceToNow(parseISO(comment.createdAt), { addSuffix: true })}
             </span>
           </div>
@@ -409,7 +409,16 @@ export function CommentDrawer({ post, onClose }: Props) {
           zIndex: 100,
           background: 'var(--overlay-bg-soft)',
         }}
+        role="button"
+        tabIndex={0}
+        aria-label="Close comments"
         onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+            e.preventDefault()
+            onClose()
+          }
+        }}
       />
 
       {/* Drawer panel */}
@@ -485,6 +494,7 @@ export function CommentDrawer({ post, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close comments"
             className="press-feedback row-hover-bg"
             style={{
               background: 'transparent',
@@ -603,6 +613,7 @@ export function CommentDrawer({ post, onClose }: Props) {
                 <button
                   type="button"
                   onClick={() => setReplyTo(null)}
+                  aria-label="Cancel reply"
                   className="press-feedback"
                   style={{
                     marginLeft: 'auto',
@@ -738,7 +749,7 @@ export function CommentDrawer({ post, onClose }: Props) {
                                 <span
                                   style={{
                                     display: 'block',
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     color: 'var(--text-tertiary)',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
@@ -767,7 +778,6 @@ export function CommentDrawer({ post, onClose }: Props) {
                       width: '100%',
                       background: 'transparent',
                       border: 'none',
-                      outline: 'none',
                       resize: 'none',
                       color: 'var(--text-primary)',
                       fontSize: 13,

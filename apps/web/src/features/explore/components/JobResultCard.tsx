@@ -22,7 +22,7 @@ export function JobResultCard({ job }: Props) {
         {job.company} · {job.location} · {job.type}
       </div>
       {job.deadline && (
-        <div style={{ color: 'var(--text-secondary)', fontSize: 11, marginTop: 2 }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>
           Deadline: {new Date(job.deadline).toLocaleDateString()}
         </div>
       )}

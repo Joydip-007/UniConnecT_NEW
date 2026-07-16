@@ -104,7 +104,7 @@ function DeckSummary({ totalDecks, dueCards, totalCards }: { totalDecks: number;
         ['Cards', totalCards],
       ].map(([label, value]) => (
         <div key={label} style={{ minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)' }}>{label}</p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>{label}</p>
           <p style={{ margin: 0, fontSize: 16, fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
         </div>
       ))}

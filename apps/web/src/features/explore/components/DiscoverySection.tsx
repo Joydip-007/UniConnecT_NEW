@@ -5,10 +5,16 @@ interface Props {
   label: string
   seeAllTo?: string
   seeAllLabel?: string
+  /** Hide the whole section (header included) instead of rendering an empty-state sentence. */
+  isEmpty?: boolean
+  /** 'scroll' (default) is a horizontal card carousel; 'list' is a dense vertical stack. */
+  layout?: 'scroll' | 'list'
   children: ReactNode
 }
 
-export function DiscoverySection({ label, seeAllTo, seeAllLabel = 'See all', children }: Props) {
+export function DiscoverySection({ label, seeAllTo, seeAllLabel = 'See all', isEmpty = false, layout = 'scroll', children }: Props) {
+  if (isEmpty) return null
+
   return (
     <section style={{ marginBottom: 28 }}>
       <div
@@ -21,7 +27,7 @@ export function DiscoverySection({ label, seeAllTo, seeAllLabel = 'See all', chi
       >
         <h2
           style={{
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 500,
             color: 'var(--text-secondary)',
             margin: 0,
@@ -39,16 +45,20 @@ export function DiscoverySection({ label, seeAllTo, seeAllLabel = 'See all', chi
         )}
       </div>
       <div
-        style={{
-          display: 'flex',
-          gap: 10,
-          overflowX: 'auto',
-          scrollSnapType: 'x mandatory',
-          paddingBottom: 4,
-          scrollbarWidth: 'none',
-          maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
-        }}
+        style={
+          layout === 'list'
+            ? { display: 'flex', flexDirection: 'column' }
+            : {
+                display: 'flex',
+                gap: 10,
+                overflowX: 'auto',
+                scrollSnapType: 'x mandatory',
+                paddingBottom: 4,
+                scrollbarWidth: 'none',
+                maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
+              }
+        }
       >
         {children}
       </div>

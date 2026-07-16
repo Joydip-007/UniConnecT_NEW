@@ -140,7 +140,16 @@ export function CreateNewsForm({ onClose, initial }: Props) {
   return (
     <div
       ref={overlayRef}
+      role="button"
+      tabIndex={0}
+      aria-label="Close dialog"
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      onKeyDown={(e) => {
+        if (e.target === overlayRef.current && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onClose()
+        }
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -212,6 +221,7 @@ export function CreateNewsForm({ onClose, initial }: Props) {
             <Label htmlFor="cnf-cat" required>Category</Label>
             <select
               id="cnf-cat"
+              aria-label="Category"
               required
               value={form.category}
               onChange={(e) => set('category', e.target.value as NewsCategory | '')}

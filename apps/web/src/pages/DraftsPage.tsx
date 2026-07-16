@@ -110,7 +110,7 @@ export default function DraftsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 500,
                       color: color.fg,
                       background: color.bg,
@@ -124,7 +124,7 @@ export default function DraftsPage() {
                     <span
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
-                        fontSize: 11, fontWeight: 500, color: 'var(--uc-indigo-xl)', background: 'var(--uc-indigo-bg)',
+                        fontSize: 12, fontWeight: 500, color: 'var(--uc-indigo-xl)', background: 'var(--uc-indigo-bg)',
                         borderRadius: 'var(--r-pill)', padding: '2px 10px',
                       }}
                     >

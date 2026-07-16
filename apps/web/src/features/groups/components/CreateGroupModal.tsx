@@ -135,7 +135,7 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
               )}
             </div>
             {studentLock && (
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
                 Students can only create groups for other students.
               </p>
             )}

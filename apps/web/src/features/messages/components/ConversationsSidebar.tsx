@@ -30,7 +30,7 @@ function SidebarRow({
 
   const avatarInitials = initials(displayName)
   const avatarColor = seedColor(conversation.id)
-  const preview = conversation.lastMessage?.body ?? ''
+  const preview = conversation.lastMessage?.body || 'No messages yet'
   const time = conversation.lastMessage?.sentAt
     ? relativeTime(conversation.lastMessage.sentAt)
     : null
@@ -90,7 +90,7 @@ function SidebarRow({
                 flexShrink: 0,
                 padding: '1px 5px',
                 borderRadius: 'var(--r-pill)',
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 500,
                 background: 'var(--uc-orange-bg)',
                 border: '0.5px solid var(--uc-orange-bdr)',
@@ -105,7 +105,7 @@ function SidebarRow({
             <span
               style={{
                 flexShrink: 0,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 400,
                 color: isActive ? 'var(--uc-indigo-l)' : 'var(--text-tertiary)',
               }}
@@ -128,7 +128,7 @@ function SidebarRow({
               color: hasUnread ? 'var(--text-secondary)' : 'var(--text-tertiary)',
             }}
           >
-            {preview || ' '}
+            {preview}
           </span>
           {hasUnread && !isActive && (
             <span
@@ -140,7 +140,7 @@ function SidebarRow({
                 borderRadius: 'var(--r-pill)',
                 background: 'var(--uc-indigo)',
                 color: 'var(--text-primary)',
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 500,
                 display: 'flex',
                 alignItems: 'center',

@@ -111,7 +111,6 @@ function EmailStep({ onDone }: { onDone: (email: string) => void }) {
           <input
             type="email"
             autoComplete="email"
-            autoFocus
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -240,6 +239,7 @@ function OtpStep({ email, onDone }: { email: string; onDone: (otp: string) => vo
             maxLength={1}
             value={digit}
             disabled={loading}
+            aria-label={`Digit ${i + 1} of 6`}
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             onPaste={handlePaste}
@@ -364,7 +364,6 @@ function PasswordStep({
         <FieldWrapper label="New password" error={fieldErrors.password}>
           <PasswordInput
             autoComplete="new-password"
-            autoFocus
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}

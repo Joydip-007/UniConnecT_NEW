@@ -104,9 +104,9 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Type toggle */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
               Type
-            </label>
+            </span>
             <div
               style={{
                 display: 'flex',
@@ -189,10 +189,10 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
 
           {/* Photos */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
               Photos{' '}
               <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(up to 3)</span>
-            </label>
+            </span>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {images.map((img, i) => (
                 <div
@@ -270,7 +270,7 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
                   {uploadingImg ? (
                     <span
                       style={{
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: 400,
                         color: 'var(--text-tertiary)',
                         textAlign: 'center',
@@ -282,7 +282,7 @@ export function PostItemModal({ onClose }: PostItemModalProps) {
                   ) : (
                     <>
                       <ImageIcon size={18} strokeWidth={1.5} />
-                      <span style={{ fontSize: 10, fontWeight: 400 }}>Add photo</span>
+                      <span style={{ fontSize: 12, fontWeight: 400 }}>Add photo</span>
                     </>
                   )}
                 </button>

@@ -209,6 +209,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
             {/* Resume upload */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label
+                htmlFor="apply-modal-resume"
                 style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}
               >
                 Resume
@@ -216,6 +217,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
 
               {/* Hidden file input */}
               <input
+                id="apply-modal-resume"
                 ref={fileInputRef}
                 type="file"
                 accept={ACCEPTED}
@@ -260,7 +262,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
                   </span>
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 400,
                       color: 'var(--text-tertiary)',
                     }}
@@ -316,7 +318,7 @@ export function ApplyModal({ jobId, jobTitle, company, onSuccess, onClose }: Pro
                     </div>
                   </div>
                   <span
-                    style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}
+                    style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}
                   >
                     Uploading…
                   </span>

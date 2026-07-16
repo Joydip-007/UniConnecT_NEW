@@ -183,8 +183,9 @@ export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelPro
           >
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Date</label>
+                <label style={labelStyle} htmlFor="session-date-add">Date</label>
                 <input
+                  id="session-date-add"
                   type="date"
                   value={form.sessionDate}
                   onChange={(e) => setForm((f) => ({ ...f, sessionDate: e.target.value }))}
@@ -192,8 +193,9 @@ export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelPro
                 />
               </div>
               <div>
-                <label style={labelStyle}>Duration</label>
+                <label style={labelStyle} htmlFor="session-duration-add">Duration</label>
                 <select
+                  id="session-duration-add"
                   value={form.durationMinutes}
                   onChange={(e) => setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))}
                   style={inputStyle}
@@ -205,8 +207,9 @@ export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelPro
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Topic</label>
+              <label style={labelStyle} htmlFor="session-topic-add">Topic</label>
               <input
+                id="session-topic-add"
                 ref={topicRef}
                 type="text"
                 placeholder="What did you discuss?"
@@ -216,8 +219,9 @@ export function SessionLogPanel({ requestId, currentUserId }: SessionLogPanelPro
               />
             </div>
             <div>
-              <label style={labelStyle}>Notes <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></label>
+              <label style={labelStyle} htmlFor="session-notes-add">Notes <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></label>
               <textarea
+                id="session-notes-add"
                 placeholder="Any takeaways or next steps…"
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
@@ -335,8 +339,9 @@ function SessionRow({
       >
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Date</label>
+            <label style={labelStyle} htmlFor={`session-date-edit-${session.id}`}>Date</label>
             <input
+              id={`session-date-edit-${session.id}`}
               type="date"
               value={editForm.sessionDate}
               onChange={(e) => setEditForm({ ...editForm, sessionDate: e.target.value })}
@@ -344,8 +349,9 @@ function SessionRow({
             />
           </div>
           <div>
-            <label style={labelStyle}>Duration</label>
+            <label style={labelStyle} htmlFor={`session-duration-edit-${session.id}`}>Duration</label>
             <select
+              id={`session-duration-edit-${session.id}`}
               value={editForm.durationMinutes}
               onChange={(e) => setEditForm({ ...editForm, durationMinutes: Number(e.target.value) })}
               style={inputStyle}
@@ -357,8 +363,9 @@ function SessionRow({
           </div>
         </div>
         <div>
-          <label style={labelStyle}>Topic</label>
+          <label style={labelStyle} htmlFor={`session-topic-edit-${session.id}`}>Topic</label>
           <input
+            id={`session-topic-edit-${session.id}`}
             type="text"
             value={editForm.topic}
             onChange={(e) => setEditForm({ ...editForm, topic: e.target.value })}
@@ -366,8 +373,9 @@ function SessionRow({
           />
         </div>
         <div>
-          <label style={labelStyle}>Notes <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></label>
+          <label style={labelStyle} htmlFor={`session-notes-edit-${session.id}`}>Notes <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(optional)</span></label>
           <textarea
+            id={`session-notes-edit-${session.id}`}
             value={editForm.notes}
             onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
             rows={2}
@@ -422,7 +430,7 @@ function SessionRow({
       >
         <span
           style={{
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 500,
             color: 'var(--uc-indigo-xl)',
             background: 'var(--uc-indigo-bg)',
@@ -438,7 +446,7 @@ function SessionRow({
             display: 'inline-flex',
             alignItems: 'center',
             gap: 3,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 400,
             color: 'var(--text-tertiary)',
           }}

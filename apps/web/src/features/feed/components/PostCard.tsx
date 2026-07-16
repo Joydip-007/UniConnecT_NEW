@@ -44,21 +44,142 @@ import { SharePostModal } from './SharePostModal'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 
+// ── Static styles (module scope — avoids rebuilding per render/per card) ──────
+
+const pinnedBarStyle: React.CSSProperties = {
+  background: 'var(--uc-orange-bg)',
+  borderBottom: '0.5px solid var(--uc-orange-bdr)',
+  borderTopLeftRadius: 'var(--r-lg)',
+  borderTopRightRadius: 'var(--r-lg)',
+  padding: '7px 16px',
+}
+const pinnedBarLabelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: 'var(--uc-orange-l)' }
+
+const pollContainerStyle: React.CSSProperties = {
+  background: 'var(--surface-raised)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-md)',
+  padding: '14px 16px',
+  marginTop: 8,
+}
+const pollQuestionStyle: React.CSSProperties = { margin: '0 0 12px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }
+const pollOptionsListStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 8 }
+const pollOptionInnerRowStyle: React.CSSProperties = { position: 'relative', display: 'flex', justifyContent: 'space-between' }
+const pollFooterStyle: React.CSSProperties = { margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }
+
+const threeDotWrapStyle: React.CSSProperties = { position: 'relative' }
+const threeDotBtnStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '4px',
+  borderRadius: 'var(--r-sm)',
+  color: 'var(--text-tertiary)',
+  display: 'flex',
+  alignItems: 'center',
+}
+const threeDotOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 49, background: 'transparent', border: 'none', padding: 0, cursor: 'default' }
+const threeDotMenuStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '100%',
+  right: 0,
+  zIndex: 50,
+  background: 'var(--surface-raised)',
+  border: '0.5px solid var(--border-hover)',
+  borderRadius: 'var(--r-md)',
+  padding: 4,
+  minWidth: 140,
+  marginTop: 4,
+  transformOrigin: 'top right',
+}
+const threeDotMenuTransition = { type: 'tween' as const, duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
+
+const menuBtnBaseStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  padding: '8px 12px',
+  background: 'transparent',
+  border: 'none',
+  borderRadius: 'var(--r-sm)',
+  cursor: 'pointer',
+  fontSize: 13,
+  fontWeight: 400,
+  textAlign: 'left',
+}
+const menuBtnDangerColor = 'var(--uc-red)'
+const menuBtnDefaultColor = 'var(--text-primary)'
+
+const markdownLinkInternalStyle: React.CSSProperties = { color: 'var(--uc-indigo-xl)', textDecoration: 'none' }
+const markdownLinkExternalStyle: React.CSSProperties = { color: 'var(--uc-indigo-xl)' }
+
+const articleStyle: React.CSSProperties = {
+  background: 'var(--surface-card)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-lg)',
+  transition: 'border-color 200ms ease',
+}
+const postInnerStyle: React.CSSProperties = { padding: '14px 16px 12px' }
+const postHeaderStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }
+const authorAvatarLinkStyle: React.CSSProperties = { flexShrink: 0, lineHeight: 0 }
+const authorMetaColStyle: React.CSSProperties = { flex: 1, minWidth: 0 }
+const authorNameRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }
+const authorNameLinkStyle: React.CSSProperties = { fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }
+const authorDeptStyle: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)' }
+const authorHeadlineStyle: React.CSSProperties = { margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }
+const timestampBtnStyle: React.CSSProperties = {
+  margin: '2px 0 0',
+  padding: 0,
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 12,
+  color: 'var(--text-tertiary)',
+  textAlign: 'left',
+}
+const sharedAttributionStyle: React.CSSProperties = { margin: '-4px 0 10px', fontSize: 12, color: 'var(--text-tertiary)' }
+const sharedAttributionLinkStyle: React.CSSProperties = { color: 'var(--text-secondary)', fontWeight: 500, textDecoration: 'none' }
+const postBodyStyle: React.CSSProperties = {
+  fontSize: 15,
+  fontWeight: 400,
+  color: 'var(--text-primary)',
+  lineHeight: 1.72,
+  marginBottom: 12,
+  overflowWrap: 'anywhere',
+}
+const countSummaryBarStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginTop: 10,
+  paddingBottom: 6,
+  borderBottom: '0.5px solid var(--border-default)',
+}
+const reactionsTriggerBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '2px 0',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+}
+const reactionClusterStyle: React.CSSProperties = { display: 'flex', alignItems: 'center' }
+const reactionTotalCountStyle: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 2 }
+const commentShareRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 }
+const commentBtnStyle: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontSize: 12, color: 'var(--text-tertiary)' }
+const shareCountStyle: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)' }
+const actionRowStyle: React.CSSProperties = { marginTop: 4, paddingTop: 4, display: 'flex', alignItems: 'center', gap: 2 }
+const reactionBtnInnerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5 }
+const saveBtnStyle: React.CSSProperties = { marginLeft: 'auto' }
+
 // ── PinnedBar ─────────────────────────────────────────────────────────────────
 
 function PinnedBar() {
   return (
-    <div
-      className="feed-pinned-bar"
-      style={{
-        background: 'var(--uc-orange-bg)',
-        borderBottom: '0.5px solid var(--uc-orange-bdr)',
-        borderTopLeftRadius: 'var(--r-lg)',
-        borderTopRightRadius: 'var(--r-lg)',
-        padding: '7px 16px',
-      }}
-    >
-      <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--uc-orange-l)' }}>
+    <div className="feed-pinned-bar" style={pinnedBarStyle}>
+      <span style={pinnedBarLabelStyle}>
         Announcement
       </span>
     </div>
@@ -98,20 +219,11 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
   }
 
   return (
-    <div
-      style={{
-        background: 'var(--surface-raised)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-md)',
-        padding: '14px 16px',
-        marginTop: 8,
-      }}
-      aria-busy={voteMutation.isPending}
-    >
-      <p style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+    <div style={pollContainerStyle} aria-busy={voteMutation.isPending}>
+      <p style={pollQuestionStyle}>
         {poll.question}
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={pollOptionsListStyle}>
         {poll.options.map((option, idx) => {
           const count = counts[idx] ?? 0
           const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0
@@ -146,7 +258,7 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
                   transition: 'transform 250ms cubic-bezier(0.23, 1, 0.32, 1)',
                 }}
               />
-              <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={pollOptionInnerRowStyle}>
                 <span style={{ fontSize: 13, fontWeight: isChosen ? 500 : 400, color: isChosen ? 'var(--uc-indigo-xl)' : 'var(--text-primary)' }}>
                   {option.text}
                 </span>
@@ -156,7 +268,7 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
           )
         })}
       </div>
-      <p aria-live="polite" style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
+      <p aria-live="polite" style={pollFooterStyle}>
         {totalVotes.toLocaleString()} vote{totalVotes !== 1 ? 's' : ''}
         {poll.expiresAt && ` · closes ${formatDistanceToNow(parseISO(poll.expiresAt), { addSuffix: true })}`}
       </p>
@@ -188,49 +300,31 @@ function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport }: ThreeD
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={threeDotWrapStyle}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-label="Post options"
         className="press-feedback row-hover-bg"
-        style={{
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '4px',
-          borderRadius: 'var(--r-sm)',
-          color: 'var(--text-tertiary)',
-          display: 'flex',
-          alignItems: 'center',
-        }}
+        style={threeDotBtnStyle}
       >
         <MoreVertical size={16} strokeWidth={1.5} />
       </button>
       <AnimatePresence>
         {open && (
           <>
-            <div
-              style={{ position: 'fixed', inset: 0, zIndex: 49 }}
+            <button
+              type="button"
+              aria-label="Close menu"
               onClick={() => setOpen(false)}
+              style={threeDotOverlayStyle}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -4 }}
-              transition={{ type: 'tween', duration: 0.15, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }}
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                zIndex: 50,
-                background: 'var(--surface-raised)',
-                border: '0.5px solid var(--border-hover)',
-                borderRadius: 'var(--r-md)',
-                padding: 4,
-                minWidth: 140,
-                marginTop: 4,
-                transformOrigin: 'top right',
-              }}
+              transition={threeDotMenuTransition}
+              style={threeDotMenuStyle}
             >
               {canEdit ? (
                 <>
@@ -255,21 +349,7 @@ function MenuBtn({ icon, label, onClick, danger }: { icon: React.ReactNode; labe
       type="button"
       onClick={onClick}
       className="nav-menu-item"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        width: '100%',
-        padding: '8px 12px',
-        background: 'transparent',
-        border: 'none',
-        borderRadius: 'var(--r-sm)',
-        cursor: 'pointer',
-        fontSize: 13,
-        fontWeight: 400,
-        color: danger ? 'var(--uc-red)' : 'var(--text-primary)',
-        textAlign: 'left',
-      }}
+      style={{ ...menuBtnBaseStyle, color: danger ? menuBtnDangerColor : menuBtnDefaultColor }}
     >
       {icon}
       {label}
@@ -284,13 +364,13 @@ const markdownComponents = {
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
     if (href?.startsWith('/')) {
       return (
-        <Link to={href} style={{ color: 'var(--uc-indigo-xl)', textDecoration: 'none' }}>
+        <Link to={href} style={markdownLinkInternalStyle}>
           {children}
         </Link>
       )
     }
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--uc-indigo-xl)' }}>
+      <a href={href} target="_blank" rel="noopener noreferrer" style={markdownLinkExternalStyle}>
         {children}
       </a>
     )
@@ -386,40 +466,34 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
     <article
       data-feed-post={post.id}
       className="feed-post-card card-hover-border"
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        transition: 'border-color 200ms ease',
-        outline: 'none',
-      }}
+      style={articleStyle}
     >
       {isAnnouncement && <PinnedBar />}
 
-      <div className="feed-post-inner" style={{ padding: '14px 16px 12px' }}>
+      <div className="feed-post-inner" style={postInnerStyle}>
         {/* Header */}
-        <div className="feed-post-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-          <Link to={authorProfileUrl} style={{ flexShrink: 0, lineHeight: 0 }} aria-label={`View ${author.fullName}'s profile`}>
+        <div className="feed-post-header" style={postHeaderStyle}>
+          <Link to={authorProfileUrl} style={authorAvatarLinkStyle} aria-label={`View ${author.fullName}'s profile`}>
             <Avatar src={author.profile.avatarUrl} initials={getInitials(author.fullName)} color={avatarColor(author.id)} size={40} />
           </Link>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+          <div style={authorMetaColStyle}>
+            <div style={authorNameRowStyle}>
               <RoleBadge role={author.role} size={15} />
               <Link
                 to={authorProfileUrl}
-                style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
+                style={authorNameLinkStyle}
               >
                 {author.fullName}
               </Link>
               {author.profile.department && (
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                <span style={authorDeptStyle}>
                   · {author.profile.department}
                   {author.profile.batchYear && ` '${author.profile.batchYear.slice(-2)}`}
                 </span>
               )}
             </div>
             {author.profile.headline && (
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <p style={authorHeadlineStyle}>
                 {author.profile.headline}
               </p>
             )}
@@ -428,16 +502,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               onClick={() => viewTransitionNavigate(PATHS.POST_DETAIL.replace(':id', post.id))}
               className="post-timestamp-link"
               aria-label="View post"
-              style={{
-                margin: '2px 0 0',
-                padding: 0,
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 12,
-                color: 'var(--text-tertiary)',
-                textAlign: 'left',
-              }}
+              style={timestampBtnStyle}
             >
               {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
             </button>
@@ -455,11 +520,11 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
 
         {/* "X shared Y's post" attribution line for share cards */}
         {post.originalPost && (
-          <p style={{ margin: '-4px 0 10px', fontSize: 12, color: 'var(--text-tertiary)' }}>
+          <p style={sharedAttributionStyle}>
             shared{' '}
             <Link
               to={PATHS.PROFILE.replace(':id', post.originalPost.author.id)}
-              style={{ color: 'var(--text-secondary)', fontWeight: 500, textDecoration: 'none' }}
+              style={sharedAttributionLinkStyle}
             >
               {post.originalPost.author.fullName}
             </Link>
@@ -471,14 +536,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         {post.content && (
           <div
             className="feed-post-body"
-            style={{
-              fontSize: 15,
-              fontWeight: 400,
-              color: 'var(--text-primary)',
-              lineHeight: 1.72,
-              marginBottom: 12,
-              overflowWrap: 'anywhere',
-            }}
+            style={postBodyStyle}
           >
             <ReactMarkdown rehypePlugins={[rehypeSanitize]} components={markdownComponents}>
               {preprocessHashtags(post.content)}
@@ -503,31 +561,16 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         {/* Count summary bar — Facebook-style */}
         {((!post.reactionCountsHidden && totalReactions(reactionCounts) > 0) || post.commentCount > 0 || localShareCount > 0) && (
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginTop: 10,
-              paddingBottom: 6,
-              borderBottom: '0.5px solid var(--border-default)',
-            }}
+            style={countSummaryBarStyle}
           >
             {/* Left: reaction emoji cluster + total count */}
             {!post.reactionCountsHidden && totalReactions(reactionCounts) > 0 ? (
               <button
                 type="button"
                 onClick={() => setShowReactionsDialog(true)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '2px 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
+                style={reactionsTriggerBtnStyle}
               >
-                <span style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={reactionClusterStyle}>
                   {topReactions(reactionCounts, 3).map((r, i) => (
                     <span
                       key={r.key}
@@ -549,7 +592,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
                     </span>
                   ))}
                 </span>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 2 }}>
+                <span style={reactionTotalCountStyle}>
                   {totalReactions(reactionCounts).toLocaleString()}
                 </span>
               </button>
@@ -558,18 +601,18 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             )}
 
             {/* Right: comment count · share count */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={commentShareRowStyle}>
               {post.commentCount > 0 && (
                 <button
                   type="button"
                   onClick={() => onCommentClick(post.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', fontSize: 12, color: 'var(--text-tertiary)' }}
+                  style={commentBtnStyle}
                 >
                   {post.commentCount.toLocaleString()} comment{post.commentCount !== 1 ? 's' : ''}
                 </button>
               )}
               {localShareCount > 0 && (
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                <span style={shareCountStyle}>
                   {localShareCount.toLocaleString()} share{localShareCount !== 1 ? 's' : ''}
                 </span>
               )}
@@ -579,19 +622,13 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
 
         {/* Action row */}
         <div
-          style={{
-            marginTop: 4,
-            paddingTop: 4,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-          }}
+          style={actionRowStyle}
         >
           <PostReactionTrigger onSelect={handleReactionSelect}>
             <ReactionBtn
               active={Boolean(myReaction)}
               onClick={() => handleReactionSelect(myReaction ?? 'like')}
-              style={{ display: 'flex', alignItems: 'center', gap: 5 }}
+              style={reactionBtnInnerStyle}
             >
               {myReaction ? (
                 <TwemojiIcon
@@ -647,7 +684,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             active={localSaved}
             activeTone="orange"
             onClick={handleSave}
-            style={{ marginLeft: 'auto' }}
+            style={saveBtnStyle}
           >
             <Bookmark size={15} strokeWidth={1.5} fill={localSaved ? 'currentColor' : 'none'} />
             Save

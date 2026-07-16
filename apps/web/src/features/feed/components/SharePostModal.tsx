@@ -74,7 +74,6 @@ export function SharePostModal({ post, onClose, onShared }: Props) {
               width: '100%',
               background: 'transparent',
               border: 'none',
-              outline: 'none',
               resize: 'none',
               color: 'var(--text-primary)',
               fontSize: 14,

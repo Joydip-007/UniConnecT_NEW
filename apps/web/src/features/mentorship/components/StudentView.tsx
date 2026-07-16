@@ -164,7 +164,6 @@ export function StudentView({ addToast }: StudentViewProps) {
                 fontSize: 13,
                 fontWeight: 400,
                 padding: '8px 12px',
-                outline: 'none',
                 boxSizing: 'border-box',
                 transition: 'border-color 150ms',
                 fontFamily: 'inherit',

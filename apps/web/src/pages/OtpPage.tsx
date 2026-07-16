@@ -231,6 +231,7 @@ function OtpForm({
                 maxLength={1}
                 value={digit}
                 disabled={loading}
+                aria-label={`Digit ${i + 1} of verification code`}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 onPaste={handlePaste}

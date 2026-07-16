@@ -6,15 +6,6 @@ interface Props {
   onClose: () => void
 }
 
-const FOCUSABLE_SELECTOR = [
-  'button:not([disabled])',
-  '[href]',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',')
-
 const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
   { keys: ['j'], label: 'Next post' },
   { keys: ['k'], label: 'Previous post' },
@@ -24,68 +15,37 @@ const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
 ]
 
 export function ShortcutHelp({ open, onClose }: Props) {
-  const dialogRef = useRef<HTMLDivElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
-    if (!open) return
-    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    window.requestAnimationFrame(() => closeButtonRef.current?.focus())
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-        return
-      }
-      if (e.key !== 'Tab') return
-      const focusable = Array.from(
-        dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? [],
-      )
-      if (focusable.length === 0) return
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
+    const dialogEl = dialogRef.current
+    if (!dialogEl) return
+    if (open && !dialogEl.open) {
+      dialogEl.showModal()
+    } else if (!open && dialogEl.open) {
+      dialogEl.close()
     }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.body.style.overflow = prev
-      document.removeEventListener('keydown', onKeyDown)
-      if (previousFocusRef.current && document.contains(previousFocusRef.current)) {
-        previousFocusRef.current.focus()
-      }
-    }
-  }, [onClose, open])
-
-  if (!open) return null
+  }, [open])
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
       aria-label="Keyboard shortcuts"
-      onClick={onClose}
+      onClose={onClose}
+      onCancel={onClose}
+      onClick={(e) => {
+        if (e.target === dialogRef.current) onClose()
+      }}
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 300,
-        background: 'var(--overlay-bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
+        padding: 0,
+        border: 'none',
+        background: 'transparent',
+        maxWidth: 'none',
+        maxHeight: 'none',
+        margin: 'auto',
       }}
     >
       <div
-        ref={dialogRef}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
@@ -108,7 +68,6 @@ export function ShortcutHelp({ open, onClose }: Props) {
             Keyboard shortcuts
           </span>
           <button
-            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             aria-label="Close"
@@ -151,7 +110,7 @@ export function ShortcutHelp({ open, onClose }: Props) {
                       background: 'var(--surface-raised)',
                       border: '0.5px solid var(--border-default)',
                       borderRadius: 'var(--r-sm)',
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 500,
                       color: 'var(--text-primary)',
                       fontFamily: 'inherit',
@@ -168,7 +127,7 @@ export function ShortcutHelp({ open, onClose }: Props) {
         <p
           style={{
             margin: '14px 0 0',
-            fontSize: 11,
+            fontSize: 12,
             color: 'var(--text-tertiary)',
             lineHeight: 1.5,
           }}
@@ -176,6 +135,6 @@ export function ShortcutHelp({ open, onClose }: Props) {
           Shortcuts pause while you're typing.
         </p>
       </div>
-    </div>
+    </dialog>
   )
 }

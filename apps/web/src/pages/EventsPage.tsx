@@ -163,6 +163,7 @@ export default function EventsPage() {
           </span>
           <input
             type="date"
+            aria-label="From date"
             value={from}
             onChange={(e) => setDate('from', e.target.value)}
             style={{
@@ -173,13 +174,13 @@ export default function EventsPage() {
               fontSize: 12,
               fontWeight: 400,
               padding: '5px 8px',
-              outline: 'none',
               cursor: 'pointer',
             }}
           />
           <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>to</span>
           <input
             type="date"
+            aria-label="To date"
             value={to}
             min={from || undefined}
             onChange={(e) => setDate('to', e.target.value)}
@@ -191,7 +192,6 @@ export default function EventsPage() {
               fontSize: 12,
               fontWeight: 400,
               padding: '5px 8px',
-              outline: 'none',
               cursor: 'pointer',
             }}
           />

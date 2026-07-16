@@ -103,7 +103,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
               border: '0.5px solid var(--uc-orange-bdr)',
               color: 'var(--uc-orange-l)',
               cursor: 'pointer',
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 500,
             }}
           >
@@ -163,7 +163,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                   : (conv.name ?? 'Group')
               const avatarInitials = initials(displayName)
               const color = seedColor(conv.id)
-              const preview = conv.lastMessage?.body ?? ''
+              const preview = conv.lastMessage?.body || 'No messages yet'
               const time = conv.lastMessage?.sentAt
                 ? relativeTime(conv.lastMessage.sentAt)
                 : null
@@ -229,7 +229,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                             flexShrink: 0,
                             padding: '1px 5px',
                             borderRadius: 'var(--r-pill)',
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: 500,
                             background: 'var(--uc-orange-bg)',
                             border: '0.5px solid var(--uc-orange-bdr)',
@@ -242,7 +242,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                       )}
                       {time && (
                         <span
-                          style={{ flexShrink: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}
+                          style={{ flexShrink: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}
                         >
                           {time}
                         </span>
@@ -260,7 +260,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                         marginTop: 1,
                       }}
                     >
-                      {preview || ' '}
+                      {preview}
                     </span>
                   </div>
                 </button>

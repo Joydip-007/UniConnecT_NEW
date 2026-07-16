@@ -51,10 +51,10 @@ export function ActiveGroups({ groups }: Props) {
             >
               {group.name}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
               {group.memberCount} members
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>
               {group.recentPostCount} posts this week
             </div>
           </div>

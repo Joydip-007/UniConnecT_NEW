@@ -85,7 +85,7 @@ export function BadgesPanel({ userId, isOwnProfile }: Props) {
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
                   {badge.name}
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-secondary)' }}>
+                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>
                   {formatDate(badge.awardedAt)}
                 </span>
               </div>
@@ -100,7 +100,7 @@ export function BadgesPanel({ userId, isOwnProfile }: Props) {
                   borderRadius: 'var(--r-pill)',
                   background: rarityStyle.bg,
                   color: rarityStyle.text,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 400,
                 }}
               >
@@ -113,7 +113,7 @@ export function BadgesPanel({ userId, isOwnProfile }: Props) {
                   onClick={() => showcase.mutate(badge.isShowcased ? null : badge.id)}
                   style={{
                     fontFamily: 'inherit',
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 400,
                     padding: '3px 10px',
                     borderRadius: 'var(--r-pill)',

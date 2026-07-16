@@ -54,7 +54,7 @@ export function LostFoundCard({ item, currentUserId }: LostFoundCardProps) {
             >
               {item.author.fullName}
             </p>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
               {relativeTime(item.createdAt)}
             </p>
           </div>
@@ -111,7 +111,7 @@ export function LostFoundCard({ item, currentUserId }: LostFoundCardProps) {
             >
               <img
                 src={url}
-                alt={`Photo ${i + 1} of ${item.itemName}`}
+                alt={`${item.itemName}, view ${i + 1}`}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
               {i === 2 && item.imageUrls.length > 3 && (

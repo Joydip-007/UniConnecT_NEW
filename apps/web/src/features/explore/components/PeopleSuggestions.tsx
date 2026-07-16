@@ -13,8 +13,8 @@ export function PeopleSuggestions({ people }: Props) {
   }
   return (
     <>
-      {people.map((person) => (
-        <PersonSuggestionCard key={person.id} person={person} />
+      {people.map((person, i) => (
+        <PersonSuggestionCard key={person.id} person={person} isLast={i === people.length - 1} />
       ))}
     </>
   )

@@ -53,7 +53,7 @@ export function AlumniCard({ alumnus, alreadySent, onAsk }: AlumniCardProps) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 4,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 500,
                 padding: '2px 8px',
                 borderRadius: 'var(--r-pill)',
@@ -86,7 +86,7 @@ export function AlumniCard({ alumnus, alreadySent, onAsk }: AlumniCardProps) {
                 <span
                   key={skill}
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 400,
                     color: 'var(--text-tertiary)',
                     background: 'var(--surface-raised)',

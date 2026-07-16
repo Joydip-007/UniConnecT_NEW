@@ -29,11 +29,13 @@ function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
 function FieldRow({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-        {label}
-        {optional && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 4 }}>(optional)</span>}
+      <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span>
+          {label}
+          {optional && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 4 }}>(optional)</span>}
+        </span>
+        {children}
       </label>
-      {children}
     </div>
   )
 }

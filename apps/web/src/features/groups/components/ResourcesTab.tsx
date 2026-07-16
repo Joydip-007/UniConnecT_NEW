@@ -156,7 +156,7 @@ function ResourceRow({
       <span
         style={{
           padding: '2px 8px',
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: 400,
           borderRadius: 'var(--r-pill)',
           background: 'var(--uc-indigo-bg)',
@@ -173,7 +173,7 @@ function ResourceRow({
           {resource.title}
         </p>
         {resource.uploader && (
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
             {resource.uploader.fullName ?? 'Unknown'} · {resource.clickCount} views
           </p>
         )}
@@ -208,16 +208,17 @@ function ResourceRow({
         deleteConfirm === resource.id ? (
           <div style={{ display: 'flex', gap: 4 }}>
             <button type="button" onClick={onDelete}
-              style={{ padding: '4px 8px', fontSize: 11, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--uc-orange)', background: 'var(--uc-orange-bg)', color: 'var(--uc-orange-l)', cursor: 'pointer', fontWeight: 400 }}>
+              style={{ padding: '4px 8px', fontSize: 12, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--uc-orange)', background: 'var(--uc-orange-bg)', color: 'var(--uc-orange-l)', cursor: 'pointer', fontWeight: 400 }}>
               Confirm
             </button>
             <button type="button" onClick={() => onDeleteConfirm(null)}
-              style={{ padding: '4px 8px', fontSize: 11, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}>
+              style={{ padding: '4px 8px', fontSize: 12, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}>
               Cancel
             </button>
           </div>
         ) : (
           <button type="button" onClick={() => onDeleteConfirm(resource.id)}
+            aria-label="Delete resource"
             style={{ padding: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)' }}>
             <Trash2 size={13} strokeWidth={1.5} />
           </button>
@@ -272,7 +273,7 @@ function CreateResourceForm({
     >
       <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required style={inputStyle} />
       <input placeholder="URL (https://...)" type="url" value={url} onChange={(e) => setUrl(e.target.value)} required style={inputStyle} />
-      <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
+      <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Resource category" style={inputStyle}>
         {CATEGORIES.filter((c) => c.value).map((c) => (
           <option key={c.value} value={c.value}>{c.label}</option>
         ))}

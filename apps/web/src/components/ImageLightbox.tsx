@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
  * light/dark rather than theme tokens.
  */
 export function ImageLightbox({ images, startIndex = 0, onClose }: Props) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const [index, setIndex] = useState(() => clamp(startIndex, images.length))
   const multiple = images.length > 1
 
@@ -23,39 +24,61 @@ export function ImageLightbox({ images, startIndex = 0, onClose }: Props) {
     [images.length],
   )
 
-  // Keyboard: Esc closes, arrows navigate. Lock body scroll while open.
+  // Native <dialog> gives us focus trapping, Escape-to-close, and a backdrop for free.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-      else if (e.key === 'ArrowRight' && multiple) go(1)
-      else if (e.key === 'ArrowLeft' && multiple) go(-1)
-    }
-    window.addEventListener('keydown', onKey)
+    const dialog = dialogRef.current
+    dialog?.showModal()
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
-      window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
     }
-  }, [go, multiple, onClose])
+  }, [])
+
+  // Native close (Escape, or dialog.close()) should notify the parent so it unmounts us.
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    function handleClose() {
+      onClose()
+    }
+    dialog.addEventListener('close', handleClose)
+    return () => dialog.removeEventListener('close', handleClose)
+  }, [onClose])
+
+  // Arrow-key navigation between images.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'ArrowRight' && multiple) go(1)
+      else if (e.key === 'ArrowLeft' && multiple) go(-1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [go, multiple])
 
   if (images.length === 0) return null
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
       aria-label="Image viewer"
       onClick={onClose}
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 300,
+        margin: 0,
+        maxWidth: 'none',
+        maxHeight: 'none',
+        width: '100%',
+        height: '100%',
+        border: 'none',
         background: 'rgba(8, 10, 20, 0.94)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 24,
+        color: 'inherit',
       }}
     >
       {/* Close */}
@@ -83,7 +106,7 @@ export function ImageLightbox({ images, startIndex = 0, onClose }: Props) {
       {/* Image — stop propagation so clicking it doesn't close */}
       <img
         src={images[index]}
-        alt={`Image ${index + 1} of ${images.length}`}
+        alt={`Slide ${index + 1} of ${images.length}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '100%',
@@ -125,7 +148,7 @@ export function ImageLightbox({ images, startIndex = 0, onClose }: Props) {
           {index + 1} / {images.length}
         </span>
       )}
-    </div>
+    </dialog>
   )
 }
 

@@ -163,13 +163,13 @@ function MentorRequestList({ alumniId }: { alumniId: string }) {
                   {req.student.fullName}
                 </span>
                 {req.student.department && (
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 6 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>
                     {req.student.department}
                   </span>
                 )}
               </div>
               <span style={{
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 500,
                 padding: '2px 8px',
                 borderRadius: 'var(--r-pill)',
@@ -179,7 +179,7 @@ function MentorRequestList({ alumniId }: { alumniId: string }) {
                 {req.status}
               </span>
               {req.sessionCount > 0 && (
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>
                   {req.sessionCount} session{req.sessionCount !== 1 ? 's' : ''}
                 </span>
               )}
@@ -210,7 +210,7 @@ function FeedbackCard({ label, entry }: { label: string; entry: FeedbackEntry | 
       flexDirection: 'column',
       gap: 4,
     }}>
-      <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)' }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>{label}</span>
       {entry ? (
         <>
           <StarDisplay rating={entry.rating} />
@@ -307,11 +307,11 @@ function MentorRow({ mentor }: { mentor: MentorSummary }) {
         {/* Capacity */}
         <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 88 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
               {mentor.currentMentees} / {mentor.maxMentees} mentees
             </span>
             <span style={{
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: 500,
               color: capacityPct >= 1 ? 'var(--uc-orange-l)' : 'var(--uc-mint)',
             }}>
@@ -382,7 +382,28 @@ function LegendPopover() {
       </button>
       {open && (
         <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setOpen(false)} />
+          <button
+            type="button"
+            aria-label="Close"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 49,
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              font: 'inherit',
+              textAlign: 'inherit',
+              cursor: 'pointer',
+            }}
+            onClick={() => setOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                setOpen(false)
+              }
+            }}
+          />
           <div style={{
             position: 'absolute',
             top: '100%',

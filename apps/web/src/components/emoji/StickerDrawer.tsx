@@ -178,7 +178,6 @@ export function StickerDrawer({ onSelect, onClose }: StickerDrawerProps) {
             flex: 1,
             background: 'none',
             border: 'none',
-            outline: 'none',
             fontSize: 13,
             color: 'var(--text-primary)',
           }}

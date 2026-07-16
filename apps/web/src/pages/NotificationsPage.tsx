@@ -96,6 +96,14 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 onClick={() => handleRowClick(notification)}
+                role={notification.refUrl ? 'button' : undefined}
+                tabIndex={notification.refUrl ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && notification.refUrl) {
+                    e.preventDefault()
+                    handleRowClick(notification)
+                  }
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -118,7 +126,7 @@ export default function NotificationsPage() {
                   >
                     {notification.content}
                   </p>
-                  <p style={{ margin: '3px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
                     {formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true })}
                   </p>
                 </div>

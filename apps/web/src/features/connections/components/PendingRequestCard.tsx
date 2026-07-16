@@ -74,7 +74,7 @@ export function PendingRequestCard({ request }: Props) {
           </div>
         )}
         {requester?.mutualConnections != null && requester.mutualConnections > 0 && (
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3 }}>
             {requester.mutualConnections} mutual connection{requester.mutualConnections !== 1 ? 's' : ''}
           </div>
         )}

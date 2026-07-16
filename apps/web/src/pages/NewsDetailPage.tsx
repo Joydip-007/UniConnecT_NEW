@@ -62,15 +62,18 @@ export default function NewsDetailPage() {
       </Link>
 
       {data.coverUrl && (
-        <img
-          src={data.coverUrl}
-          alt={data.title}
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={() => setLightboxOpen(true)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLightboxOpen(true) } }}
-          style={{ width: '100%', maxHeight: 340, objectFit: 'cover', borderRadius: 'var(--r-lg)', cursor: 'zoom-in' }}
-        />
+          aria-label={`Open image for ${data.title}`}
+          style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'zoom-in' }}
+        >
+          <img
+            src={data.coverUrl}
+            alt={data.title}
+            style={{ width: '100%', maxHeight: 340, objectFit: 'cover', borderRadius: 'var(--r-lg)' }}
+          />
+        </button>
       )}
 
       <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 20 }}>
@@ -80,7 +83,7 @@ export default function NewsDetailPage() {
             {!data.isPublished && (
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 500,
                   color: 'var(--uc-orange-l)',
                   background: 'var(--uc-orange-bg)',

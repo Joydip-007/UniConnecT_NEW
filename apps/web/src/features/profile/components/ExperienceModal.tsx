@@ -32,15 +32,17 @@ function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
 function FieldRow({
   label,
   optional,
+  htmlFor,
   children,
 }: {
   label: string
   optional?: boolean
+  htmlFor?: string
   children: React.ReactNode
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+      <label htmlFor={htmlFor} style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
         {label}
         {optional && (
           <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 4 }}>
@@ -125,29 +127,29 @@ export function ExperienceModal({ userId, entry, onClose }: Props) {
           onSubmit={handleSubmit}
           style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 20px 4px' }}
         >
-          <FieldRow label="Title">
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+          <FieldRow label="Title" htmlFor="exp-title">
+            <input id="exp-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Software Engineer" required style={inputBase} onFocus={onFocus} onBlur={onBlur} />
           </FieldRow>
 
-          <FieldRow label="Company">
-            <input type="text" value={company} onChange={(e) => setCompany(e.target.value)}
+          <FieldRow label="Company" htmlFor="exp-company">
+            <input id="exp-company" type="text" value={company} onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. Google" required style={inputBase} onFocus={onFocus} onBlur={onBlur} />
           </FieldRow>
 
-          <FieldRow label="Location" optional>
-            <input type="text" value={location} onChange={(e) => setLocation(e.target.value)}
+          <FieldRow label="Location" optional htmlFor="exp-location">
+            <input id="exp-location" type="text" value={location} onChange={(e) => setLocation(e.target.value)}
               placeholder="e.g. Dhaka, Bangladesh" style={inputBase} onFocus={onFocus} onBlur={onBlur} />
           </FieldRow>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FieldRow label="Start date">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+            <FieldRow label="Start date" htmlFor="exp-start-date">
+              <input id="exp-start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                 required style={inputBase} onFocus={onFocus} onBlur={onBlur} />
             </FieldRow>
 
-            <FieldRow label="End date" optional>
-              <input type="date" value={current ? '' : endDate} onChange={(e) => setEndDate(e.target.value)}
+            <FieldRow label="End date" optional htmlFor="exp-end-date">
+              <input id="exp-end-date" type="date" value={current ? '' : endDate} onChange={(e) => setEndDate(e.target.value)}
                 disabled={current} style={{ ...inputBase, opacity: current ? 0.5 : 1 }} onFocus={onFocus} onBlur={onBlur} />
             </FieldRow>
           </div>
@@ -162,8 +164,9 @@ export function ExperienceModal({ userId, entry, onClose }: Props) {
             I currently work here
           </label>
 
-          <FieldRow label="Description" optional>
+          <FieldRow label="Description" optional htmlFor="exp-description">
             <textarea
+              id="exp-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your role and key achievements…"

@@ -35,6 +35,9 @@ export function GroupCard({ group }: { group: Group }) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${group.name}`}
       style={{
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
@@ -47,6 +50,12 @@ export function GroupCard({ group }: { group: Group }) {
         transition: 'border-color 150ms',
       }}
       onClick={() => navigate(`/groups/${group.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          navigate(`/groups/${group.id}`)
+        }
+      }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border-default)')}
     >

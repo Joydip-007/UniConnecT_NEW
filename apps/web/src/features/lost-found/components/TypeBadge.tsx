@@ -9,7 +9,7 @@ export function TypeBadge({ type }: { type: LostFoundType }) {
         alignItems: 'center',
         padding: '2px 8px',
         borderRadius: 'var(--r-pill)',
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 500,
         background: lost ? 'var(--uc-orange-bg)' : 'var(--uc-cyan-bg)',
         border: `0.5px solid ${lost ? 'var(--uc-orange-bdr)' : 'var(--uc-cyan-bdr)'}`,

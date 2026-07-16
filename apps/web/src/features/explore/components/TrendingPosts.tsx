@@ -45,11 +45,11 @@ export function TrendingPosts({ posts }: Props) {
           >
             {post.content}
           </p>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
             {post.authorName} ·{' '}
             {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
             {post.reactionCount} reactions · {post.commentCount} comments
           </div>
         </Link>

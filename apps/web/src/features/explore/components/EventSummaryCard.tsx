@@ -59,7 +59,7 @@ export function EventSummaryCard({ event }: Props) {
             {event.title}
           </div>
         </Link>
-        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
           {formatDistanceToNow(parseISO(event.startsAt), { addSuffix: true })} · {event.rsvpCount} going
         </div>
         <button
@@ -74,7 +74,7 @@ export function EventSummaryCard({ event }: Props) {
             border: '0.5px solid var(--border-default)',
             background: isGoing ? 'var(--surface-raised)' : 'var(--uc-indigo)',
             color: isGoing ? 'var(--text-primary)' : 'var(--on-accent)',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 500,
             cursor: isPending ? 'default' : 'pointer',
             opacity: isPending ? 0.6 : 1,

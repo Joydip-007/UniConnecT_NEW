@@ -90,7 +90,6 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
               background: 'var(--surface-raised)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--r-md)',
-              outline: 'none',
             }}
           />
 

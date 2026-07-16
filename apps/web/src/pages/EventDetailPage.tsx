@@ -522,7 +522,7 @@ export default function EventDetailPage() {
             position: 'absolute',
             bottom: 14,
             left: 16,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 500,
             padding: '3px 12px',
             borderRadius: 'var(--r-pill)',
@@ -541,7 +541,7 @@ export default function EventDetailPage() {
               position: 'absolute',
               top: 14,
               right: 16,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 400,
               padding: '3px 10px',
               borderRadius: 'var(--r-pill)',
@@ -561,7 +561,7 @@ export default function EventDetailPage() {
           {!event.isPublished && (
             <span
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 500,
                 color: 'var(--uc-orange-l)',
                 background: 'var(--uc-orange-bg)',

@@ -60,7 +60,7 @@ export function ProfileTabs({ active, postsCount, onChange }: Props) {
             {typeof count === 'number' && count > 0 && (
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 400,
                   color: isActive ? 'var(--uc-indigo-xl)' : 'var(--text-tertiary)',
                   fontVariantNumeric: 'tabular-nums',

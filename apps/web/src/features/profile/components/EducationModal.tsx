@@ -27,10 +27,10 @@ function onBlur(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
   e.currentTarget.style.borderColor = 'var(--border-default)'
 }
 
-function FieldRow({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
+function FieldRow({ label, optional, htmlFor, children }: { label: string; optional?: boolean; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+      <label htmlFor={htmlFor} style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
         {label}
         {optional && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)', marginLeft: 4 }}>(optional)</span>}
       </label>
@@ -98,28 +98,28 @@ export function EducationModal({ userId, entry, onClose }: Props) {
           onSubmit={handleSubmit}
           style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 20px 4px' }}
         >
-          <FieldRow label="Institution">
-            <input type="text" value={institution} onChange={(e) => setInstitution(e.target.value)}
+          <FieldRow label="Institution" htmlFor="edu-institution">
+            <input id="edu-institution" type="text" value={institution} onChange={(e) => setInstitution(e.target.value)}
               placeholder="e.g. United International University" required style={inputBase} onFocus={onFocus} onBlur={onBlur} />
           </FieldRow>
 
-          <FieldRow label="Degree" optional>
-            <input type="text" value={degree} onChange={(e) => setDegree(e.target.value)}
+          <FieldRow label="Degree" optional htmlFor="edu-degree">
+            <input id="edu-degree" type="text" value={degree} onChange={(e) => setDegree(e.target.value)}
               placeholder="e.g. Bachelor of Science" style={inputBase} onFocus={onFocus} onBlur={onBlur} />
           </FieldRow>
 
-          <FieldRow label="Field of study" optional>
-            <input type="text" value={fieldOfStudy} onChange={(e) => setFieldOfStudy(e.target.value)}
+          <FieldRow label="Field of study" optional htmlFor="edu-field">
+            <input id="edu-field" type="text" value={fieldOfStudy} onChange={(e) => setFieldOfStudy(e.target.value)}
               placeholder="e.g. Computer Science and Engineering" style={inputBase} onFocus={onFocus} onBlur={onBlur} />
           </FieldRow>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <FieldRow label="Start year">
-              <input type="number" value={startYear} onChange={(e) => setStartYear(e.target.value)}
+            <FieldRow label="Start year" htmlFor="edu-start-year">
+              <input id="edu-start-year" type="number" value={startYear} onChange={(e) => setStartYear(e.target.value)}
                 min={1950} max={currentYear + 6} required style={inputBase} onFocus={onFocus} onBlur={onBlur} />
             </FieldRow>
-            <FieldRow label="End year" optional>
-              <input type="number" value={current ? '' : endYear} onChange={(e) => setEndYear(e.target.value)}
+            <FieldRow label="End year" optional htmlFor="edu-end-year">
+              <input id="edu-end-year" type="number" value={current ? '' : endYear} onChange={(e) => setEndYear(e.target.value)}
                 min={1950} max={currentYear + 6} disabled={current}
                 style={{ ...inputBase, opacity: current ? 0.5 : 1 }} onFocus={onFocus} onBlur={onBlur} />
             </FieldRow>
@@ -131,13 +131,13 @@ export function EducationModal({ userId, entry, onClose }: Props) {
             I currently study here
           </label>
 
-          <FieldRow label="Grade / GPA" optional>
-            <input type="text" value={grade} onChange={(e) => setGrade(e.target.value)}
+          <FieldRow label="Grade / GPA" optional htmlFor="edu-grade">
+            <input id="edu-grade" type="text" value={grade} onChange={(e) => setGrade(e.target.value)}
               placeholder="e.g. 3.85 / 4.00" style={inputBase} onFocus={onFocus} onBlur={onBlur} />
           </FieldRow>
 
-          <FieldRow label="Description" optional>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)}
+          <FieldRow label="Description" optional htmlFor="edu-description">
+            <textarea id="edu-description" value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="Activities, societies, achievements…" rows={3} maxLength={500}
               style={{ ...inputBase, resize: 'vertical', lineHeight: 1.6, minHeight: 72 }}
               onFocus={onFocus} onBlur={onBlur} />

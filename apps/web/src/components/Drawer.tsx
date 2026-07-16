@@ -68,6 +68,9 @@ export function Drawer({ isOpen, onClose, title, children, height = '70dvh' }: D
         <motion.div
           data-testid="drawer-backdrop"
           onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onClose()
+          }}
           initial={reduced ? false : overlayIn.initial}
           animate={overlayIn.animate}
           exit={reduced ? undefined : overlayIn.exit}

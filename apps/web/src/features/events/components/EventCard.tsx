@@ -76,7 +76,7 @@ function FaceStack({ attendees, total }: { attendees: EventAttendee[]; total: nu
 
   if (total === 0) {
     return (
-      <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
         Be first to RSVP
       </span>
     )
@@ -101,7 +101,7 @@ function FaceStack({ attendees, total }: { attendees: EventAttendee[]; total: nu
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 8,
+              fontSize: 12,
               fontWeight: 500,
               color: 'var(--text-primary)',
               marginLeft: i === 0 ? 0 : -7,
@@ -124,7 +124,7 @@ function FaceStack({ attendees, total }: { attendees: EventAttendee[]; total: nu
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 8,
+              fontSize: 12,
               fontWeight: 500,
               color: 'var(--text-secondary)',
               marginLeft: -7,
@@ -136,7 +136,7 @@ function FaceStack({ attendees, total }: { attendees: EventAttendee[]; total: nu
           </div>
         )}
       </div>
-      <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
         {total} going
       </span>
     </div>
@@ -232,19 +232,32 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
 
   return (
     <article
-      onClick={() => navigate(`/events/${event.id}`)}
       className="card-hover-border"
       style={{
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
         overflow: 'hidden',
-        cursor: 'pointer',
         transition: 'border-color 200ms',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
+      <button
+        type="button"
+        onClick={() => navigate(`/events/${event.id}`)}
+        aria-label={`View event: ${event.title}`}
+        style={{
+          display: 'contents',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          margin: 0,
+          font: 'inherit',
+          textAlign: 'inherit',
+          cursor: 'pointer',
+        }}
+      >
       {/* ── Cover ─────────────────────────────────────────────────────────── */}
       <div
         style={{
@@ -260,7 +273,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
             position: 'absolute',
             bottom: 8,
             left: 12,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: 500,
             padding: '2px 10px',
             borderRadius: 'var(--r-pill)',
@@ -292,7 +305,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
           <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--uc-indigo-l)', lineHeight: 1 }}>
             {dayStr}
           </span>
-          <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
             {monthStr}
           </span>
         </div>
@@ -304,7 +317,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
               position: 'absolute',
               top: 8,
               right: 12,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 400,
               padding: '2px 8px',
               borderRadius: 'var(--r-pill)',
@@ -317,6 +330,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
           </span>
         )}
       </div>
+      </button>
 
       {/* ── Body ──────────────────────────────────────────────────────────── */}
       <div
@@ -328,6 +342,21 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
           flex: 1,
         }}
       >
+        <button
+          type="button"
+          onClick={() => navigate(`/events/${event.id}`)}
+          aria-label={`View event: ${event.title}`}
+          style={{
+            display: 'contents',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            margin: 0,
+            font: 'inherit',
+            textAlign: 'inherit',
+            cursor: 'pointer',
+          }}
+        >
         <h3
           style={{
             margin: 0,
@@ -359,6 +388,7 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
             {event.location}
           </span>
         </div>
+        </button>
 
         {/* ── Footer ────────────────────────────────────────────────────── */}
         <div

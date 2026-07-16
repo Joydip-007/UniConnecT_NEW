@@ -127,7 +127,6 @@ export function FeedbackSection({ requestId, authorRole }: FeedbackSectionProps)
           fontWeight: 400,
           padding: '8px 10px',
           resize: 'vertical',
-          outline: 'none',
           fontFamily: 'inherit',
           lineHeight: 1.5,
           boxSizing: 'border-box',

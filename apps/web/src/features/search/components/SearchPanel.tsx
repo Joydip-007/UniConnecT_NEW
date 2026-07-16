@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { popoverIn } from '@/lib/motion'
@@ -51,6 +51,7 @@ export function SearchPanel({ query, onClose }: Props) {
   const reduced = useReducedMotion()
   const navigate = useNavigate()
   const [tab, setTab] = useState<Tab>('all')
+  const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setTab('all')
@@ -62,6 +63,16 @@ export function SearchPanel({ query, onClose }: Props) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  useEffect(() => {
+    const node = bodyRef.current
+    if (!node) return
+    function onBodyClick() {
+      onClose()
+    }
+    node.addEventListener('click', onBodyClick)
+    return () => node.removeEventListener('click', onBodyClick)
   }, [onClose])
 
   const { data: allData, isLoading: allLoading, isError: allError } = useSearchAll(query, 3)
@@ -325,7 +336,9 @@ export function SearchPanel({ query, onClose }: Props) {
           </button>
         ))}
       </div>
-      <div style={bodyStyle} onClick={onClose}>{tabContent[tab]()}</div>
+      <div ref={bodyRef} style={bodyStyle}>
+        {tabContent[tab]()}
+      </div>
     </motion.div>
   )
 }

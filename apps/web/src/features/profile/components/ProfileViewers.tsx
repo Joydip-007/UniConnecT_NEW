@@ -40,7 +40,7 @@ function ViewerRow({ viewer }: { viewer: ProfileViewer }) {
             Anonymous viewer
           </p>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
           {timeAgo(viewer.viewedAt)}
         </span>
       </div>
@@ -68,7 +68,7 @@ function ViewerRow({ viewer }: { viewer: ProfileViewer }) {
         {(viewer.headline || viewer.department) && (
           <p
             style={{
-              margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)',
+              margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)',
               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             }}
           >
@@ -76,7 +76,7 @@ function ViewerRow({ viewer }: { viewer: ProfileViewer }) {
           </p>
         )}
       </div>
-      <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
         {timeAgo(viewer.viewedAt)}
       </span>
     </Link>
@@ -180,7 +180,7 @@ export function ProfileViewers() {
         </>
       )}
 
-      <p style={{ margin: 0, fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
         Only you can see who viewed your profile.
       </p>
     </div>

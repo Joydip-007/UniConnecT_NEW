@@ -124,7 +124,7 @@ export function ProfileActivity({ userId }: Props) {
               </p>
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 400,
                   color: 'var(--text-tertiary)',
                 }}

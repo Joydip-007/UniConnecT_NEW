@@ -134,7 +134,7 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 500,
               padding: '2px 9px',
               borderRadius: 'var(--r-pill)',
@@ -221,6 +221,7 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
         value={localStatus}
         onChange={handleStatusChange}
         disabled={statusMutation.isPending}
+        aria-label="Application status"
         style={{
           fontSize: 12,
           fontWeight: 400,
@@ -230,7 +231,6 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
           borderRadius: 'var(--r-pill)',
           color: 'var(--text-primary)',
           cursor: statusMutation.isPending ? 'wait' : 'pointer',
-          outline: 'none',
           fontFamily: 'inherit',
           opacity: statusMutation.isPending ? 0.6 : 1,
           flexShrink: 0,

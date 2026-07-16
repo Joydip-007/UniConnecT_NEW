@@ -158,6 +158,7 @@ export function ContentSyncPanel() {
             type="number"
             min={1}
             max={50}
+            aria-label="Entries per source"
             value={draft.entriesPerSource}
             onChange={(e) => setDraft((d) => ({ ...d, entriesPerSource: Number(e.target.value) }))}
           />

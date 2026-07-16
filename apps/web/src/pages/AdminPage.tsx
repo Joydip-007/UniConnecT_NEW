@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
@@ -93,7 +93,7 @@ function UsersStatCard({ total, active }: { total: number; active: number }) {
       borderRadius: 'var(--r-lg)',
       padding: '20px 24px',
     }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
         Total users
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
@@ -115,7 +115,7 @@ function UsersStatCard({ total, active }: { total: number; active: number }) {
           transition: 'transform 0.6s var(--ease-out-strong)',
         }} />
       </div>
-      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-tertiary)' }}>
+      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
         {pct}% active in 30 days
       </div>
     </div>
@@ -132,7 +132,7 @@ function ReportsStatCard({ count }: { count: number }) {
       padding: '20px 24px',
       transition: 'background 0.3s, border-color 0.3s',
     }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
         Open reports
       </div>
       <div style={{ fontSize: 40, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>
@@ -171,7 +171,7 @@ function ContentMetricsStrip({ stats }: { stats: Stats }) {
           flexDirection: 'column',
           gap: 6,
         }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>
             {label}
           </div>
           <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
@@ -327,6 +327,7 @@ function AllowedDomainsPanel() {
               <button
                 type="button"
                 onClick={() => setSuccessMsg(null)}
+                aria-label="Dismiss message"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--uc-mint)' }}
               >
                 <X size={14} />
@@ -359,6 +360,7 @@ function AllowedDomainsPanel() {
                   <button
                     type="button"
                     onClick={() => removeDomain(d)}
+                    aria-label={`Remove domain @${d}`}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--uc-indigo-l)', opacity: 0.7 }}
                   >
                     <X size={12} />
@@ -464,20 +466,32 @@ function ConfirmModal({ variant, user, isPending, onConfirm, onClose }: ConfirmM
       ? `${user.profile.fullName} won't be able to log in until you remove the ban.`
       : `${user.profile.fullName} will regain access and be able to log in again.`
   const confirmLabel = isDelete ? 'Delete account' : isBan ? 'Ban user' : 'Remove ban'
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    dialogRef.current?.showModal()
+  }, [])
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
       aria-labelledby="modal-title"
+      onClose={onClose}
+      onCancel={onClose}
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 200,
+        margin: 0,
+        padding: '0 16px',
+        width: '100%',
+        height: '100%',
+        maxWidth: 'none',
+        maxHeight: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '0 16px',
+        border: 'none',
         background: 'var(--overlay-bg-strong)',
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',
@@ -567,7 +581,7 @@ function ConfirmModal({ variant, user, isPending, onConfirm, onClose }: ConfirmM
             <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user.profile.fullName}
             </p>
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user.email}
             </p>
           </div>
@@ -639,7 +653,7 @@ function ConfirmModal({ variant, user, isPending, onConfirm, onClose }: ConfirmM
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }
 
@@ -765,7 +779,7 @@ function UsersTab() {
                         border: '0.5px solid var(--uc-orange-bdr)',
                         borderRadius: 'var(--r-pill)',
                         padding: '2px 8px',
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 500,
                         color: 'var(--uc-orange-l)',
                         letterSpacing: '0.02em',
@@ -781,6 +795,7 @@ function UsersTab() {
                 {/* Actions */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                   <select
+                    aria-label={`Change role for ${u.profile.fullName}`}
                     value={u.role}
                     onChange={(e) => roleMutation.mutate({ userId: u.id, role: e.target.value as UserRole })}
                     disabled={roleMutation.isPending || isSelf}
@@ -1097,6 +1112,7 @@ function InvitationsTab() {
                 style={{ ...inputStyle, flex: '2 1 200px' }}
               />
               <select
+                aria-label="Invitee role"
                 value={formRole}
                 onChange={(e) => setFormRole(e.target.value as UserRole)}
                 style={{ ...selectStyle, flex: '1 1 120px' }}
@@ -1106,6 +1122,7 @@ function InvitationsTab() {
                 ))}
               </select>
               <select
+                aria-label="Invitation expiry"
                 value={formDays}
                 onChange={(e) => setFormDays(Number(e.target.value))}
                 style={{ ...selectStyle, flex: '1 1 120px' }}
@@ -1135,6 +1152,7 @@ function InvitationsTab() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <select
+                aria-label="Bulk invitee role"
                 value={bulkRole}
                 onChange={(e) => setBulkRole(e.target.value as UserRole)}
                 style={{ ...selectStyle, flex: '1 1 120px' }}
@@ -1144,6 +1162,7 @@ function InvitationsTab() {
                 ))}
               </select>
               <select
+                aria-label="Bulk invitation expiry"
                 value={bulkDays}
                 onChange={(e) => setBulkDays(Number(e.target.value))}
                 style={{ ...selectStyle, flex: '1 1 120px' }}
@@ -1204,6 +1223,7 @@ function InvitationsTab() {
             <button
               type="button"
               onClick={() => setSuccessMsg(null)}
+              aria-label="Dismiss message"
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--uc-mint)' }}
             >
               <X size={14} />
