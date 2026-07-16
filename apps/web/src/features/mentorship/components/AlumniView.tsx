@@ -40,9 +40,12 @@ export function AlumniView({ addToast }: AlumniViewProps) {
     mutationFn: (value: number) =>
       api.patch('/users/me', { maxMentees: value }).then((r) => r.data.data),
     onMutate: (value) => {
+      const previous = user?.profile.maxMentees ?? 3
       updateProfile({ maxMentees: value })
+      return { previous }
     },
-    onError: () => {
+    onError: (_err, _value, context) => {
+      if (context) updateProfile({ maxMentees: context.previous })
       addToast('Failed to update mentee limit.', 'error')
     },
   })

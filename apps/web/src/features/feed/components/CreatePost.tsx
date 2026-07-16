@@ -126,7 +126,9 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
   }, [editPost])
 
   useEffect(() => {
-    if (open) setTimeout(() => textareaRef.current?.focus(), 50)
+    if (!open) return
+    const t = setTimeout(() => textareaRef.current?.focus(), 50)
+    return () => clearTimeout(t)
   }, [open])
 
   // Warn before page unload if composer has unsaved content

@@ -44,8 +44,12 @@ export function useTriggerSync() {
 /** Heals attachments for already-imported items the source's recency window can no
  *  longer reach (looked up directly by their own source URL) and retries failed downloads. */
 export function useBackfillAttachments() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: () => api.post('/admin/content-sync/backfill-attachments').then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['content-sync', 'runs'] })
+    },
   })
 }
 

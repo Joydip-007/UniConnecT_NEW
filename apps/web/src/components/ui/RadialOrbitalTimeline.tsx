@@ -42,6 +42,8 @@ export function RadialOrbitalTimeline({
   const containerRef  = useRef<HTMLDivElement>(null)
   const intervalRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const resumeTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const expandedRef   = useRef(expanded)
+  useEffect(() => { expandedRef.current = expanded }, [expanded])
   const shouldAutoRotate = motionEnabled && autoRotate
 
   /* ── Auto-rotation ─────────────────────────────────── */
@@ -76,7 +78,7 @@ export function RadialOrbitalTimeline({
     setHovered(null)
     /* Brief delay before resuming so rapid swipes don't strobe */
     resumeTimer.current = setTimeout(() => {
-      setExpanded(prev => { if (prev === null) setAutoRotate(true); return prev })
+      if (expandedRef.current === null) setAutoRotate(true)
     }, 320)
   }, [])
 

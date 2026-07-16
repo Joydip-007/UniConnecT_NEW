@@ -866,6 +866,7 @@ function UsersTab() {
 // OTP, no allowed-domain check.
 
 function AddDriverPanel() {
+  const qc = useQueryClient()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -874,6 +875,7 @@ function AddDriverPanel() {
   const mutation = useMutation({
     mutationFn: () => api.post('/admin/users/driver', { full_name: fullName, email, password }),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'users'] })
       const who = email
       setFullName('')
       setEmail('')

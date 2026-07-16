@@ -38,8 +38,11 @@ export function useRevokeOtherSessions() {
 }
 
 export function useChangePassword() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { currentPassword: string; newPassword: string }) => changePassword(input),
+    // Password change revokes other sessions server-side — refresh the list
+    onSuccess: () => qc.invalidateQueries({ queryKey: SESSIONS_KEY }),
   })
 }
 

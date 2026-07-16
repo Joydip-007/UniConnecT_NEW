@@ -16,6 +16,26 @@ function fmt(d: string | Date | null | undefined): string {
   return dt.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
 }
 
+// Profile fields are user-controlled — escape everything interpolated into the
+// resume document to keep stored HTML from executing in a same-origin window.
+function esc(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function escMultiline(value: string): string {
+  return esc(value).replace(/\n/g, '<br>')
+}
+
+function safeHref(url: string): string {
+  return /^https?:\/\//i.test(url) ? esc(url) : ''
+}
+
 function buildResumeHtml(
   user: PublicUserProfile,
   experience: ProfileExperience[],
@@ -29,12 +49,12 @@ function buildResumeHtml(
       <div class="entry">
         <div class="entry-header">
           <div>
-            <div class="entry-title">${e.title}</div>
-            <div class="entry-sub">${e.company}${e.location ? ` · ${e.location}` : ''}</div>
+            <div class="entry-title">${esc(e.title)}</div>
+            <div class="entry-sub">${esc(e.company)}${e.location ? ` · ${esc(e.location)}` : ''}</div>
           </div>
           <div class="entry-date">${fmt(e.startDate)} – ${e.endDate ? fmt(e.endDate) : 'Present'}</div>
         </div>
-        ${e.description ? `<div class="entry-desc">${e.description.replace(/\n/g, '<br>')}</div>` : ''}
+        ${e.description ? `<div class="entry-desc">${escMultiline(e.description)}</div>` : ''}
       </div>`,
     )
     .join('')
@@ -45,12 +65,12 @@ function buildResumeHtml(
       <div class="entry">
         <div class="entry-header">
           <div>
-            <div class="entry-title">${e.institution}</div>
-            <div class="entry-sub">${[e.degree, e.fieldOfStudy].filter(Boolean).join(', ')}${e.grade ? ` · ${e.grade}` : ''}</div>
+            <div class="entry-title">${esc(e.institution)}</div>
+            <div class="entry-sub">${esc([e.degree, e.fieldOfStudy].filter(Boolean).join(', '))}${e.grade ? ` · ${esc(e.grade)}` : ''}</div>
           </div>
-          <div class="entry-date">${e.startYear}${e.endYear ? ` – ${e.endYear}` : ' – Present'}</div>
+          <div class="entry-date">${esc(e.startYear)}${e.endYear ? ` – ${esc(e.endYear)}` : ' – Present'}</div>
         </div>
-        ${e.description ? `<div class="entry-desc">${e.description.replace(/\n/g, '<br>')}</div>` : ''}
+        ${e.description ? `<div class="entry-desc">${escMultiline(e.description)}</div>` : ''}
       </div>`,
     )
     .join('')
@@ -59,15 +79,15 @@ function buildResumeHtml(
     p.skills.length > 0
       ? `<section>
            <h2>Skills</h2>
-           <div class="skills">${p.skills.map((s) => `<span class="skill">${s}</span>`).join('')}</div>
+           <div class="skills">${p.skills.map((s) => `<span class="skill">${esc(s)}</span>`).join('')}</div>
          </section>`
       : ''
 
   const links = [
-    p.linkedinUrl ? `<a href="${p.linkedinUrl}">LinkedIn</a>` : '',
-    p.githubUrl ? `<a href="${p.githubUrl}">GitHub</a>` : '',
-    p.websiteUrl ? `<a href="${p.websiteUrl}">Website</a>` : '',
-    p.portfolioUrl ? `<a href="${p.portfolioUrl}">Portfolio</a>` : '',
+    p.linkedinUrl && safeHref(p.linkedinUrl) ? `<a href="${safeHref(p.linkedinUrl)}">LinkedIn</a>` : '',
+    p.githubUrl && safeHref(p.githubUrl) ? `<a href="${safeHref(p.githubUrl)}">GitHub</a>` : '',
+    p.websiteUrl && safeHref(p.websiteUrl) ? `<a href="${safeHref(p.websiteUrl)}">Website</a>` : '',
+    p.portfolioUrl && safeHref(p.portfolioUrl) ? `<a href="${safeHref(p.portfolioUrl)}">Portfolio</a>` : '',
   ]
     .filter(Boolean)
     .join(' · ')
@@ -76,7 +96,7 @@ function buildResumeHtml(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${p.fullName} — Resume</title>
+  <title>${esc(p.fullName)} — Resume</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -111,20 +131,20 @@ function buildResumeHtml(
   </style>
 </head>
 <body>
-  <h1>${p.fullName}</h1>
-  ${p.headline ? `<div class="subtitle">${p.headline}</div>` : ''}
+  <h1>${esc(p.fullName)}</h1>
+  ${p.headline ? `<div class="subtitle">${esc(p.headline)}</div>` : ''}
   <div class="meta">
     ${[
-      user.email,
-      p.phone ?? '',
-      p.location ?? '',
+      esc(user.email),
+      esc(p.phone ?? ''),
+      esc(p.location ?? ''),
       links,
     ]
       .filter(Boolean)
       .join(' · ')}
   </div>
 
-  ${p.bio ? `<hr><section><p style="font-size:13px;color:#333;line-height:1.65">${p.bio.replace(/\n/g, '<br>')}</p></section>` : ''}
+  ${p.bio ? `<hr><section><p style="font-size:13px;color:#333;line-height:1.65">${escMultiline(p.bio)}</p></section>` : ''}
 
   ${
     experience.length > 0

@@ -426,8 +426,10 @@ export function ChatView({ convId }: { convId: string }) {
     })
 
   // Keep fetch state in sync via ref so the observer closure never goes stale
-  fetchStateRef.current = { hasNextPage: !!hasNextPage, isFetchingNextPage }
-  fetchNextPageRef.current = fetchNextPage
+  useEffect(() => {
+    fetchStateRef.current = { hasNextPage: !!hasNextPage, isFetchingNextPage }
+    fetchNextPageRef.current = fetchNextPage
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   // Scroll management: initial load → bottom; older pages → preserve position; own new msg → bottom
   useLayoutEffect(() => {

@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { User } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
@@ -30,6 +30,7 @@ export function useUsernameAvailability(username: string, enabled: boolean) {
 /** Persist a new username via PATCH /users/me and sync the auth store. */
 export function useUpdateUsername() {
   const updateUsername = useAuthStore((s) => s.updateUsername)
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: async (username: string) => {
       const r = await api.patch<{ data: User }>('/users/me', { username })
@@ -37,6 +38,7 @@ export function useUpdateUsername() {
     },
     onSuccess: (updated) => {
       if (updated?.username) updateUsername(updated.username)
+      if (updated?.id) void qc.invalidateQueries({ queryKey: ['user', updated.id] })
     },
   })
 }

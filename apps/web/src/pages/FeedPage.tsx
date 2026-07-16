@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Rss } from 'lucide-react'
@@ -63,12 +63,13 @@ export default function FeedPage() {
     setSearchParams(value === 'recent' ? {} : { sort: value }, { replace: true })
   }
 
-  useFeedShortcuts({
-    onCompose: () => window.dispatchEvent(new CustomEvent('uc:open-create-post', { detail: { instant: true } })),
-    onToggleHelp: () => setHelpOpen((v) => !v),
-    onCloseHelp: () => setHelpOpen(false),
-    helpOpen,
-  })
+  const onCompose = useCallback(
+    () => window.dispatchEvent(new CustomEvent('uc:open-create-post', { detail: { instant: true } })),
+    [],
+  )
+  const onToggleHelp = useCallback(() => setHelpOpen((v) => !v), [])
+  const onCloseHelp = useCallback(() => setHelpOpen(false), [])
+  useFeedShortcuts({ onCompose, onToggleHelp, onCloseHelp, helpOpen })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
