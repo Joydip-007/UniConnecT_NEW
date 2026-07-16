@@ -19,6 +19,7 @@
     "ImageLightbox": {"cardMode": "single", "viewport": "760x500"}
   },
   "extraEntries": ["react-router-dom", "@tanstack/react-query", "./src/ds-query-client.ts"],
+  "extraFonts": ["../../../../.design-sync/fonts/satoshi/satoshi.css"],
   "provider": {
     "component": "MemoryRouter",
     "inner": {"component": "QueryClientProvider", "props": {"client": {"$ref": "dsQueryClient"}}}
