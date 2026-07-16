@@ -14,3 +14,10 @@ SRS
 # on every commit/branch-switch by the background hook (so it churns endlessly
 # if tracked). Kept on disk, out of version control.
 graphify-out/
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+apps/web/.ds-compiled/
+apps/web/dist/
