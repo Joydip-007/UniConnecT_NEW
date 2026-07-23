@@ -1,4 +1,4 @@
-import { ImageLightbox } from 'web';
+import { RedemptionModal } from 'web';
 
 
 // Force framer-motion's useReducedMotion() to true so animated enter/exit
@@ -18,16 +18,20 @@ if (typeof window !== 'undefined') {
   window.matchMedia = (() => mql) as typeof window.matchMedia;
 }
 
-const IMAGES = [
-  'https://picsum.photos/seed/uc-lightbox-1/1200/800',
-  'https://picsum.photos/seed/uc-lightbox-2/1200/800',
-  'https://picsum.photos/seed/uc-lightbox-3/1200/800',
-];
+const card = {
+  id: 'gc1',
+  vendor: 'Amazon',
+  title: 'Amazon gift card',
+  description: 'Redeemable on amazon.com for any product.',
+  imageUrl: null,
+  valueUsdCents: 1000,
+  thresholdPoints: 1000,
+};
 
 export function Default() {
-  return <ImageLightbox images={IMAGES} onClose={() => {}} />;
+  return <RedemptionModal card={card} balance={1450} isSubmitting={false} onCancel={() => {}} onConfirm={() => {}} />;
 }
 
-export function SingleImage() {
-  return <ImageLightbox images={[IMAGES[0]]} onClose={() => {}} />;
+export function Submitting() {
+  return <RedemptionModal card={card} balance={1450} isSubmitting onCancel={() => {}} onConfirm={() => {}} />;
 }

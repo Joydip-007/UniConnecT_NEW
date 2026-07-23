@@ -21,10 +21,10 @@ UniConnecT replaces scattered WhatsApp groups, Facebook pages, notice boards, an
 
 | Role | What they do |
 | --- | --- |
-| Student | Post updates, join groups, message peers, browse jobs, RSVP to events, request alumni mentorship |
+| Student | Post updates, join groups, message peers, browse jobs, RSVP to events, request alumni mentorship, follow AI-generated learning paths, take daily quizzes |
 | Alumni | Share jobs, mentor students, stay connected with campus groups and events |
-| Faculty | Publish announcements, events, jobs, course and group updates |
-| Admin | Manage users, invitations, reports, content sync, settings, and shuttle data |
+| Faculty | Publish announcements, events, jobs, course outlines, gradebooks, modules, and assignments inside course groups |
+| Admin | Manage users, invitations, reports, content sync, settings, shuttle data, and AI learning/quiz content approval |
 | Driver | Broadcast shuttle GPS locations without access to the social app |
 
 ---
@@ -40,7 +40,10 @@ UniConnecT replaces scattered WhatsApp groups, Facebook pages, notice boards, an
 - **Mentorship** with alumni capacity, request lifecycle jobs, session tracking, points, rewards, and auto-created conversations
 - **Search and explore** with Postgres full-text search, trigram fallback, discovery sections, and ranked results
 - **Campus tools** for news, content sync, lost-and-found, courses, shuttle schedules, live shuttle GPS, and web push
-- **Admin panel** for stats, users, roles, bans, soft deletes, driver accounts, invitations, reports, deletion requests, content sync, and shuttle management
+- **Academic tools** for course groups: course outlines, gradebooks, modules, and assignment submissions with file uploads
+- **AI learning** with generated learning paths, daily quiz slots with leaderboards, streaks, badges, and admin review/approval of AI-generated content before publish
+- **Moderation** with user block/mute and content reporting
+- **Admin panel** for stats, users, roles, bans, soft deletes, driver accounts, invitations, reports, deletion requests, content sync, shuttle management, and AI learning/quiz generation config
 
 ---
 
@@ -55,6 +58,8 @@ UniConnecT replaces scattered WhatsApp groups, Facebook pages, notice boards, an
 | Real-time | Socket.io with Redis adapter |
 | Auth | JWT access tokens, httpOnly refresh cookies, bcryptjs, email OTP |
 | Email | Resend |
+| AI content | Google Gemini (learning path and quiz generation, admin-reviewed before publish) |
+| GIFs and stickers | Klipy |
 | Uploads | S3-compatible presigned uploads; Cloudflare R2 in production |
 | Testing | Vitest, React Testing Library, MSW, Supertest |
 | Deployment | Vercel frontend, Azure App Service API, Neon PostgreSQL, Redis Cloud, Cloudflare R2 |
@@ -158,6 +163,8 @@ AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_ENDPOINT=...
 AWS_PUBLIC_URL=...
+GEMINI_API_KEY=...
+KLIPY_API_KEY=...
 ```
 
 ---
@@ -195,7 +202,7 @@ npx pnpm --filter api db:reset       # rollback all, migrate, seed
 - Socket.io events are emitted after successful writes and target rooms such as `uni:{universityId}`, `user:{userId}`, and `conv:{conversationId}`.
 - Redis backs Bull queues, presence state, OTP state, and Socket.io scaling.
 - OTPs are bcrypt-hashed in Redis with short TTLs; normal verified-user login is password-only.
-- Workers process email, notifications, badges, group digests, mentorship lifecycle jobs, push notifications, content sync, and feed ranking.
+- Workers process email, notifications, notification digests, badges, group digests, mentorship lifecycle jobs, push notifications, content sync, feed ranking, post lifecycle transitions, AI content generation, and quiz lifecycle jobs.
 
 ---
 

@@ -1,4 +1,4 @@
-import { ImageLightbox } from 'web';
+import { ReportModal } from 'web';
 
 
 // Force framer-motion's useReducedMotion() to true so animated enter/exit
@@ -18,16 +18,26 @@ if (typeof window !== 'undefined') {
   window.matchMedia = (() => mql) as typeof window.matchMedia;
 }
 
-const IMAGES = [
-  'https://picsum.photos/seed/uc-lightbox-1/1200/800',
-  'https://picsum.photos/seed/uc-lightbox-2/1200/800',
-  'https://picsum.photos/seed/uc-lightbox-3/1200/800',
-];
-
 export function Default() {
-  return <ImageLightbox images={IMAGES} onClose={() => {}} />;
+  return (
+    <ReportModal
+      isOpen
+      onClose={() => {}}
+      targetType="post"
+      targetId="post-1"
+      targetLabel="this post"
+    />
+  );
 }
 
-export function SingleImage() {
-  return <ImageLightbox images={[IMAGES[0]]} onClose={() => {}} />;
+export function ReportingUser() {
+  return (
+    <ReportModal
+      isOpen
+      onClose={() => {}}
+      targetType="user"
+      targetId="user-1"
+      targetLabel="Nadia Islam"
+    />
+  );
 }

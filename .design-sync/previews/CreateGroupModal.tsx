@@ -1,4 +1,4 @@
-import { ImageLightbox } from 'web';
+import { CreateGroupModal } from 'web';
 
 
 // Force framer-motion's useReducedMotion() to true so animated enter/exit
@@ -18,16 +18,15 @@ if (typeof window !== 'undefined') {
   window.matchMedia = (() => mql) as typeof window.matchMedia;
 }
 
-const IMAGES = [
-  'https://picsum.photos/seed/uc-lightbox-1/1200/800',
-  'https://picsum.photos/seed/uc-lightbox-2/1200/800',
-  'https://picsum.photos/seed/uc-lightbox-3/1200/800',
-];
+// CreateGroupModal reads useAuthStore().user for role-based field locking, but
+// no props depend on it beyond that — the store's dev-auth mock user (a
+// non-student role) is enough for the full form to render, including alumni/
+// faculty membership options. Uses <Modal isOpen> internally, always visible.
 
-export function Default() {
-  return <ImageLightbox images={IMAGES} onClose={() => {}} />;
-}
-
-export function SingleImage() {
-  return <ImageLightbox images={[IMAGES[0]]} onClose={() => {}} />;
+export function Open() {
+  return (
+    <div style={{ padding: 12, background: 'var(--surface-page)' }}>
+      <CreateGroupModal onClose={() => {}} />
+    </div>
+  );
 }
