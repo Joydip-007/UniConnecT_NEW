@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Trophy } from 'lucide-react'
+import { Trophy, CheckCircle2, XCircle } from 'lucide-react'
 import { Modal } from '@/components/Modal'
 import { useSubmitAttempt } from '../hooks/useQuiz'
-import type { DailyQuizSlot, QuizAttemptResult } from '../types'
+import type { DailyQuizSlot, QuizAttemptResult, QuizReviewItem } from '../types'
 
 interface Props { slot: DailyQuizSlot; open: boolean; onClose: () => void }
 
@@ -35,7 +35,9 @@ const actionButton: React.CSSProperties = {
 export function DailyQuizModal({ slot, open, onClose }: Props) {
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState<number[]>([])
-  const [result, setResult] = useState<QuizAttemptResult | null>(null)
+  const [result, setResult] = useState<QuizAttemptResult | null>(
+    slot.myAttempt ? { ...slot.myAttempt, passed: slot.myAttempt.score >= 70 } : null,
+  )
   const submit = useSubmitAttempt(slot.id)
 
   if (!open) return null
@@ -65,15 +67,20 @@ export function DailyQuizModal({ slot, open, onClose }: Props) {
   if (result) {
     return (
       <Modal isOpen title="Quiz result" onClose={handleClose}>
-        <div style={{ padding: '8px 0 16px', display: 'grid', gap: 16, textAlign: 'center' }}>
-          <Trophy size={40} color={result.passed ? 'var(--uc-amber)' : 'var(--text-tertiary)'} aria-hidden />
-          <p style={{ margin: 0, fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-            {result.score}%
-          </p>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
-            {result.correctCount} of {result.totalQuestions} correct
-            {result.passed ? ' — you passed!' : ' — try again tomorrow'}
-          </p>
+        <div style={{ padding: '8px 0 16px', display: 'grid', gap: 20 }}>
+          <div style={{ display: 'grid', gap: 16, textAlign: 'center' }}>
+            <Trophy size={40} color={result.passed ? 'var(--uc-amber)' : 'var(--text-tertiary)'} aria-hidden style={{ justifySelf: 'center' }} />
+            <p style={{ margin: 0, fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+              {result.score}%
+            </p>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
+              {result.correctCount} of {result.totalQuestions} correct
+              {result.passed ? ' — you passed!' : ' — try again tomorrow'}
+            </p>
+          </div>
+
+          <QuizReviewList review={result.review} />
+
           <button type="button" onClick={handleClose} style={actionButton}>Done</button>
         </div>
       </Modal>
@@ -129,5 +136,51 @@ export function DailyQuizModal({ slot, open, onClose }: Props) {
         )}
       </div>
     </Modal>
+  )
+}
+
+function QuizReviewList({ review }: { review: QuizReviewItem[] }) {
+  if (review.length === 0) return null
+
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>
+        Review your answers
+      </p>
+      {review.map((item, i) => (
+        <div
+          key={item.question}
+          style={{
+            display: 'grid',
+            gap: 6,
+            padding: '10px 12px',
+            borderRadius: 'var(--r-md)',
+            border: `0.5px solid ${item.isCorrect ? 'var(--border-default)' : 'var(--uc-red)'}`,
+            background: 'var(--surface-card)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            {item.isCorrect ? (
+              <CheckCircle2 size={16} color="var(--uc-mint)" aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+            ) : (
+              <XCircle size={16} color="var(--uc-red)" aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+            )}
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textWrap: 'balance' }}>
+              {i + 1}. {item.question}
+            </p>
+          </div>
+          <div style={{ display: 'grid', gap: 4, paddingLeft: 24 }}>
+            <p style={{ margin: 0, fontSize: 13, color: item.isCorrect ? 'var(--text-secondary)' : 'var(--uc-red)' }}>
+              Your answer: {item.selectedIndex >= 0 ? item.options[item.selectedIndex] : 'No answer'}
+            </p>
+            {!item.isCorrect && (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--uc-mint)' }}>
+                Correct answer: {item.options[item.correctIndex]}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }

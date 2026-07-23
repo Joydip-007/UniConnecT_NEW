@@ -1,7 +1,7 @@
 import { db } from '../../config/db'
 import { badgeQueue } from '../../queues/badge.queue'
 import { conflict, notFound } from '../../utils/errors'
-import { scoreQuiz } from './quizEngine'
+import { scoreQuiz, buildQuizReview } from './quizEngine'
 import type { StoredQuestion } from './quizEngine'
 import type { SubmitAnswersInput, QuizHistoryQuery } from './schema'
 
@@ -15,7 +15,13 @@ interface QuizSlotRow {
 
 interface AttemptRow {
   id: string; slot_id: string; user_id: string
+  answers: number[] | string
   score: number; correct_count: number; total_questions: number; completed_at: Date
+}
+
+function parseAnswers(raw: number[] | string): number[] {
+  if (typeof raw === 'string') return JSON.parse(raw) as number[]
+  return raw
 }
 
 function todayLocalDate(tz: string): string {
@@ -61,7 +67,12 @@ export async function getTodaySlot(context: AuthContext) {
     date,
     questions: clientQuestions,
     myAttempt: attempt
-      ? { score: attempt.score, correctCount: attempt.correct_count, totalQuestions: attempt.total_questions }
+      ? {
+          score: attempt.score,
+          correctCount: attempt.correct_count,
+          totalQuestions: attempt.total_questions,
+          review: buildQuizReview(stored, parseAnswers(attempt.answers)),
+        }
       : null,
   }
 }
@@ -100,7 +111,9 @@ export async function submitAttempt(context: AuthContext, slotId: string, input:
     })
   }
 
-  return { score, correctCount, totalQuestions, passed }
+  const review = buildQuizReview(stored, input.answers)
+
+  return { score, correctCount, totalQuestions, passed, review }
 }
 
 export async function getTodayLeaderboard(context: AuthContext) {

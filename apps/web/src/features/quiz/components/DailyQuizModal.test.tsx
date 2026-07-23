@@ -48,8 +48,18 @@ describe('DailyQuizModal', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument())
   })
 
-  it('submits and shows result screen', async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: { data: { score: 100, correctCount: 2, totalQuestions: 2, passed: true } } })
+  it('submits and shows result screen with per-question review', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: {
+        data: {
+          score: 100, correctCount: 2, totalQuestions: 2, passed: true,
+          review: [
+            { question: 'What is 1+1?', options: ['1', '2', '3'], selectedIndex: 1, correctIndex: 1, isCorrect: true },
+            { question: 'Capital of France?', options: ['London', 'Paris', 'Rome'], selectedIndex: 1, correctIndex: 1, isCorrect: true },
+          ],
+        },
+      },
+    })
     vi.mocked(api.get).mockResolvedValue({ data: { data: [] } })
     render(<Wrap><DailyQuizModal slot={SLOT} open onClose={vi.fn()} /></Wrap>)
     fireEvent.click(screen.getByText('2'))
@@ -57,6 +67,30 @@ describe('DailyQuizModal', () => {
     fireEvent.click(screen.getByText('Paris'))
     await waitFor(() => fireEvent.click(screen.getByRole('button', { name: /submit/i })))
     await waitFor(() => expect(screen.getByText(/100/)).toBeInTheDocument())
+    expect(screen.getByText('1. What is 1+1?')).toBeInTheDocument()
+    expect(screen.getByText('2. Capital of France?')).toBeInTheDocument()
+  })
+
+  it('shows correct answer for a wrong response in the review', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: {
+        data: {
+          score: 50, correctCount: 1, totalQuestions: 2, passed: false,
+          review: [
+            { question: 'What is 1+1?', options: ['1', '2', '3'], selectedIndex: 1, correctIndex: 1, isCorrect: true },
+            { question: 'Capital of France?', options: ['London', 'Paris', 'Rome'], selectedIndex: 0, correctIndex: 1, isCorrect: false },
+          ],
+        },
+      },
+    })
+    vi.mocked(api.get).mockResolvedValue({ data: { data: [] } })
+    render(<Wrap><DailyQuizModal slot={SLOT} open onClose={vi.fn()} /></Wrap>)
+    fireEvent.click(screen.getByText('2'))
+    await waitFor(() => screen.getByText('Capital of France?'))
+    fireEvent.click(screen.getByText('London'))
+    await waitFor(() => fireEvent.click(screen.getByRole('button', { name: /submit/i })))
+    await waitFor(() => expect(screen.getByText('Your answer: London')).toBeInTheDocument())
+    expect(screen.getByText('Correct answer: Paris')).toBeInTheDocument()
   })
 
   it('returns null when not open', () => {

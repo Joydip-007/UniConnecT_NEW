@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { scoreQuiz, selectDailyQuestions } from './quizEngine'
+import { scoreQuiz, selectDailyQuestions, buildQuizReview } from './quizEngine'
 
 const QUESTIONS = [
   { q: 'What is 2+2?', options: ['3', '4', '5', '6'], answer: 1 },
@@ -31,6 +31,22 @@ describe('scoreQuiz', () => {
     const result = scoreQuiz(QUESTIONS, [1, 2])
     expect(result.totalQuestions).toBe(3)
     expect(result.correctCount).toBe(2)
+  })
+})
+
+describe('buildQuizReview', () => {
+  it('marks each question correct/incorrect and includes the correct index', () => {
+    const review = buildQuizReview(QUESTIONS, [1, 0, 0])
+    expect(review).toEqual([
+      { question: 'What is 2+2?', options: ['3', '4', '5', '6'], selectedIndex: 1, correctIndex: 1, isCorrect: true },
+      { question: 'Capital of France?', options: ['Berlin', 'Madrid', 'Paris', 'Rome'], selectedIndex: 0, correctIndex: 2, isCorrect: false },
+      { question: 'HTTP status for OK?', options: ['200', '201', '404', '500'], selectedIndex: 0, correctIndex: 0, isCorrect: true },
+    ])
+  })
+
+  it('treats a missing answer as selectedIndex -1 and incorrect', () => {
+    const review = buildQuizReview(QUESTIONS, [1, 2])
+    expect(review[2]).toMatchObject({ selectedIndex: -1, isCorrect: false })
   })
 })
 

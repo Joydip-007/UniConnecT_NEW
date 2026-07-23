@@ -1,5 +1,19 @@
 export interface ClientQuestion { q: string; options: string[] }
-export interface MyAttempt { score: number; correctCount: number; totalQuestions: number }
+
+export interface QuizReviewItem {
+  question: string
+  options: string[]
+  selectedIndex: number
+  correctIndex: number
+  isCorrect: boolean
+}
+
+export interface MyAttempt {
+  score: number
+  correctCount: number
+  totalQuestions: number
+  review: QuizReviewItem[]
+}
 
 export interface DailyQuizSlot {
   id: string
@@ -14,6 +28,7 @@ export interface QuizAttemptResult {
   correctCount: number
   totalQuestions: number
   passed: boolean
+  review: QuizReviewItem[]
 }
 
 export interface LeaderboardEntry {

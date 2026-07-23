@@ -17,7 +17,10 @@ const MOCK_SLOT: DailyQuizSlot = {
   id: 'slot-1', department: 'CS', date: '2026-07-06',
   questions: [{ q: 'Q?', options: ['A', 'B'] }], myAttempt: null,
 }
-const MOCK_RESULT: QuizAttemptResult = { score: 100, correctCount: 1, totalQuestions: 1, passed: true }
+const MOCK_RESULT: QuizAttemptResult = {
+  score: 100, correctCount: 1, totalQuestions: 1, passed: true,
+  review: [{ question: 'Q?', options: ['A', 'B'], selectedIndex: 0, correctIndex: 0, isCorrect: true }],
+}
 const MOCK_LEADERBOARD: LeaderboardEntry[] = [
   { rank: 1, userId: 'u1', fullName: 'Alice', avatarUrl: null, score: 100, correctCount: 1 },
 ]

@@ -45,27 +45,25 @@ export function DailyQuizCard() {
             : `${slot.questions.length} questions · test your knowledge today`}
         </p>
 
-        {!attempted && (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            style={{
-              height: 36,
-              padding: '0 16px',
-              borderRadius: 'var(--r-md)',
-              background: 'var(--uc-indigo)',
-              color: 'var(--on-accent)',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              fontWeight: 500,
-              alignSelf: 'start',
-              transition: 'opacity var(--dur-fast) var(--ease-standard)',
-            }}
-          >
-            Take quiz
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{
+            height: 36,
+            padding: '0 16px',
+            borderRadius: 'var(--r-md)',
+            background: attempted ? 'transparent' : 'var(--uc-indigo)',
+            color: attempted ? 'var(--uc-indigo)' : 'var(--on-accent)',
+            border: attempted ? '0.5px solid var(--uc-indigo)' : 'none',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 500,
+            alignSelf: 'start',
+            transition: 'opacity var(--dur-fast) var(--ease-standard)',
+          }}
+        >
+          {attempted ? 'Review answers' : 'Take quiz'}
+        </button>
       </div>
 
       {open && <DailyQuizModal slot={slot} open={open} onClose={() => setOpen(false)} />}

@@ -23,6 +23,24 @@ export function scoreQuiz(questions: StoredQuestion[], answers: number[]): QuizS
   }
 }
 
+export interface QuizReviewItem {
+  question: string
+  options: string[]
+  selectedIndex: number
+  correctIndex: number
+  isCorrect: boolean
+}
+
+export function buildQuizReview(questions: StoredQuestion[], answers: number[]): QuizReviewItem[] {
+  return questions.map((question, i) => ({
+    question: question.q,
+    options: question.options,
+    selectedIndex: answers[i] ?? -1,
+    correctIndex: question.answer,
+    isCorrect: answers[i] === question.answer,
+  }))
+}
+
 /** Deterministic Fisher-Yates shuffle using a string seed (xorshift32). */
 export function selectDailyQuestions(pool: StoredQuestion[], count: number, seed: string): StoredQuestion[] {
   let h = 0

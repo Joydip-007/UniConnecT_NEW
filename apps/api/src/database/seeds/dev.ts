@@ -8,14 +8,16 @@ const UNI = '00000000-0000-4000-8000-000000000001'
 // Users
 const U_ADMIN  = '00000000-0000-4000-8000-000000000002'
 const U_JOYDIP = '00000000-0000-4000-8000-000000000003'
-const U_ALICE  = '00000000-0000-4000-8000-000000000010'
-const U_BOB    = '00000000-0000-4000-8000-000000000011'
-const U_CAROL  = '00000000-0000-4000-8000-000000000012'
-const U_DAVE   = '00000000-0000-4000-8000-000000000013'
-const U_EVE    = '00000000-0000-4000-8000-000000000014'
-const U_FRANK  = '00000000-0000-4000-8000-000000000015'
-const U_GRACE  = '00000000-0000-4000-8000-000000000016'
-const U_HENRY  = '00000000-0000-4000-8000-000000000017'
+// Note: 000010/000011 are reserved by migration 036_bootstrap_uiu_tenant.ts
+// (admin@uiu.ac.bd / joydip.datta15@gmail.com) — do not reuse those IDs here.
+const U_ALICE  = '00000000-0000-4000-8000-000000000018'
+const U_BOB    = '00000000-0000-4000-8000-000000000019'
+const U_CAROL  = '00000000-0000-4000-8000-00000000001a'
+const U_DAVE   = '00000000-0000-4000-8000-00000000001b'
+const U_EVE    = '00000000-0000-4000-8000-00000000001c'
+const U_FRANK  = '00000000-0000-4000-8000-00000000001d'
+const U_GRACE  = '00000000-0000-4000-8000-00000000001e'
+const U_HENRY  = '00000000-0000-4000-8000-00000000001f'
 
 // Posts
 const P1    = '00000000-0000-4000-8000-000000000020'
@@ -499,28 +501,30 @@ export async function seed(knex: Knex) {
   }
 
   // ── 9. Reactions ──────────────────────────────────────────────────────────
+  // 'insightful'/'celebrate' were retired by migration 080_update_reaction_types.ts
+  // in favour of 'like'/'love' respectively — same mapping the migration itself used.
   const reactions = [
-    { user_id: carolId, target_id: P1,    target_type: 'post',    reaction_type: 'love'       },
-    { user_id: eveId,   target_id: P1,    target_type: 'post',    reaction_type: 'insightful' },
-    { user_id: bobId,   target_id: P1,    target_type: 'post',    reaction_type: 'celebrate'  },
-    { user_id: frankId, target_id: P1,    target_type: 'post',    reaction_type: 'like'       },
-    { user_id: joydipId,target_id: P1,    target_type: 'post',    reaction_type: 'celebrate'  },
-    { user_id: aliceId, target_id: P2,    target_type: 'post',    reaction_type: 'celebrate'  },
-    { user_id: bobId,   target_id: P2,    target_type: 'post',    reaction_type: 'like'       },
-    { user_id: graceId, target_id: P2,    target_type: 'post',    reaction_type: 'like'       },
-    { user_id: aliceId, target_id: P3,    target_type: 'post',    reaction_type: 'insightful' },
-    { user_id: graceId, target_id: P3,    target_type: 'post',    reaction_type: 'insightful' },
-    { user_id: bobId,   target_id: P3,    target_type: 'post',    reaction_type: 'insightful' },
-    { user_id: carolId, target_id: P4,    target_type: 'post',    reaction_type: 'celebrate'  },
-    { user_id: henryId, target_id: P4,    target_type: 'post',    reaction_type: 'insightful' },
-    { user_id: aliceId, target_id: P4,    target_type: 'post',    reaction_type: 'like'       },
-    { user_id: aliceId, target_id: P5,    target_type: 'post',    reaction_type: 'like'       },
-    { user_id: bobId,   target_id: P5,    target_type: 'post',    reaction_type: 'love'       },
-    { user_id: frankId, target_id: P5,    target_type: 'post',    reaction_type: 'like'       },
-    { user_id: graceId, target_id: P_ANN1,target_type: 'post',    reaction_type: 'like'       },
-    { user_id: bobId,   target_id: CMT1,  target_type: 'comment', reaction_type: 'like'       },
-    { user_id: aliceId, target_id: CMT3,  target_type: 'comment', reaction_type: 'insightful' },
-    { user_id: bobId,   target_id: CMT3,  target_type: 'comment', reaction_type: 'like'       },
+    { user_id: carolId, target_id: P1,    target_type: 'post',    reaction_type: 'love' },
+    { user_id: eveId,   target_id: P1,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: bobId,   target_id: P1,    target_type: 'post',    reaction_type: 'love' },
+    { user_id: frankId, target_id: P1,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: joydipId,target_id: P1,    target_type: 'post',    reaction_type: 'love' },
+    { user_id: aliceId, target_id: P2,    target_type: 'post',    reaction_type: 'love' },
+    { user_id: bobId,   target_id: P2,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: graceId, target_id: P2,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: aliceId, target_id: P3,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: graceId, target_id: P3,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: bobId,   target_id: P3,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: carolId, target_id: P4,    target_type: 'post',    reaction_type: 'love' },
+    { user_id: henryId, target_id: P4,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: aliceId, target_id: P4,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: aliceId, target_id: P5,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: bobId,   target_id: P5,    target_type: 'post',    reaction_type: 'love' },
+    { user_id: frankId, target_id: P5,    target_type: 'post',    reaction_type: 'like' },
+    { user_id: graceId, target_id: P_ANN1,target_type: 'post',    reaction_type: 'like' },
+    { user_id: bobId,   target_id: CMT1,  target_type: 'comment', reaction_type: 'like' },
+    { user_id: aliceId, target_id: CMT3,  target_type: 'comment', reaction_type: 'like' },
+    { user_id: bobId,   target_id: CMT3,  target_type: 'comment', reaction_type: 'like' },
   ]
 
   for (const r of reactions) {
@@ -1366,7 +1370,7 @@ export async function seed(knex: Knex) {
   for (const mr of mentorshipRequests) {
     await knex('mentorship_requests')
       .insert(mr)
-      .onConflict(['student_id', 'alumni_id'])
+      .onConflict('id')
       .merge({ status: mr.status, session_notes: mr.session_notes })
   }
 }

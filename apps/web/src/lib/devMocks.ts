@@ -180,7 +180,16 @@ function resolveMockBody(url: string): unknown | null {
     }
   }
   if (/\/quiz\/today\/[^/]+\/attempt$/.test(url)) {
-    return { data: { score: 100, correctCount: 3, totalQuestions: 3, passed: true } }
+    return {
+      data: {
+        score: 100, correctCount: 3, totalQuestions: 3, passed: true,
+        review: [
+          { question: 'What does CPU stand for?', options: ['Central Processing Unit', 'Computer Personal Unit', 'Core Processing Utility', 'Central Program Unit'], selectedIndex: 0, correctIndex: 0, isCorrect: true },
+          { question: 'Which language is used for web styling?', options: ['Java', 'Python', 'CSS', 'Swift'], selectedIndex: 2, correctIndex: 2, isCorrect: true },
+          { question: 'What is a compiler?', options: ['A text editor', 'A program that translates source code', 'A database system', 'An operating system'], selectedIndex: 1, correctIndex: 1, isCorrect: true },
+        ],
+      },
+    }
   }
   if (url === '/quiz/today/leaderboard') {
     return {
