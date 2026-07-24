@@ -6,83 +6,289 @@
   "srcDir": "src",
   "tsconfig": "tsconfig.json",
   "cssEntry": ".ds-compiled/tailwind-compiled.css",
-  "srcExclude": ["features/lost-found/components/SkeletonCard.tsx"],
+  "srcExclude": [
+    "features/lost-found/components/SkeletonCard.tsx"
+  ],
   "srcExcludeExports": {
-    "features/groups/components/StudyToolsPrimitives.tsx": ["EmptyState"],
-    "features/groups/components/GroupBadges.tsx": ["TypeBadge"]
+    "features/groups/components/StudyToolsPrimitives.tsx": [
+      "EmptyState"
+    ],
+    "features/groups/components/GroupBadges.tsx": [
+      "TypeBadge"
+    ]
   },
-  "srcInclude": ["components", "features/connections/components", "features/content-sync/components", "features/events/components", "features/explore/components", "features/feed/components", "features/groups/components", "features/jobs/components", "features/landing/components", "features/learning/components", "features/learning-admin/components", "features/lost-found/components", "features/mentorship/components", "features/messages/components", "features/moderation/components", "features/news/components", "features/notifications/components", "features/onboarding/components", "features/presence/components", "features/profile/components", "features/quiz/components", "features/search/components", "features/settings/components", "features/shuttle/components"],
+  "srcInclude": [
+    "components",
+    "features/connections/components",
+    "features/content-sync/components",
+    "features/events/components",
+    "features/explore/components",
+    "features/feed/components",
+    "features/groups/components",
+    "features/jobs/components",
+    "features/landing/components",
+    "features/learning/components",
+    "features/learning-admin/components",
+    "features/lost-found/components",
+    "features/mentorship/components",
+    "features/messages/components",
+    "features/moderation/components",
+    "features/news/components",
+    "features/notifications/components",
+    "features/onboarding/components",
+    "features/presence/components",
+    "features/profile/components",
+    "features/quiz/components",
+    "features/search/components",
+    "features/settings/components",
+    "features/shuttle/components"
+  ],
   "componentSrcMap": {
-    "RootErrorBoundary": null
+    "RootErrorBoundary": null,
+    "BusMarker": null
   },
   "overrides": {
-    "Modal": {"cardMode": "single", "viewport": "600x400"},
-    "FeedLayout": {"cardMode": "column"},
-    "MobileBottomNav": {"cardMode": "single", "viewport": "390x800"},
-    "Drawer": {"cardMode": "single", "viewport": "600x500"},
-    "ShareMenu": {"cardMode": "single", "viewport": "500x400"},
-    "EmptyState": {"cardMode": "column"},
-    "ImageLightbox": {"cardMode": "single", "viewport": "760x500"},
-    "ConnectionRequestModal": {"cardMode": "single", "viewport": "600x500"},
-    "ImportPreviewModal": {"cardMode": "single", "viewport": "600x500"},
-    "ReactionsDialog": {"cardMode": "single", "viewport": "600x500"},
-    "SharePostModal": {"cardMode": "single", "viewport": "600x500"},
-    "CreateGroupModal": {"cardMode": "single", "viewport": "600x600"},
-    "ApplyModal": {"cardMode": "single", "viewport": "600x600"},
-    "InviteMemberModal": {"cardMode": "single", "viewport": "600x500"},
-    "PathDetailModal": {"cardMode": "single", "viewport": "600x600"},
-    "QuizModal": {"cardMode": "single", "viewport": "600x600"},
-    "PendingPathPreviewModal": {"cardMode": "single", "viewport": "600x600"},
-    "PendingQuizPreviewModal": {"cardMode": "single", "viewport": "600x600"},
-    "PostItemModal": {"cardMode": "single", "viewport": "600x500"},
-    "RedemptionModal": {"cardMode": "single", "viewport": "600x500"},
-    "RequestModal": {"cardMode": "single", "viewport": "600x500"},
-    "NewConversationModal": {"cardMode": "single", "viewport": "600x600"},
-    "ReportModal": {"cardMode": "single", "viewport": "600x500"},
-    "DailyQuizModal": {"cardMode": "single", "viewport": "600x600"},
-    "EditProfileModal": {"cardMode": "single", "viewport": "700x700"},
-    "EducationModal": {"cardMode": "single", "viewport": "600x500"},
-    "ExperienceModal": {"cardMode": "single", "viewport": "600x500"},
-    "FeaturedModal": {"cardMode": "single", "viewport": "600x500"},
-    "CreateNewsForm": {"cardMode": "single", "viewport": "700x700"},
-    "NotificationDropdown": {"cardMode": "single", "viewport": "420x600"},
-    "MessagesPopup": {"cardMode": "single", "viewport": "420x600"},
-    "SearchPanel": {"cardMode": "single", "viewport": "760x600"},
-    "CreateEventForm": {"cardMode": "single", "primaryStory": "CreateNew"},
-    "CommentDrawer": {"cardMode": "single", "primaryStory": "Open"},
-    "ShortcutHelp": {"cardMode": "single", "primaryStory": "Open"},
-    "PostJobForm": {"cardMode": "single", "primaryStory": "EmptyForm"},
-    "ActiveGroups": {"cardMode": "column"},
-    "FeaturedAlumni": {"cardMode": "column"},
-    "CreatePost": {"cardMode": "column"},
-    "MediaGrid": {"cardMode": "column"},
-    "PostCard": {"cardMode": "column"},
-    "ListSkeleton": {"cardMode": "column"},
-    "SectionHeader": {"cardMode": "column"},
-    "AnimatedTabBar": {"cardMode": "column"},
-    "CollabTab": {"cardMode": "column"},
-    "GroupCard": {"cardMode": "column"},
-    "GroupHeader": {"cardMode": "column"},
-    "JobCard": {"cardMode": "column"},
-    "StreakBanner": {"cardMode": "column"},
-    "TodayCard": {"cardMode": "column"},
-    "LostFoundCard": {"cardMode": "column"},
-    "AlumniCard": {"cardMode": "column"},
-    "IncomingRequestCard": {"cardMode": "column"},
-    "MyRequestRow": {"cardMode": "column"},
-    "RedemptionHistoryList": {"cardMode": "column"},
-    "GroupResultCard": {"cardMode": "column"},
-    "PeopleResultCard": {"cardMode": "column"},
-    "PostResultCard": {"cardMode": "column"},
-    "LiveTrackerCard": {"cardMode": "column"},
-    "RouteTabs": {"cardMode": "column"},
-    "StopList": {"cardMode": "column"}
+    "Modal": {
+      "cardMode": "single",
+      "viewport": "600x400"
+    },
+    "FeedLayout": {
+      "cardMode": "column"
+    },
+    "MobileBottomNav": {
+      "cardMode": "single",
+      "viewport": "390x800"
+    },
+    "Drawer": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "ShareMenu": {
+      "cardMode": "single",
+      "viewport": "500x400"
+    },
+    "EmptyState": {
+      "cardMode": "column"
+    },
+    "ImageLightbox": {
+      "cardMode": "single",
+      "viewport": "760x500"
+    },
+    "ConnectionRequestModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "ImportPreviewModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "ReactionsDialog": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "SharePostModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "CreateGroupModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "ApplyModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "InviteMemberModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "PathDetailModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "QuizModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "PendingPathPreviewModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "PendingQuizPreviewModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "PostItemModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "RedemptionModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "RequestModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "NewConversationModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "ReportModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "DailyQuizModal": {
+      "cardMode": "single",
+      "viewport": "600x600"
+    },
+    "EditProfileModal": {
+      "cardMode": "single",
+      "viewport": "700x700"
+    },
+    "EducationModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "ExperienceModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "FeaturedModal": {
+      "cardMode": "single",
+      "viewport": "600x500"
+    },
+    "CreateNewsForm": {
+      "cardMode": "single",
+      "viewport": "700x700"
+    },
+    "NotificationDropdown": {
+      "cardMode": "single",
+      "viewport": "420x600"
+    },
+    "MessagesPopup": {
+      "cardMode": "single",
+      "viewport": "420x600"
+    },
+    "SearchPanel": {
+      "cardMode": "single",
+      "viewport": "760x600"
+    },
+    "CreateEventForm": {
+      "cardMode": "single",
+      "primaryStory": "CreateNew"
+    },
+    "CommentDrawer": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "ShortcutHelp": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "PostJobForm": {
+      "cardMode": "single",
+      "primaryStory": "EmptyForm"
+    },
+    "ActiveGroups": {
+      "cardMode": "column"
+    },
+    "FeaturedAlumni": {
+      "cardMode": "column"
+    },
+    "CreatePost": {
+      "cardMode": "column"
+    },
+    "MediaGrid": {
+      "cardMode": "column"
+    },
+    "PostCard": {
+      "cardMode": "column"
+    },
+    "ListSkeleton": {
+      "cardMode": "column"
+    },
+    "SectionHeader": {
+      "cardMode": "column"
+    },
+    "AnimatedTabBar": {
+      "cardMode": "column"
+    },
+    "CollabTab": {
+      "cardMode": "column"
+    },
+    "GroupCard": {
+      "cardMode": "column"
+    },
+    "GroupHeader": {
+      "cardMode": "column"
+    },
+    "JobCard": {
+      "cardMode": "column"
+    },
+    "StreakBanner": {
+      "cardMode": "column"
+    },
+    "TodayCard": {
+      "cardMode": "column"
+    },
+    "LostFoundCard": {
+      "cardMode": "column"
+    },
+    "AlumniCard": {
+      "cardMode": "column"
+    },
+    "IncomingRequestCard": {
+      "cardMode": "column"
+    },
+    "MyRequestRow": {
+      "cardMode": "column"
+    },
+    "RedemptionHistoryList": {
+      "cardMode": "column"
+    },
+    "GroupResultCard": {
+      "cardMode": "column"
+    },
+    "PeopleResultCard": {
+      "cardMode": "column"
+    },
+    "PostResultCard": {
+      "cardMode": "column"
+    },
+    "LiveTrackerCard": {
+      "cardMode": "column"
+    },
+    "RouteTabs": {
+      "cardMode": "column"
+    },
+    "StopList": {
+      "cardMode": "column"
+    },
+    "ScrollProgressBar": {
+      "cardMode": "single",
+      "primaryStory": "Scrolled"
+    }
   },
-  "extraEntries": ["react-router-dom", "@tanstack/react-query", "./src/ds-query-client.ts"],
-  "extraFonts": ["../../../../.design-sync/fonts/satoshi/satoshi.css", "../../../../.design-sync/fonts/jetbrains-mono/jetbrains-mono.css"],
+  "extraEntries": [
+    "react-router-dom",
+    "@tanstack/react-query",
+    "./src/ds-query-client.ts"
+  ],
+  "extraFonts": [
+    "../../../../.design-sync/fonts/satoshi/satoshi.css",
+    "../../../../.design-sync/fonts/jetbrains-mono/jetbrains-mono.css"
+  ],
   "provider": {
     "component": "MemoryRouter",
-    "inner": {"component": "QueryClientProvider", "props": {"client": {"$ref": "dsQueryClient"}}}
+    "inner": {
+      "component": "QueryClientProvider",
+      "props": {
+        "client": {
+          "$ref": "dsQueryClient"
+        }
+      }
+    }
   },
   "readmeHeader": ".design-sync/conventions.md",
   "libOverrides": {

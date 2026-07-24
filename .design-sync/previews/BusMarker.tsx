@@ -1,6 +1,10 @@
-import { MapContainer } from 'react-leaflet';
+// MapContainer must come from the shared bundle ('web'), not a direct
+// 'react-leaflet' import — a separate esbuild module graph would give this
+// MapContainer a different LeafletContext instance than the one BusMarker's
+// own bundled code reads, so useLeafletContext() throws "No context provided"
+// even though the JSX nesting looks correct.
+import { MapContainer, BusMarker } from 'web';
 import 'leaflet/dist/leaflet.css';
-import { BusMarker } from 'web';
 
 const route = {
   id: 'r1',
