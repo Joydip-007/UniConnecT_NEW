@@ -1,6 +1,8 @@
 import { Briefcase, CalendarBlank, ChatCircle, Chat, Users, ThumbsUp } from '@phosphor-icons/react'
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
+import { useTiltGroup } from '@/features/landing/hooks/useTiltGroup'
+import { mergeRefs } from '@/lib/mergeRefs'
 import { Skel } from './Skel'
 
 interface IconCircleProps {
@@ -52,6 +54,7 @@ function Tag({ label, bg, color }: TagProps) {
 export function FeaturesSection() {
   const headerRef = useScrollReveal<HTMLDivElement>()
   const gridRef = useScrollReveal<HTMLDivElement>()
+  const tiltRef = useTiltGroup<HTMLDivElement>()
 
   return (
     <section id="features" className="uc-landing-section">
@@ -74,7 +77,7 @@ export function FeaturesSection() {
           </div>
         </div>
 
-        <div ref={gridRef} className="uc-features-grid">
+        <div ref={mergeRefs(gridRef, tiltRef)} className="uc-features-grid">
           <div className="reveal uc-span-2 card-hover-border" data-delay="0" style={{ gridColumn: 'span 2' }}>
             <div className="uc-feature-card">
               <IconCircle icon={ChatCircle} bg="var(--uc-indigo-bg)" color="var(--uc-indigo-l)" />

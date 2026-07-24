@@ -1,4 +1,5 @@
 import '@/styles/landing.css'
+import { ScrollProgressBar } from '@/features/landing/components/ScrollProgressBar'
 import { LandingNav } from '@/features/landing/components/LandingNav'
 import { HeroSection } from '@/features/landing/components/HeroSection'
 import { TickerStrip } from '@/features/landing/components/TickerStrip'
@@ -16,25 +17,30 @@ export default function LandingPage() {
     <div
       style={{
         background: 'var(--surface-page)',
-        overflowX: 'hidden',
         minHeight: '100dvh',
       }}
     >
-      <header>
-        <LandingNav />
-      </header>
-      <main>
-        <HeroSection />
-        <TickerStrip />
-        <StatsSection />
-        <FeaturesSection />
-        <HowItWorks />
-        <UniversitiesSection />
-        <TestimonialsSection />
-        <PricingSection />
-        <CtaSection />
-      </main>
-      <LandingFooter />
+      <ScrollProgressBar />
+      {/* No wrapping <header> here: a sticky element can only stick through
+          as much scroll range as its immediate parent spans. A <header> sized
+          to fit only the nav gives it zero room to stick — <nav> already
+          carries its own landmark role, so it sits directly under this
+          full-height root instead. */}
+      <LandingNav />
+      <div style={{ overflowX: 'hidden' }}>
+        <main>
+          <HeroSection />
+          <TickerStrip />
+          <StatsSection />
+          <FeaturesSection />
+          <HowItWorks />
+          <UniversitiesSection />
+          <TestimonialsSection />
+          <PricingSection />
+          <CtaSection />
+        </main>
+        <LandingFooter />
+      </div>
     </div>
   )
 }

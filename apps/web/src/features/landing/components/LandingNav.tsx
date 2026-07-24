@@ -5,6 +5,7 @@ import { BrandLogo } from '@/components/BrandLogo'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { ThemeToggleButton } from '@/components/ThemeToggleButton'
 import { PATHS } from '@/router/paths'
+import { useScrollSpy } from '@/features/landing/hooks/useScrollSpy'
 
 const HOME_PATH = '/'
 
@@ -12,15 +13,17 @@ const NAV_LINKS = [
   { label: 'Features', href: '#features' },
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Universities', href: '#universities' },
-  { label: 'About', href: PATHS.ABOUT },
   { label: 'Pricing', href: '#pricing' },
 ] as const
+
+const SPY_SECTION_IDS = ['features', 'how-it-works', 'universities', 'pricing']
 
 export function LandingNav() {
   const navRef = useRef<HTMLElement>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const activeSection = useScrollSpy(SPY_SECTION_IDS)
 
   const { scrollY } = useScroll()
 
@@ -105,7 +108,7 @@ export function LandingNav() {
                 event.preventDefault()
                 handleLinkClick(href)
               }}
-              className="nav-link-hover uc-nav-link"
+              className={`nav-link-hover uc-nav-link${href === `#${activeSection}` ? ' is-active' : ''}`}
             >
               {label}
             </a>

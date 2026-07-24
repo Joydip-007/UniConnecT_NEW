@@ -1,9 +1,12 @@
 import { ArrowUpRight, Rocket } from '@phosphor-icons/react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
+import { useMagnetic } from '@/features/landing/hooks/useMagnetic'
+import { HeroAurora } from '@/features/landing/components/HeroAurora'
 import { PATHS } from '@/router/paths'
 import { RadialOrbitalTimeline, type OrbitalNode } from '@/components/ui/RadialOrbitalTimeline'
 import { Rss, Chat, Users, Briefcase, MagnifyingGlass } from '@phosphor-icons/react'
@@ -91,6 +94,12 @@ export function HeroSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const [reducedMotion, setReducedMotion] = useState(getReducedMotionPreference)
   const [motionActive, setMotionActive] = useState(!getReducedMotionPreference())
+  const ctaPrimaryRef = useMagnetic<HTMLSpanElement>()
+  const ctaSecondaryRef = useMagnetic<HTMLSpanElement>()
+
+  const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start start', 'end start'] })
+  const parallaxY = useTransform(scrollYProgress, [0, 1], [0, 90])
+  const parallaxOpacity = useTransform(scrollYProgress, [0, 0.9], [1, 0])
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
@@ -128,7 +137,12 @@ export function HeroSection() {
   const duplicatedLines = [...KINETIC_LINES, ...KINETIC_LINES]
 
   return (
-    <section ref={sectionRef} className="uc-hero-shell">
+    <motion.section
+      ref={sectionRef}
+      className="uc-hero-shell"
+      style={reducedMotion ? undefined : { y: parallaxY, opacity: parallaxOpacity }}
+    >
+      <HeroAurora hostRef={sectionRef} active={!reducedMotion} />
       <div className="uc-hero-grid">
         <div
           ref={contentRef}
@@ -207,20 +221,24 @@ export function HeroSection() {
             data-delay="240"
             style={{ display: 'flex', gap: '0.8125rem', flexWrap: 'wrap' }}
           >
-            <OrangeBtn
-              style={{ padding: '0.6875rem 1.5rem', fontSize: '0.9375rem', gap: '0.5625rem' }}
-              onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
-            >
-              <Rocket size="1rem" />
-              Join the UIU pilot
-            </OrangeBtn>
-            <GhostBtn
-              style={{ padding: '0.6875rem 1.375rem', fontSize: '0.9375rem', gap: '0.5625rem' }}
-              onClick={() => navigate(PATHS.ABOUT)}
-            >
-              <ArrowUpRight size="1rem" />
-              Read the story
-            </GhostBtn>
+            <span ref={ctaPrimaryRef} style={{ display: 'inline-flex' }}>
+              <OrangeBtn
+                style={{ padding: '0.6875rem 1.5rem', fontSize: '0.9375rem', gap: '0.5625rem' }}
+                onClick={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
+              >
+                <Rocket size="1rem" />
+                Join the UIU pilot
+              </OrangeBtn>
+            </span>
+            <span ref={ctaSecondaryRef} style={{ display: 'inline-flex' }}>
+              <GhostBtn
+                style={{ padding: '0.6875rem 1.375rem', fontSize: '0.9375rem', gap: '0.5625rem' }}
+                onClick={() => navigate(PATHS.ABOUT)}
+              >
+                <ArrowUpRight size="1rem" />
+                Read the story
+              </GhostBtn>
+            </span>
           </div>
 
           <div
@@ -275,6 +293,6 @@ export function HeroSection() {
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   )
 }

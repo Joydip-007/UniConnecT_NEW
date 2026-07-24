@@ -2,6 +2,7 @@ import { Check } from '@phosphor-icons/react'
 import { useNavigate } from 'react-router-dom'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { useScrollReveal } from '@/features/landing/hooks/useScrollReveal'
+import { useTiltGroup } from '@/features/landing/hooks/useTiltGroup'
 import { PATHS } from '@/router/paths'
 
 interface PlanProps {
@@ -15,9 +16,12 @@ interface PlanProps {
   onCta: () => void
 }
 
-function PlanCard({ name, price, priceNote, description, features, cta, highlighted, onCta }: PlanProps) {
+function PlanCard({ name, price, priceNote, description, features, cta, highlighted, onCta, delay }: PlanProps & { delay: number }) {
   return (
-    <article className={`uc-pricing-card${highlighted ? ' is-highlighted' : ''}`}>
+    <article
+      className={`reveal uc-pricing-card${highlighted ? ' is-highlighted' : ''}`}
+      data-delay={String(delay)}
+    >
       <div>
         <p className={`uc-pricing-plan-label${highlighted ? ' is-highlighted' : ''}`}>{name}</p>
         <div className="uc-pricing-price-row">
@@ -52,6 +56,7 @@ function PlanCard({ name, price, priceNote, description, features, cta, highligh
 export function PricingSection() {
   const navigate = useNavigate()
   const sectionRef = useScrollReveal<HTMLDivElement>()
+  const gridRef = useTiltGroup<HTMLDivElement>()
 
   return (
     <section id="pricing" className="uc-landing-section">
@@ -67,7 +72,7 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="uc-pricing-grid reveal" data-delay="160">
+        <div className="uc-pricing-grid" ref={gridRef}>
           <PlanCard
             name="Students"
             price="$0"
@@ -83,6 +88,7 @@ export function PricingSection() {
             ]}
             cta="Get started free"
             highlighted={false}
+            delay={160}
             onCta={() => navigate(PATHS.REGISTER.replace(':token', 'invite'))}
           />
           <PlanCard
@@ -100,6 +106,7 @@ export function PricingSection() {
             ]}
             cta="Contact us"
             highlighted={true}
+            delay={260}
             onCta={() => {
               const el = document.querySelector('#contact')
               if (el) {
