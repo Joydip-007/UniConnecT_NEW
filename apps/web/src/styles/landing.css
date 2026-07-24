@@ -28,29 +28,6 @@
   flex-shrink: 0;
 }
 
-.uc-nav-brand-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.uc-nav-brand-kicker,
-.uc-nav-brand-note {
-  margin: 0;
-  line-height: 1;
-}
-
-.uc-nav-brand-kicker {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.uc-nav-brand-note {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
 .uc-nav-center-links {
   display: flex;
   align-items: center;
@@ -1919,10 +1896,6 @@
   .uc-landing-nav {
     padding: 0 16px !important;
     gap: 16px !important;
-  }
-
-  .uc-nav-brand-copy {
-    display: none !important;
   }
 
   .uc-nav-actions {

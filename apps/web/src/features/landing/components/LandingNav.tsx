@@ -93,10 +93,6 @@ export function LandingNav() {
       <nav ref={navRef} className="uc-landing-nav">
         <Link to={HOME_PATH} className="uc-nav-brand" aria-label="UniConnecT home">
           <BrandLogo height={34} />
-          <span className="uc-nav-brand-copy">
-            <span className="uc-nav-brand-kicker">UniConnecT</span>
-            <span className="uc-nav-brand-note">Private campus network</span>
-          </span>
         </Link>
 
         <div className="uc-nav-center-links">
