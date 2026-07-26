@@ -42,43 +42,35 @@
 % ------------------------------------------------------------
 \begin{titlepage}
     \centering
-    % Place the UIU logo file (uiu_logo.png) next to this .tex file
-    % \includegraphics[width=3.5cm]{uiu_logo.png}\\[0.6cm]
-    {\Large \textbf{United International University}}\\[0.2cm]
-    {\large Department of Computer Science and Engineering}\\[2cm]
+    \vspace*{0.6cm}
 
-    {\large \textbf{Project Proposal}}\\[0.4cm]
-    {\huge \textbf{UniConnecT}}\\[0.3cm]
-    {\large A Multi-Tenant Private Social Network and Campus Platform\\for Universities}\\[2cm]
+    {\Huge \textbf{Project Proposal}}\\[0.4cm]
+    \includegraphics[width=0.55\textwidth, height=0.20\textheight, keepaspectratio]{Logo Final Big.png}
 
-    {\normalsize
+    {\large \textit{A Multi-Tenant Private Social Network and Campus Platform for Universities}}\\[0.25cm]
+    \rule{\textwidth}{1pt}\\[0.9cm]
+
+    {\large \textbf{Prepared by --- Team Mavericks:}}\\[0.3cm]
+
     \begin{tabular}{ll}
-        \textbf{Course}    & CSE 3422: Software Engineering Laboratory \\
-        \textbf{Trimester} & Summer 2026 \\
-        \textbf{Section}   & \texttt{<section>} \\
-    \end{tabular}
-    }\\[1.5cm]
-
-    {\large \textbf{Submitted by --- Team Mavericks}}\\[0.3cm]
-    {\normalsize
-    \begin{tabular}{lll}
         \toprule
-        \textbf{Name} & \textbf{Student ID} & \textbf{Role} \\
+        \textbf{Name} & \textbf{Student ID} \\
         \midrule
-        Joydip Datta          & 011~233~0960        & Team lead, full-stack \\
-        \texttt{<member 2>}   & \texttt{<id>}       & \texttt{<role>} \\
-        \texttt{<member 3>}   & \texttt{<id>}       & \texttt{<role>} \\
-        \texttt{<member 4>}   & \texttt{<id>}       & \texttt{<role>} \\
+        {Joydip Datta}                      & {0112330960} \\
+        {MD. Saem Ferdous}                  & {0112330950} \\
+        {Md. Monabbur Hosen Bhuiyan}        & {0112330936} \\
+        {Md. Mahfujur Rahman Himel Akon}    & {0112330935} \\
         \bottomrule
-    \end{tabular}
-    }\\[1.5cm]
+    \end{tabular}\\[1.2cm]
 
-    {\normalsize \textbf{Submitted to}}\\[0.2cm]
-    {\normalsize \texttt{<Instructor name>}\\
-    \texttt{<Designation>}, Department of CSE\\
-    United International University}\\[1.2cm]
+    \includegraphics[width=0.55\textwidth, height=0.20\textheight, keepaspectratio]{UIU_Logo.png}
 
-    {\normalsize Date of submission: \texttt{<date>}}
+    {\large \textbf{Course:} CSE 3422 --- Software Engineering Laboratory}\\[0.15cm]
+    {\large \textbf{Trimester:} Summer 2026 \quad\textbf{Section:} I}\\[0.15cm]
+    {\large \textbf{Institution:} United International University (UIU), Dhaka}\\[0.15cm]
+    {\large \textbf{Submitted to:} Sayeem Been Zaman, Department of CSE}\\[0.15cm]
+    {\large \textbf{Submission Date:} 28 July 2026}\\[1cm]
+
     \vfill
 \end{titlepage}
 
@@ -169,9 +161,25 @@ following major subsystems, all live in production today:
     (private membership, moderator roles, shared resources, study sessions),
     and a LinkedIn-style profile suite (experience, education, featured work,
     profile analytics and viewers, vanity URLs, resume export).
-    \item[Mentorship economy] Alumni--student mentorship with request
-    lifecycle automation, mentor capacity limits, session logging, and a
-    points-based reward system redeemable as gift cards.
+    \item[Mentorship economy] The most heavily iterated subsystem of the
+    platform. A student sends a mentorship request to an alumnus, who accepts
+    or declines it; students may also withdraw a pending request, implemented
+    as a soft delete behind a partial unique index so the same pair can start
+    a fresh request later. Acceptance is capacity-checked against the
+    alumnus's \texttt{max\_mentees} limit (default three, adjustable by the
+    mentor), and immediately provisions a dedicated mentorship conversation
+    so both parties can talk inside the platform. An accepted mentorship also
+    relaxes the profile-privacy tier between the two users, granting the
+    visibility the relationship implies. Two Bull background jobs drive the
+    request lifecycle without manual intervention: a 48-hour reminder to an
+    alumnus who has not yet responded, and a 7-day auto-expiry that
+    transitions an unanswered request to \texttt{expired}. Once active, each
+    meeting is logged in a dedicated sessions table --- date, duration, topic
+    and notes, editable by either party --- and on completion both sides
+    submit structured feedback. Completed sessions pay into a points economy
+    (ten points per session, one hundred points per US dollar) that alumni
+    redeem for gift cards, and an administrative dashboard on the mentorship
+    page tracks mentor progress, points balances, and collected feedback.
     \item[Academic tools] A lightweight LMS (course outlines, modules,
     assignments, gradebook), a quiz engine with answer review, and
     gamified learning streaks and badges.
@@ -205,8 +213,9 @@ The Summer 2026 scope has three tracks: \emph{engineering rigor},
     full platform.
     \item UML design set: use-case, class, sequence, activity, and ER
     diagrams; C4 architecture diagrams.
-    \item Agile process: 2-week sprints with sprint planning, backlog
-    grooming, burndown tracking, and retrospectives (GitHub Projects).
+    \item Agile process: two-week sprints tightening to one-week sprints for
+    the assessed update cycle, with sprint planning, backlog grooming,
+    burndown tracking, and retrospectives (GitHub Projects).
     \item Quality gates: mandatory code review, CI pipeline running lint,
     type checks, unit and integration tests on every pull request.
     \item Test plan and traceability matrix; end-to-end test suite
@@ -281,9 +290,14 @@ The Summer 2026 scope has three tracks: \emph{engineering rigor},
 
 \section{Methodology}
 
-We follow \textbf{Scrum} with six two-week sprints across the trimester.
-Each sprint produces a potentially shippable increment deployed to a staging
-environment; production releases occur after sprint review. Requirements are
+We follow \textbf{Scrum}, with the sprint cadence tied directly to the
+course's assessed checkpoints (Section~\ref{sec:timeline}). The trimester
+opens with three two-week sprints running from the first class to the
+proposal presentation and on through the mid-term period, then switches to
+\emph{one-week sprints} from 15 September so that every sprint review
+coincides with a graded project update. Each sprint produces a potentially
+shippable increment deployed to a staging environment; production releases
+occur after sprint review. Requirements are
 maintained as a prioritized product backlog derived from the SRS; every user
 story carries acceptance criteria that map to automated tests. GitHub flow
 (feature branches, pull requests, mandatory review, CI gates) governs all
@@ -323,44 +337,81 @@ than custom model training, keeping complexity and cost bounded.
 plans; the only recurring cost is metered LLM usage, which is capped
 per-tenant. \textbf{Operational.} The team has three trimesters of shared
 history on this codebase and an established CI/CD pipeline, minimizing
-process risk. \textbf{Schedule.} The plan reserves the final sprint
-exclusively for stabilization, documentation, and presentation preparation.
+process risk. \textbf{Schedule.} The plan is laid out against the published UIU Summer 2026
+calendar and the five assessed checkpoints: it pauses during the mid-term
+examination week (22--29 August), sizes each sprint to end on a graded
+project update, and reserves the last sprint for stabilization,
+documentation, and presentation preparation, closing on 6 October 2026
+before final examinations begin.
 
 \section{Work Plan and Timeline}
+\label{sec:timeline}
 
 \begin{center}
 \begin{ganttchart}[
     hgrid, vgrid,
     time slot format=isodate,
     time slot unit=day,
-    x unit=0.105cm,
+    x unit=0.098cm,
     y unit title=0.6cm,
-    y unit chart=0.55cm,
+    y unit chart=0.52cm,
     title label font=\scriptsize,
     bar label font=\scriptsize,
     group label font=\scriptsize\bfseries,
     milestone label font=\scriptsize\itshape,
     bar/.append style={fill=uiuorange!70},
     group/.append style={fill=deepnavy!80},
-]{2026-06-01}{2026-08-31}
+]{2026-07-07}{2026-10-17}
     \gantttitlecalendar{month=name} \\
-    \ganttgroup{Sprint 1--2: SRS, UML, test infra}{2026-06-01}{2026-06-27} \\
-    \ganttbar{SRS + UML design set}{2026-06-01}{2026-06-20} \\
-    \ganttbar{E2E test suite + CI gates}{2026-06-08}{2026-06-27} \\
-    \ganttgroup{Sprint 3--4: New features}{2026-06-28}{2026-07-25} \\
-    \ganttbar{AI campus assistant}{2026-06-28}{2026-07-25} \\
-    \ganttbar{Self-serve onboarding, QR check-in}{2026-06-28}{2026-07-18} \\
-    \ganttbar{Recommendations, resume builder}{2026-07-05}{2026-07-25} \\
-    \ganttgroup{Sprint 5: Polish \& publish}{2026-07-26}{2026-08-15} \\
-    \ganttbar{A11y, performance, security, PWA}{2026-07-26}{2026-08-15} \\
-    \ganttbar{Analytics dashboard, launch kit}{2026-07-26}{2026-08-15} \\
-    \ganttgroup{Sprint 6: Stabilize \& present}{2026-08-16}{2026-08-31} \\
-    \ganttbar{Testing, docs, final report}{2026-08-16}{2026-08-28} \\
-    \ganttmilestone{Final presentation}{2026-08-30}
+    \ganttgroup{Sprint 1: Requirements \& design}{2026-07-07}{2026-07-28} \\
+    \ganttbar{SRS + UML design set}{2026-07-07}{2026-07-28} \\
+    \ganttmilestone{Proposal presentation (10)}{2026-07-28} \\
+    \ganttgroup{Sprint 2--3: Foundations}{2026-07-29}{2026-08-21} \\
+    \ganttbar{E2E test suite + CI quality gates}{2026-07-29}{2026-08-21} \\
+    \ganttbar{Self-serve university onboarding}{2026-08-05}{2026-08-21} \\
+    \ganttmilestone{Mid-term exam}{2026-08-22} \\
+    \ganttgroup{Sprint 4: AI assistant}{2026-08-30}{2026-09-15} \\
+    \ganttbar{AI campus assistant (RAG)}{2026-08-30}{2026-09-15} \\
+    \ganttmilestone{Project update 1 (10)}{2026-09-15} \\
+    \ganttgroup{Sprint 5: Engagement features}{2026-09-16}{2026-09-22} \\
+    \ganttbar{QR check-in, recommendations}{2026-09-16}{2026-09-22} \\
+    \ganttmilestone{Project update 2 (10)}{2026-09-22} \\
+    \ganttgroup{Sprint 6: Profile \& analytics}{2026-09-23}{2026-09-29} \\
+    \ganttbar{Resume builder, analytics dashboard}{2026-09-23}{2026-09-29} \\
+    \ganttmilestone{Project update 3 (10)}{2026-09-29} \\
+    \ganttgroup{Sprint 7: Polish \& stabilize}{2026-09-30}{2026-10-06} \\
+    \ganttbar{A11y, performance, security, PWA}{2026-09-30}{2026-10-06} \\
+    \ganttbar{Final report, launch kit}{2026-09-30}{2026-10-06} \\
+    \ganttmilestone{Final project update (15)}{2026-10-06} \\
+    \ganttmilestone{Final exam}{2026-10-10}
 \end{ganttchart}
 \end{center}
 
-\noindent\emph{Adjust sprint dates to the official Summer 2026 academic calendar.}
+\noindent The assessed deliverables and the marks attached to each are:
+
+\begin{center}
+\begin{tabular}{llc}
+    \toprule
+    \textbf{Deliverable} & \textbf{Date} & \textbf{Marks} \\
+    \midrule
+    Project proposal presentation & 28 July 2026      & 10 \\
+    Project update 1              & 15 September 2026 & 10 \\
+    Project update 2              & 22 September 2026 & 10 \\
+    Project update 3              & 29 September 2026 & 10 \\
+    Final project update          & 6 October 2026    & 15 \\
+    \midrule
+    \textbf{Total} &  & \textbf{55} \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\emph{The plan is aligned to the official UIU Summer 2026
+undergraduate academic calendar --- classes begin 7 July 2026, mid-term
+examinations run 22--29 August, the last day of course withdrawal is
+9 September, and final examinations run 10--17 October. Development is
+deliberately paused during the mid-term week, and each sprint closes on an
+assessed checkpoint so that every project update presents a working,
+deployed increment rather than a status report.}
 
 \section{Team and Work Distribution}
 
@@ -370,9 +421,12 @@ exclusively for stabilization, documentation, and presentation preparation.
     \textbf{Member} & \textbf{Responsibilities} \\
     \midrule
     Joydip Datta & Architecture, AI assistant, CI/CD, deployment, code review \\
-    \texttt{<member 2>} & \texttt{<e.g., SRS + UML documentation, onboarding flow>} \\
-    \texttt{<member 3>} & \texttt{<e.g., testing lead, QR check-in, analytics>} \\
-    \texttt{<member 4>} & \texttt{<e.g., accessibility, PWA, resume builder>} \\
+    MD. Saem Ferdous & SRS and UML design documentation, self-serve university
+    onboarding, requirements traceability \\
+    Md. Monabbur Hosen Bhuiyan & Testing lead --- unit, integration and
+    end-to-end suites; QR-based event check-in; analytics dashboards \\
+    Md. Mahfujur Rahman Himel Akon & Accessibility (WCAG 2.1 AA), PWA and
+    offline support, resume builder, UI polish \\
     \bottomrule
 \end{tabular}
 \end{center}

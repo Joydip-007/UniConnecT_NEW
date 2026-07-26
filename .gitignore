@@ -22,3 +22,9 @@ ds-bundle/
 apps/web/.ds-compiled/
 apps/web/dist/
 Klipy_Exact_Attributes
+# LaTeX build artifacts (docs/proposal, SRS)
+*.aux
+*.synctex.gz
+*.toc
+docs/proposal/*.log
+docs/proposal/*.out
