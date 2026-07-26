@@ -1,0 +1,409 @@
+% ============================================================
+% UniConnecT — Project Proposal
+% CSE 3422: Software Engineering Laboratory, Summer 2026
+% United International University, Dhaka
+% Style follows the UIU CSE (FYDP) LaTeX conventions:
+% A4, 11pt, 1.5 line spacing, ~2.5cm margins, formal front matter.
+% Compile with pdflatex (Overleaf-ready).
+% ============================================================
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{pgfgantt}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+
+\definecolor{uiuorange}{RGB}{246, 139, 31}
+\definecolor{deepnavy}{RGB}{16, 24, 40}
+
+\titleformat{\section}{\large\bfseries\color{deepnavy}}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{deepnavy}}{\thesubsection}{0.8em}{}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small UniConnecT --- Project Proposal}
+\fancyhead[R]{\small CSE 3422, Summer 2026}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\onehalfspacing
+
+\begin{document}
+
+% ------------------------------------------------------------
+% Title page
+% ------------------------------------------------------------
+\begin{titlepage}
+    \centering
+    % Place the UIU logo file (uiu_logo.png) next to this .tex file
+    % \includegraphics[width=3.5cm]{uiu_logo.png}\\[0.6cm]
+    {\Large \textbf{United International University}}\\[0.2cm]
+    {\large Department of Computer Science and Engineering}\\[2cm]
+
+    {\large \textbf{Project Proposal}}\\[0.4cm]
+    {\huge \textbf{UniConnecT}}\\[0.3cm]
+    {\large A Multi-Tenant Private Social Network and Campus Platform\\for Universities}\\[2cm]
+
+    {\normalsize
+    \begin{tabular}{ll}
+        \textbf{Course}    & CSE 3422: Software Engineering Laboratory \\
+        \textbf{Trimester} & Summer 2026 \\
+        \textbf{Section}   & \texttt{<section>} \\
+    \end{tabular}
+    }\\[1.5cm]
+
+    {\large \textbf{Submitted by --- Team Mavericks}}\\[0.3cm]
+    {\normalsize
+    \begin{tabular}{lll}
+        \toprule
+        \textbf{Name} & \textbf{Student ID} & \textbf{Role} \\
+        \midrule
+        Joydip Datta          & 011~233~0960        & Team lead, full-stack \\
+        \texttt{<member 2>}   & \texttt{<id>}       & \texttt{<role>} \\
+        \texttt{<member 3>}   & \texttt{<id>}       & \texttt{<role>} \\
+        \texttt{<member 4>}   & \texttt{<id>}       & \texttt{<role>} \\
+        \bottomrule
+    \end{tabular}
+    }\\[1.5cm]
+
+    {\normalsize \textbf{Submitted to}}\\[0.2cm]
+    {\normalsize \texttt{<Instructor name>}\\
+    \texttt{<Designation>}, Department of CSE\\
+    United International University}\\[1.2cm]
+
+    {\normalsize Date of submission: \texttt{<date>}}
+    \vfill
+\end{titlepage}
+
+% ------------------------------------------------------------
+\section{Introduction}
+
+University communities in Bangladesh coordinate their academic and social
+lives across a fragmented set of general-purpose tools: WhatsApp groups for
+class coordination, Facebook pages for club announcements, LinkedIn for
+alumni networking, and email for official notices. Information is scattered,
+unverified accounts mix with real ones, and nothing is aware of the
+distinction between a student, a faculty member, and an alumnus.
+
+\textbf{UniConnecT} is a private, institution-scoped social network built
+specifically for universities. Every account is verified through an
+invite-and-OTP flow against the university's own email domain, every feature
+is role-aware (student, alumni, faculty, admin, and transport staff), and the
+platform is architected as multi-tenant SaaS so any university can be
+onboarded as an isolated tenant.
+
+A functional first version of UniConnecT was designed, implemented, and
+\emph{deployed to production} by our team in the Spring 2026 trimester for
+the Web Programming course, where it grew substantially beyond the required
+feature set (Section~\ref{sec:existing}). In Summer 2026, under the Software
+Engineering Laboratory, we propose to take the project through a full
+software-engineering lifecycle: formal requirements specification, design
+documentation with UML, disciplined agile iterations, systematic testing and
+quality assurance, and a set of new high-impact features that prepare the
+platform for real adoption at UIU and beyond.
+
+\section{Problem Statement}
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Fragmentation.} Campus information lives in dozens of
+    unofficial WhatsApp/Facebook groups with no single source of truth;
+    important notices are routinely missed.
+    \item \textbf{No identity verification.} Public platforms cannot
+    guarantee that a ``UIU student'' is actually a UIU student, enabling
+    impersonation and spam.
+    \item \textbf{No role awareness.} Faculty announcements, alumni job
+    referrals, and student discussions all compete in the same unstructured
+    channels.
+    \item \textbf{Weak alumni linkage.} Universities lose contact with
+    graduates, and students lose access to mentorship and referral networks.
+    \item \textbf{Scattered campus services.} Shuttle schedules, lost-and-found,
+    course materials, and event registration have no common digital home.
+\end{enumerate}
+
+\section{Objectives}
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Apply the full software engineering process --- SRS, UML-based
+    design, agile sprint planning, code review, CI/CD, and multi-level
+    testing --- to a real, deployed product.
+    \item Polish the existing platform to production quality: accessibility
+    (WCAG 2.1 AA), performance on mid-tier mobile devices, security
+    hardening, and end-to-end test coverage.
+    \item Deliver a set of new differentiating features (Section~\ref{sec:proposed}),
+    headlined by an AI campus assistant and a self-serve university
+    onboarding flow that completes the multi-tenant SaaS vision.
+    \item Publish the platform for broader use --- a public landing/marketing
+    site, demo tenant for evaluation, and documentation that allows a new
+    university to be onboarded without developer involvement.
+\end{enumerate}
+
+% ------------------------------------------------------------
+\section{Work Completed in Spring 2026 (Existing System)}
+\label{sec:existing}
+
+The Web Programming course required a core social-network feature set, all
+of which were delivered: user registration and profiles, status posts,
+comments, connection (friend) requests, activity notifications, a responsive
+newsfeed, a like/reaction system, profile picture upload, user search, and a
+database-driven activity log.
+
+Beyond that requirement, the team continued development and shipped the
+following major subsystems, all live in production today:
+
+\begin{description}[leftmargin=1.5em, itemsep=2pt]
+    \item[Platform \& security] Multi-tenant architecture with strict
+    per-university data isolation; five roles with least-privilege access;
+    invite-only registration with email OTP; JWT access tokens with rotating
+    refresh sessions; per-university audit logging.
+    \item[Real-time layer] Socket.io messaging (direct, group, and mentorship
+    conversations), online-presence tracking with privacy tiers, and live
+    web-push notifications --- scaled across instances via Redis pub/sub.
+    \item[Career \& community] Job board, events with registration, groups
+    (private membership, moderator roles, shared resources, study sessions),
+    and a LinkedIn-style profile suite (experience, education, featured work,
+    profile analytics and viewers, vanity URLs, resume export).
+    \item[Mentorship economy] Alumni--student mentorship with request
+    lifecycle automation, mentor capacity limits, session logging, and a
+    points-based reward system redeemable as gift cards.
+    \item[Academic tools] A lightweight LMS (course outlines, modules,
+    assignments, gradebook), a quiz engine with answer review, and
+    gamified learning streaks and badges.
+    \item[Campus services] Lost-and-found, shuttle schedules with
+    \emph{live GPS bus tracking} broadcast by a dedicated driver role, and
+    automated import of official university notices from the university
+    website (WordPress API with browser-automation fallback).
+    \item[Discovery \& ranking] Postgres full-text search across people,
+    posts, jobs, events, and groups; a trending ``Top'' feed with a
+    Hacker-News-style hot score recomputed by background workers; hashtag
+    explore pages; drafts and scheduled publishing.
+    \item[Administration] Admin dashboard with university statistics, user
+    and role management, bulk invitations, content-report moderation, and
+    content-sync review queues.
+    \item[Infrastructure] Monorepo (React + Express + shared type-safe
+    contracts), eight background job queues, presigned direct-to-storage
+    file uploads, and a production deployment on Azure (API), Vercel (web),
+    and Neon (Postgres) with CI/CD from GitHub.
+\end{description}
+
+% ------------------------------------------------------------
+\section{Proposed Work for Summer 2026}
+\label{sec:proposed}
+
+The Summer 2026 scope has three tracks: \emph{engineering rigor},
+\emph{polish for publication}, and \emph{new features}.
+
+\subsection{Track A --- Software engineering rigor (course deliverables)}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Software Requirements Specification (IEEE 830 style) covering the
+    full platform.
+    \item UML design set: use-case, class, sequence, activity, and ER
+    diagrams; C4 architecture diagrams.
+    \item Agile process: 2-week sprints with sprint planning, backlog
+    grooming, burndown tracking, and retrospectives (GitHub Projects).
+    \item Quality gates: mandatory code review, CI pipeline running lint,
+    type checks, unit and integration tests on every pull request.
+    \item Test plan and traceability matrix; end-to-end test suite
+    (Playwright) for the ten highest-value user journeys; target
+    $\geq 70\%$ coverage on service-layer code.
+\end{itemize}
+
+\subsection{Track B --- Polish and publication}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Accessibility audit} to WCAG 2.1 AA (contrast, keyboard
+    navigation, screen-reader roles, reduced motion).
+    \item \textbf{Performance hardening} for mid-tier Android devices:
+    Lighthouse $\geq 90$, bundle-size budget, image optimization, API
+    response caching.
+    \item \textbf{Progressive Web App}: installable app with offline shell
+    and cached feed, completing the existing push-notification support.
+    \item \textbf{Security review}: rate limiting on sensitive endpoints,
+    dependency scanning, OWASP Top-10 checklist, penetration-test style
+    review of the multi-tenant isolation boundary.
+    \item \textbf{Observability}: structured error tracking, uptime and
+    performance dashboards, alerting on production incidents.
+    \item \textbf{Localization groundwork}: Bangla language support for the
+    highest-traffic surfaces.
+    \item \textbf{Public launch kit}: marketing landing page, demo tenant
+    with seeded data for evaluators, and administrator documentation.
+\end{itemize}
+
+\subsection{Track C --- New features (differentiators)}
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{AI campus assistant.} A retrieval-augmented chatbot that
+    answers questions over university notices, events, shuttle schedules,
+    and course materials (``When does the Summer registration close?'',
+    ``Summarize this week's CSE notices''), plus AI-assisted post
+    summarization and semantic search. This is the headline feature.
+    \item \textbf{Self-serve university onboarding.} A guided flow where a
+    university administrator registers a domain, verifies ownership,
+    configures branding, and bulk-invites members --- turning the
+    multi-tenant architecture into a true SaaS product.
+    \item \textbf{Smart recommendations.} ``People you may know,'' job and
+    event recommendations driven by profile, department, and connection-graph
+    signals.
+    \item \textbf{Event check-in with QR codes.} Organizers scan attendee QR
+    passes; attendance feeds into event analytics.
+    \item \textbf{Resume builder.} One-click, professionally formatted PDF
+    resume generated from the structured profile (experience, education,
+    skills, featured work).
+    \item \textbf{Admin analytics dashboard.} Engagement trends, retention
+    cohorts, and content-health metrics for university administrators.
+\end{enumerate}
+
+% ------------------------------------------------------------
+\section{Target Users and Stakeholders}
+
+\begin{center}
+\begin{tabular}{p{3.2cm}p{10.5cm}}
+    \toprule
+    \textbf{Stakeholder} & \textbf{Value delivered} \\
+    \midrule
+    Students & Verified campus feed, groups and study sessions, jobs,
+    mentorship, shuttle tracking, course tools. \\
+    Alumni & Lifelong institutional identity, mentorship rewards, referral
+    and hiring channel. \\
+    Faculty & Role-aware announcements, course material distribution,
+    moderated discussion. \\
+    University admin & Verified community, moderation and audit tooling,
+    engagement analytics, notice distribution. \\
+    Transport staff & Single-purpose GPS broadcast app for live shuttle
+    tracking. \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\section{Methodology}
+
+We follow \textbf{Scrum} with six two-week sprints across the trimester.
+Each sprint produces a potentially shippable increment deployed to a staging
+environment; production releases occur after sprint review. Requirements are
+maintained as a prioritized product backlog derived from the SRS; every user
+story carries acceptance criteria that map to automated tests. GitHub flow
+(feature branches, pull requests, mandatory review, CI gates) governs all
+changes, and the definition of done includes updated documentation and
+passing end-to-end tests.
+
+\section{Tools and Technologies}
+
+\begin{center}
+\begin{tabular}{p{4cm}p{9.7cm}}
+    \toprule
+    \textbf{Layer} & \textbf{Technology} \\
+    \midrule
+    Frontend & React 18, TypeScript, Vite, Tailwind CSS, TanStack Query,
+    Zustand, Socket.io client \\
+    Backend & Node.js, Express, TypeScript, Socket.io, Zod, Knex, Bull
+    queues \\
+    Data \& infra & PostgreSQL (Neon), Redis, S3-compatible object storage,
+    Azure App Service, Vercel \\
+    AI features & LLM API with retrieval-augmented generation over
+    tenant-scoped content, pgvector embeddings \\
+    Engineering & GitHub Actions CI/CD, Playwright, Vitest, ESLint,
+    Lighthouse CI, draw.io/PlantUML for UML \\
+    Process & GitHub Projects (Scrum board), LaTeX (documentation) \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\section{Feasibility}
+
+\textbf{Technical.} The riskiest foundations --- multi-tenancy, real-time
+infrastructure, background processing, and production deployment --- are
+already built and battle-tested in production, so Summer work concentrates
+on well-understood additions. The AI assistant uses managed LLM APIs rather
+than custom model training, keeping complexity and cost bounded.
+\textbf{Economic.} All infrastructure runs on free or student-tier cloud
+plans; the only recurring cost is metered LLM usage, which is capped
+per-tenant. \textbf{Operational.} The team has three trimesters of shared
+history on this codebase and an established CI/CD pipeline, minimizing
+process risk. \textbf{Schedule.} The plan reserves the final sprint
+exclusively for stabilization, documentation, and presentation preparation.
+
+\section{Work Plan and Timeline}
+
+\begin{center}
+\begin{ganttchart}[
+    hgrid, vgrid,
+    time slot format=isodate,
+    time slot unit=day,
+    x unit=0.105cm,
+    y unit title=0.6cm,
+    y unit chart=0.55cm,
+    title label font=\scriptsize,
+    bar label font=\scriptsize,
+    group label font=\scriptsize\bfseries,
+    milestone label font=\scriptsize\itshape,
+    bar/.append style={fill=uiuorange!70},
+    group/.append style={fill=deepnavy!80},
+]{2026-06-01}{2026-08-31}
+    \gantttitlecalendar{month=name} \\
+    \ganttgroup{Sprint 1--2: SRS, UML, test infra}{2026-06-01}{2026-06-27} \\
+    \ganttbar{SRS + UML design set}{2026-06-01}{2026-06-20} \\
+    \ganttbar{E2E test suite + CI gates}{2026-06-08}{2026-06-27} \\
+    \ganttgroup{Sprint 3--4: New features}{2026-06-28}{2026-07-25} \\
+    \ganttbar{AI campus assistant}{2026-06-28}{2026-07-25} \\
+    \ganttbar{Self-serve onboarding, QR check-in}{2026-06-28}{2026-07-18} \\
+    \ganttbar{Recommendations, resume builder}{2026-07-05}{2026-07-25} \\
+    \ganttgroup{Sprint 5: Polish \& publish}{2026-07-26}{2026-08-15} \\
+    \ganttbar{A11y, performance, security, PWA}{2026-07-26}{2026-08-15} \\
+    \ganttbar{Analytics dashboard, launch kit}{2026-07-26}{2026-08-15} \\
+    \ganttgroup{Sprint 6: Stabilize \& present}{2026-08-16}{2026-08-31} \\
+    \ganttbar{Testing, docs, final report}{2026-08-16}{2026-08-28} \\
+    \ganttmilestone{Final presentation}{2026-08-30}
+\end{ganttchart}
+\end{center}
+
+\noindent\emph{Adjust sprint dates to the official Summer 2026 academic calendar.}
+
+\section{Team and Work Distribution}
+
+\begin{center}
+\begin{tabular}{p{4cm}p{9.7cm}}
+    \toprule
+    \textbf{Member} & \textbf{Responsibilities} \\
+    \midrule
+    Joydip Datta & Architecture, AI assistant, CI/CD, deployment, code review \\
+    \texttt{<member 2>} & \texttt{<e.g., SRS + UML documentation, onboarding flow>} \\
+    \texttt{<member 3>} & \texttt{<e.g., testing lead, QR check-in, analytics>} \\
+    \texttt{<member 4>} & \texttt{<e.g., accessibility, PWA, resume builder>} \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\section{Expected Outcome}
+
+By the end of Summer 2026 we will deliver: (1) a complete SE documentation
+set (SRS, UML design, test plan, traceability matrix); (2) a production
+platform hardened to WCAG 2.1 AA and Lighthouse $\geq 90$ with automated
+end-to-end coverage of critical journeys; (3) six new features headlined by
+a tenant-scoped AI campus assistant and self-serve university onboarding;
+and (4) a public launch kit enabling any university to evaluate and adopt
+UniConnecT. The result is not a classroom prototype but a publishable,
+multi-tenant SaaS product engineered with verifiable process discipline.
+
+\section{Conclusion}
+
+UniConnecT began as a course project and has already outgrown that framing:
+it is a deployed, multi-tenant campus platform in production use. The
+Software Engineering Laboratory is the natural next step --- applying formal
+requirements, design, process, and quality engineering to carry the product
+from ``working'' to ``publishable.'' We believe the combination of a real
+deployed system, disciplined engineering artifacts, and ambitious new
+features positions this project to be a standout submission for Summer 2026.
+
+\begin{thebibliography}{9}
+\bibitem{sommerville} I.~Sommerville, \emph{Software Engineering}, 10th ed., Pearson, 2015.
+\bibitem{ieee830} IEEE Std 830-1998, \emph{IEEE Recommended Practice for Software Requirements Specifications}.
+\bibitem{scrum} K.~Schwaber and J.~Sutherland, \emph{The Scrum Guide}, 2020.
+\bibitem{wcag} W3C, \emph{Web Content Accessibility Guidelines (WCAG) 2.1}, 2018.
+\bibitem{repo} Team Mavericks, \emph{UniConnecT source repository}, GitHub, 2026.
+\end{thebibliography}
+
+\end{document}
