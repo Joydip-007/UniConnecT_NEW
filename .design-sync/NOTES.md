@@ -1,5 +1,12 @@
 # design-sync notes for UniConnecT
 
+## Re-sync (2026-07-27) — old project deleted, re-uploaded to a new one
+
+- The previously-pinned project (`6005a296-b3bf-4965-bbcf-230e9d7e8387`) returned 404 (deleted or expired). No source had changed since the last sync commit (`b1bed38`), so the fully-built, fully-graded local `ds-bundle/` from the last session was re-uploaded as-is — no rebuild, no re-verification needed.
+- Created a new project **"UniConnecT Design System (2026-07)"** (`projectId: f71f089e-ca3e-47b9-841e-9994a4c4e46e`) and uploaded all 994 files (211 components + base files) via the incremental path in one sitting (project started empty). `config.json`'s `projectId` now points here.
+- Two other pre-existing "Design System"/"UniConnecT Design System" projects in this account are unrelated (one is a hand-built ui_kit/app project, not a design-sync output; two are empty stale shells) — left untouched.
+- **Lesson for future syncs**: if `get_project` on the pinned id ever 404s again, don't assume the bundle needs rebuilding — check `git diff <last-sync-commit> -- <srcInclude paths>` first. If clean, it's a pure re-upload of the existing `ds-bundle/`.
+
 ## Repo shape
 - `apps/web` is the app itself (Vite SPA), not a standalone component library — no `dist`/`main`/`module` entry, no Storybook. The converter runs in **synth-entry mode** against `apps/web/src/components/**`.
 - `pkg: "web"` is a monorepo-local package name that never gets self-installed under `node_modules/web`. A symlink at `apps/web/node_modules/web -> ..` stands in for it so `PKG_DIR` resolution works without `--entry` (passing `--entry` gets reused as the literal JS entry point, not just for locating `package.json` — don't do that here). Recreate the symlink on a fresh clone: `ln -sfn .. apps/web/node_modules/web`.
