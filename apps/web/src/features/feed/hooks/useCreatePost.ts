@@ -22,6 +22,9 @@ export function useCreatePost() {
     mutationFn: (input: CreatePostInput) =>
       api.post<{ data: FeedPost }>('/posts', input).then((r) => r.data.data),
     onSuccess: (newPost, variables) => {
+      if (variables.group_id) {
+        queryClient.invalidateQueries({ queryKey: ['groups', variables.group_id, 'posts'] })
+      }
       // Drafts never enter the feed cache — they live only in the Drafts view.
       if (variables.is_published === false) {
         queryClient.invalidateQueries({ queryKey: ['drafts', 'mine'] })

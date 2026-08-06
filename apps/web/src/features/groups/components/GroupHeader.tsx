@@ -15,11 +15,17 @@ export function GroupHeader({ group }: { group: Group }) {
     mutationFn: () =>
       group.isMember
         ? api.delete(`/groups/${group.id}/members/me`).then((r) => r.data)
-        : api.post(`/groups/${group.id}/members`).then((r) => r.data),
-    onSuccess: () => {
+        : api.post<{ data: { requested?: boolean } }>(`/groups/${group.id}/members`).then((r) => r.data.data),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['groups', 'detail', group.id] })
       queryClient.invalidateQueries({ queryKey: ['groups', 'list'] })
-      toast.success(group.isMember ? 'Left group' : 'Joined group')
+      if (group.isMember) {
+        toast.success('Left group')
+      } else if (data && 'requested' in data && data.requested) {
+        toast.success('Join request sent')
+      } else {
+        toast.success('Joined group')
+      }
     },
     onError: (error: unknown) => {
       const message =

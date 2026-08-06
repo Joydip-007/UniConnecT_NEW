@@ -30,11 +30,13 @@ interface PhotoItem {
 interface Props {
   editPost?: FeedPost | null
   onDismissEdit?: () => void
+  /** When posting from inside a group's feed tab, ties the new post to that group. */
+  groupId?: string
 }
 
 // ── CreatePost ────────────────────────────────────────────────────────────────
 
-export function CreatePost({ editPost, onDismissEdit }: Props) {
+export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
   const user = useAuthStore((s) => s.user)
   const [open, setOpen] = useState(false)
   const [instantOpen, setInstantOpen] = useState(false)
@@ -316,6 +318,7 @@ export function CreatePost({ editPost, onDismissEdit }: Props) {
         media_urls: mediaUrls,
         attachments: attachments.length > 0 ? attachments : undefined,
         poll: pollData,
+        group_id: groupId ?? null,
         is_published: isScheduled ? false : !asDraft,
         publish_at: isScheduled ? publishAt.toISOString() : undefined,
       })

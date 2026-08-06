@@ -6,6 +6,7 @@ import type {
   Attachment,
   CourseOutline,
   CourseOutlineInput,
+  FileUrlEntry,
   Flashcard,
   FlashcardDeck,
   FlashcardReviewItem,
@@ -533,6 +534,13 @@ type CreateModuleInput = {
   description?: string
   weekNumber?: number
   displayOrder?: number
+  fileUrls?: FileUrlEntry[]
+}
+
+interface ModuleUploadUrlResponse {
+  uploadUrl: string
+  publicUrl: string
+  maxSizeBytes: number
 }
 
 const modulesKey = (groupId: string) => ['groups', 'modules', { groupId }] as const
@@ -552,6 +560,28 @@ export function useCreateModule(groupId: string) {
       api.post<{ data: AcademicModule }>(`/groups/${groupId}/modules`, input).then((r) => r.data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: modulesKey(groupId) })
+    },
+  })
+}
+
+export function useModuleUpload(groupId: string) {
+  return useMutation({
+    mutationFn: async (file: File): Promise<FileUrlEntry> => {
+      const { data } = await api.post<{ data: ModuleUploadUrlResponse }>(
+        `/groups/${groupId}/modules/upload-url`,
+        { fileName: file.name, contentType: file.type },
+      )
+      const { uploadUrl, publicUrl, maxSizeBytes } = data.data
+      if (file.size > maxSizeBytes) {
+        throw new Error('File exceeds the 25MB limit')
+      }
+      const s3Res = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+      if (!s3Res.ok) throw new Error(`Upload failed: ${s3Res.status}`)
+      return { name: file.name, url: publicUrl, contentType: file.type, size: file.size }
     },
   })
 }

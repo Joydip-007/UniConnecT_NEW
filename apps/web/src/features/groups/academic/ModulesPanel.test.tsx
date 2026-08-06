@@ -6,12 +6,14 @@ const mockUseModules = vi.fn()
 const mockUseTogglePublishModule = vi.fn()
 const mockUseReorderModules = vi.fn()
 const mockUseCreateModule = vi.fn()
+const mockUseModuleUpload = vi.fn()
 
 vi.mock('../hooks/useGroupExtended', () => ({
   useModules: () => mockUseModules(),
   useTogglePublishModule: () => mockUseTogglePublishModule(),
   useReorderModules: () => mockUseReorderModules(),
   useCreateModule: () => mockUseCreateModule(),
+  useModuleUpload: () => mockUseModuleUpload(),
 }))
 
 function modules() {
@@ -30,6 +32,7 @@ describe('ModulesPanel', () => {
     mockUseTogglePublishModule.mockReturnValue({ mutate: togglePublishMutate })
     mockUseReorderModules.mockReturnValue({ mutate: reorderMutate })
     mockUseCreateModule.mockReturnValue({ mutateAsync: createMutateAsync })
+    mockUseModuleUpload.mockReturnValue({ mutateAsync: vi.fn(), isPending: false })
   })
 
   it('lists modules and toggles publish state', () => {

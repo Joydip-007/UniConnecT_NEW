@@ -30,13 +30,14 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
 
   const weightSum = assessments.reduce((sum, a) => sum + (a.weightPercent || 0), 0)
   const weightValid = Math.abs(weightSum - 100) < 0.01
+  const assessmentsValid = assessments.length > 0 && assessments.every((a) => a.fullMarks >= 1)
 
   function addAssessment() {
     setAssessments((prev) => [
       ...prev,
       {
         categoryName: '',
-        fullMarks: 0,
+        fullMarks: 100,
         weightPercent: 0,
         totalGiven: 1,
         bestNCounted: 1,
@@ -114,6 +115,13 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
               value={a.weightPercent}
               onChange={(e) => updateAssessment(i, { weightPercent: Number(e.target.value) })}
             />
+            <input
+              aria-label="Full marks"
+              type="number"
+              min={1}
+              value={a.fullMarks}
+              onChange={(e) => updateAssessment(i, { fullMarks: Number(e.target.value) })}
+            />
             <span>
               Count best {a.bestNCounted} of {a.totalGiven} given
             </span>
@@ -183,8 +191,12 @@ export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
         Total weight: {weightSum}%
       </div>
 
-      <button type="submit" disabled={!weightValid || !courseTitle} className="rounded-[var(--r-pill)] px-4 py-2">
-        Save course outline
+      <button
+        type="submit"
+        disabled={!weightValid || !courseTitle || !assessmentsValid || save.isPending}
+        className="rounded-[var(--r-pill)] px-4 py-2"
+      >
+        {save.isPending ? 'Saving…' : 'Save course outline'}
       </button>
     </form>
   )

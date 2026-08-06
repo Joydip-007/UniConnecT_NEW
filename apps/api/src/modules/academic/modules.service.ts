@@ -1,9 +1,23 @@
 import { db } from '../../config/db'
 import type { AuthContext } from '../../types/auth'
 import { notFound } from '../../utils/errors'
+import {
+  assertAllowedUploadType,
+  getPresignedUploadUrl,
+  sanitizeFileName,
+} from '../../services/upload.service'
 import { assertGroupAdminAccess, assertMemberAccess } from '../groups/service'
 import { assertAcademicGroup } from './course-outline.service'
 import type { CreateModuleInput, ReorderModulesInput, UpdateModuleInput } from './schema'
+
+const MAX_UPLOAD_BYTES = 26214400 // 25MB, per Global Constraints
+
+interface FileUrlEntry {
+  name: string
+  url: string
+  contentType: string
+  size: number
+}
 
 interface ModuleRow {
   id: string
@@ -15,6 +29,7 @@ interface ModuleRow {
   week_number: number | null
   display_order: number
   is_published: boolean
+  file_urls: FileUrlEntry[]
   created_at: Date
   updated_at: Date
 }
@@ -28,6 +43,7 @@ function toModule(row: ModuleRow) {
     weekNumber: row.week_number,
     displayOrder: row.display_order,
     isPublished: row.is_published,
+    fileUrls: row.file_urls ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -66,6 +82,7 @@ export const modulesService = {
         description: input.description ?? null,
         week_number: input.weekNumber ?? null,
         display_order: input.displayOrder,
+        file_urls: input.fileUrls ?? [],
       })
       .returning('*')
     return toModule(row)
@@ -84,10 +101,20 @@ export const modulesService = {
         description: patch.description ?? existing.description,
         week_number: patch.weekNumber ?? existing.week_number,
         display_order: patch.displayOrder ?? existing.display_order,
+        file_urls: patch.fileUrls ?? existing.file_urls ?? [],
         updated_at: db.fn.now(),
       })
       .returning('*')
     return toModule(row)
+  },
+
+  async getUploadUrl(context: AuthContext, groupId: string, fileName: string, contentType: string) {
+    await assertAcademicGroup(context.universityId, groupId)
+    await assertGroupAdminAccess(context, groupId)
+    assertAllowedUploadType(contentType)
+    const key = `academic-modules/${context.universityId}/${groupId}/${Date.now()}-${sanitizeFileName(fileName)}`
+    const presigned = await getPresignedUploadUrl(key, contentType)
+    return { ...presigned, maxSizeBytes: MAX_UPLOAD_BYTES }
   },
 
   async delete(context: AuthContext, groupId: string, moduleId: string) {

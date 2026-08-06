@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
+import { CreatePost } from '@/features/feed/components/CreatePost'
 import type { FeedPost } from '@uniconnect/shared'
 
 interface FeedPageData {
@@ -46,6 +47,7 @@ export function FeedTab({ groupId }: { groupId: string }) {
   if (isLoading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <CreatePost groupId={groupId} />
         <SkeletonPost />
         <SkeletonPost />
       </div>
@@ -53,12 +55,18 @@ export function FeedTab({ groupId }: { groupId: string }) {
   }
 
   if (posts.length === 0) {
-    return <EmptyCard title="No posts yet" subtitle="Be the first to post in this group." />
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <CreatePost groupId={groupId} />
+        <EmptyCard title="No posts yet" subtitle="Be the first to post in this group." />
+      </div>
+    )
   }
 
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <CreatePost groupId={groupId} />
         {posts.map((post) => (
           <PostCard
             key={post.id}

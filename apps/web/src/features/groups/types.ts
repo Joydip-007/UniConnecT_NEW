@@ -271,6 +271,7 @@ export interface AcademicModule {
   weekNumber?: number | null
   displayOrder: number
   isPublished: boolean
+  fileUrls: FileUrlEntry[]
   createdAt: string
   updatedAt: string
 }

@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { toast } from 'sonner'
 import {
   useCreateModule,
+  useModuleUpload,
   useModules,
   useReorderModules,
   useTogglePublishModule,
 } from '../hooks/useGroupExtended'
+import type { FileUrlEntry } from '../types'
 
 interface ModulesPanelProps {
   groupId: string
@@ -16,12 +19,32 @@ export function ModulesPanel({ groupId, isAdmin }: ModulesPanelProps) {
   const togglePublish = useTogglePublishModule(groupId)
   const reorder = useReorderModules(groupId)
   const createModule = useCreateModule(groupId)
+  const uploadFile = useModuleUpload(groupId)
 
   const [title, setTitle] = useState('')
   const [weekNumber, setWeekNumber] = useState('')
   const [description, setDescription] = useState('')
+  const [fileUrls, setFileUrls] = useState<FileUrlEntry[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (isLoading || !modules) return <div>Loading modules…</div>
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const uploaded = await uploadFile.mutateAsync(file)
+      setFileUrls((prev) => [...prev, uploaded])
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  function removeFile(index: number) {
+    setFileUrls((prev) => prev.filter((_, i) => i !== index))
+  }
 
   const sorted = [...modules].sort((a, b) => a.displayOrder - b.displayOrder)
 
@@ -41,10 +64,12 @@ export function ModulesPanel({ groupId, isAdmin }: ModulesPanelProps) {
       description: description || undefined,
       weekNumber: weekNumber ? Number(weekNumber) : undefined,
       displayOrder: sorted.length + 1,
+      fileUrls,
     })
     setTitle('')
     setWeekNumber('')
     setDescription('')
+    setFileUrls([])
   }
 
   return (
@@ -59,6 +84,21 @@ export function ModulesPanel({ groupId, isAdmin }: ModulesPanelProps) {
             <div className="flex flex-col gap-1">
               <span>{m.title}</span>
               {m.description && <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{m.description}</span>}
+              {m.fileUrls && m.fileUrls.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {m.fileUrls.map((f, idx) => (
+                    <a
+                      key={idx}
+                      href={f.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: 'var(--uc-indigo)', fontSize: 12 }}
+                    >
+                      {f.name}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{m.isPublished ? 'Published' : 'Draft'}</span>
@@ -139,6 +179,34 @@ export function ModulesPanel({ groupId, isAdmin }: ModulesPanelProps) {
               style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
             />
           </label>
+          <div className="flex flex-col gap-2">
+            <span>Course materials</span>
+            <input
+              ref={fileInputRef}
+              aria-label="Upload material"
+              type="file"
+              onChange={(e) => void handleFileSelected(e)}
+              disabled={uploadFile.isPending}
+            />
+            {uploadFile.isPending && <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Uploading…</span>}
+            {fileUrls.length > 0 && (
+              <ul className="flex flex-col gap-1">
+                {fileUrls.map((f, idx) => (
+                  <li key={idx} className="flex items-center gap-2" style={{ fontSize: 12 }}>
+                    <span>{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(idx)}
+                      className="rounded-[var(--r-pill)] border-[0.5px] px-2 py-1"
+                      style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <button
             type="submit"
             disabled={!title.trim()}

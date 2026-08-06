@@ -26,6 +26,7 @@ import {
   getAssignmentUploadUrl,
   getCourseOutline,
   getGradebook,
+  getModuleUploadUrl,
   getMyGradeCard,
   getStudentGradeCard,
   getSubmissionUploadUrl,
@@ -60,6 +61,7 @@ academicRouter.get('/:groupId/gradebook/students/:studentId', getStudentGradeCar
 
 academicRouter.get('/:groupId/modules', listModules)
 academicRouter.post('/:groupId/modules', validate(CreateModuleSchema), createModule)
+academicRouter.post('/:groupId/modules/upload-url', validate(UploadUrlRequestSchema), getModuleUploadUrl)
 academicRouter.patch('/:groupId/modules/reorder', validate(ReorderModulesSchema), reorderModules)
 academicRouter.patch('/:groupId/modules/:moduleId', validate(UpdateModuleSchema), updateModule)
 academicRouter.delete('/:groupId/modules/:moduleId', deleteModule)

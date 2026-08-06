@@ -156,6 +156,12 @@ export const publishModule = asyncHandler(async (req: Request, res: Response) =>
   sendSuccess(res, module_)
 })
 
+export const getModuleUploadUrl = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await modulesService.getUploadUrl(context, getGroupIdParam(req), req.body.fileName, req.body.contentType)
+  sendSuccess(res, result)
+})
+
 function getAssignmentIdParam(req: Request) {
   const value = req.params.assignmentId
   return Array.isArray(value) ? value[0] : value

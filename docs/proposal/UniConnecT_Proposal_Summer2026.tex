@@ -75,6 +75,13 @@
 \end{titlepage}
 
 % ------------------------------------------------------------
+% Table of contents
+% ------------------------------------------------------------
+\setcounter{tocdepth}{2}
+\tableofcontents
+\newpage
+
+% ------------------------------------------------------------
 \section{Introduction}
 
 University communities in Bangladesh coordinate their academic and social
@@ -128,9 +135,11 @@ platform for real adoption at UIU and beyond.
     \item Polish the existing platform to production quality: accessibility
     (WCAG 2.1 AA), performance on mid-tier mobile devices, security
     hardening, and end-to-end test coverage.
-    \item Deliver a set of new differentiating features (Section~\ref{sec:proposed}),
-    headlined by an AI campus assistant and a self-serve university
-    onboarding flow that completes the multi-tenant SaaS vision.
+    \item Deliver a set of new features (Section~\ref{sec:proposed}),
+    headlined by four substantial, one-per-member subsystems --- an admin
+    and moderation platform, live GPS shuttle tracking, an AI-generated quiz
+    and skill-path engine, and a lightweight academic LMS --- alongside a
+    broad grid of supporting features.
     \item Publish the platform for broader use --- a public landing/marketing
     site, demo tenant for evaluation, and documentation that allows a new
     university to be onboarded without developer involvement.
@@ -205,7 +214,9 @@ following major subsystems, all live in production today:
 \label{sec:proposed}
 
 The Summer 2026 scope has three tracks: \emph{engineering rigor},
-\emph{polish for publication}, and \emph{new features}.
+\emph{polish for publication}, and \emph{new features}. Within the new-features
+track, each of the four team members owns one substantial, demoable
+subsystem in addition to a shared grid of smaller features.
 
 \subsection{Track A --- Software engineering rigor (course deliverables)}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
@@ -243,28 +254,43 @@ The Summer 2026 scope has three tracks: \emph{engineering rigor},
     with seeded data for evaluators, and administrator documentation.
 \end{itemize}
 
-\subsection{Track C --- New features (differentiators)}
-\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{AI campus assistant.} A retrieval-augmented chatbot that
-    answers questions over university notices, events, shuttle schedules,
-    and course materials (``When does the Summer registration close?'',
-    ``Summarize this week's CSE notices''), plus AI-assisted post
-    summarization and semantic search. This is the headline feature.
-    \item \textbf{Self-serve university onboarding.} A guided flow where a
-    university administrator registers a domain, verifies ownership,
-    configures branding, and bulk-invites members --- turning the
-    multi-tenant architecture into a true SaaS product.
-    \item \textbf{Smart recommendations.} ``People you may know,'' job and
-    event recommendations driven by profile, department, and connection-graph
-    signals.
-    \item \textbf{Event check-in with QR codes.} Organizers scan attendee QR
-    passes; attendance feeds into event analytics.
-    \item \textbf{Resume builder.} One-click, professionally formatted PDF
-    resume generated from the structured profile (experience, education,
-    skills, featured work).
-    \item \textbf{Admin analytics dashboard.} Engagement trends, retention
-    cohorts, and content-health metrics for university administrators.
+\subsection{Track C --- New features}
+
+\subsubsection*{Four headline subsystems, one per owner}
+\begin{enumerate}[leftmargin=1.5em, itemsep=4pt]
+    \item \textbf{Admin dashboard, moderation \& content-sync} (Joydip
+    Datta). University-wide statistics, bulk invitations, a
+    content-report review queue, and automated import of official
+    university notices via the WordPress REST API with a browser-automation
+    fallback --- imported items flow into a review queue before publication.
+    \item \textbf{Live GPS shuttle tracking} (Md.\ Mahfujur Rahman Himel
+    Akon). A dedicated, least-privilege driver role broadcasts live
+    location; the client interpolates the bus along its route in real time
+    between broadcasts.
+    \item \textbf{AI-generated quiz engine \& skill-path generation}
+    (MD.\ Saem Ferdous). LLM-driven generation of quiz questions and
+    adaptive skill paths, with model-quota fallback and timeout handling,
+    layered on the existing academic content.
+    \item \textbf{Academic suite / lightweight LMS} (Md.\ Monabbur Hosen
+    Bhuiyan). Course modules, assignments and submissions, and a gradebook
+    with best-\emph{N} calculation and letter grading.
 \end{enumerate}
+
+\subsubsection*{Supporting features (shared across the team)}
+Job board; events with registration; groups with member roles, resources,
+and study sessions; news feed; hashtag and topic discovery; lost-and-found;
+online-presence tracking; web-push notifications; scheduled and draft
+publishing; a sticker/GIF picker for messaging; a one-click resume builder
+(PDF export); learning streaks and badges; and full-text search across
+people, posts, jobs, events, and groups.
+
+\subsubsection*{Roadmap (stretch goal, not a committed deliverable)}
+\textbf{AI campus assistant.} A retrieval-augmented chatbot over university
+notices, events, shuttle schedules, and course materials (``When does the
+Summer registration close?''), building on the AI infrastructure already
+proven in production by the quiz and skill-path engine above. Pursued only
+if the four committed subsystems and the polish track land ahead of
+schedule.
 
 % ------------------------------------------------------------
 \section{Target Users and Stakeholders}
@@ -317,8 +343,9 @@ passing end-to-end tests.
     queues \\
     Data \& infra & PostgreSQL (Neon), Redis, S3-compatible object storage,
     Azure App Service, Vercel \\
-    AI features & LLM API with retrieval-augmented generation over
-    tenant-scoped content, pgvector embeddings \\
+    AI features & Google Generative AI (Gemini) for quiz and skill-path
+    generation, with model-quota fallback; retrieval-augmented generation
+    is a stretch-goal roadmap item \\
     Engineering & GitHub Actions CI/CD, Playwright, Vitest, ESLint,
     Lighthouse CI, draw.io/PlantUML for UML \\
     Process & GitHub Projects (Scrum board), LaTeX (documentation) \\
@@ -368,16 +395,17 @@ before final examinations begin.
     \ganttmilestone{Proposal presentation (10)}{2026-07-28} \\
     \ganttgroup{Sprint 2--3: Foundations}{2026-07-29}{2026-08-21} \\
     \ganttbar{E2E test suite + CI quality gates}{2026-07-29}{2026-08-21} \\
-    \ganttbar{Self-serve university onboarding}{2026-08-05}{2026-08-21} \\
+    \ganttbar{Admin dashboard \& content-sync automation}{2026-08-05}{2026-08-21} \\
     \ganttmilestone{Mid-term exam}{2026-08-22} \\
-    \ganttgroup{Sprint 4: AI assistant}{2026-08-30}{2026-09-15} \\
-    \ganttbar{AI campus assistant (RAG)}{2026-08-30}{2026-09-15} \\
+    \ganttgroup{Sprint 4: Heavy features I}{2026-08-30}{2026-09-15} \\
+    \ganttbar{Live GPS shuttle tracking}{2026-08-30}{2026-09-15} \\
+    \ganttbar{AI quiz \& skill-path engine}{2026-08-30}{2026-09-15} \\
     \ganttmilestone{Project update 1 (10)}{2026-09-15} \\
-    \ganttgroup{Sprint 5: Engagement features}{2026-09-16}{2026-09-22} \\
-    \ganttbar{QR check-in, recommendations}{2026-09-16}{2026-09-22} \\
+    \ganttgroup{Sprint 5: Heavy features II}{2026-09-16}{2026-09-22} \\
+    \ganttbar{Academic suite / lightweight LMS}{2026-09-16}{2026-09-22} \\
     \ganttmilestone{Project update 2 (10)}{2026-09-22} \\
-    \ganttgroup{Sprint 6: Profile \& analytics}{2026-09-23}{2026-09-29} \\
-    \ganttbar{Resume builder, analytics dashboard}{2026-09-23}{2026-09-29} \\
+    \ganttgroup{Sprint 6: Supporting features}{2026-09-23}{2026-09-29} \\
+    \ganttbar{Supporting-feature grid + stretch-goal AI assistant}{2026-09-23}{2026-09-29} \\
     \ganttmilestone{Project update 3 (10)}{2026-09-29} \\
     \ganttgroup{Sprint 7: Polish \& stabilize}{2026-09-30}{2026-10-06} \\
     \ganttbar{A11y, performance, security, PWA}{2026-09-30}{2026-10-06} \\
@@ -420,13 +448,14 @@ deployed increment rather than a status report.}
     \toprule
     \textbf{Member} & \textbf{Responsibilities} \\
     \midrule
-    Joydip Datta & Architecture, AI assistant, CI/CD, deployment, code review \\
-    MD. Saem Ferdous & SRS and UML design documentation, self-serve university
-    onboarding, requirements traceability \\
+    Joydip Datta (leader) & Architecture, CI/CD, deployment, code review;
+    admin dashboard, moderation, and content-sync automation \\
+    MD. Saem Ferdous & SRS and UML design documentation, requirements
+    traceability; AI-generated quiz engine and skill-path generation \\
     Md. Monabbur Hosen Bhuiyan & Testing lead --- unit, integration and
-    end-to-end suites; QR-based event check-in; analytics dashboards \\
+    end-to-end suites; academic suite / lightweight LMS \\
     Md. Mahfujur Rahman Himel Akon & Accessibility (WCAG 2.1 AA), PWA and
-    offline support, resume builder, UI polish \\
+    offline support; live GPS shuttle tracking \\
     \bottomrule
 \end{tabular}
 \end{center}
@@ -436,10 +465,11 @@ deployed increment rather than a status report.}
 By the end of Summer 2026 we will deliver: (1) a complete SE documentation
 set (SRS, UML design, test plan, traceability matrix); (2) a production
 platform hardened to WCAG 2.1 AA and Lighthouse $\geq 90$ with automated
-end-to-end coverage of critical journeys; (3) six new features headlined by
-a tenant-scoped AI campus assistant and self-serve university onboarding;
-and (4) a public launch kit enabling any university to evaluate and adopt
-UniConnecT. The result is not a classroom prototype but a publishable,
+end-to-end coverage of critical journeys; (3) four headline subsystems, one
+per team member --- admin dashboard \& moderation, live GPS shuttle
+tracking, an AI-generated quiz and skill-path engine, and an academic
+LMS --- plus a broad grid of supporting features; and (4) a public launch
+kit enabling any university to evaluate and adopt UniConnecT. The result is not a classroom prototype but a publishable,
 multi-tenant SaaS product engineered with verifiable process discipline.
 
 \section{Conclusion}

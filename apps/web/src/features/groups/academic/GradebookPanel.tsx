@@ -4,11 +4,21 @@ interface GradebookPanelProps {
   groupId: string
 }
 
+function getErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error && 'response' in error) {
+    const message = (error as { response?: { data?: { error?: string } } }).response?.data?.error
+    if (message) return message
+  }
+  return 'Failed to load gradebook'
+}
+
 export function GradebookPanel({ groupId }: GradebookPanelProps) {
-  const { data: gradebook, isLoading } = useGradebook(groupId)
+  const { data: gradebook, isLoading, isError, error } = useGradebook(groupId)
   const upsert = useUpsertGradebookEntries(groupId)
 
-  if (isLoading || !gradebook) return <div>Loading gradebook…</div>
+  if (isLoading) return <div>Loading gradebook…</div>
+  if (isError) return <div>{getErrorMessage(error)}</div>
+  if (!gradebook) return <div>No gradebook data available.</div>
 
   async function commitCell(studentId: string, assessmentId: string, value: string) {
     const marksObtained = value === '' ? null : Number(value)
