@@ -148,7 +148,7 @@ export const gradebookService = {
       .join('users', 'users.id', 'group_members.user_id')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where({ 'group_members.group_id': groupId })
-      .select('users.id', 'users.full_name', 'users.avatar_url', 'profiles.department')
+      .select('users.id', 'profiles.full_name', 'profiles.avatar_url', 'profiles.department')
 
     const entries = await db<GradebookEntryRow>('gradebook_entries').where({ group_id: groupId })
 
