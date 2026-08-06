@@ -174,6 +174,22 @@ export const inviteToGroup = asyncHandler(async (req: Request, res: Response) =>
   sendSuccess(res, result, 201)
 })
 
+export const listPendingInvites = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listPendingInvites(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as PaginationQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const cancelInvite = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const invitationId = Array.isArray(req.params.invitationId) ? req.params.invitationId[0] : req.params.invitationId
+  sendSuccess(res, await groupsService.cancelInvite(context, getGroupIdParam(req), invitationId))
+})
+
 export const listResources = asyncHandler(async (req, res) => {
   const context = getAuthContext(req)
   const result = await groupsService.listResources(

@@ -1097,6 +1097,77 @@ export class GroupsService {
     return { invited: true, notificationId: notification.id }
   }
 
+  async listPendingInvites(context: AuthContext, groupId: string, query: PaginationQuery) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const baseWhere = {
+      type: 'group_invite',
+      reference_id: groupId,
+      reference_type: 'group',
+      is_read: false,
+    }
+
+    const [{ count }] = await db('notifications').where(baseWhere).count<{ count: string }[]>({ count: '*' })
+
+    const rows = await db('notifications')
+      .where(baseWhere)
+      .leftJoin('profiles as ip', 'ip.user_id', 'notifications.user_id')
+      .leftJoin('profiles as ap', 'ap.user_id', 'notifications.actor_id')
+      .select<
+        {
+          id: string
+          user_id: string
+          actor_id: string | null
+          created_at: Date
+          invitee_full_name: string | null
+          invitee_avatar_url: string | null
+          inviter_full_name: string | null
+        }[]
+      >(
+        'notifications.id',
+        'notifications.user_id',
+        'notifications.actor_id',
+        'notifications.created_at',
+        'ip.full_name as invitee_full_name',
+        'ip.avatar_url as invitee_avatar_url',
+        'ap.full_name as inviter_full_name',
+      )
+      .orderBy('notifications.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        userId: r.user_id,
+        fullName: r.invitee_full_name ?? 'Unknown user',
+        avatarUrl: r.invitee_avatar_url,
+        invitedBy: r.inviter_full_name ?? 'Someone',
+        createdAt: r.created_at,
+      })),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async cancelInvite(context: AuthContext, groupId: string, notificationId: string) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const deleted = await db('notifications')
+      .where({
+        id: notificationId,
+        type: 'group_invite',
+        reference_id: groupId,
+        reference_type: 'group',
+        is_read: false,
+      })
+      .delete()
+
+    if (deleted === 0) throw notFound('Pending invite not found', 'GROUP_INVITE_NOT_FOUND')
+    return { cancelled: true }
+  }
+
   private async transferOwnership(
     context: AuthContext,
     groupId: string,

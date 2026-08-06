@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { Search, UserPlus } from 'lucide-react'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Clock, Search, UserPlus, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
@@ -11,6 +12,21 @@ import type { Group, GroupMember } from '../types'
 
 interface MembersPage {
   items: GroupMember[]
+  hasMore: boolean
+  page: number
+}
+
+interface PendingInvite {
+  id: string
+  userId: string
+  fullName: string
+  avatarUrl: string | null
+  invitedBy: string
+  createdAt: string
+}
+
+interface PendingInvitesPage {
+  items: PendingInvite[]
   hasMore: boolean
   page: number
 }
@@ -211,7 +227,113 @@ export function MembersTab({ group }: { group: Group }) {
         </div>
       )}
 
+      {canInvite && <PendingInvites group={group} />}
+
       {inviteOpen && <InviteMemberModal group={group} onClose={() => setInviteOpen(false)} />}
+    </div>
+  )
+}
+
+function PendingInvites({ group }: { group: Group }) {
+  const queryClient = useQueryClient()
+
+  const { data, isLoading } = useQuery<PendingInvitesPage>({
+    queryKey: ['groups', 'pending-invites', group.id],
+    queryFn: () =>
+      api
+        .get<{ data: PendingInvitesPage }>(`/groups/${group.id}/invitations`, { params: { page: 1, limit: 50 } })
+        .then((r) => r.data.data),
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: (invitationId: string) => api.delete(`/groups/${group.id}/invitations/${invitationId}`),
+    onSuccess: () => {
+      toast.success('Invite cancelled')
+      queryClient.invalidateQueries({ queryKey: ['groups', 'pending-invites', group.id] })
+    },
+    onError: () => toast.error('Failed to cancel invite'),
+  })
+
+  const invites = data?.items ?? []
+  if (!isLoading && invites.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+      <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>
+        Pending invites{invites.length > 0 ? ` (${invites.length})` : ''}
+      </p>
+      {isLoading ? (
+        <SkeletonMember />
+      ) : (
+        invites.map((invite) => (
+          <div
+            key={invite.id}
+            style={{
+              background: 'var(--surface-card)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-lg)',
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <Avatar
+              src={invite.avatarUrl}
+              initials={getInitials(invite.fullName)}
+              color={seedColor(invite.userId)}
+              size={36}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: 'var(--text-primary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {invite.fullName}
+              </p>
+              <p
+                style={{
+                  margin: '2px 0 0',
+                  fontSize: 11,
+                  fontWeight: 400,
+                  color: 'var(--text-tertiary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <Clock size={11} strokeWidth={1.5} />
+                Invited by {invite.invitedBy}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => cancelMutation.mutate(invite.id)}
+              disabled={cancelMutation.isPending}
+              aria-label={`Cancel invite to ${invite.fullName}`}
+              title="Cancel invite"
+              style={{
+                background: 'transparent',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-pill)',
+                padding: 6,
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                display: 'flex',
+              }}
+            >
+              <X size={13} strokeWidth={1.5} />
+            </button>
+          </div>
+        ))
+      )}
     </div>
   )
 }

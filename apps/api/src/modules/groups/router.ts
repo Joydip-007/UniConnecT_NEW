@@ -5,6 +5,7 @@ import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
   approvePendingAiContent,
+  cancelInvite,
   cancelJoinRequest,
   createFlashcard,
   createFlashcardDeck,
@@ -41,6 +42,7 @@ import {
   listJoinRequests,
   listMyGroups,
   listPendingAiContent,
+  listPendingInvites,
   listResources,
   listSharedNotes,
   listStudySessions,
@@ -118,6 +120,8 @@ groupsRouter.get(
   listGroupCollaborations,
 )
 groupsRouter.post('/:groupId/invitations', validate(InviteToGroupSchema), inviteToGroup)
+groupsRouter.get('/:groupId/invitations', validateRequest({ query: PaginationQuerySchema }), listPendingInvites)
+groupsRouter.delete('/:groupId/invitations/:invitationId', cancelInvite)
 
 // Resources
 groupsRouter.get('/:groupId/resources', validateRequest({ query: ResourceListQuerySchema }), listResources)

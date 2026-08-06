@@ -35,7 +35,7 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
-  const [selected, setSelected] = useState<UserHit | null>(null)
+  const [selected, setSelected] = useState<Map<string, UserHit>>(new Map())
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim()), 300)
@@ -58,27 +58,81 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
   })
 
   const inviteMutation = useMutation({
-    mutationFn: (userId: string) => api.post(`/groups/${group.id}/invitations`, { userId }),
-    onSuccess: () => {
-      toast.success('Invitation sent')
+    mutationFn: async (users: UserHit[]) => {
+      const results = await Promise.allSettled(
+        users.map((u) => api.post(`/groups/${group.id}/invitations`, { userId: u.id })),
+      )
+      const failed = results.filter((r) => r.status === 'rejected').length
+      return { total: users.length, failed }
+    },
+    onSuccess: ({ total, failed }) => {
+      const sent = total - failed
+      if (sent > 0) toast.success(sent === 1 ? 'Invitation sent' : `${sent} invitations sent`)
+      if (failed > 0) toast.error(`${failed} invitation${failed === 1 ? '' : 's'} failed`)
       queryClient.invalidateQueries({ queryKey: ['groups', 'members', group.id] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'pending-invites', group.id] })
       onClose()
     },
     onError: (error: ApiError) => {
-      toast.error(error.response?.data?.error ?? 'Failed to send invitation')
+      toast.error(error.response?.data?.error ?? 'Failed to send invitations')
     },
   })
 
   const results = data?.items ?? []
 
+  function toggleSelected(user: UserHit) {
+    setSelected((prev) => {
+      const next = new Map(prev)
+      if (next.has(user.id)) next.delete(user.id)
+      else next.set(user.id, user)
+      return next
+    })
+  }
+
   return (
     <Modal isOpen onClose={onClose} title="Invite a member" maxWidth={440}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {selected.size > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Array.from(selected.values()).map((user) => (
+                <span
+                  key={user.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 8px 4px 4px',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: 'var(--uc-indigo-l)',
+                    background: 'var(--uc-indigo-bg)',
+                    border: '0.5px solid var(--uc-indigo-bdr)',
+                    borderRadius: 'var(--r-pill)',
+                  }}
+                >
+                  <Avatar
+                    src={user.profile.avatarUrl}
+                    initials={getInitials(user.profile.fullName)}
+                    color={seedColor(user.id)}
+                    size={18}
+                  />
+                  {user.profile.fullName}
+                  <button
+                    type="button"
+                    onClick={() => toggleSelected(user)}
+                    aria-label={`Remove ${user.profile.fullName}`}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, lineHeight: 0 }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <input
             value={search}
             onChange={(e) => {
               setSearch(e.target.value)
-              setSelected(null)
             }}
             placeholder="Search by name…"
             style={{
@@ -113,12 +167,13 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
               <p style={{ margin: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>No matches.</p>
             ) : (
               results.map((user) => {
-                const isSelected = selected?.id === user.id
+                const isSelected = selected.has(user.id)
                 return (
                   <button
                     key={user.id}
                     type="button"
-                    onClick={() => setSelected(user)}
+                    onClick={() => toggleSelected(user)}
+                    aria-pressed={isSelected}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -131,6 +186,13 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
                       textAlign: 'left',
                     }}
                   >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelected(user)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ pointerEvents: 'none' }}
+                    />
                     <Avatar
                       src={user.profile.avatarUrl}
                       initials={getInitials(user.profile.fullName)}
@@ -166,10 +228,14 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
             Cancel
           </GhostBtn>
           <PrimaryBtn
-            disabled={!selected || inviteMutation.isPending}
-            onClick={() => selected && inviteMutation.mutate(selected.id)}
+            disabled={selected.size === 0 || inviteMutation.isPending}
+            onClick={() => inviteMutation.mutate(Array.from(selected.values()))}
           >
-            {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
+            {inviteMutation.isPending
+              ? 'Sending…'
+              : selected.size > 1
+                ? `Send ${selected.size} invites`
+                : 'Send invite'}
           </PrimaryBtn>
         </div>
     </Modal>
