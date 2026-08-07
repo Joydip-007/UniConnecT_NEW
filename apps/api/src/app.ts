@@ -77,6 +77,14 @@ export function createApp() {
     }),
   )
 
+  // API responses are per-user and must never be served from a conditional
+  // (ETag/304) or shared cache — a stale 304 hit was masking new data (e.g.
+  // GET /notifications returning an old body after a new notification landed).
+  app.use('/api/v1', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store')
+    next()
+  })
+
   // Coarse global rate-limit net across the whole authenticated API surface.
   // Per-subject (user when authenticated, else IP); finer limits live per-route.
   app.use('/api/v1', globalLimiter)
