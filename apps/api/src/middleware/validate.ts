@@ -8,9 +8,13 @@ interface ValidationSchemas {
   query?: ZodType
 }
 
+// A request sent with no body at all (e.g. `api.post(url)`) leaves `req.body`
+// undefined, since express.json() only runs on a JSON content-type. Treat that as
+// an empty object so all-optional schemas pass and required ones report the
+// missing fields instead of an opaque "expected object, received undefined".
 export function validate(schema: ZodSchema) {
   return (req: Request, _res: Response, next: NextFunction) => {
-    const result = schema.safeParse(req.body)
+    const result = schema.safeParse(req.body ?? {})
 
     if (!result.success) {
       next(validationError(result.error.issues))
@@ -29,7 +33,7 @@ export function validateBody(schema: ZodSchema) {
 export function validateRequest(schemas: ValidationSchemas) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (schemas.body) {
-      const result = schemas.body.safeParse(req.body)
+      const result = schemas.body.safeParse(req.body ?? {})
       if (!result.success) {
         next(validationError(result.error.issues))
         return

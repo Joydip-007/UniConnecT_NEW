@@ -3,14 +3,20 @@ import { formatDistanceToNow, parseISO } from 'date-fns'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { Avatar } from '@/components/Avatar'
+import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { popoverIn, listStagger, listItem } from '@/lib/motion'
 import {
   NOTIF_QUERY_KEY,
   type Notification,
 } from '@/features/notifications/hooks/useNotificationsSocket'
+
+interface ApiError {
+  response?: { data?: { error?: string } }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,20 +41,36 @@ function getInitials(name: string) {
 function NotificationRow({
   notif,
   onNavigate,
+  onAccept,
+  onDecline,
+  actionPending,
   reduced,
 }: {
   notif: Notification
   onNavigate: () => void
+  onAccept: () => void
+  onDecline: () => void
+  actionPending: boolean
   reduced: boolean
 }) {
   const actor = notif.actor ?? { id: notif.id, fullName: 'UniConnecT', avatarUrl: null }
   const color = seedColor(actor.id)
   const initials = getInitials(actor.fullName)
+  // Unread group invites are actionable inline — accepting joins the group and opens
+  // its feed, so the user never has to visit the full notifications page.
+  const isActionableInvite = notif.type === 'group_invite' && !notif.isRead
 
   return (
-    <motion.button
-      type="button"
+    <motion.div
       onClick={onNavigate}
+      role={notif.refUrl ? 'button' : undefined}
+      tabIndex={notif.refUrl ? 0 : undefined}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && notif.refUrl) {
+          e.preventDefault()
+          onNavigate()
+        }
+      }}
       className={notif.refUrl ? 'row-hover-bg' : undefined}
       layout
       variants={reduced ? undefined : listItem}
@@ -103,6 +125,31 @@ function NotificationRow({
         >
           {formatDistanceToNow(parseISO(notif.createdAt), { addSuffix: true })}
         </p>
+
+        {isActionableInvite && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            <PrimaryBtn
+              onClick={(e) => {
+                e.stopPropagation()
+                onAccept()
+              }}
+              disabled={actionPending}
+              style={{ padding: '4px 12px', fontSize: 12 }}
+            >
+              Join
+            </PrimaryBtn>
+            <GhostBtn
+              onClick={(e) => {
+                e.stopPropagation()
+                onDecline()
+              }}
+              disabled={actionPending}
+              style={{ padding: '4px 12px', fontSize: 12 }}
+            >
+              Decline
+            </GhostBtn>
+          </div>
+        )}
       </div>
 
       {!notif.isRead && (
@@ -117,7 +164,7 @@ function NotificationRow({
           }}
         />
       )}
-    </motion.button>
+    </motion.div>
   )
 }
 
@@ -151,6 +198,41 @@ export function NotificationDropdown({ onClose }: Props) {
     },
   })
 
+  const acceptInvite = useMutation({
+    mutationFn: (id: string) =>
+      api
+        .post<{ data: { group: { id: string } } }>(`/notifications/${id}/accept`)
+        .then((r) => r.data.data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+      clearNotificationCount()
+      toast.success('Joined group')
+      onClose()
+      navigate(`/groups/${result.group.id}`)
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.response?.data?.error ?? 'Failed to accept invitation')
+    },
+  })
+
+  // Declining deletes the invite notification, which also clears it from the
+  // group admin's pending-invites list.
+  const declineInvite = useMutation({
+    mutationFn: (id: string) => api.delete(`/notifications/${id}`),
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData<Notification[]>(NOTIF_QUERY_KEY, (prev) =>
+        prev?.filter((n) => n.id !== id) ?? [],
+      )
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      queryClient.invalidateQueries({ queryKey: ['groups'] })
+    },
+    onError: (error: ApiError) => {
+      toast.error(error.response?.data?.error ?? 'Failed to decline invitation')
+    },
+  })
+
+  const actionPending = acceptInvite.isPending || declineInvite.isPending
   const unreadCount = notifications.filter((n) => !n.isRead).length
 
   function handleItemClick(notif: Notification) {
@@ -275,6 +357,9 @@ export function NotificationDropdown({ onClose }: Props) {
                   key={n.id}
                   notif={n}
                   onNavigate={() => handleItemClick(n)}
+                  onAccept={() => acceptInvite.mutate(n.id)}
+                  onDecline={() => declineInvite.mutate(n.id)}
+                  actionPending={actionPending}
                   reduced={!!reduced}
                 />
               ))}
