@@ -122,14 +122,18 @@ const sharedNotesKey = (groupId: string) => ['groups', 'shared-notes', { groupId
 
 // ── Join requests ─────────────────────────────────────────────────────────────
 
-export function useJoinRequests(groupId: string) {
+/**
+ * Admin-only endpoint — pass `enabled: false` for non-admins, otherwise every
+ * plain member's group page fires a request that 403s.
+ */
+export function useJoinRequests(groupId: string, enabled = true) {
   return useQuery({
     queryKey: ['groups', 'join-requests', { groupId }],
     queryFn: () =>
       api
         .get<{ data: PaginatedResponse<JoinRequest> }>(`/groups/${groupId}/join-requests`)
         .then((r) => r.data.data),
-    enabled: !!groupId,
+    enabled: !!groupId && enabled,
   })
 }
 

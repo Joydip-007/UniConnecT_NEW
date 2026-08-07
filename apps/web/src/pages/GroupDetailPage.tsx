@@ -31,7 +31,7 @@ export default function GroupDetailPage() {
 
   // Pending join requests badge — only fetched when user is owner/admin
   const isAdmin = group?.userRole === 'owner' || group?.userRole === 'admin'
-  const { data: joinRequestsData } = useJoinRequests(id ?? '')
+  const { data: joinRequestsData } = useJoinRequests(id ?? '', isAdmin)
   const pendingCount = isAdmin ? (joinRequestsData?.total ?? 0) : 0
 
   const userRole = group?.userRole ?? null
