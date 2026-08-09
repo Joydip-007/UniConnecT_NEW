@@ -24,8 +24,10 @@ const {
   configData: {
     enabled: true,
     topics: [{ category: 'React', difficulty: 'intermediate' }],
-    difficulty: 'Undergraduate',
-    language: 'English',
+    // Both are <select> controls — these must stay valid option values, or the
+    // select renders blank and every display-value assertion below misses.
+    difficulty: 'intermediate',
+    language: 'en',
     estimatedDays: 14,
     customInstructions: 'Test instructions',
     genHour: 2,
@@ -34,16 +36,24 @@ const {
   },
 }))
 
+// The panel renders without a QueryClientProvider, so the hooks module is replaced
+// wholesale rather than partially — which means this factory must list EVERY export
+// of ../hooks/useLearningAdmin. Adding a hook there without adding it here fails the
+// whole file with "No <name> export is defined on the mock".
 vi.mock('../hooks/useLearningAdmin', () => ({
   useLearningAdminConfig: () => ({ data: configData, isLoading: false }),
   useUpdateLearningAdminConfig: () => ({ mutate: updateMutate, mutateAsync: updateMutateAsync, isPending: false }),
   useTriggerLearningGenerate: () => ({ mutate: triggerMutate, isPending: false }),
   usePendingPaths: () => ({ data: [{ id: 'p1', title: 'Path 1', category: 'React', difficulty: 'intermediate', created_at: '2023-01-01' }] }),
+  usePendingPathDetail: () => ({ data: undefined, isLoading: false }),
   useApprovePath: () => ({ mutate: approvePathMutate, isPending: false }),
   useDiscardPath: () => ({ mutate: discardPathMutate, isPending: false }),
   usePendingQuizBatches: () => ({ data: [{ id: 'q1', department: 'CS', generated_at: '2023-01-01' }] }),
+  usePendingQuizBatchDetail: () => ({ data: undefined, isLoading: false }),
   useApproveQuizBatch: () => ({ mutate: approveQuizMutate, isPending: false }),
   useDiscardQuizBatch: () => ({ mutate: discardQuizMutate, isPending: false }),
+  useUpcomingQuizzes: () => ({ data: { today: [], queuedByDepartment: [] } }),
+  useLearningAnalytics: () => ({ data: null, isLoading: false }),
 }))
 
 beforeEach(() => {
@@ -61,17 +71,15 @@ describe('LearningAdminPanel', () => {
 
     // Wait for load (synchronous with mocked data)
     expect(screen.getByDisplayValue('React')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Undergraduate')).toBeInTheDocument()
+    expect(screen.getByLabelText('General difficulty')).toHaveValue('intermediate')
 
     // Change a setting
-    const languageInput = screen.getByDisplayValue('English')
-    await user.clear(languageInput)
-    await user.type(languageInput, 'Spanish')
+    await user.selectOptions(screen.getByLabelText('Language'), 'bn')
 
     await user.click(screen.getByRole('button', { name: /save settings/i }))
 
     expect(updateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ language: 'Spanish' }),
+      expect.objectContaining({ language: 'bn' }),
       expect.any(Object)
     )
   })

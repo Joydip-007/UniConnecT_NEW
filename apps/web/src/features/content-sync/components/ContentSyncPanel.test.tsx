@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ContentSyncPanel } from './ContentSyncPanel'
 
 // Control the data hooks so we can observe the save-before-sync ordering.
@@ -17,8 +18,11 @@ const { updateMutateAsync, triggerMutate, configData } = vi.hoisted(() => ({
   },
 }))
 
+// Replaces the hooks module wholesale, so this factory must list EVERY export of
+// ../hooks/useContentSync. Adding a hook there without adding it here fails the file.
 vi.mock('../hooks/useContentSync', () => ({
   useContentSyncConfig: () => ({ data: configData, isLoading: false }),
+  useBackfillAttachments: () => ({ mutate: vi.fn(), isPending: false }),
   useSyncRuns: () => ({ data: [] }),
   usePendingImported: () => ({ data: { news: [], events: [] } }),
   usePublishImported: () => ({ mutate: vi.fn(), isPending: false }),
@@ -31,10 +35,17 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+// The data hooks are mocked above, but the panel also calls useQueryClient()
+// directly to invalidate after a sync — that needs a real provider.
+function renderWithClient(ui: React.ReactElement) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>)
+}
+
 describe('ContentSyncPanel — sync persists config first', () => {
   it('saves the current entries value before triggering a sync', async () => {
     const user = userEvent.setup()
-    render(
+    renderWithClient(
       <MemoryRouter>
         <ContentSyncPanel />
       </MemoryRouter>,
