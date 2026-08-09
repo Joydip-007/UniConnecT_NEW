@@ -7,6 +7,8 @@ import { courseOutlineService } from '../modules/academic/course-outline.service
 import { feedService } from '../modules/feed/service'
 import { learningAdminService } from '../modules/learning-admin/service'
 import { mergeAiSettings } from '../modules/groups/service'
+import { contentSyncService } from '../modules/content-sync/service'
+import { notFound } from '../utils/errors'
 
 function describeAiError(error: unknown): string {
   if (error instanceof AIQuotaExceededError) {
@@ -109,6 +111,12 @@ export async function runGroupPosting(): Promise<void> {
 
       const topic = await courseOutlineService.resolveAITopic(group.id, group.university_id)
 
+      // AI content is authored by the campus bot: groups.created_by goes stale after an
+      // ownership transfer and may name someone who has left the group entirely.
+      const authorId = await contentSyncService.ensureCampusBotUser(group.university_id)
+      const author = await db('users').where({ id: authorId }).first<{ role: string }>('role')
+      if (!author) throw notFound('Campus bot user not found', 'CAMPUS_BOT_NOT_FOUND')
+
       const cards = await rateLimitedAICall(() =>
         generateFlashcards({
           topic,
@@ -123,7 +131,7 @@ export async function runGroupPosting(): Promise<void> {
         .insert({
           group_id: group.id,
           university_id: group.university_id,
-          created_by: group.created_by,
+          created_by: authorId,
           title: `AI deck — ${topic}`,
           is_archived: !!settings.require_approval,
           card_count: cards.length,
@@ -136,7 +144,7 @@ export async function runGroupPosting(): Promise<void> {
             deck_id: deck.id,
             group_id: group.id,
             university_id: group.university_id,
-            created_by: group.created_by,
+            created_by: authorId,
             front: c.front,
             back: c.back,
             hint: c.hint ?? null,
@@ -148,7 +156,7 @@ export async function runGroupPosting(): Promise<void> {
         await mergeAiSettings(group.id, { pending_deck_id: deck.id, last_ai_post_date: today })
       } else {
         await feedService.createPost(
-          { userId: group.created_by, universityId: group.university_id, role: 'faculty' },
+          { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
           {
             type: 'post',
             content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,

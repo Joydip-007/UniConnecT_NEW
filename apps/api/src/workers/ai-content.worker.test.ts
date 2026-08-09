@@ -266,6 +266,40 @@ describe('runGroupPosting', () => {
     },
     90_000,
   )
+
+  it(
+    'attributes the AI deck and post to the campus bot, not the group creator',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS104', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Graphs ${randomUUID()}`
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          require_approval: false,
+          subject,
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
+          opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
+        )
+
+        await runGroupPosting()
+
+        const [deck] = await db('group_flashcard_decks').where({ group_id: group.id })
+        expect(deck.created_by).not.toBe(faculty.id)
+
+        const post = await db('posts').where({ group_id: group.id }).first()
+        expect(post.user_id).not.toBe(faculty.id)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
 })
 
 describe('runLearningPathGeneration', () => {
