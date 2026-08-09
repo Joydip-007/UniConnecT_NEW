@@ -1,3 +1,4 @@
+import type { FocusEvent } from 'react'
 import {
   useAiSettings,
   useApprovePendingAiContent,
@@ -21,6 +22,28 @@ const inputStyle = {
   fontSize: 13,
   fontWeight: 400,
 } as const
+
+/**
+ * Number inputs commit on blur. `Number('')` is 0, so a cleared field would otherwise PATCH 0 —
+ * rejected with a silent 400 for "items per run", and silently valid (midnight UTC) for "run hour".
+ * Reject anything non-finite or out of range and restore the last known good value instead.
+ */
+function commitNumber(
+  event: FocusEvent<HTMLInputElement>,
+  currentValue: number,
+  min: number,
+  max: number,
+  onValid: (value: number) => void,
+) {
+  const raw = event.target.value.trim()
+  const parsed = raw === '' ? Number.NaN : Number(raw)
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < min || parsed > max) {
+    event.target.value = String(currentValue)
+    return
+  }
+  if (parsed === currentValue) return
+  onValid(parsed)
+}
 
 export function AISettingsPanel({ groupId }: AISettingsPanelProps) {
   const { data: settings, isLoading } = useAiSettings(groupId)
@@ -145,7 +168,9 @@ export function AISettingsPanel({ groupId }: AISettingsPanelProps) {
             min={1}
             max={20}
             defaultValue={settings.items_per_run}
-            onBlur={(e) => update.mutate({ items_per_run: Number(e.target.value) })}
+            onBlur={(e) =>
+              commitNumber(e, settings.items_per_run, 1, 20, (value) => update.mutate({ items_per_run: value }))
+            }
             style={inputStyle}
           />
         </label>
@@ -168,7 +193,7 @@ export function AISettingsPanel({ groupId }: AISettingsPanelProps) {
             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Run weekday</span>
             <select
               aria-label="Run weekday"
-              value={settings.run_weekday ?? 0}
+              value={settings.run_weekday ?? 1}
               onChange={(e) => update.mutate({ run_weekday: Number(e.target.value) })}
               style={inputStyle}
             >
@@ -191,7 +216,7 @@ export function AISettingsPanel({ groupId }: AISettingsPanelProps) {
             min={0}
             max={23}
             defaultValue={settings.run_hour}
-            onBlur={(e) => update.mutate({ run_hour: Number(e.target.value) })}
+            onBlur={(e) => commitNumber(e, settings.run_hour, 0, 23, (value) => update.mutate({ run_hour: value }))}
             style={inputStyle}
           />
         </label>

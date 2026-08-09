@@ -117,7 +117,13 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
 
       // Per-group schedule. The job now fires hourly, so each group picks its own hour
       // (and weekday, when weekly) instead of every group sharing one global env hour.
-      if ((settings.run_hour ?? 2) !== now.getUTCHours()) continue
+      //
+      // The gate is "has the run hour arrived or passed today?", not an exact hour match:
+      // all three AI crons share one worker and the rate limiter sleeps ~60s per 12 calls,
+      // so a run can easily slip past its hour. An exact match would silently skip the group
+      // for the whole day. De-duplication is handled entirely by the `last_ai_post_date != today`
+      // prefilter above — not by the hour — so a late run self-heals without double-posting.
+      if (now.getUTCHours() < (settings.run_hour ?? 2)) continue
       if (settings.frequency === 'weekly' && (settings.run_weekday ?? 1) !== now.getUTCDay()) continue
 
       const topic = await courseOutlineService.resolveAITopic(group.id, group.university_id)
@@ -295,19 +301,47 @@ export async function runLearningPathGeneration(now: Date = new Date(), universi
   }
 }
 
+/**
+ * Repeatable jobs this worker wants registered. Bull persists repeatable job definitions in
+ * Redis keyed by jobId + cron, so removing or renaming a registration in code does NOT
+ * deregister the previously stored schedule — it keeps firing forever alongside the new one.
+ */
+const DESIRED_REPEATABLE_JOB_IDS = new Set([
+  'ai-hourly-quiz-gen',
+  'ai-hourly-group-post',
+  'ai-hourly-learning-gen',
+])
+
+/**
+ * Drops every repeatable job in Redis that this worker no longer declares, so a schedule
+ * change (e.g. the old daily `ai-daily-group-post`) can't keep double-posting after deploy.
+ * Deliberately generic: hardcoding one stale id would leave the identical trap next time.
+ */
+export async function pruneStaleRepeatableJobs(): Promise<void> {
+  try {
+    const existing = await aiContentQueue.getRepeatableJobs()
+    for (const job of existing) {
+      if (job.id && DESIRED_REPEATABLE_JOB_IDS.has(job.id)) continue
+      await aiContentQueue.removeRepeatableByKey(job.key)
+      logger.info('Removed stale AI repeatable job', { jobId: job.id, key: job.key, cron: job.cron })
+    }
+  } catch (error) {
+    // A Redis hiccup during cleanup must never stop the worker from starting.
+    logger.error('Failed to prune stale AI repeatable jobs', { error })
+  }
+}
+
+async function registerRepeatableJobs(): Promise<void> {
+  await pruneStaleRepeatableJobs()
+  await aiContentQueue.add({ task: 'quiz-gen' }, { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-quiz-gen' })
+  await aiContentQueue.add({ task: 'group-post' }, { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-group-post' })
+  await aiContentQueue.add({ task: 'learning-gen' }, { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-learning-gen' })
+}
+
 if (env.AI_CONTENT_ENABLED) {
-  void aiContentQueue.add(
-    { task: 'quiz-gen' },
-    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-quiz-gen' },
-  )
-  void aiContentQueue.add(
-    { task: 'group-post' },
-    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-group-post' },
-  )
-  void aiContentQueue.add(
-    { task: 'learning-gen' },
-    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-learning-gen' },
-  )
+  void registerRepeatableJobs().catch((error) => {
+    logger.error('Failed to register AI repeatable jobs', { error })
+  })
 }
 
 aiContentQueue.process(async (job) => {

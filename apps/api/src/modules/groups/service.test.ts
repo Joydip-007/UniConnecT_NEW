@@ -69,7 +69,17 @@ describe('groupService.createGroup — academic type guard', () => {
     )
 
     expect(group.type).toBe('academic')
-    expect(group.aiSettings).toEqual({})
+    // Serialization fills in AISettingsSchema defaults, so a brand-new group (and every group
+    // created before AI settings shipped) exposes a complete object rather than {}.
+    expect(group.aiSettings).toEqual({
+      ai_flashcards_enabled: false,
+      ai_quiz_enabled: false,
+      require_approval: false,
+      language: 'en',
+      items_per_run: 10,
+      frequency: 'daily',
+      run_hour: 2,
+    })
 
     await cleanup(universityId)
   })

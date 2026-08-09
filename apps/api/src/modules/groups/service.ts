@@ -37,7 +37,21 @@ import type {
   UpdateGroupInput,
   UpdateSharedNoteInput,
 } from './schema'
+import { AISettingsSchema } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
+
+/**
+ * `UpdateGroupAISettingsSchema` is `.partial()`, so Zod defaults are never persisted and groups
+ * created before AI settings shipped have none of the keys. Apply the defaults at serialization
+ * so the client always receives a complete object.
+ *
+ * Spread order matters: `ai_settings` also holds runtime-only keys (`last_ai_post_date`,
+ * `pending_deck_id`, `pending_quiz_id`) that are NOT in `AISettingsSchema`, so a bare
+ * `AISettingsSchema.parse(row.ai_settings)` would strip them and break pending approvals.
+ */
+function withAiSettingsDefaults(raw: unknown): Record<string, unknown> {
+  return { ...AISettingsSchema.parse({}), ...((raw as Record<string, unknown> | null) ?? {}) }
+}
 
 type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
 type GroupRole = 'owner' | 'admin' | 'moderator' | 'member'
@@ -1916,7 +1930,7 @@ export class GroupsService {
 
   async getAiSettings(context: AuthContext, groupId: string) {
     const group = await this.getGroup(context, groupId)
-    return { aiSettings: group.aiSettings }
+    return { aiSettings: withAiSettingsDefaults(group.aiSettings) }
   }
 
   async updateAiSettings(context: AuthContext, groupId: string, patch: Record<string, unknown>) {
@@ -2534,7 +2548,7 @@ function toGroup(row: GroupRow) {
     pinnedText: row.pinned_text,
     pinnedAt: row.pinned_at,
     pinnedBy: row.pinned_by,
-    aiSettings: row.ai_settings ?? {},
+    aiSettings: withAiSettingsDefaults(row.ai_settings),
   }
 }
 

@@ -160,6 +160,12 @@ describe('runQuizGeneration', () => {
   )
 })
 
+/** Today's date pinned to a specific UTC hour, so run-hour gating assertions are deterministic. */
+function atUtcHour(hour: number): Date {
+  const d = new Date()
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour, 0, 0, 0))
+}
+
 describe('runGroupPosting', () => {
   it(
     'creates a visible deck and bot post when require_approval is false',
@@ -347,7 +353,7 @@ describe('runGroupPosting', () => {
   )
 
   it(
-    'skips a group whose configured run hour is not the current hour',
+    'skips a group whose configured run hour has not arrived yet',
     async () => {
       const universityId = await createUniversity()
       const faculty = await createFacultyUser(universityId)
@@ -356,16 +362,52 @@ describe('runGroupPosting', () => {
         { name: 'CS105', description: 'A course group', type: 'academic', is_private: false },
       )
       try {
-        const now = new Date()
+        // Pin the clock: the gate is now "run hour arrived or passed", so the assertion needs
+        // a deterministic UTC hour rather than an offset from the real current hour.
+        const now = atUtcHour(5)
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
-          run_hour: (now.getUTCHours() + 5) % 24,
+          run_hour: 10,
         })
         ;(generateFlashcards as ReturnType<typeof vi.fn>).mockResolvedValue([{ front: 'Q', back: 'A' }])
 
         await runGroupPosting(now)
 
         expect(await db('group_flashcard_decks').where({ group_id: group.id })).toHaveLength(0)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'still posts for a group whose run hour passed earlier today (delayed run self-heals)',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS108', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Heaps ${randomUUID()}`
+        // Run hour 3 but the worker only gets to run at 09:xx — the last_ai_post_date filter,
+        // not the hour, is what prevents a double post, so the group must still be processed.
+        const now = atUtcHour(9)
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          require_approval: false,
+          subject,
+          run_hour: 3,
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
+          opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
+        )
+
+        await runGroupPosting(now)
+
+        expect(await db('group_flashcard_decks').where({ group_id: group.id })).toHaveLength(1)
       } finally {
         await cleanupGroups(universityId)
       }
