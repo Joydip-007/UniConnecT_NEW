@@ -171,10 +171,12 @@ describe('runGroupPosting', () => {
       )
       try {
         const subject = `Linked Lists ${randomUUID()}`
+        const now = new Date()
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
           require_approval: false,
           subject,
+          run_hour: now.getUTCHours(),
         })
         // mockImplementation (not mockResolvedValueOnce) keyed by topic: the worker scans
         // every academic group in the shared test DB per run (including stray groups left
@@ -184,7 +186,7 @@ describe('runGroupPosting', () => {
           opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
         )
 
-        await runGroupPosting()
+        await runGroupPosting(now)
 
         const decks = await db('group_flashcard_decks').where({ group_id: group.id })
         expect(decks).toHaveLength(1)
@@ -210,16 +212,18 @@ describe('runGroupPosting', () => {
       )
       try {
         const subject = `Trees ${randomUUID()}`
+        const now = new Date()
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
           require_approval: true,
           subject,
+          run_hour: now.getUTCHours(),
         })
         ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
           opts.topic === subject ? [{ front: 'Q2', back: 'A2' }] : [],
         )
 
-        await runGroupPosting()
+        await runGroupPosting(now)
 
         const decks = await db('group_flashcard_decks').where({ group_id: group.id })
         expect(decks).toHaveLength(1)
@@ -248,15 +252,17 @@ describe('runGroupPosting', () => {
         { name: 'CS103', description: 'A course group', type: 'academic', is_private: false },
       )
       try {
-        const today = new Date().toISOString().slice(0, 10)
+        const now = new Date()
+        const today = now.toISOString().slice(0, 10)
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
+          run_hour: now.getUTCHours(),
         })
         await db('groups')
           .where({ id: group.id })
           .update({ ai_settings: db.raw(`ai_settings || '{"last_ai_post_date": "${today}"}'::jsonb`) })
 
-        await runGroupPosting()
+        await runGroupPosting(now)
 
         const decks = await db('group_flashcard_decks').where({ group_id: group.id })
         expect(decks).toHaveLength(0)
@@ -278,22 +284,79 @@ describe('runGroupPosting', () => {
       )
       try {
         const subject = `Graphs ${randomUUID()}`
+        const now = new Date()
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
           require_approval: false,
           subject,
+          run_hour: now.getUTCHours(),
         })
         ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
           opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
         )
 
-        await runGroupPosting()
+        await runGroupPosting(now)
 
         const [deck] = await db('group_flashcard_decks').where({ group_id: group.id })
         expect(deck.created_by).not.toBe(faculty.id)
 
         const post = await db('posts').where({ group_id: group.id }).first()
         expect(post.user_id).not.toBe(faculty.id)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'skips a group whose configured run hour is not the current hour',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS105', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const now = new Date()
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          run_hour: (now.getUTCHours() + 5) % 24,
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockResolvedValue([{ front: 'Q', back: 'A' }])
+
+        await runGroupPosting(now)
+
+        expect(await db('group_flashcard_decks').where({ group_id: group.id })).toHaveLength(0)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'generates items_per_run cards rather than the hardcoded 10',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS106', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const now = new Date()
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          items_per_run: 3,
+          run_hour: now.getUTCHours(),
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockResolvedValue([{ front: 'Q', back: 'A' }])
+
+        await runGroupPosting(now)
+
+        expect(generateFlashcards).toHaveBeenCalledWith(expect.objectContaining({ count: 3 }))
       } finally {
         await cleanupGroups(universityId)
       }

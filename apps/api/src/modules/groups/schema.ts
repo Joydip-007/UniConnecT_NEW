@@ -203,6 +203,10 @@ export const AISettingsSchema = z.object({
   question_style: z.enum(['mcq', 'true_false', 'short_answer', 'mixed']).optional(),
   language: z.enum(['en', 'bn']).default('en'),
   custom_instructions: z.string().max(1000).optional(),
+  items_per_run: z.number().int().min(1).max(20).default(10),
+  frequency: z.enum(['daily', 'weekly']).default('daily'),
+  run_hour: z.number().int().min(0).max(23).default(2),
+  run_weekday: z.number().int().min(0).max(6).optional(),
 })
 
 export const UpdateGroupAISettingsSchema = AISettingsSchema.partial()

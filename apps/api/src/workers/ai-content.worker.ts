@@ -86,10 +86,14 @@ interface AiSettings {
   custom_instructions?: string
   last_ai_post_date?: string
   pending_deck_id?: string | null
+  items_per_run?: number
+  frequency?: 'daily' | 'weekly'
+  run_hour?: number
+  run_weekday?: number
 }
 
-export async function runGroupPosting(): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10)
+export async function runGroupPosting(now: Date = new Date()): Promise<void> {
+  const today = now.toISOString().slice(0, 10)
 
   const groups = await db('groups')
     .where({ type: 'academic' })
@@ -109,6 +113,11 @@ export async function runGroupPosting(): Promise<void> {
       const settings: AiSettings = group.ai_settings ?? {}
       if (!settings.ai_flashcards_enabled) continue
 
+      // Per-group schedule. The job now fires hourly, so each group picks its own hour
+      // (and weekday, when weekly) instead of every group sharing one global env hour.
+      if ((settings.run_hour ?? 2) !== now.getUTCHours()) continue
+      if (settings.frequency === 'weekly' && (settings.run_weekday ?? 1) !== now.getUTCDay()) continue
+
       const topic = await courseOutlineService.resolveAITopic(group.id, group.university_id)
 
       // AI content is authored by the campus bot: groups.created_by goes stale after an
@@ -120,7 +129,7 @@ export async function runGroupPosting(): Promise<void> {
       const cards = await rateLimitedAICall(() =>
         generateFlashcards({
           topic,
-          count: 10,
+          count: settings.items_per_run ?? 10,
           difficulty: settings.difficulty,
           language: settings.language,
           customInstructions: settings.custom_instructions,
@@ -248,7 +257,7 @@ if (env.AI_CONTENT_ENABLED) {
   )
   void aiContentQueue.add(
     { task: 'group-post' },
-    { repeat: { cron: `0 ${env.AI_GROUP_POST_HOUR} * * *` }, jobId: 'ai-daily-group-post' },
+    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-group-post' },
   )
   void aiContentQueue.add(
     { task: 'learning-gen' },
@@ -261,7 +270,7 @@ aiContentQueue.process(async (job) => {
     await runQuizGeneration(job.data.universityId, new Date())
   }
   if (job.data.task === 'group-post') {
-    await runGroupPosting()
+    await runGroupPosting(new Date())
   }
   if (job.data.task === 'learning-gen') {
     await runLearningPathGeneration(new Date(), job.data.universityId)
