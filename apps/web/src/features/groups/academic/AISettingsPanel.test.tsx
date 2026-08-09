@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AISettingsPanel } from './AISettingsPanel'
 
@@ -24,6 +25,9 @@ function aiSettings(overrides = {}) {
     ai_quiz_enabled: false,
     require_approval: false,
     language: 'en',
+    items_per_run: 10,
+    frequency: 'daily',
+    run_hour: 2,
     ...overrides,
   }
 }
@@ -102,5 +106,102 @@ describe('AISettingsPanel', () => {
     mockUseCourseOutline.mockReturnValue({ data: null })
     render(<AISettingsPanel groupId="g1" />)
     expect(screen.queryByText(/Set up your Course Outline/i)).not.toBeInTheDocument()
+  })
+
+  it('saves the subject the creator types on blur', async () => {
+    const user = userEvent.setup()
+    render(<AISettingsPanel groupId="g1" />)
+
+    const subject = screen.getByLabelText('Subject')
+    await user.clear(subject)
+    await user.type(subject, 'Binary trees')
+    await user.tab()
+
+    expect(updateMutate).toHaveBeenCalledWith({ subject: 'Binary trees' })
+  })
+
+  it('saves the number of items per run on blur', async () => {
+    const user = userEvent.setup()
+    render(<AISettingsPanel groupId="g1" />)
+
+    const count = screen.getByLabelText('Items per run')
+    await user.clear(count)
+    await user.type(count, '5')
+    await user.tab()
+
+    expect(updateMutate).toHaveBeenCalledWith({ items_per_run: 5 })
+  })
+
+  it('does not save on every keystroke, only on blur', async () => {
+    const user = userEvent.setup()
+    render(<AISettingsPanel groupId="g1" />)
+
+    const subject = screen.getByLabelText('Subject')
+    await user.type(subject, 'abc')
+    expect(updateMutate).not.toHaveBeenCalled()
+  })
+
+  it('saves difficulty on change', () => {
+    render(<AISettingsPanel groupId="g1" />)
+    fireEvent.change(screen.getByLabelText('Difficulty'), { target: { value: 'advanced' } })
+    expect(updateMutate).toHaveBeenCalledWith({ difficulty: 'advanced' })
+  })
+
+  it('saves question style on change', () => {
+    render(<AISettingsPanel groupId="g1" />)
+    fireEvent.change(screen.getByLabelText('Question style'), { target: { value: 'true_false' } })
+    expect(updateMutate).toHaveBeenCalledWith({ question_style: 'true_false' })
+  })
+
+  it('saves language on change', () => {
+    render(<AISettingsPanel groupId="g1" />)
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'bn' } })
+    expect(updateMutate).toHaveBeenCalledWith({ language: 'bn' })
+  })
+
+  it('saves frequency on change', () => {
+    render(<AISettingsPanel groupId="g1" />)
+    fireEvent.change(screen.getByLabelText('Frequency'), { target: { value: 'weekly' } })
+    expect(updateMutate).toHaveBeenCalledWith({ frequency: 'weekly' })
+  })
+
+  it('saves run hour on blur and labels it as UTC', async () => {
+    const user = userEvent.setup()
+    render(<AISettingsPanel groupId="g1" />)
+
+    const runHour = screen.getByLabelText('Run hour')
+    expect(screen.getByText(/Run hour \(UTC\)/i)).toBeInTheDocument()
+    await user.clear(runHour)
+    await user.type(runHour, '14')
+    await user.tab()
+
+    expect(updateMutate).toHaveBeenCalledWith({ run_hour: 14 })
+  })
+
+  it('saves custom instructions on blur', async () => {
+    const user = userEvent.setup()
+    render(<AISettingsPanel groupId="g1" />)
+
+    const instructions = screen.getByLabelText('Custom instructions')
+    await user.type(instructions, 'Focus on recursion')
+    await user.tab()
+
+    expect(updateMutate).toHaveBeenCalledWith({ custom_instructions: 'Focus on recursion' })
+  })
+
+  it('shows the run weekday control only when frequency is weekly', () => {
+    mockUseAiSettings.mockReturnValue({ data: aiSettings({ frequency: 'daily' }), isLoading: false })
+    render(<AISettingsPanel groupId="g1" />)
+    expect(screen.queryByLabelText('Run weekday')).not.toBeInTheDocument()
+  })
+
+  it('renders and saves run weekday when frequency is weekly', () => {
+    mockUseAiSettings.mockReturnValue({
+      data: aiSettings({ frequency: 'weekly', run_weekday: 1 }),
+      isLoading: false,
+    })
+    render(<AISettingsPanel groupId="g1" />)
+    fireEvent.change(screen.getByLabelText('Run weekday'), { target: { value: '3' } })
+    expect(updateMutate).toHaveBeenCalledWith({ run_weekday: 3 })
   })
 })
