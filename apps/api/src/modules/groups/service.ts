@@ -1927,8 +1927,7 @@ export class GroupsService {
     }
     await assertGroupAdminAccess(context, groupId)
 
-    const merged = { ...(row.ai_settings ?? {}), ...patch }
-    await db('groups').where({ id: groupId }).update({ ai_settings: merged })
+    await mergeAiSettings(groupId, patch)
     return this.getGroup(context, groupId)
   }
 
@@ -1957,9 +1956,7 @@ export class GroupsService {
 
     if (settings.pending_deck_id === contentId) {
       await db('group_flashcard_decks').where({ id: contentId }).update({ is_archived: false })
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_deck_id: null } })
+      await mergeAiSettings(groupId, { pending_deck_id: null })
 
       // Announce the newly-approved deck to the group feed as the campus bot, best-effort.
       const deck = await db('group_flashcard_decks').where({ id: contentId }).first()
@@ -1984,9 +1981,7 @@ export class GroupsService {
     }
 
     if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_quiz_content: null } })
+      await mergeAiSettings(groupId, { pending_quiz_content: null })
       return { approved: true }
     }
 
@@ -2001,16 +1996,12 @@ export class GroupsService {
 
     if (settings.pending_deck_id === contentId) {
       await db('group_flashcard_decks').where({ id: contentId }).delete()
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_deck_id: null } })
+      await mergeAiSettings(groupId, { pending_deck_id: null })
       return { discarded: true }
     }
 
     if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_quiz_content: null } })
+      await mergeAiSettings(groupId, { pending_quiz_content: null })
       return { discarded: true }
     }
 
@@ -2686,4 +2677,16 @@ function pickDefined<T extends Record<string, unknown>>(value: T) {
 
 function isUniqueViolation(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
+}
+
+/**
+ * Merges a patch into groups.ai_settings inside the database rather than reading the
+ * blob, spreading it in JS, and writing it back. The read-modify-write version lost
+ * whichever concurrent write finished first — most often the creator's save being
+ * overwritten by the background worker's stale snapshot.
+ */
+export async function mergeAiSettings(groupId: string, patch: Record<string, unknown>): Promise<void> {
+  await db('groups')
+    .where({ id: groupId })
+    .update({ ai_settings: db.raw(`coalesce(ai_settings, '{}'::jsonb) || ?::jsonb`, [JSON.stringify(patch)]) })
 }

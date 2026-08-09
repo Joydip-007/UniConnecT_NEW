@@ -6,6 +6,7 @@ import { logger } from '../utils/logger'
 import { courseOutlineService } from '../modules/academic/course-outline.service'
 import { feedService } from '../modules/feed/service'
 import { learningAdminService } from '../modules/learning-admin/service'
+import { mergeAiSettings } from '../modules/groups/service'
 
 function describeAiError(error: unknown): string {
   if (error instanceof AIQuotaExceededError) {
@@ -144,9 +145,7 @@ export async function runGroupPosting(): Promise<void> {
       }
 
       if (settings.require_approval) {
-        await db('groups')
-          .where({ id: group.id })
-          .update({ ai_settings: { ...settings, pending_deck_id: deck.id, last_ai_post_date: today } })
+        await mergeAiSettings(group.id, { pending_deck_id: deck.id, last_ai_post_date: today })
       } else {
         await feedService.createPost(
           { userId: group.created_by, universityId: group.university_id, role: 'faculty' },
@@ -158,9 +157,7 @@ export async function runGroupPosting(): Promise<void> {
             is_published: true,
           },
         )
-        await db('groups')
-          .where({ id: group.id })
-          .update({ ai_settings: { ...settings, last_ai_post_date: today } })
+        await mergeAiSettings(group.id, { last_ai_post_date: today })
       }
       await learningAdminService.clearAiError(group.university_id)
     } catch (error) {
