@@ -6,6 +6,10 @@ import { logger } from '../utils/logger'
 import { courseOutlineService } from '../modules/academic/course-outline.service'
 import { feedService } from '../modules/feed/service'
 import { learningAdminService } from '../modules/learning-admin/service'
+import { mergeAiSettings } from '../modules/groups/service'
+import type { AISettingsInput } from '../modules/groups/schema'
+import { contentSyncService } from '../modules/content-sync/service'
+import { notFound } from '../utils/errors'
 
 function describeAiError(error: unknown): string {
   if (error instanceof AIQuotaExceededError) {
@@ -14,7 +18,7 @@ function describeAiError(error: unknown): string {
   return `AI generation failed: ${error instanceof Error ? error.message : String(error)}`
 }
 
-const AI_CALLS_PER_MINUTE = 12
+const AI_CALLS_PER_MINUTE = env.AI_CALLS_PER_MINUTE
 
 let aiCallsThisMinute = 0
 let minuteStart = Date.now()
@@ -73,20 +77,20 @@ export async function runQuizGeneration(universityId?: string, now: Date = new D
   }
 }
 
-interface AiSettings {
-  ai_flashcards_enabled?: boolean
-  ai_quiz_enabled?: boolean
-  require_approval?: boolean
-  subject?: string
-  difficulty?: string
-  language?: 'en' | 'bn'
-  custom_instructions?: string
+/**
+ * The admin-configurable half is derived from the Zod schema so the two cannot drift;
+ * everything below it is runtime bookkeeping the worker writes into the same jsonb blob
+ * and is deliberately absent from AISettingsSchema. Every field is optional because the
+ * worker reads raw DB rows, where a PATCH-built blob may be missing any key.
+ */
+type AiSettings = Partial<AISettingsInput> & {
   last_ai_post_date?: string
   pending_deck_id?: string | null
+  pending_quiz_id?: string | null
 }
 
-export async function runGroupPosting(): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10)
+export async function runGroupPosting(now: Date = new Date()): Promise<void> {
+  const today = now.toISOString().slice(0, 10)
 
   const groups = await db('groups')
     .where({ type: 'academic' })
@@ -104,65 +108,168 @@ export async function runGroupPosting(): Promise<void> {
   for (const group of groups as Array<{ id: string; university_id: string; created_by: string; ai_settings: AiSettings | null }>) {
     try {
       const settings: AiSettings = group.ai_settings ?? {}
-      if (!settings.ai_flashcards_enabled) continue
+      if (!settings.ai_flashcards_enabled && !settings.ai_quiz_enabled) continue
+
+      // Per-group schedule. The job now fires hourly, so each group picks its own hour
+      // (and weekday, when weekly) instead of every group sharing one global env hour.
+      //
+      // The gate is "has the run hour arrived or passed today?", not an exact hour match:
+      // all three AI crons share one worker and the rate limiter sleeps ~60s per 12 calls,
+      // so a run can easily slip past its hour. An exact match would silently skip the group
+      // for the whole day. De-duplication is handled entirely by the `last_ai_post_date != today`
+      // prefilter above — not by the hour — so a late run self-heals without double-posting.
+      if (now.getUTCHours() < (settings.run_hour ?? 2)) continue
+      if (settings.frequency === 'weekly' && (settings.run_weekday ?? 1) !== now.getUTCDay()) continue
 
       const topic = await courseOutlineService.resolveAITopic(group.id, group.university_id)
 
-      const cards = await rateLimitedAICall(() =>
-        generateFlashcards({
-          topic,
-          count: 10,
-          difficulty: settings.difficulty,
-          language: settings.language,
-          customInstructions: settings.custom_instructions,
-        }),
-      )
+      // AI content is authored by the campus bot: groups.created_by goes stale after an
+      // ownership transfer and may name someone who has left the group entirely.
+      const authorId = await contentSyncService.ensureCampusBotUser(group.university_id)
+      const author = await db('users').where({ id: authorId }).first<{ role: string }>('role')
+      if (!author) throw notFound('Campus bot user not found', 'CAMPUS_BOT_NOT_FOUND')
 
-      const [deck] = await db('group_flashcard_decks')
-        .insert({
-          group_id: group.id,
-          university_id: group.university_id,
-          created_by: group.created_by,
-          title: `AI deck — ${topic}`,
-          is_archived: !!settings.require_approval,
-          card_count: cards.length,
-        })
-        .returning<{ id: string }[]>('*')
+      // Each branch is isolated: `last_ai_post_date` is the de-dup mechanism now that the
+      // hour gate is a lower bound, so it MUST be stamped whenever a branch ran to
+      // completion — even if the other branch failed. Otherwise a late-branch throw leaves
+      // the group eligible again and every remaining hourly run re-creates content.
+      // "Completed" deliberately includes an empty model response: there is nothing to
+      // duplicate, but re-asking every hour would burn quota for the same empty result.
+      // Only a genuine throw leaves the day unstamped, so transient failures still retry.
+      let branchCompleted = false
+      let branchFailed = false
 
-      if (cards.length > 0) {
-        await db('group_flashcards').insert(
-          cards.map((c) => ({
-            deck_id: deck.id,
-            group_id: group.id,
-            university_id: group.university_id,
-            created_by: group.created_by,
-            front: c.front,
-            back: c.back,
-            hint: c.hint ?? null,
-          })),
-        )
+      if (settings.ai_flashcards_enabled) {
+        try {
+          const cards = await rateLimitedAICall(() =>
+            generateFlashcards({
+              topic,
+              count: settings.items_per_run ?? 10,
+              difficulty: settings.difficulty,
+              language: settings.language,
+              customInstructions: settings.custom_instructions,
+            }),
+          )
+
+          // A degenerate empty response is not worth an empty deck and a "0 cards ready!"
+          // announcement. The branch still counts as complete so the day gets stamped —
+          // retrying hourly would burn scarce AI quota for the same empty result.
+          if (cards.length === 0) {
+            logger.warn('AI returned no flashcards; skipping deck creation', {
+              groupId: group.id,
+              topic,
+            })
+          } else {
+            const [deck] = await db('group_flashcard_decks')
+              .insert({
+                group_id: group.id,
+                university_id: group.university_id,
+                created_by: authorId,
+                title: `AI deck — ${topic}`,
+                is_archived: !!settings.require_approval,
+                card_count: cards.length,
+              })
+              .returning<{ id: string }[]>('*')
+
+            await db('group_flashcards').insert(
+              cards.map((c) => ({
+                deck_id: deck.id,
+                group_id: group.id,
+                university_id: group.university_id,
+                created_by: authorId,
+                front: c.front,
+                back: c.back,
+                hint: c.hint ?? null,
+              })),
+            )
+
+            if (settings.require_approval) {
+              await mergeAiSettings(group.id, { pending_deck_id: deck.id })
+            } else {
+              await feedService.createPost(
+                { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+                {
+                  type: 'post',
+                  content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
+                  group_id: group.id,
+                  media_urls: [],
+                  is_published: true,
+                },
+              )
+            }
+          }
+
+          branchCompleted = true
+        } catch (error) {
+          branchFailed = true
+          logger.error('AI group flashcard generation failed', { groupId: group.id, error })
+          await learningAdminService.recordAiError(group.university_id, describeAiError(error))
+        }
       }
 
-      if (settings.require_approval) {
-        await db('groups')
-          .where({ id: group.id })
-          .update({ ai_settings: { ...settings, pending_deck_id: deck.id, last_ai_post_date: today } })
-      } else {
-        await feedService.createPost(
-          { userId: group.created_by, universityId: group.university_id, role: 'faculty' },
-          {
-            type: 'post',
-            content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
-            group_id: group.id,
-            media_urls: [],
-            is_published: true,
-          },
-        )
-        await db('groups')
-          .where({ id: group.id })
-          .update({ ai_settings: { ...settings, last_ai_post_date: today } })
+      if (settings.ai_quiz_enabled) {
+        try {
+          const questions = await rateLimitedAICall(() =>
+            generateQuizQuestions({
+              department: topic,
+              count: settings.items_per_run ?? 10,
+              difficulty: settings.difficulty,
+              style: settings.question_style === 'short_answer' ? 'mixed' : settings.question_style,
+              language: settings.language,
+              customInstructions: settings.custom_instructions,
+            }),
+          )
+
+          // Same reasoning as the flashcard branch: no empty quiz, no "0 questions" post,
+          // but the day is still stamped so we don't re-ask the model every hour.
+          if (questions.length === 0) {
+            logger.warn('AI returned no quiz questions; skipping quiz creation', {
+              groupId: group.id,
+              topic,
+            })
+          } else {
+            const [quiz] = await db('group_quizzes')
+              .insert({
+                group_id: group.id,
+                university_id: group.university_id,
+                created_by: authorId,
+                title: `AI quiz — ${topic}`,
+                questions: JSON.stringify(questions),
+                question_count: questions.length,
+                is_archived: !!settings.require_approval,
+              })
+              .returning<{ id: string }[]>('id')
+
+            if (settings.require_approval) {
+              await mergeAiSettings(group.id, { pending_quiz_id: quiz.id })
+            } else {
+              await feedService.createPost(
+                { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+                {
+                  type: 'post',
+                  content: `🧠 New AI quiz: ${topic} — ${questions.length} questions ready!`,
+                  group_id: group.id,
+                  media_urls: [],
+                  is_published: true,
+                },
+              )
+            }
+          }
+
+          branchCompleted = true
+        } catch (error) {
+          branchFailed = true
+          logger.error('AI group quiz generation failed', { groupId: group.id, error })
+          await learningAdminService.recordAiError(group.university_id, describeAiError(error))
+        }
       }
-      await learningAdminService.clearAiError(group.university_id)
+
+      if (branchCompleted) {
+        await mergeAiSettings(group.id, { last_ai_post_date: today })
+      }
+      if (!branchFailed) {
+        await learningAdminService.clearAiError(group.university_id)
+      }
     } catch (error) {
       logger.error('AI group posting failed', { groupId: group.id, error })
       await learningAdminService.recordAiError(group.university_id, describeAiError(error))
@@ -236,19 +343,47 @@ export async function runLearningPathGeneration(now: Date = new Date(), universi
   }
 }
 
+/**
+ * Repeatable jobs this worker wants registered. Bull persists repeatable job definitions in
+ * Redis keyed by jobId + cron, so removing or renaming a registration in code does NOT
+ * deregister the previously stored schedule — it keeps firing forever alongside the new one.
+ */
+const DESIRED_REPEATABLE_JOB_IDS = new Set([
+  'ai-hourly-quiz-gen',
+  'ai-hourly-group-post',
+  'ai-hourly-learning-gen',
+])
+
+/**
+ * Drops every repeatable job in Redis that this worker no longer declares, so a schedule
+ * change (e.g. the old daily `ai-daily-group-post`) can't keep double-posting after deploy.
+ * Deliberately generic: hardcoding one stale id would leave the identical trap next time.
+ */
+export async function pruneStaleRepeatableJobs(): Promise<void> {
+  try {
+    const existing = await aiContentQueue.getRepeatableJobs()
+    for (const job of existing) {
+      if (job.id && DESIRED_REPEATABLE_JOB_IDS.has(job.id)) continue
+      await aiContentQueue.removeRepeatableByKey(job.key)
+      logger.info('Removed stale AI repeatable job', { jobId: job.id, key: job.key, cron: job.cron })
+    }
+  } catch (error) {
+    // A Redis hiccup during cleanup must never stop the worker from starting.
+    logger.error('Failed to prune stale AI repeatable jobs', { error })
+  }
+}
+
+async function registerRepeatableJobs(): Promise<void> {
+  await pruneStaleRepeatableJobs()
+  await aiContentQueue.add({ task: 'quiz-gen' }, { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-quiz-gen' })
+  await aiContentQueue.add({ task: 'group-post' }, { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-group-post' })
+  await aiContentQueue.add({ task: 'learning-gen' }, { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-learning-gen' })
+}
+
 if (env.AI_CONTENT_ENABLED) {
-  void aiContentQueue.add(
-    { task: 'quiz-gen' },
-    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-quiz-gen' },
-  )
-  void aiContentQueue.add(
-    { task: 'group-post' },
-    { repeat: { cron: `0 ${env.AI_GROUP_POST_HOUR} * * *` }, jobId: 'ai-daily-group-post' },
-  )
-  void aiContentQueue.add(
-    { task: 'learning-gen' },
-    { repeat: { cron: '0 * * * *' }, jobId: 'ai-hourly-learning-gen' },
-  )
+  void registerRepeatableJobs().catch((error) => {
+    logger.error('Failed to register AI repeatable jobs', { error })
+  })
 }
 
 aiContentQueue.process(async (job) => {
@@ -256,7 +391,7 @@ aiContentQueue.process(async (job) => {
     await runQuizGeneration(job.data.universityId, new Date())
   }
   if (job.data.task === 'group-post') {
-    await runGroupPosting()
+    await runGroupPosting(new Date())
   }
   if (job.data.task === 'learning-gen') {
     await runLearningPathGeneration(new Date(), job.data.universityId)

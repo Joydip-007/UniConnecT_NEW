@@ -89,7 +89,11 @@ Presigned S3 PUT URL flow — client calls `POST /api/upload/presign`, uploads d
 
 ### Background jobs
 
-Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Eight queues: `email`, `notification`, `badge`, `group-digest` (weekly group digest cron), `mentorship` (48 h alumni reminder + 7 d request auto-expiry), `push` (Web Push fan-out), `content-sync` (admin-triggered external content import), `feed-ranking` (cron that recomputes `posts.hot_score`). Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue. In production, workers run in-process with the API server.
+Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Queues: `email`, `notification`, `badge`, `group-digest` (weekly group digest cron), `mentorship` (48 h alumni reminder + 7 d request auto-expiry), `push` (Web Push fan-out), `content-sync` (admin-triggered external content import), `feed-ranking` (cron that recomputes `posts.hot_score`), `ai-content` (hourly crons for university quiz generation, per-group AI posting, and learning-path generation). Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue. In production, workers run in-process with the API server.
+
+**Changing a repeatable job's schedule is a two-part change.** Bull persists repeatable jobs in Redis keyed by name+cron+`jobId`; deleting the registration from code does *not* deregister the running job. Change the `jobId` alongside the cron, or the old schedule survives the deploy and both fire. `ai-content.worker.ts` calls `pruneStaleRepeatableJobs()` before registering, which removes any repeatable whose id isn't in the current desired set — extend that set rather than adding an unpruned job.
+
+The AI worker throttles Gemini calls via `env.AI_CALLS_PER_MINUTE` (default 12); on exceeding it, it sleeps out the rest of the wall-clock minute. Tests raise it in `apps/api/vitest.config.ts` so the suite never pays that stall.
 
 ### Full-text search & feed ranking
 
@@ -101,11 +105,34 @@ The "Top" feed sorts on denormalised ranking columns on `posts` (migration `071`
 
 All feature modules live under `apps/api/src/modules/`. Each module follows the same shape: `router.ts` (route declarations only), `controller.ts` (request/response handling), `service.ts` (all business logic + DB access), `schema.ts` (Zod schemas), `index.ts` (barrel).
 
-Current modules: `auth`, `users`, `feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `campus`, `upload`, `admin`, `mentorship`, `search`, `explore`, `connections`, `presence`, `push`, `drafts`, `content-sync`.
+Current modules: `academic`, `admin`, `auth`, `campus`, `connections`, `content-sync`, `drafts`, `events`, `explore`, `feed`, `groups`, `jobs`, `klipy`, `learning`, `learning-admin`, `mentorship`, `messages`, `moderation`, `news`, `notifications`, `presence`, `push`, `quiz`, `search`, `upload`, `users`.
+
+Mount points are all in `apps/api/src/app.ts` — check there rather than guessing, since several don't match their module name:
+
+| Module | Mounted at | Notes |
+|---|---|---|
+| `academic` | `/api/v1/groups` | Shares the groups prefix — course outline, modules, assignments, gradebook for `type: 'academic'` groups |
+| `learning-admin` | `/api/v1/admin/learning` | Admin-only AI learning/quiz config per university |
+| `learning` | `/api/v1/learning` | Skill paths and units for learners |
+| `quiz` | `/api/v1/quiz` | Daily quiz slots and attempts |
+| `moderation` | `/api/v1/moderation` | User-level blocks/reports |
+| `klipy` | `/api/v1/klipy` | GIF/sticker search proxy |
+| `feed` | `/api/v1/posts` | Note the prefix differs from the module name |
+| `messages` | `/api/v1/conversations` | Same |
+| `drafts` | `/api/v1/me/drafts` | Same |
+| `campus` | `/api/v1` | Mounted at the root prefix — lost-and-found and shuttle |
+| `feed` (`pollsRouter`) | `/api/v1/polls` | Second router exported from the `feed` module, not its own module |
 
 The `admin` module (`/api/v1/admin`) requires `faculty` or `admin` role (stats endpoint requires `admin` only) and exposes: stats, user list + role/status management, invitations (create/list/delete/bulk), content reports (list/resolve), and allowed email domains management. Admin actions are recorded in `university_audit_log`.
 
-The `groups` module now includes: join-request flow (private groups → request → admin review), member roles (admin/moderator/member), resources (file links with view tracking), study sessions (with RSVP), pinned posts, and group rules.
+The `groups` module now includes: join-request flow (private groups → request → admin review), member roles (owner/admin/moderator/member), resources (file links with view tracking), study sessions (with RSVP), pinned posts, group rules, and study tools (flashcard decks with spaced repetition, shared notes).
+
+**Group roles are a separate axis from platform roles.** `group_members.role` is `owner | admin | moderator | member` (CHECK constraint, migration `017`) and governs what you can do *inside* a group; `users.role` governs which groups you may create or join. Enforcement helpers live at the bottom of `groups/service.ts`: `assertCanAdminGroup` (owner/admin — settings, invites, join-request review, rules, member management), `canModerate` (owner/admin/moderator — pinned text, stats, and deleting *any* member's content), and `assertCanAssignRole`/`assertCanRemoveRole`, which cap admins below their own tier so only an owner can promote to admin or transfer ownership. Content deletion is uniformly "creator **or** `canModerate`" — use `canModerate`, never a hand-rolled role array. `is_system` groups (auto-managed by role/department/batch) reject join, leave, invite, delete, and membership changes outright.
+
+**AI settings on academic groups** live in the `groups.ai_settings` jsonb column, validated by `AISettingsSchema` (`groups/schema.ts`) and admin-only. Two independent toggles — `ai_flashcards_enabled` and `ai_quiz_enabled` — plus `subject`, `difficulty`, `question_style`, `language`, `custom_instructions`, and per-group scheduling (`items_per_run`, `frequency`, `run_hour` UTC, `run_weekday`). Rules that matter:
+- **Never read-modify-write the blob.** Use `mergeAiSettings(groupId, patch)` (module-level export in `groups/service.ts`), which merges via SQL `||` so the worker and a concurrent admin save can't clobber each other.
+- `UpdateGroupAISettingsSchema` is `AISettingsSchema.partial()`, so Zod `.default()` values are never persisted. Defaults are applied on read via `withAiSettingsDefaults`, spread *under* the stored row so runtime keys (`last_ai_post_date`, `pending_deck_id`, `pending_quiz_id`) survive. The worker reads raw rows, so it still needs its own `?? fallback`.
+- `run_hour` is a **lower bound**, not an equality check — a delayed worker run must still post. `last_ai_post_date` is therefore the only de-dup mechanism; stamp it whenever a branch completes, or hourly runs will duplicate content.
 
 The `campus` module covers lost-and-found items and shuttle schedules (no dedicated `lost-found` or `shuttle` module — both live under `/api/v1/campus`). Shuttle routes carry client-side estimation params (`est_duration_min`, `cycle_minutes` — migration `073`) so the browser can interpolate a bus along the route; `driver`-role users broadcast live GPS via `POST /shuttle/locations`.
 
@@ -198,7 +225,7 @@ Cross-cutting services not owned by any module: `token.service.ts`, `email.servi
 | `src/router/` | `index.tsx` (router), `paths.ts` (PATHS constants), `ProtectedRoute`, `AdminRoute`, `GuestRoute` |
 
 **Implemented feature bundles** (each at `src/features/{domain}/` with `components/`, `hooks/`, `index.ts`):
-`feed`, `jobs`, `events`, `groups`, `messages`, `notifications`, `news`, `mentorship`, `explore`, `search`, `landing`, `connections`, `profile`, `settings`, `drafts`, `content-sync`, `presence`, `lost-found`, `shuttle`, `share`
+`connections`, `content-sync`, `drafts`, `events`, `explore`, `feed`, `groups`, `jobs`, `landing`, `learning`, `learning-admin`, `lost-found`, `mentorship`, `messages`, `moderation`, `news`, `notifications`, `onboarding`, `presence`, `profile`, `quiz`, `search`, `settings`, `share`, `shuttle`
 
 Notable feature internals:
 - `src/features/connections/` — `ConnectButton`, `ConnectionRequestModal`, `PendingRequestCard`, `ConnectionCard`; hooks `useConnectionAction`, `useMyConnections`, `usePendingReceived`, `usePendingSent`, `useMutualConnections`
@@ -206,7 +233,7 @@ Notable feature internals:
 - `src/features/profile/` — `ProfileHeader`, `ProfileAbout`, `ProfileExperience`, `ProfileEducation`, `ProfileSkills`, `ProfileFeatured`, `ProfileContactInfo`, `ProfileActivity`, `ProfileAnalytics`, `ProfileViewers`, `ResumeExportButton`, plus editing modals (`ExperienceModal`, `EducationModal`, `FeaturedModal`, `EditProfileModal`)
 
 **All implemented page routes** (`src/router/paths.ts` + lazy pages in `src/pages/`):
-`/about`, `/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/feed/:id` (post detail), `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/shuttle/drive` (driver GPS broadcast view), `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/settings` (+ sub-routes `/settings/notifications`, `/settings/appearance`, `/settings/account`, `/settings/privacy`), `/drafts`, `/admin`
+`/about`, `/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/feed/:id` (post detail), `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/shuttle/drive` (driver GPS broadcast view), `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/settings` (+ sub-routes `/settings/notifications`, `/settings/appearance`, `/settings/account`, `/settings/privacy`), `/drafts`, `/learn`, `/admin`
 
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
@@ -283,8 +310,9 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 - Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
 - Redis keys: `{prefix}:{university_id}:{id}`. Never hardcode TTL values — centralise them (see `src/config/redis.ts` for the client; OTP TTL lives in env `OTP_EXPIRES_MINUTES`).
 - DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Connections (`connections`), Profile sections (`profile_experiences`, `profile_education`, `profile_featured`, `profile_views`), Settings (`user_settings`, `push_subscriptions`), Content sync (`content_sync_runs`, `content_attachments`), Audit (`university_audit_log`).
-- Latest migration: `076_add_news_source_published_at` (`news.source_published_at` — original WordPress publish date, used to pick the single featured/latest notice). Migration `075_add_content_sync_entries_per_source` adds `university_settings.content_sync_entries_per_source` (newest items fetched per source per run, default 5). The `follows` table no longer exists (dropped in `052_drop_follows`). Recent additions: `user_settings` (`065`, notification + privacy JSONB), `push_subscriptions` (`066`), `users.deactivated_at` (`067`), `users.last_seen` (`069`), generated `search_vector` columns (`070`), `posts` feed-ranking columns (`071`), `posts` lifecycle columns (`072_add_post_lifecycle` — `publish_at`/`archived_at`/`expires_at`, with a reconciliation cron that flips scheduled→published and published→archived; derived states draft/scheduled/published/archived are computed, not an enum), per-university-unique `users.username` (`072_add_username_to_users`), and the `driver` role + shuttle estimation params (`073`).
-- **Migration number collision:** there are two `072_` files (`072_add_post_lifecycle`, `072_add_username_to_users`). Avoid re-using a prefix when adding the next migration — start from `077_`.
+- Latest migration: `102_create_group_quizzes` (`group_quizzes` — AI-generated quizzes per academic group, mirroring `group_flashcard_decks`). **Start the next migration at `103_`.**
+- Migration landmarks worth knowing: the `follows` table no longer exists (dropped in `052_drop_follows`); `user_settings` (`065`, notification + privacy JSONB); `push_subscriptions` (`066`); `users.deactivated_at` (`067`); `users.last_seen` (`069`); generated `search_vector` columns (`070`); `posts` feed-ranking columns (`071`); `posts` lifecycle columns (`072_add_post_lifecycle`); per-university-unique `users.username` (`072_add_username_to_users`); `driver` role + shuttle estimation params (`073`); generalized content attachments (`077`); user moderation (`078`); account deletion requests (`079`); message reactions/stickers (`081`–`082`); learning tables + badges (`085`–`087`); group study tools — flashcard decks, shared notes (`088`); daily quiz (`089`–`090`); `ai_quiz_pool` (`091`); the `academic` group type (`092`); course outline + academic LMS tables (`093`–`094`); session notes (`096`); AI learning/quiz settings (`097`–`100`).
+- **Two migration-number collisions exist:** two `072_` files (`072_add_post_lifecycle`, `072_add_username_to_users`) and two `098_` files (`098_add_ai_quiz_settings`, `098_add_skill_path_source_and_quiz_approval`). Never re-use a prefix — check `ls apps/api/src/database/migrations | tail -1` before creating one.
 
 ---
 

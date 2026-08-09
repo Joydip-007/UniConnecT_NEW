@@ -20,9 +20,10 @@ const CATEGORIES = [
 interface Props {
   groupId: string
   userRole?: string | null
+  currentUserId?: string | null
 }
 
-export function ResourcesTab({ groupId, userRole }: Props) {
+export function ResourcesTab({ groupId, userRole, currentUserId }: Props) {
   const [activeCategory, setActiveCategory] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -113,6 +114,7 @@ export function ResourcesTab({ groupId, userRole }: Props) {
               resource={resource}
               groupId={groupId}
               userRole={userRole}
+              currentUserId={currentUserId}
               isLast={idx === data.items.length - 1}
               deleteConfirm={deleteConfirm}
               onDeleteConfirm={setDeleteConfirm}
@@ -129,18 +131,22 @@ export function ResourcesTab({ groupId, userRole }: Props) {
 }
 
 function ResourceRow({
-  resource, userRole, isLast, deleteConfirm, onDeleteConfirm, onDelete, onTrack,
+  resource, userRole, currentUserId, isLast, deleteConfirm, onDeleteConfirm, onDelete, onTrack,
 }: {
   resource: GroupResource
   groupId: string
   userRole?: string | null
+  currentUserId?: string | null
   isLast: boolean
   deleteConfirm: string | null
   onDeleteConfirm: (id: string | null) => void
   onDelete: () => void
   onTrack: () => void
 }) {
-  const canDelete = userRole && ['owner', 'admin', 'moderator'].includes(userRole)
+  // Mirrors the API: the uploader, or any owner/admin/moderator, may delete a resource.
+  const canDelete =
+    (!!currentUserId && resource.uploadedBy === currentUserId) ||
+    (!!userRole && ['owner', 'admin', 'moderator'].includes(userRole))
 
   return (
     <div

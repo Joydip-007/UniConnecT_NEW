@@ -62,8 +62,8 @@ Set on Azure App Service → Configuration → Application settings (API) and Ve
 | `KLIPY_API_KEY` | KLIPY sticker/GIF API key (server-side only) |
 | `KLIPY_CONTENT_FILTER` | KLIPY content filter level (`off`/`low`/`medium`/`high`) |
 | `GEMINI_API_KEY` | Google Gemini API key for AI content features |
-| `AI_CONTENT_ENABLED` | `true`/`false` — enables the daily AI content cron |
-| `AI_GROUP_POST_HOUR` | Hour (0–23, server time) the daily AI flashcard group-posting cron runs |
+| `AI_CONTENT_ENABLED` | `true`/`false` — enables the hourly AI content cron |
+| `AI_GROUP_POST_HOUR` | Deprecated / unused. The AI group-posting cron now runs hourly and each academic group is scheduled from its own `ai_settings.run_hour` (and `run_weekday` when weekly). Retained only for backward compatibility |
 
 ### Web (`apps/web`)
 

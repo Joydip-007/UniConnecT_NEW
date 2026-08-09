@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { randomUUID } from 'node:crypto'
 
-vi.mock('../services/ai.service', () => ({
+// Stub only the generator calls; keep every other real export (notably AIQuotaExceededError,
+// which the worker's error reporting matches with `instanceof`).
+vi.mock('../services/ai.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/ai.service')>()),
   generateQuizQuestions: vi.fn(),
   generateFlashcards: vi.fn(),
   generateSkillPath: vi.fn(),
@@ -43,8 +46,25 @@ async function createUserWithProfile(universityId: string, department: string): 
   })
 }
 
+/**
+ * runQuizGeneration skips any university whose settings have quiz generation disabled or
+ * whose configured gen hour isn't the current UTC hour. Both default to off/02:00, so a
+ * fixture university needs an explicit settings row or the worker never reaches the insert.
+ */
+async function enableQuizGeneration(universityId: string): Promise<void> {
+  await db('university_settings')
+    .insert({
+      university_id: universityId,
+      ai_quiz_enabled: true,
+      ai_learning_gen_hour: new Date().getUTCHours(),
+    })
+    .onConflict('university_id')
+    .merge()
+}
+
 async function cleanup(universityId: string): Promise<void> {
   await db('ai_quiz_pool').where({ university_id: universityId }).del()
+  await db('university_settings').where({ university_id: universityId }).del()
   const userIds = await db('users').where({ university_id: universityId }).pluck('id')
   await db('profiles').whereIn('user_id', userIds).del()
   await db('users').where({ university_id: universityId }).del()
@@ -71,6 +91,7 @@ async function createFacultyUser(universityId: string): Promise<{ id: string }> 
 
 async function cleanupGroups(universityId: string): Promise<void> {
   const groupIds = await db('groups').where({ university_id: universityId }).pluck('id')
+  await db('group_quizzes').whereIn('group_id', groupIds).del()
   await db('group_flashcards').whereIn('group_id', groupIds).del()
   await db('group_flashcard_decks').whereIn('group_id', groupIds).del()
   await db('posts').whereIn('group_id', groupIds).del()
@@ -88,6 +109,7 @@ describe('runQuizGeneration', () => {
     async () => {
       const universityId = await createUniversity()
       await createUserWithProfile(universityId, 'Physics')
+      await enableQuizGeneration(universityId)
       ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockImplementation(async () => [
         { q: 'Q1', options: ['a', 'b', 'c', 'd'], answer: 0 },
       ])
@@ -111,6 +133,7 @@ describe('runQuizGeneration', () => {
       const universityId = await createUniversity()
       await createUserWithProfile(universityId, 'Failing Dept')
       await createUserWithProfile(universityId, 'OK Dept')
+      await enableQuizGeneration(universityId)
       ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockImplementation(
         async (options: { department: string }) => {
           if (options.department === 'Failing Dept') throw new Error('quota exceeded')
@@ -137,6 +160,12 @@ describe('runQuizGeneration', () => {
   )
 })
 
+/** Today's date pinned to a specific UTC hour, so run-hour gating assertions are deterministic. */
+function atUtcHour(hour: number): Date {
+  const d = new Date()
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour, 0, 0, 0))
+}
+
 describe('runGroupPosting', () => {
   it(
     'creates a visible deck and bot post when require_approval is false',
@@ -149,10 +178,12 @@ describe('runGroupPosting', () => {
       )
       try {
         const subject = `Linked Lists ${randomUUID()}`
+        const now = new Date()
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
           require_approval: false,
           subject,
+          run_hour: now.getUTCHours(),
         })
         // mockImplementation (not mockResolvedValueOnce) keyed by topic: the worker scans
         // every academic group in the shared test DB per run (including stray groups left
@@ -162,7 +193,7 @@ describe('runGroupPosting', () => {
           opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
         )
 
-        await runGroupPosting()
+        await runGroupPosting(now)
 
         const decks = await db('group_flashcard_decks').where({ group_id: group.id })
         expect(decks).toHaveLength(1)
@@ -188,16 +219,18 @@ describe('runGroupPosting', () => {
       )
       try {
         const subject = `Trees ${randomUUID()}`
+        const now = new Date()
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
           require_approval: true,
           subject,
+          run_hour: now.getUTCHours(),
         })
         ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
           opts.topic === subject ? [{ front: 'Q2', back: 'A2' }] : [],
         )
 
-        await runGroupPosting()
+        await runGroupPosting(now)
 
         const decks = await db('group_flashcard_decks').where({ group_id: group.id })
         expect(decks).toHaveLength(1)
@@ -205,6 +238,42 @@ describe('runGroupPosting', () => {
         const updatedGroup = await db('groups').where({ id: group.id }).first()
         expect(updatedGroup.ai_settings.pending_deck_id).toBe(decks[0].id)
       } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'generates a group quiz when only the quiz toggle is enabled',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS107', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const now = new Date()
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_quiz_enabled: true,
+          ai_flashcards_enabled: false,
+          require_approval: false,
+          question_style: 'true_false',
+          run_hour: now.getUTCHours(),
+        })
+        ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { q: 'Q', options: ['a', 'b', 'c', 'd'], answer: 0 },
+        ])
+
+        await runGroupPosting(now)
+
+        const quizzes = await db('group_quizzes').where({ group_id: group.id })
+        expect(quizzes).toHaveLength(1)
+        expect(quizzes[0].is_archived).toBe(false)
+        expect(generateQuizQuestions).toHaveBeenCalledWith(expect.objectContaining({ style: 'true_false' }))
+      } finally {
+        await db('group_quizzes').where({ university_id: universityId }).del()
         await cleanupGroups(universityId)
       }
     },
@@ -226,19 +295,241 @@ describe('runGroupPosting', () => {
         { name: 'CS103', description: 'A course group', type: 'academic', is_private: false },
       )
       try {
-        const today = new Date().toISOString().slice(0, 10)
+        const now = new Date()
+        const today = now.toISOString().slice(0, 10)
         await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
           ai_flashcards_enabled: true,
+          run_hour: now.getUTCHours(),
         })
         await db('groups')
           .where({ id: group.id })
           .update({ ai_settings: db.raw(`ai_settings || '{"last_ai_post_date": "${today}"}'::jsonb`) })
 
-        await runGroupPosting()
+        await runGroupPosting(now)
 
         const decks = await db('group_flashcard_decks').where({ group_id: group.id })
         expect(decks).toHaveLength(0)
       } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'attributes the AI deck and post to the campus bot, not the group creator',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS104', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Graphs ${randomUUID()}`
+        const now = new Date()
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          require_approval: false,
+          subject,
+          run_hour: now.getUTCHours(),
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
+          opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
+        )
+
+        await runGroupPosting(now)
+
+        const [deck] = await db('group_flashcard_decks').where({ group_id: group.id })
+        expect(deck.created_by).not.toBe(faculty.id)
+
+        const post = await db('posts').where({ group_id: group.id }).first()
+        expect(post.user_id).not.toBe(faculty.id)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'skips a group whose configured run hour has not arrived yet',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS105', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        // Pin the clock: the gate is now "run hour arrived or passed", so the assertion needs
+        // a deterministic UTC hour rather than an offset from the real current hour.
+        const now = atUtcHour(5)
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          run_hour: 10,
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockResolvedValue([{ front: 'Q', back: 'A' }])
+
+        await runGroupPosting(now)
+
+        expect(await db('group_flashcard_decks').where({ group_id: group.id })).toHaveLength(0)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'still posts for a group whose run hour passed earlier today (delayed run self-heals)',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS108', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Heaps ${randomUUID()}`
+        // Run hour 3 but the worker only gets to run at 09:xx — the last_ai_post_date filter,
+        // not the hour, is what prevents a double post, so the group must still be processed.
+        const now = atUtcHour(9)
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          require_approval: false,
+          subject,
+          run_hour: 3,
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
+          opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
+        )
+
+        await runGroupPosting(now)
+
+        expect(await db('group_flashcard_decks').where({ group_id: group.id })).toHaveLength(1)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'generates items_per_run cards rather than the hardcoded 10',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS106', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const now = new Date()
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          items_per_run: 3,
+          run_hour: now.getUTCHours(),
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockResolvedValue([{ front: 'Q', back: 'A' }])
+
+        await runGroupPosting(now)
+
+        expect(generateFlashcards).toHaveBeenCalledWith(expect.objectContaining({ count: 3 }))
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'creates nothing and does not retry the same day when the model returns no cards',
+    async () => {
+      // A degenerate empty response used to insert an empty deck and announce
+      // "0 cards ready!". It now creates nothing, but still counts as a completed run so
+      // the hourly schedule doesn't re-ask the model (and burn quota) for the same result.
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS110', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Heaps ${randomUUID()}`
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          require_approval: false,
+          subject,
+          run_hour: 3,
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async () => [])
+
+        await runGroupPosting(atUtcHour(4))
+
+        expect(await db('group_flashcard_decks').where({ group_id: group.id })).toHaveLength(0)
+        expect(await db('posts').where({ group_id: group.id })).toHaveLength(0)
+
+        // Second run the same day must not re-ask the model for this group.
+        const callsAfterFirstRun = (generateFlashcards as ReturnType<typeof vi.fn>).mock.calls.filter(
+          (call) => (call[0] as { topic: string }).topic === subject,
+        ).length
+        await runGroupPosting(atUtcHour(5))
+        const callsAfterSecondRun = (generateFlashcards as ReturnType<typeof vi.fn>).mock.calls.filter(
+          (call) => (call[0] as { topic: string }).topic === subject,
+        ).length
+
+        expect(callsAfterFirstRun).toBe(1)
+        expect(callsAfterSecondRun).toBe(1)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'does not re-post a second deck later the same day when the quiz branch failed',
+    async () => {
+      // Regression: the run-hour gate is a lower bound, so `last_ai_post_date` is the only
+      // de-dup mechanism. If the quiz branch threw after the flashcard branch had already
+      // created a deck, the date was never stamped and every later hourly run created
+      // another deck + another bot post.
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS109', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Tries ${randomUUID()}`
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          ai_quiz_enabled: true,
+          require_approval: false,
+          subject,
+          run_hour: 3,
+        })
+        // Keyed by topic/department (not call order) so unrelated academic groups in the
+        // shared test DB can't consume this group's mock.
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
+          opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
+        )
+        ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockImplementation(
+          async (opts: { department: string }) => {
+            if (opts.department === subject) throw new Error('gemini rate limited')
+            return [{ q: 'Q', options: ['a', 'b', 'c', 'd'], answer: 0 }]
+          },
+        )
+
+        // Two hourly runs on the same simulated day.
+        await runGroupPosting(atUtcHour(4))
+        await runGroupPosting(atUtcHour(5))
+
+        const decks = await db('group_flashcard_decks').where({ group_id: group.id })
+        expect(decks).toHaveLength(1)
+      } finally {
+        await db('group_quizzes').where({ university_id: universityId }).del()
         await cleanupGroups(universityId)
       }
     },

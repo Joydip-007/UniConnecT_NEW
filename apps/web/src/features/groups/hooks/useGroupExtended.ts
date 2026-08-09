@@ -685,6 +685,10 @@ export interface GroupAISettings {
   question_style?: 'mcq' | 'true_false' | 'short_answer' | 'mixed'
   language: 'en' | 'bn'
   custom_instructions?: string
+  items_per_run: number
+  frequency: 'daily' | 'weekly'
+  run_hour: number
+  run_weekday?: number
 }
 
 export interface PendingAiContentItem {

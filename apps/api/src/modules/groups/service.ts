@@ -37,7 +37,21 @@ import type {
   UpdateGroupInput,
   UpdateSharedNoteInput,
 } from './schema'
+import { AISettingsSchema } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
+
+/**
+ * `UpdateGroupAISettingsSchema` is `.partial()`, so Zod defaults are never persisted and groups
+ * created before AI settings shipped have none of the keys. Apply the defaults at serialization
+ * so the client always receives a complete object.
+ *
+ * Spread order matters: `ai_settings` also holds runtime-only keys (`last_ai_post_date`,
+ * `pending_deck_id`, `pending_quiz_id`) that are NOT in `AISettingsSchema`, so a bare
+ * `AISettingsSchema.parse(row.ai_settings)` would strip them and break pending approvals.
+ */
+function withAiSettingsDefaults(raw: unknown): Record<string, unknown> {
+  return { ...AISettingsSchema.parse({}), ...((raw as Record<string, unknown> | null) ?? {}) }
+}
 
 type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
 type GroupRole = 'owner' | 'admin' | 'moderator' | 'member'
@@ -992,7 +1006,7 @@ export class GroupsService {
   }
 
   async deleteResource(context: AuthContext, groupId: string, resourceId: string) {
-    await assertMemberAccess(context, groupId)
+    const access = await assertMemberAccess(context, groupId)
 
     const resource = await db('group_resources')
       .where({ id: resourceId, group_id: groupId })
@@ -1001,16 +1015,8 @@ export class GroupsService {
 
     if (!resource) throw notFound('Resource not found', 'RESOURCE_NOT_FOUND')
 
-    // Check permission: uploader OR owner/admin/moderator
-    const membership = await db('group_members')
-      .where({ group_id: groupId, user_id: context.userId })
-      .select<{ role: string }>('role')
-      .first()
-
-    const isPrivileged = membership && ['owner', 'admin', 'moderator'].includes(membership.role)
-    const isUploader = resource.uploaded_by === context.userId
-
-    if (!isUploader && !isPrivileged) {
+    // Permission: uploader OR owner/admin/moderator
+    if (resource.uploaded_by !== context.userId && !canModerate(access.user_role)) {
       throw forbidden('You can only delete your own resources', 'RESOURCE_DELETE_FORBIDDEN')
     }
 
@@ -1355,7 +1361,7 @@ export class GroupsService {
   }
 
   async deleteStudySession(context: AuthContext, groupId: string, sessionId: string) {
-    await assertMemberAccess(context, groupId)
+    const access = await assertMemberAccess(context, groupId)
 
     const session = await db('group_study_sessions')
       .where({ id: sessionId, group_id: groupId })
@@ -1364,16 +1370,11 @@ export class GroupsService {
 
     if (!session) throw notFound('Study session not found', 'STUDY_SESSION_NOT_FOUND')
 
-    const membership = await db('group_members')
-      .where({ group_id: groupId, user_id: context.userId })
-      .select<{ role: string }>('role')
-      .first()
-
-    const isCreator = session.created_by === context.userId
-    const isPrivileged = membership && ['owner', 'admin'].includes(membership.role)
-
-    if (!isCreator && !isPrivileged) {
-      throw forbidden('Only the creator or group owner/admin can delete a study session', 'SESSION_DELETE_FORBIDDEN')
+    if (session.created_by !== context.userId && !canModerate(access.user_role)) {
+      throw forbidden(
+        'Only the creator or group moderators can delete a study session',
+        'SESSION_DELETE_FORBIDDEN',
+      )
     }
 
     await db('group_study_sessions').where({ id: sessionId }).delete()
@@ -1929,7 +1930,7 @@ export class GroupsService {
 
   async getAiSettings(context: AuthContext, groupId: string) {
     const group = await this.getGroup(context, groupId)
-    return { aiSettings: group.aiSettings }
+    return { aiSettings: withAiSettingsDefaults(group.aiSettings) }
   }
 
   async updateAiSettings(context: AuthContext, groupId: string, patch: Record<string, unknown>) {
@@ -1940,8 +1941,7 @@ export class GroupsService {
     }
     await assertGroupAdminAccess(context, groupId)
 
-    const merged = { ...(row.ai_settings ?? {}), ...patch }
-    await db('groups').where({ id: groupId }).update({ ai_settings: merged })
+    await mergeAiSettings(groupId, patch)
     return this.getGroup(context, groupId)
   }
 
@@ -1953,11 +1953,16 @@ export class GroupsService {
 
     const items: Array<{ id: string; type: 'flashcard_deck' | 'quiz'; title?: string; content?: unknown; createdAt?: Date }> = []
     if (settings.pending_deck_id) {
-      const deck = await db('group_flashcard_decks').where({ id: settings.pending_deck_id as string }).first()
+      const deck = await db('group_flashcard_decks')
+        .where({ id: settings.pending_deck_id as string, group_id: groupId, university_id: context.universityId })
+        .first()
       if (deck) items.push({ id: deck.id, type: 'flashcard_deck', title: deck.title, createdAt: deck.created_at })
     }
-    if (settings.pending_quiz_content) {
-      items.push({ id: 'pending-quiz', type: 'quiz', content: settings.pending_quiz_content })
+    if (typeof settings.pending_quiz_id === 'string') {
+      const quiz = await db('group_quizzes')
+        .where({ id: settings.pending_quiz_id, group_id: groupId, university_id: context.universityId })
+        .first()
+      if (quiz) items.push({ id: quiz.id, type: 'quiz', title: quiz.title })
     }
     return items
   }
@@ -1969,10 +1974,10 @@ export class GroupsService {
     const settings: Record<string, unknown> = group.ai_settings ?? {}
 
     if (settings.pending_deck_id === contentId) {
-      await db('group_flashcard_decks').where({ id: contentId }).update({ is_archived: false })
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_deck_id: null } })
+      await db('group_flashcard_decks')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .update({ is_archived: false })
+      await mergeAiSettings(groupId, { pending_deck_id: null })
 
       // Announce the newly-approved deck to the group feed as the campus bot, best-effort.
       const deck = await db('group_flashcard_decks').where({ id: contentId }).first()
@@ -1996,10 +2001,11 @@ export class GroupsService {
       return { approved: true }
     }
 
-    if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_quiz_content: null } })
+    if (settings.pending_quiz_id === contentId) {
+      await db('group_quizzes')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .update({ is_archived: false })
+      await mergeAiSettings(groupId, { pending_quiz_id: null })
       return { approved: true }
     }
 
@@ -2013,17 +2019,18 @@ export class GroupsService {
     const settings: Record<string, unknown> = group.ai_settings ?? {}
 
     if (settings.pending_deck_id === contentId) {
-      await db('group_flashcard_decks').where({ id: contentId }).delete()
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_deck_id: null } })
+      await db('group_flashcard_decks')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .delete()
+      await mergeAiSettings(groupId, { pending_deck_id: null })
       return { discarded: true }
     }
 
-    if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
-      await db('groups')
-        .where({ id: groupId })
-        .update({ ai_settings: { ...settings, pending_quiz_content: null } })
+    if (settings.pending_quiz_id === contentId) {
+      await db('group_quizzes')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .del()
+      await mergeAiSettings(groupId, { pending_quiz_id: null })
       return { discarded: true }
     }
 
@@ -2553,7 +2560,7 @@ function toGroup(row: GroupRow) {
     pinnedText: row.pinned_text,
     pinnedAt: row.pinned_at,
     pinnedBy: row.pinned_by,
-    aiSettings: row.ai_settings ?? {},
+    aiSettings: withAiSettingsDefaults(row.ai_settings),
   }
 }
 
@@ -2699,4 +2706,16 @@ function pickDefined<T extends Record<string, unknown>>(value: T) {
 
 function isUniqueViolation(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
+}
+
+/**
+ * Merges a patch into groups.ai_settings inside the database rather than reading the
+ * blob, spreading it in JS, and writing it back. The read-modify-write version lost
+ * whichever concurrent write finished first — most often the creator's save being
+ * overwritten by the background worker's stale snapshot.
+ */
+export async function mergeAiSettings(groupId: string, patch: Record<string, unknown>): Promise<void> {
+  await db('groups')
+    .where({ id: groupId })
+    .update({ ai_settings: db.raw(`coalesce(ai_settings, '{}'::jsonb) || ?::jsonb`, [JSON.stringify(patch)]) })
 }
