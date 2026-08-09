@@ -14,7 +14,7 @@ export interface AISettings {
   custom_instructions?: string
   last_ai_post_date?: string
   pending_deck_id?: string | null
-  pending_quiz_content?: unknown | null
+  pending_quiz_id?: string | null
 }
 
 export interface GroupUserSummary {
