@@ -91,6 +91,7 @@ async function createFacultyUser(universityId: string): Promise<{ id: string }> 
 
 async function cleanupGroups(universityId: string): Promise<void> {
   const groupIds = await db('groups').where({ university_id: universityId }).pluck('id')
+  await db('group_quizzes').whereIn('group_id', groupIds).del()
   await db('group_flashcards').whereIn('group_id', groupIds).del()
   await db('group_flashcard_decks').whereIn('group_id', groupIds).del()
   await db('posts').whereIn('group_id', groupIds).del()
@@ -231,6 +232,42 @@ describe('runGroupPosting', () => {
         const updatedGroup = await db('groups').where({ id: group.id }).first()
         expect(updatedGroup.ai_settings.pending_deck_id).toBe(decks[0].id)
       } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
+    'generates a group quiz when only the quiz toggle is enabled',
+    async () => {
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS107', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const now = new Date()
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_quiz_enabled: true,
+          ai_flashcards_enabled: false,
+          require_approval: false,
+          question_style: 'true_false',
+          run_hour: now.getUTCHours(),
+        })
+        ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockResolvedValue([
+          { q: 'Q', options: ['a', 'b', 'c', 'd'], answer: 0 },
+        ])
+
+        await runGroupPosting(now)
+
+        const quizzes = await db('group_quizzes').where({ group_id: group.id })
+        expect(quizzes).toHaveLength(1)
+        expect(quizzes[0].is_archived).toBe(false)
+        expect(generateQuizQuestions).toHaveBeenCalledWith(expect.objectContaining({ style: 'true_false' }))
+      } finally {
+        await db('group_quizzes').where({ university_id: universityId }).del()
         await cleanupGroups(universityId)
       }
     },

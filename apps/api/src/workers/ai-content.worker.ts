@@ -86,6 +86,8 @@ interface AiSettings {
   custom_instructions?: string
   last_ai_post_date?: string
   pending_deck_id?: string | null
+  pending_quiz_id?: string | null
+  question_style?: 'mcq' | 'true_false' | 'short_answer' | 'mixed'
   items_per_run?: number
   frequency?: 'daily' | 'weekly'
   run_hour?: number
@@ -111,7 +113,7 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
   for (const group of groups as Array<{ id: string; university_id: string; created_by: string; ai_settings: AiSettings | null }>) {
     try {
       const settings: AiSettings = group.ai_settings ?? {}
-      if (!settings.ai_flashcards_enabled) continue
+      if (!settings.ai_flashcards_enabled && !settings.ai_quiz_enabled) continue
 
       // Per-group schedule. The job now fires hourly, so each group picks its own hour
       // (and weekday, when weekly) instead of every group sharing one global env hour.
@@ -126,56 +128,99 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
       const author = await db('users').where({ id: authorId }).first<{ role: string }>('role')
       if (!author) throw notFound('Campus bot user not found', 'CAMPUS_BOT_NOT_FOUND')
 
-      const cards = await rateLimitedAICall(() =>
-        generateFlashcards({
-          topic,
-          count: settings.items_per_run ?? 10,
-          difficulty: settings.difficulty,
-          language: settings.language,
-          customInstructions: settings.custom_instructions,
-        }),
-      )
+      if (settings.ai_flashcards_enabled) {
+        const cards = await rateLimitedAICall(() =>
+          generateFlashcards({
+            topic,
+            count: settings.items_per_run ?? 10,
+            difficulty: settings.difficulty,
+            language: settings.language,
+            customInstructions: settings.custom_instructions,
+          }),
+        )
 
-      const [deck] = await db('group_flashcard_decks')
-        .insert({
-          group_id: group.id,
-          university_id: group.university_id,
-          created_by: authorId,
-          title: `AI deck — ${topic}`,
-          is_archived: !!settings.require_approval,
-          card_count: cards.length,
-        })
-        .returning<{ id: string }[]>('*')
-
-      if (cards.length > 0) {
-        await db('group_flashcards').insert(
-          cards.map((c) => ({
-            deck_id: deck.id,
+        const [deck] = await db('group_flashcard_decks')
+          .insert({
             group_id: group.id,
             university_id: group.university_id,
             created_by: authorId,
-            front: c.front,
-            back: c.back,
-            hint: c.hint ?? null,
-          })),
-        )
+            title: `AI deck — ${topic}`,
+            is_archived: !!settings.require_approval,
+            card_count: cards.length,
+          })
+          .returning<{ id: string }[]>('*')
+
+        if (cards.length > 0) {
+          await db('group_flashcards').insert(
+            cards.map((c) => ({
+              deck_id: deck.id,
+              group_id: group.id,
+              university_id: group.university_id,
+              created_by: authorId,
+              front: c.front,
+              back: c.back,
+              hint: c.hint ?? null,
+            })),
+          )
+        }
+
+        if (settings.require_approval) {
+          await mergeAiSettings(group.id, { pending_deck_id: deck.id })
+        } else {
+          await feedService.createPost(
+            { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+            {
+              type: 'post',
+              content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
+              group_id: group.id,
+              media_urls: [],
+              is_published: true,
+            },
+          )
+        }
       }
 
-      if (settings.require_approval) {
-        await mergeAiSettings(group.id, { pending_deck_id: deck.id, last_ai_post_date: today })
-      } else {
-        await feedService.createPost(
-          { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
-          {
-            type: 'post',
-            content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
-            group_id: group.id,
-            media_urls: [],
-            is_published: true,
-          },
+      if (settings.ai_quiz_enabled) {
+        const questions = await rateLimitedAICall(() =>
+          generateQuizQuestions({
+            department: topic,
+            count: settings.items_per_run ?? 10,
+            difficulty: settings.difficulty,
+            style: settings.question_style === 'short_answer' ? 'mixed' : settings.question_style,
+            language: settings.language,
+            customInstructions: settings.custom_instructions,
+          }),
         )
-        await mergeAiSettings(group.id, { last_ai_post_date: today })
+
+        const [quiz] = await db('group_quizzes')
+          .insert({
+            group_id: group.id,
+            university_id: group.university_id,
+            created_by: authorId,
+            title: `AI quiz — ${topic}`,
+            questions: JSON.stringify(questions),
+            question_count: questions.length,
+            is_archived: !!settings.require_approval,
+          })
+          .returning<{ id: string }[]>('id')
+
+        if (settings.require_approval) {
+          await mergeAiSettings(group.id, { pending_quiz_id: quiz.id })
+        } else {
+          await feedService.createPost(
+            { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+            {
+              type: 'post',
+              content: `🧠 New AI quiz: ${topic} — ${questions.length} questions ready!`,
+              group_id: group.id,
+              media_urls: [],
+              is_published: true,
+            },
+          )
+        }
       }
+
+      await mergeAiSettings(group.id, { last_ai_post_date: today })
       await learningAdminService.clearAiError(group.university_id)
     } catch (error) {
       logger.error('AI group posting failed', { groupId: group.id, error })

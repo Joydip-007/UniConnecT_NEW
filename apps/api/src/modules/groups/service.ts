@@ -1942,8 +1942,9 @@ export class GroupsService {
       const deck = await db('group_flashcard_decks').where({ id: settings.pending_deck_id as string }).first()
       if (deck) items.push({ id: deck.id, type: 'flashcard_deck', title: deck.title, createdAt: deck.created_at })
     }
-    if (settings.pending_quiz_content) {
-      items.push({ id: 'pending-quiz', type: 'quiz', content: settings.pending_quiz_content })
+    if (typeof settings.pending_quiz_id === 'string') {
+      const quiz = await db('group_quizzes').where({ id: settings.pending_quiz_id }).first()
+      if (quiz) items.push({ id: quiz.id, type: 'quiz', title: quiz.title })
     }
     return items
   }
@@ -1980,8 +1981,9 @@ export class GroupsService {
       return { approved: true }
     }
 
-    if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
-      await mergeAiSettings(groupId, { pending_quiz_content: null })
+    if (settings.pending_quiz_id === contentId) {
+      await db('group_quizzes').where({ id: contentId }).update({ is_archived: false })
+      await mergeAiSettings(groupId, { pending_quiz_id: null })
       return { approved: true }
     }
 
@@ -2000,8 +2002,9 @@ export class GroupsService {
       return { discarded: true }
     }
 
-    if (contentId === 'pending-quiz' && settings.pending_quiz_content) {
-      await mergeAiSettings(groupId, { pending_quiz_content: null })
+    if (settings.pending_quiz_id === contentId) {
+      await db('group_quizzes').where({ id: contentId }).del()
+      await mergeAiSettings(groupId, { pending_quiz_id: null })
       return { discarded: true }
     }
 
