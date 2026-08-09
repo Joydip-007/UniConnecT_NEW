@@ -992,7 +992,7 @@ export class GroupsService {
   }
 
   async deleteResource(context: AuthContext, groupId: string, resourceId: string) {
-    await assertMemberAccess(context, groupId)
+    const access = await assertMemberAccess(context, groupId)
 
     const resource = await db('group_resources')
       .where({ id: resourceId, group_id: groupId })
@@ -1001,16 +1001,8 @@ export class GroupsService {
 
     if (!resource) throw notFound('Resource not found', 'RESOURCE_NOT_FOUND')
 
-    // Check permission: uploader OR owner/admin/moderator
-    const membership = await db('group_members')
-      .where({ group_id: groupId, user_id: context.userId })
-      .select<{ role: string }>('role')
-      .first()
-
-    const isPrivileged = membership && ['owner', 'admin', 'moderator'].includes(membership.role)
-    const isUploader = resource.uploaded_by === context.userId
-
-    if (!isUploader && !isPrivileged) {
+    // Permission: uploader OR owner/admin/moderator
+    if (resource.uploaded_by !== context.userId && !canModerate(access.user_role)) {
       throw forbidden('You can only delete your own resources', 'RESOURCE_DELETE_FORBIDDEN')
     }
 
@@ -1355,7 +1347,7 @@ export class GroupsService {
   }
 
   async deleteStudySession(context: AuthContext, groupId: string, sessionId: string) {
-    await assertMemberAccess(context, groupId)
+    const access = await assertMemberAccess(context, groupId)
 
     const session = await db('group_study_sessions')
       .where({ id: sessionId, group_id: groupId })
@@ -1364,16 +1356,11 @@ export class GroupsService {
 
     if (!session) throw notFound('Study session not found', 'STUDY_SESSION_NOT_FOUND')
 
-    const membership = await db('group_members')
-      .where({ group_id: groupId, user_id: context.userId })
-      .select<{ role: string }>('role')
-      .first()
-
-    const isCreator = session.created_by === context.userId
-    const isPrivileged = membership && ['owner', 'admin'].includes(membership.role)
-
-    if (!isCreator && !isPrivileged) {
-      throw forbidden('Only the creator or group owner/admin can delete a study session', 'SESSION_DELETE_FORBIDDEN')
+    if (session.created_by !== context.userId && !canModerate(access.user_role)) {
+      throw forbidden(
+        'Only the creator or group moderators can delete a study session',
+        'SESSION_DELETE_FORBIDDEN',
+      )
     }
 
     await db('group_study_sessions').where({ id: sessionId }).delete()

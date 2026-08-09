@@ -125,7 +125,9 @@ export default function GroupDetailPage() {
       {/* Tab content */}
       <div>
         {id && activeTab === 'feed' && <FeedTab groupId={id} />}
-        {id && activeTab === 'resources' && <ResourcesTab groupId={id} userRole={userRole} />}
+        {id && activeTab === 'resources' && (
+          <ResourcesTab groupId={id} userRole={userRole} currentUserId={user?.id} />
+        )}
         {id && activeTab === 'study-sessions' && (
           <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} groupType={group?.type} />
         )}
