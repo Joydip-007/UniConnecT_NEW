@@ -39,6 +39,9 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().min(1),
   AI_CONTENT_ENABLED: z.coerce.boolean().default(true),
   AI_GROUP_POST_HOUR: z.coerce.number().int().min(0).max(23).default(8),
+  // Guards the Gemini free-tier per-minute quota. Exceeding it makes the worker sleep out
+  // the rest of the minute, so tests raise this to avoid a real 60s stall.
+  AI_CALLS_PER_MINUTE: z.coerce.number().int().min(1).default(12),
 })
 
 const parsedEnv = envSchema.parse(process.env)

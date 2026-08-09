@@ -7,6 +7,7 @@ import { courseOutlineService } from '../modules/academic/course-outline.service
 import { feedService } from '../modules/feed/service'
 import { learningAdminService } from '../modules/learning-admin/service'
 import { mergeAiSettings } from '../modules/groups/service'
+import type { AISettingsInput } from '../modules/groups/schema'
 import { contentSyncService } from '../modules/content-sync/service'
 import { notFound } from '../utils/errors'
 
@@ -17,7 +18,7 @@ function describeAiError(error: unknown): string {
   return `AI generation failed: ${error instanceof Error ? error.message : String(error)}`
 }
 
-const AI_CALLS_PER_MINUTE = 12
+const AI_CALLS_PER_MINUTE = env.AI_CALLS_PER_MINUTE
 
 let aiCallsThisMinute = 0
 let minuteStart = Date.now()
@@ -76,22 +77,16 @@ export async function runQuizGeneration(universityId?: string, now: Date = new D
   }
 }
 
-interface AiSettings {
-  ai_flashcards_enabled?: boolean
-  ai_quiz_enabled?: boolean
-  require_approval?: boolean
-  subject?: string
-  difficulty?: string
-  language?: 'en' | 'bn'
-  custom_instructions?: string
+/**
+ * The admin-configurable half is derived from the Zod schema so the two cannot drift;
+ * everything below it is runtime bookkeeping the worker writes into the same jsonb blob
+ * and is deliberately absent from AISettingsSchema. Every field is optional because the
+ * worker reads raw DB rows, where a PATCH-built blob may be missing any key.
+ */
+type AiSettings = Partial<AISettingsInput> & {
   last_ai_post_date?: string
   pending_deck_id?: string | null
   pending_quiz_id?: string | null
-  question_style?: 'mcq' | 'true_false' | 'short_answer' | 'mixed'
-  items_per_run?: number
-  frequency?: 'daily' | 'weekly'
-  run_hour?: number
-  run_weekday?: number
 }
 
 export async function runGroupPosting(now: Date = new Date()): Promise<void> {
@@ -135,10 +130,13 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
       if (!author) throw notFound('Campus bot user not found', 'CAMPUS_BOT_NOT_FOUND')
 
       // Each branch is isolated: `last_ai_post_date` is the de-dup mechanism now that the
-      // hour gate is a lower bound, so it MUST be stamped whenever content was created —
-      // even if the other branch failed. Otherwise a late-branch throw leaves the group
-      // eligible again and every remaining hourly run re-creates content.
-      let producedContent = false
+      // hour gate is a lower bound, so it MUST be stamped whenever a branch ran to
+      // completion — even if the other branch failed. Otherwise a late-branch throw leaves
+      // the group eligible again and every remaining hourly run re-creates content.
+      // "Completed" deliberately includes an empty model response: there is nothing to
+      // duplicate, but re-asking every hour would burn quota for the same empty result.
+      // Only a genuine throw leaves the day unstamped, so transient failures still retry.
+      let branchCompleted = false
       let branchFailed = false
 
       if (settings.ai_flashcards_enabled) {
@@ -153,18 +151,26 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
             }),
           )
 
-          const [deck] = await db('group_flashcard_decks')
-            .insert({
-              group_id: group.id,
-              university_id: group.university_id,
-              created_by: authorId,
-              title: `AI deck — ${topic}`,
-              is_archived: !!settings.require_approval,
-              card_count: cards.length,
+          // A degenerate empty response is not worth an empty deck and a "0 cards ready!"
+          // announcement. The branch still counts as complete so the day gets stamped —
+          // retrying hourly would burn scarce AI quota for the same empty result.
+          if (cards.length === 0) {
+            logger.warn('AI returned no flashcards; skipping deck creation', {
+              groupId: group.id,
+              topic,
             })
-            .returning<{ id: string }[]>('*')
+          } else {
+            const [deck] = await db('group_flashcard_decks')
+              .insert({
+                group_id: group.id,
+                university_id: group.university_id,
+                created_by: authorId,
+                title: `AI deck — ${topic}`,
+                is_archived: !!settings.require_approval,
+                card_count: cards.length,
+              })
+              .returning<{ id: string }[]>('*')
 
-          if (cards.length > 0) {
             await db('group_flashcards').insert(
               cards.map((c) => ({
                 deck_id: deck.id,
@@ -176,24 +182,24 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
                 hint: c.hint ?? null,
               })),
             )
+
+            if (settings.require_approval) {
+              await mergeAiSettings(group.id, { pending_deck_id: deck.id })
+            } else {
+              await feedService.createPost(
+                { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+                {
+                  type: 'post',
+                  content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
+                  group_id: group.id,
+                  media_urls: [],
+                  is_published: true,
+                },
+              )
+            }
           }
 
-          if (settings.require_approval) {
-            await mergeAiSettings(group.id, { pending_deck_id: deck.id })
-          } else {
-            await feedService.createPost(
-              { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
-              {
-                type: 'post',
-                content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
-                group_id: group.id,
-                media_urls: [],
-                is_published: true,
-              },
-            )
-          }
-
-          producedContent = true
+          branchCompleted = true
         } catch (error) {
           branchFailed = true
           logger.error('AI group flashcard generation failed', { groupId: group.id, error })
@@ -214,34 +220,43 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
             }),
           )
 
-          const [quiz] = await db('group_quizzes')
-            .insert({
-              group_id: group.id,
-              university_id: group.university_id,
-              created_by: authorId,
-              title: `AI quiz — ${topic}`,
-              questions: JSON.stringify(questions),
-              question_count: questions.length,
-              is_archived: !!settings.require_approval,
+          // Same reasoning as the flashcard branch: no empty quiz, no "0 questions" post,
+          // but the day is still stamped so we don't re-ask the model every hour.
+          if (questions.length === 0) {
+            logger.warn('AI returned no quiz questions; skipping quiz creation', {
+              groupId: group.id,
+              topic,
             })
-            .returning<{ id: string }[]>('id')
-
-          if (settings.require_approval) {
-            await mergeAiSettings(group.id, { pending_quiz_id: quiz.id })
           } else {
-            await feedService.createPost(
-              { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
-              {
-                type: 'post',
-                content: `🧠 New AI quiz: ${topic} — ${questions.length} questions ready!`,
+            const [quiz] = await db('group_quizzes')
+              .insert({
                 group_id: group.id,
-                media_urls: [],
-                is_published: true,
-              },
-            )
+                university_id: group.university_id,
+                created_by: authorId,
+                title: `AI quiz — ${topic}`,
+                questions: JSON.stringify(questions),
+                question_count: questions.length,
+                is_archived: !!settings.require_approval,
+              })
+              .returning<{ id: string }[]>('id')
+
+            if (settings.require_approval) {
+              await mergeAiSettings(group.id, { pending_quiz_id: quiz.id })
+            } else {
+              await feedService.createPost(
+                { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+                {
+                  type: 'post',
+                  content: `🧠 New AI quiz: ${topic} — ${questions.length} questions ready!`,
+                  group_id: group.id,
+                  media_urls: [],
+                  is_published: true,
+                },
+              )
+            }
           }
 
-          producedContent = true
+          branchCompleted = true
         } catch (error) {
           branchFailed = true
           logger.error('AI group quiz generation failed', { groupId: group.id, error })
@@ -249,7 +264,7 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
         }
       }
 
-      if (producedContent) {
+      if (branchCompleted) {
         await mergeAiSettings(group.id, { last_ai_post_date: today })
       }
       if (!branchFailed) {

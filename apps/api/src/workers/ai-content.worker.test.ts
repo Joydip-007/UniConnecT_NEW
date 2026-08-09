@@ -444,6 +444,51 @@ describe('runGroupPosting', () => {
   )
 
   it(
+    'creates nothing and does not retry the same day when the model returns no cards',
+    async () => {
+      // A degenerate empty response used to insert an empty deck and announce
+      // "0 cards ready!". It now creates nothing, but still counts as a completed run so
+      // the hourly schedule doesn't re-ask the model (and burn quota) for the same result.
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS110', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Heaps ${randomUUID()}`
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          require_approval: false,
+          subject,
+          run_hour: 3,
+        })
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async () => [])
+
+        await runGroupPosting(atUtcHour(4))
+
+        expect(await db('group_flashcard_decks').where({ group_id: group.id })).toHaveLength(0)
+        expect(await db('posts').where({ group_id: group.id })).toHaveLength(0)
+
+        // Second run the same day must not re-ask the model for this group.
+        const callsAfterFirstRun = (generateFlashcards as ReturnType<typeof vi.fn>).mock.calls.filter(
+          (call) => (call[0] as { topic: string }).topic === subject,
+        ).length
+        await runGroupPosting(atUtcHour(5))
+        const callsAfterSecondRun = (generateFlashcards as ReturnType<typeof vi.fn>).mock.calls.filter(
+          (call) => (call[0] as { topic: string }).topic === subject,
+        ).length
+
+        expect(callsAfterFirstRun).toBe(1)
+        expect(callsAfterSecondRun).toBe(1)
+      } finally {
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
+
+  it(
     'does not re-post a second deck later the same day when the quiz branch failed',
     async () => {
       // Regression: the run-hour gate is a lower bound, so `last_ai_post_date` is the only

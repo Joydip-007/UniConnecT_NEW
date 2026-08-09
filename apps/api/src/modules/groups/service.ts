@@ -1953,11 +1953,15 @@ export class GroupsService {
 
     const items: Array<{ id: string; type: 'flashcard_deck' | 'quiz'; title?: string; content?: unknown; createdAt?: Date }> = []
     if (settings.pending_deck_id) {
-      const deck = await db('group_flashcard_decks').where({ id: settings.pending_deck_id as string }).first()
+      const deck = await db('group_flashcard_decks')
+        .where({ id: settings.pending_deck_id as string, group_id: groupId, university_id: context.universityId })
+        .first()
       if (deck) items.push({ id: deck.id, type: 'flashcard_deck', title: deck.title, createdAt: deck.created_at })
     }
     if (typeof settings.pending_quiz_id === 'string') {
-      const quiz = await db('group_quizzes').where({ id: settings.pending_quiz_id }).first()
+      const quiz = await db('group_quizzes')
+        .where({ id: settings.pending_quiz_id, group_id: groupId, university_id: context.universityId })
+        .first()
       if (quiz) items.push({ id: quiz.id, type: 'quiz', title: quiz.title })
     }
     return items
@@ -1970,7 +1974,9 @@ export class GroupsService {
     const settings: Record<string, unknown> = group.ai_settings ?? {}
 
     if (settings.pending_deck_id === contentId) {
-      await db('group_flashcard_decks').where({ id: contentId }).update({ is_archived: false })
+      await db('group_flashcard_decks')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .update({ is_archived: false })
       await mergeAiSettings(groupId, { pending_deck_id: null })
 
       // Announce the newly-approved deck to the group feed as the campus bot, best-effort.
@@ -1996,7 +2002,9 @@ export class GroupsService {
     }
 
     if (settings.pending_quiz_id === contentId) {
-      await db('group_quizzes').where({ id: contentId }).update({ is_archived: false })
+      await db('group_quizzes')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .update({ is_archived: false })
       await mergeAiSettings(groupId, { pending_quiz_id: null })
       return { approved: true }
     }
@@ -2011,13 +2019,17 @@ export class GroupsService {
     const settings: Record<string, unknown> = group.ai_settings ?? {}
 
     if (settings.pending_deck_id === contentId) {
-      await db('group_flashcard_decks').where({ id: contentId }).delete()
+      await db('group_flashcard_decks')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .delete()
       await mergeAiSettings(groupId, { pending_deck_id: null })
       return { discarded: true }
     }
 
     if (settings.pending_quiz_id === contentId) {
-      await db('group_quizzes').where({ id: contentId }).del()
+      await db('group_quizzes')
+        .where({ id: contentId, group_id: groupId, university_id: context.universityId })
+        .del()
       await mergeAiSettings(groupId, { pending_quiz_id: null })
       return { discarded: true }
     }
