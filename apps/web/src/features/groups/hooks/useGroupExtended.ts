@@ -702,6 +702,7 @@ export interface PendingAiContentItem {
 type UpdateAiSettingsInput = Partial<GroupAISettings>
 
 const aiSettingsKey = (groupId: string) => ['groups', 'ai-settings', { groupId }] as const
+const aiSettingsMutationKey = (groupId: string) => ['groups', 'ai-settings', 'update', { groupId }] as const
 const pendingAiContentKey = (groupId: string) => ['groups', 'ai-settings', 'pending', { groupId }] as const
 
 export function useAiSettings(groupId: string) {
@@ -715,15 +716,48 @@ export function useAiSettings(groupId: string) {
   })
 }
 
+/**
+ * Every control in the AI settings panel PATCHes only its own field, and the server
+ * merges it atomically. The cache still has to cooperate on two counts:
+ *
+ * 1. The inputs are controlled by this query, so without an optimistic update a click
+ *    visibly snaps back until the refetch lands.
+ * 2. Toggling a second control while the first is still in flight used to let the
+ *    first one's refetch — a snapshot taken before the second write committed —
+ *    overwrite the second change, so that checkbox appeared to switch itself off.
+ *
+ * So: apply the patch optimistically, roll back on error, and reconcile with the
+ * server only once the LAST in-flight write settles.
+ */
 export function useUpdateAiSettings(groupId: string) {
   const queryClient = useQueryClient()
+  const mutationKey = aiSettingsMutationKey(groupId)
   return useMutation({
+    mutationKey,
     mutationFn: (patch: UpdateAiSettingsInput) =>
       api
         .patch<{ data: { aiSettings: GroupAISettings } }>(`/groups/${groupId}/ai-settings`, patch)
         .then((r) => r.data.data.aiSettings),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: aiSettingsKey(groupId) })
+    onMutate: async (patch: UpdateAiSettingsInput) => {
+      // Stop an in-flight refetch from landing on top of the optimistic value.
+      await queryClient.cancelQueries({ queryKey: aiSettingsKey(groupId) })
+      const previous = queryClient.getQueryData<GroupAISettings>(aiSettingsKey(groupId))
+      if (previous) {
+        queryClient.setQueryData<GroupAISettings>(aiSettingsKey(groupId), { ...previous, ...patch })
+      }
+      return { previous }
+    },
+    onError: (_error, _patch, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData<GroupAISettings>(aiSettingsKey(groupId), context.previous)
+      }
+    },
+    onSettled: () => {
+      // Counts this mutation too, so 1 means it is the last one finishing. Refetching
+      // any earlier would race the writes that are still open.
+      if (queryClient.isMutating({ mutationKey }) === 1) {
+        queryClient.invalidateQueries({ queryKey: aiSettingsKey(groupId) })
+      }
     },
   })
 }
