@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { randomUUID } from 'node:crypto'
 
-vi.mock('../services/ai.service', () => ({
+// Stub only the generator calls; keep every other real export (notably AIQuotaExceededError,
+// which the worker's error reporting matches with `instanceof`).
+vi.mock('../services/ai.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/ai.service')>()),
   generateQuizQuestions: vi.fn(),
   generateFlashcards: vi.fn(),
   generateSkillPath: vi.fn(),
@@ -43,8 +46,25 @@ async function createUserWithProfile(universityId: string, department: string): 
   })
 }
 
+/**
+ * runQuizGeneration skips any university whose settings have quiz generation disabled or
+ * whose configured gen hour isn't the current UTC hour. Both default to off/02:00, so a
+ * fixture university needs an explicit settings row or the worker never reaches the insert.
+ */
+async function enableQuizGeneration(universityId: string): Promise<void> {
+  await db('university_settings')
+    .insert({
+      university_id: universityId,
+      ai_quiz_enabled: true,
+      ai_learning_gen_hour: new Date().getUTCHours(),
+    })
+    .onConflict('university_id')
+    .merge()
+}
+
 async function cleanup(universityId: string): Promise<void> {
   await db('ai_quiz_pool').where({ university_id: universityId }).del()
+  await db('university_settings').where({ university_id: universityId }).del()
   const userIds = await db('users').where({ university_id: universityId }).pluck('id')
   await db('profiles').whereIn('user_id', userIds).del()
   await db('users').where({ university_id: universityId }).del()
@@ -88,6 +108,7 @@ describe('runQuizGeneration', () => {
     async () => {
       const universityId = await createUniversity()
       await createUserWithProfile(universityId, 'Physics')
+      await enableQuizGeneration(universityId)
       ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockImplementation(async () => [
         { q: 'Q1', options: ['a', 'b', 'c', 'd'], answer: 0 },
       ])
@@ -111,6 +132,7 @@ describe('runQuizGeneration', () => {
       const universityId = await createUniversity()
       await createUserWithProfile(universityId, 'Failing Dept')
       await createUserWithProfile(universityId, 'OK Dept')
+      await enableQuizGeneration(universityId)
       ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockImplementation(
         async (options: { department: string }) => {
           if (options.department === 'Failing Dept') throw new Error('quota exceeded')

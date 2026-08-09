@@ -4,8 +4,13 @@ import { logger } from '../utils/logger'
 
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
 
-/** Tried in order; on quota exhaustion for one model, the next is used. */
-const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+/**
+ * Tried in order. A quota error abandons the current model immediately; any other error
+ * is retried per RETRY_DELAYS_MS first, and only then falls through to the next model.
+ * Worst case for a persistently failing call is therefore
+ * MODEL_FALLBACK_CHAIN.length * RETRY_DELAYS_MS.length attempts.
+ */
+export const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
 
 const modelCache = new Map<string, ReturnType<typeof genAI.getGenerativeModel>>()
 function getModel(name: string) {
@@ -58,7 +63,7 @@ export interface AISkillPath {
   units: AISkillPathUnit[]
 }
 
-const RETRY_DELAYS_MS = [0, 2000, 4000]
+export const RETRY_DELAYS_MS = [0, 2000, 4000]
 const CALL_TIMEOUT_MS = 45000
 
 function stripCodeFences(text: string): string {
