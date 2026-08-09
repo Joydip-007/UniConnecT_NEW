@@ -134,100 +134,127 @@ export async function runGroupPosting(now: Date = new Date()): Promise<void> {
       const author = await db('users').where({ id: authorId }).first<{ role: string }>('role')
       if (!author) throw notFound('Campus bot user not found', 'CAMPUS_BOT_NOT_FOUND')
 
+      // Each branch is isolated: `last_ai_post_date` is the de-dup mechanism now that the
+      // hour gate is a lower bound, so it MUST be stamped whenever content was created —
+      // even if the other branch failed. Otherwise a late-branch throw leaves the group
+      // eligible again and every remaining hourly run re-creates content.
+      let producedContent = false
+      let branchFailed = false
+
       if (settings.ai_flashcards_enabled) {
-        const cards = await rateLimitedAICall(() =>
-          generateFlashcards({
-            topic,
-            count: settings.items_per_run ?? 10,
-            difficulty: settings.difficulty,
-            language: settings.language,
-            customInstructions: settings.custom_instructions,
-          }),
-        )
+        try {
+          const cards = await rateLimitedAICall(() =>
+            generateFlashcards({
+              topic,
+              count: settings.items_per_run ?? 10,
+              difficulty: settings.difficulty,
+              language: settings.language,
+              customInstructions: settings.custom_instructions,
+            }),
+          )
 
-        const [deck] = await db('group_flashcard_decks')
-          .insert({
-            group_id: group.id,
-            university_id: group.university_id,
-            created_by: authorId,
-            title: `AI deck — ${topic}`,
-            is_archived: !!settings.require_approval,
-            card_count: cards.length,
-          })
-          .returning<{ id: string }[]>('*')
-
-        if (cards.length > 0) {
-          await db('group_flashcards').insert(
-            cards.map((c) => ({
-              deck_id: deck.id,
+          const [deck] = await db('group_flashcard_decks')
+            .insert({
               group_id: group.id,
               university_id: group.university_id,
               created_by: authorId,
-              front: c.front,
-              back: c.back,
-              hint: c.hint ?? null,
-            })),
-          )
-        }
+              title: `AI deck — ${topic}`,
+              is_archived: !!settings.require_approval,
+              card_count: cards.length,
+            })
+            .returning<{ id: string }[]>('*')
 
-        if (settings.require_approval) {
-          await mergeAiSettings(group.id, { pending_deck_id: deck.id })
-        } else {
-          await feedService.createPost(
-            { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
-            {
-              type: 'post',
-              content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
-              group_id: group.id,
-              media_urls: [],
-              is_published: true,
-            },
-          )
+          if (cards.length > 0) {
+            await db('group_flashcards').insert(
+              cards.map((c) => ({
+                deck_id: deck.id,
+                group_id: group.id,
+                university_id: group.university_id,
+                created_by: authorId,
+                front: c.front,
+                back: c.back,
+                hint: c.hint ?? null,
+              })),
+            )
+          }
+
+          if (settings.require_approval) {
+            await mergeAiSettings(group.id, { pending_deck_id: deck.id })
+          } else {
+            await feedService.createPost(
+              { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+              {
+                type: 'post',
+                content: `📚 New AI flashcard deck: ${topic} — ${cards.length} cards ready!`,
+                group_id: group.id,
+                media_urls: [],
+                is_published: true,
+              },
+            )
+          }
+
+          producedContent = true
+        } catch (error) {
+          branchFailed = true
+          logger.error('AI group flashcard generation failed', { groupId: group.id, error })
+          await learningAdminService.recordAiError(group.university_id, describeAiError(error))
         }
       }
 
       if (settings.ai_quiz_enabled) {
-        const questions = await rateLimitedAICall(() =>
-          generateQuizQuestions({
-            department: topic,
-            count: settings.items_per_run ?? 10,
-            difficulty: settings.difficulty,
-            style: settings.question_style === 'short_answer' ? 'mixed' : settings.question_style,
-            language: settings.language,
-            customInstructions: settings.custom_instructions,
-          }),
-        )
-
-        const [quiz] = await db('group_quizzes')
-          .insert({
-            group_id: group.id,
-            university_id: group.university_id,
-            created_by: authorId,
-            title: `AI quiz — ${topic}`,
-            questions: JSON.stringify(questions),
-            question_count: questions.length,
-            is_archived: !!settings.require_approval,
-          })
-          .returning<{ id: string }[]>('id')
-
-        if (settings.require_approval) {
-          await mergeAiSettings(group.id, { pending_quiz_id: quiz.id })
-        } else {
-          await feedService.createPost(
-            { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
-            {
-              type: 'post',
-              content: `🧠 New AI quiz: ${topic} — ${questions.length} questions ready!`,
-              group_id: group.id,
-              media_urls: [],
-              is_published: true,
-            },
+        try {
+          const questions = await rateLimitedAICall(() =>
+            generateQuizQuestions({
+              department: topic,
+              count: settings.items_per_run ?? 10,
+              difficulty: settings.difficulty,
+              style: settings.question_style === 'short_answer' ? 'mixed' : settings.question_style,
+              language: settings.language,
+              customInstructions: settings.custom_instructions,
+            }),
           )
+
+          const [quiz] = await db('group_quizzes')
+            .insert({
+              group_id: group.id,
+              university_id: group.university_id,
+              created_by: authorId,
+              title: `AI quiz — ${topic}`,
+              questions: JSON.stringify(questions),
+              question_count: questions.length,
+              is_archived: !!settings.require_approval,
+            })
+            .returning<{ id: string }[]>('id')
+
+          if (settings.require_approval) {
+            await mergeAiSettings(group.id, { pending_quiz_id: quiz.id })
+          } else {
+            await feedService.createPost(
+              { userId: authorId, universityId: group.university_id, role: author.role as 'faculty' },
+              {
+                type: 'post',
+                content: `🧠 New AI quiz: ${topic} — ${questions.length} questions ready!`,
+                group_id: group.id,
+                media_urls: [],
+                is_published: true,
+              },
+            )
+          }
+
+          producedContent = true
+        } catch (error) {
+          branchFailed = true
+          logger.error('AI group quiz generation failed', { groupId: group.id, error })
+          await learningAdminService.recordAiError(group.university_id, describeAiError(error))
         }
       }
 
-      await mergeAiSettings(group.id, { last_ai_post_date: today })
-      await learningAdminService.clearAiError(group.university_id)
+      if (producedContent) {
+        await mergeAiSettings(group.id, { last_ai_post_date: today })
+      }
+      if (!branchFailed) {
+        await learningAdminService.clearAiError(group.university_id)
+      }
     } catch (error) {
       logger.error('AI group posting failed', { groupId: group.id, error })
       await learningAdminService.recordAiError(group.university_id, describeAiError(error))

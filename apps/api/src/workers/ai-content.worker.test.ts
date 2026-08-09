@@ -442,6 +442,54 @@ describe('runGroupPosting', () => {
     },
     90_000,
   )
+
+  it(
+    'does not re-post a second deck later the same day when the quiz branch failed',
+    async () => {
+      // Regression: the run-hour gate is a lower bound, so `last_ai_post_date` is the only
+      // de-dup mechanism. If the quiz branch threw after the flashcard branch had already
+      // created a deck, the date was never stamped and every later hourly run created
+      // another deck + another bot post.
+      const universityId = await createUniversity()
+      const faculty = await createFacultyUser(universityId)
+      const group = await groupsService.createGroup(
+        { userId: faculty.id, universityId, role: 'faculty' },
+        { name: 'CS109', description: 'A course group', type: 'academic', is_private: false },
+      )
+      try {
+        const subject = `Tries ${randomUUID()}`
+        await groupsService.updateAiSettings({ userId: faculty.id, universityId, role: 'faculty' }, group.id, {
+          ai_flashcards_enabled: true,
+          ai_quiz_enabled: true,
+          require_approval: false,
+          subject,
+          run_hour: 3,
+        })
+        // Keyed by topic/department (not call order) so unrelated academic groups in the
+        // shared test DB can't consume this group's mock.
+        ;(generateFlashcards as ReturnType<typeof vi.fn>).mockImplementation(async (opts: { topic: string }) =>
+          opts.topic === subject ? [{ front: 'Q', back: 'A' }] : [],
+        )
+        ;(generateQuizQuestions as ReturnType<typeof vi.fn>).mockImplementation(
+          async (opts: { department: string }) => {
+            if (opts.department === subject) throw new Error('gemini rate limited')
+            return [{ q: 'Q', options: ['a', 'b', 'c', 'd'], answer: 0 }]
+          },
+        )
+
+        // Two hourly runs on the same simulated day.
+        await runGroupPosting(atUtcHour(4))
+        await runGroupPosting(atUtcHour(5))
+
+        const decks = await db('group_flashcard_decks').where({ group_id: group.id })
+        expect(decks).toHaveLength(1)
+      } finally {
+        await db('group_quizzes').where({ university_id: universityId }).del()
+        await cleanupGroups(universityId)
+      }
+    },
+    90_000,
+  )
 })
 
 describe('runLearningPathGeneration', () => {
