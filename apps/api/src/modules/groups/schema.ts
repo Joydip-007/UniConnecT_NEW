@@ -194,22 +194,46 @@ export type CreateSharedNoteInput = z.infer<typeof CreateSharedNoteSchema>
 export type UpdateSharedNoteInput = z.infer<typeof UpdateSharedNoteSchema>
 
 // ── AI settings (academic groups) ────────────────────────────
-export const AISettingsSchema = z.object({
-  ai_flashcards_enabled: z.boolean().default(false),
-  ai_quiz_enabled: z.boolean().default(false),
-  require_approval: z.boolean().default(false),
+/**
+ * Validation only — deliberately carries no `.default()`.
+ *
+ * `.partial()` does NOT suppress defaults: it makes each key optional, but an absent
+ * key still resolves through its ZodDefault. Deriving the PATCH schema from a defaulted
+ * one therefore turned `{ ai_quiz_enabled: true }` into all seven defaulted fields, and
+ * the jsonb merge wrote `require_approval: false` back over the stored value — so
+ * enabling one toggle silently switched the others off.
+ *
+ * Defaults belong on the read path only (`withAiSettingsDefaults` in service.ts).
+ */
+const aiSettingsShape = {
+  ai_flashcards_enabled: z.boolean(),
+  ai_quiz_enabled: z.boolean(),
+  require_approval: z.boolean(),
   subject: z.string().max(255).optional(),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
   question_style: z.enum(['mcq', 'true_false', 'short_answer', 'mixed']).optional(),
-  language: z.enum(['en', 'bn']).default('en'),
+  language: z.enum(['en', 'bn']),
   custom_instructions: z.string().max(1000).optional(),
-  items_per_run: z.number().int().min(1).max(20).default(10),
-  frequency: z.enum(['daily', 'weekly']).default('daily'),
-  run_hour: z.number().int().min(0).max(23).default(2),
+  items_per_run: z.number().int().min(1).max(20),
+  frequency: z.enum(['daily', 'weekly']),
+  run_hour: z.number().int().min(0).max(23),
   run_weekday: z.number().int().min(0).max(6).optional(),
+}
+
+/** Read-side shape: parsing `{}` yields the full default set. */
+export const AISettingsSchema = z.object({
+  ...aiSettingsShape,
+  ai_flashcards_enabled: aiSettingsShape.ai_flashcards_enabled.default(false),
+  ai_quiz_enabled: aiSettingsShape.ai_quiz_enabled.default(false),
+  require_approval: aiSettingsShape.require_approval.default(false),
+  language: aiSettingsShape.language.default('en'),
+  items_per_run: aiSettingsShape.items_per_run.default(10),
+  frequency: aiSettingsShape.frequency.default('daily'),
+  run_hour: aiSettingsShape.run_hour.default(2),
 })
 
-export const UpdateGroupAISettingsSchema = AISettingsSchema.partial()
+/** Write-side shape: parsing only ever returns the keys the client actually sent. */
+export const UpdateGroupAISettingsSchema = z.object(aiSettingsShape).partial()
 
 export type AISettingsInput = z.infer<typeof AISettingsSchema>
 export type UpdateGroupAISettingsInput = z.infer<typeof UpdateGroupAISettingsSchema>

@@ -41,9 +41,12 @@ import { AISettingsSchema } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
 
 /**
- * `UpdateGroupAISettingsSchema` is `.partial()`, so Zod defaults are never persisted and groups
- * created before AI settings shipped have none of the keys. Apply the defaults at serialization
- * so the client always receives a complete object.
+ * `UpdateGroupAISettingsSchema` is built from a default-free shape, so a PATCH persists only the
+ * keys the client sent and groups created before AI settings shipped have none of them. Apply the
+ * defaults at serialization so the client always receives a complete object.
+ *
+ * Defaults must stay on this read path only. Putting them on the write schema makes every partial
+ * PATCH write the full default set, which silently resets the fields the client did not touch.
  *
  * Spread order matters: `ai_settings` also holds runtime-only keys (`last_ai_post_date`,
  * `pending_deck_id`, `pending_quiz_id`) that are NOT in `AISettingsSchema`, so a bare
