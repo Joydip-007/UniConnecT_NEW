@@ -1,6 +1,6 @@
 # Design System
 
-UniConnecT's UI is built with React 18, Vite, and Tailwind CSS. The design language is **Warm Futuristic Dark** — deep navy surfaces, UIU orange identity moments, indigo interactive elements, and a Gen Z-first aesthetic.
+UniConnecT's UI is built with React 18, Vite, and Tailwind CSS. The design language is **Graphite Ledger Dark** — graphite surfaces, study-mauve identity moments, periwinkle interactive elements, and a Gen Z-first aesthetic.
 
 Reference files: `apps/web/src/assets/logo.svg` · `apps/web/src/styles/tokens.css` · `apps/web/src/components/`
 
@@ -14,34 +14,34 @@ Define these at the root of `apps/web/src/styles/tokens.css`. Import before Tail
 /* apps/web/src/styles/tokens.css */
 :root {
   /* ── Surfaces (dark-mode default) ─────────────────── */
-  --surface-page:     #060D1A;   /* outermost canvas */
-  --surface-card:     #0A1628;   /* post cards, sidebars */
-  --surface-raised:   #111D35;   /* nested surfaces, job details */
-  --surface-hover:    #1A2D4A;   /* hover / active states */
+  --surface-page:     #1A1A1A;   /* outermost canvas */
+  --surface-card:     #242424;   /* post cards, sidebars */
+  --surface-raised:   #2E2E2E;   /* nested surfaces, job details */
+  --surface-hover:    #383838;   /* hover / active states */
 
-  /* ── Brand — UC indigo (primary interactive) ──────── */
-  --uc-indigo:        #5B5BD6;
-  --uc-indigo-l:      #7C7CF0;
-  --uc-indigo-xl:     #A5A5F8;
-  --uc-indigo-bg:     rgba(91, 91, 214, 0.10);
-  --uc-indigo-bdr:    rgba(91, 91, 214, 0.28);
+  /* ── Brand — ledger periwinkle (primary interactive) ── */
+  --uc-indigo:        #4E62BF;
+  --uc-indigo-l:      #93A0D8;
+  --uc-indigo-xl:     #B3BDE6;
+  --uc-indigo-bg:     rgba(78, 98, 191, 0.12);
+  --uc-indigo-bdr:    rgba(78, 98, 191, 0.30);
 
-  /* ── Brand — UIU orange (identity & attention) ────── */
-  --uc-orange:        #F05A28;
-  --uc-orange-l:      #F5845A;
-  --uc-orange-bg:     rgba(240, 90, 40, 0.10);
-  --uc-orange-bdr:    rgba(240, 90, 40, 0.28);
+  /* ── Brand — study mauve (identity & attention) ────── */
+  --uc-orange:        #7B5E64;
+  --uc-orange-l:      #C79FAA;
+  --uc-orange-bg:     rgba(123, 94, 100, 0.18);
+  --uc-orange-bdr:    rgba(123, 94, 100, 0.40);
 
   /* ── Semantic ─────────────────────────────────────── */
-  --uc-cyan:          #06B6D4;   /* live / real-time */
-  --uc-cyan-bg:       rgba(6, 182, 212, 0.10);
-  --uc-mint:          #10B981;   /* positive outcomes */
-  --uc-mint-bg:       rgba(16, 185, 129, 0.10);
+  --uc-cyan:          #6FA3B8;   /* live / real-time */
+  --uc-cyan-bg:       rgba(111, 163, 184, 0.11);
+  --uc-mint:          #77AC6D;   /* positive outcomes */
+  --uc-mint-bg:       rgba(119, 172, 109, 0.11);
 
   /* ── Text ─────────────────────────────────────────── */
-  --text-primary:     #EEF2FF;
-  --text-secondary:   rgba(238, 242, 255, 0.58);
-  --text-tertiary:    rgba(238, 242, 255, 0.28);
+  --text-primary:     #EBEBEB;
+  --text-secondary:   rgba(235, 235, 235, 0.58);
+  --text-tertiary:    rgba(235, 235, 235, 0.30);
 
   /* ── Borders ──────────────────────────────────────── */
   --border-default:   rgba(255, 255, 255, 0.07);

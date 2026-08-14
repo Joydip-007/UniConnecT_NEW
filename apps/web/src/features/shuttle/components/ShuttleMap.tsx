@@ -192,8 +192,8 @@ export function ShuttleMap({
 
   const tenantAccent =
     typeof window !== 'undefined'
-      ? getComputedStyle(document.documentElement).getPropertyValue('--tenant-accent').trim() || '#F05A28'
-      : '#F05A28'
+      ? getComputedStyle(document.documentElement).getPropertyValue('--tenant-accent').trim() || '#7B5E64'
+      : '#7B5E64'
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>

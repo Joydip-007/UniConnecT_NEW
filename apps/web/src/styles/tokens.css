@@ -1,51 +1,54 @@
-/* Design tokens — Warm Futuristic Dark + Warm Neutral Light. */
+/* Design tokens — Graphite Ledger Dark + Graphite Ledger Light. */
 /* Always use var(--token) in components, never raw hex. */
 :root,
 :root[data-theme='dark'] {
   /* ── Surfaces ─────────────────────────────────────── */
-  --surface-page:     #060D1A;
-  --surface-card:     #0A1628;
-  --surface-raised:   #111D35;
-  --surface-hover:    #1A2D4A;
+  --surface-page:     #1A1A1A;
+  --surface-card:     #242424;
+  --surface-raised:   #2E2E2E;
+  --surface-hover:    #383838;
 
-  /* ── Brand — UC indigo ────────────────────────────── */
-  --uc-indigo:        #5B5BD6;
-  --uc-indigo-l:      #7C7CF0;
-  --uc-indigo-xl:     #A5A5F8;
-  --uc-indigo-bg:     rgba(91, 91, 214, 0.10);
-  --uc-indigo-bdr:    rgba(91, 91, 214, 0.28);
+  /* ── Brand — network (periwinkle) ─────────────────── */
+  /* Base is darkened from the nominal #6577C7 mid-tone so --on-accent text
+     clears AA (4.5:1) as a PrimaryBtn fill in both themes; -l/-xl (used only
+     as text on --uc-indigo-bg tints, never as a fill) keep the lighter hue. */
+  --uc-indigo:        #4E62BF;
+  --uc-indigo-l:      #93A0D8;
+  --uc-indigo-xl:     #B3BDE6;
+  --uc-indigo-bg:     rgba(78, 98, 191, 0.12);
+  --uc-indigo-bdr:    rgba(78, 98, 191, 0.30);
 
-  /* ── Brand — UIU orange ───────────────────────────── */
-  --uc-orange:        #F05A28;
-  --uc-orange-l:      #F5845A;
-  --uc-orange-bg:     rgba(240, 90, 40, 0.10);
-  --uc-orange-bdr:    rgba(240, 90, 40, 0.28);
+  /* ── Brand — self identity (study mauve) ──────────── */
+  --uc-orange:        #7B5E64;
+  --uc-orange-l:      #C79FAA;
+  --uc-orange-bg:     rgba(123, 94, 100, 0.18);
+  --uc-orange-bdr:    rgba(123, 94, 100, 0.40);
 
-  --uc-navy:          #1E3A70;
+  --uc-navy:          #3B4A8C;
 
   /* ── Tenant accent — per-university identity slot.
-     Defaults to UIU orange; later set at runtime from university_settings. */
-  --tenant-accent:     #F05A28;
-  --tenant-accent-l:   #F5845A;
-  --tenant-accent-bg:  rgba(240, 90, 40, 0.10);
-  --tenant-accent-bdr: rgba(240, 90, 40, 0.28);
+     Defaults to study mauve; later set at runtime from university_settings. */
+  --tenant-accent:     #7B5E64;
+  --tenant-accent-l:   #C79FAA;
+  --tenant-accent-bg:  rgba(123, 94, 100, 0.18);
+  --tenant-accent-bdr: rgba(123, 94, 100, 0.40);
 
   /* ── Semantic ─────────────────────────────────────── */
-  --uc-cyan:          #06B6D4;
-  --uc-cyan-bg:       rgba(6, 182, 212, 0.10);
-  --uc-cyan-bdr:      rgba(6, 182, 212, 0.28);
-  --uc-mint:          #10B981;
-  --uc-mint-bg:       rgba(16, 185, 129, 0.10);
-  --uc-mint-bdr:      rgba(16, 185, 129, 0.28);
+  --uc-cyan:          #6FA3B8;
+  --uc-cyan-bg:       rgba(111, 163, 184, 0.11);
+  --uc-cyan-bdr:      rgba(111, 163, 184, 0.28);
+  --uc-mint:          #77AC6D;
+  --uc-mint-bg:       rgba(119, 172, 109, 0.11);
+  --uc-mint-bdr:      rgba(119, 172, 109, 0.26);
 
-  --uc-amber:         #F5A623;
-  --uc-amber-l:       #FFC15E;
-  --uc-amber-bg:      rgba(245, 166, 35, 0.10);
-  --uc-amber-bdr:     rgba(245, 166, 35, 0.28);
+  --uc-amber:         #C9A05F;
+  --uc-amber-l:       #E0BE8C;
+  --uc-amber-bg:      rgba(201, 160, 95, 0.10);
+  --uc-amber-bdr:     rgba(201, 160, 95, 0.28);
 
-  --uc-red:           #E11D48;
-  --uc-red-bg:        rgba(225, 29, 72, 0.08);
-  --uc-red-bdr:       rgba(225, 29, 72, 0.25);
+  --uc-red:           #C25B62;
+  --uc-red-bg:        rgba(194, 91, 98, 0.10);
+  --uc-red-bdr:       rgba(194, 91, 98, 0.28);
 
   /* ── Role identity (spec §6) — platform-global, same meaning at every
      university. student/alumni/faculty alias existing families so they
@@ -63,36 +66,36 @@
   --role-alumni-bdr:   var(--uc-amber-bdr);
 
   --role-faculty:      var(--uc-cyan);
-  --role-faculty-text: #67E8F9;
+  --role-faculty-text: #A8CBD8;
   --role-faculty-bg:   var(--uc-cyan-bg);
   --role-faculty-bdr:  var(--uc-cyan-bdr);
 
-  --role-admin:        #E8543F;
-  --role-admin-text:   #F58A78;
-  --role-admin-bg:     rgba(232, 84, 63, 0.10);
-  --role-admin-bdr:    rgba(232, 84, 63, 0.28);
+  --role-admin:        #B05A4B;
+  --role-admin-text:   #D89A8D;
+  --role-admin-bg:     rgba(176, 90, 75, 0.10);
+  --role-admin-bdr:    rgba(176, 90, 75, 0.28);
 
-  --role-driver:       #8B99AD;
-  --role-driver-text:  #B7C3D4;
-  --role-driver-bg:    rgba(139, 153, 173, 0.10);
-  --role-driver-bdr:   rgba(139, 153, 173, 0.28);
+  --role-driver:       #8E959E;
+  --role-driver-text:  #BCC2C9;
+  --role-driver-bg:    rgba(142, 149, 158, 0.10);
+  --role-driver-bdr:   rgba(142, 149, 158, 0.28);
 
   /* ── Overlay ──────────────────────────────────────── */
-  --overlay-bg:        rgba(6, 13, 26, 0.75);
-  --overlay-bg-soft:   rgba(6, 13, 26, 0.56);
-  --overlay-bg-strong: rgba(6, 13, 26, 0.86);
-  --overlay-media:     rgba(6, 13, 26, 0.68);
-  --uc-indigo-dot:     rgba(91, 91, 214, 0.30);
+  --overlay-bg:        rgba(20, 20, 20, 0.75);
+  --overlay-bg-soft:   rgba(20, 20, 20, 0.56);
+  --overlay-bg-strong: rgba(20, 20, 20, 0.86);
+  --overlay-media:     rgba(20, 20, 20, 0.68);
+  --uc-indigo-dot:     rgba(78, 98, 191, 0.30);
   --surface-glint:     rgba(255, 255, 255, 0.04);
 
   /* ── Text ─────────────────────────────────────────── */
-  --text-primary:     #EEF2FF;
-  --text-secondary:   rgba(238, 242, 255, 0.58);
-  --text-tertiary:    rgba(238, 242, 255, 0.28);
+  --text-primary:     #EBEBEB;
+  --text-secondary:   rgba(235, 235, 235, 0.58);
+  --text-tertiary:    rgba(235, 235, 235, 0.30);
 
   /* Foreground for filled saturated buttons. Theme-STABLE — never inverts,
      so labels stay legible on indigo/orange/mint fills in both themes. */
-  --on-accent:        #EEF2FF;
+  --on-accent:        #EBEBEB;
 
   /* ── Borders ──────────────────────────────────────── */
   --border-default:   rgba(255, 255, 255, 0.07);
@@ -132,83 +135,62 @@
 }
 
 :root[data-theme='light'] {
-  /* ── Surfaces — Warm Neutral Light ─────────────────── */
-  --surface-page:     #FAF7F2;
-  --surface-card:     #FFFFFF;
-  --surface-raised:   #F4F0E8;
-  --surface-hover:    #EDE7DA;
+  /* ── Surfaces — Graphite Ledger Light ──────────────── */
+  --surface-page:     #EBEBEB;
+  --surface-card:     #FAFAFA;
+  --surface-raised:   #E2E2E2;
+  --surface-hover:    #D8D8D8;
 
-  /* ── Brand — darkened for AA contrast on white ─────── */
-  /* In light mode the -l/-xl steps invert intent: tints (--*-bg) are PALE,
+  /* ── Brand — darkened for AA contrast on light surfaces ─
+     In light mode the -l/-xl steps invert intent: tints (--*-bg) are PALE,
      so accent TEXT on them must step DARKER, not lighter. These are the
-     legible-on-pale-tint tones (nav-active text, badges, filter pills). */
-  --uc-indigo:        #4338CA;
-  --uc-indigo-l:      #3730A3;
-  --uc-indigo-xl:     #312E81;
-  --uc-indigo-bg:     rgba(55, 48, 163, 0.08);
-  --uc-indigo-bdr:    rgba(55, 48, 163, 0.22);
+     legible-on-pale-tint tones (nav-active text, badges, filter pills).
+     Only the tokens that must differ are listed — everything else
+     inherits from :root above. */
+  --uc-indigo-l:      #46579F;
+  --uc-indigo-xl:     #3B4A8C;
+  --uc-indigo-bg:     rgba(78, 98, 191, 0.13);
 
-  --uc-orange:        #D44A1F;
-  --uc-orange-l:      #A8391A;
-  --uc-orange-bg:     rgba(212, 74, 31, 0.10);
-  --uc-orange-bdr:    rgba(212, 74, 31, 0.28);
+  --uc-orange-l:      #6E4E57;
+  --uc-orange-bg:     rgba(123, 94, 100, 0.12);
+  --uc-orange-bdr:    rgba(123, 94, 100, 0.30);
 
-  --uc-navy:          #1E3A70;
+  --tenant-accent-l:   #6E4E57;
+  --tenant-accent-bg:  rgba(123, 94, 100, 0.12);
+  --tenant-accent-bdr: rgba(123, 94, 100, 0.30);
 
-  --uc-cyan:          #0E7490;
-  --uc-cyan-bg:       rgba(14, 116, 144, 0.08);
-  --uc-cyan-bdr:      rgba(14, 116, 144, 0.25);
-  /* Deeper green: legible as text on --uc-mint-bg AND clears AA as a
-     filled-button background under white --on-accent (mid-tone #059669 did neither). */
-  --uc-mint:          #047857;
-  --uc-mint-bg:       rgba(4, 120, 87, 0.10);
-  --uc-mint-bdr:      rgba(4, 120, 87, 0.25);
+  --uc-mint:          #4F7D46;
+  --uc-mint-bg:       rgba(119, 172, 109, 0.13);
+  --uc-mint-bdr:      rgba(119, 172, 109, 0.30);
 
-  --uc-amber:         #B45309;
-  --uc-amber-l:       #92400E;
-  --uc-amber-bg:      rgba(180, 83, 9, 0.10);
-  --uc-amber-bdr:     rgba(180, 83, 9, 0.28);
+  --uc-cyan:          #4E7E94;
+  --uc-cyan-bg:       rgba(111, 163, 184, 0.14);
+  --uc-cyan-bdr:      rgba(111, 163, 184, 0.32);
 
-  --tenant-accent:     #D44A1F;
-  --tenant-accent-l:   #A8391A;
-  --tenant-accent-bg:  rgba(212, 74, 31, 0.10);
-  --tenant-accent-bdr: rgba(212, 74, 31, 0.28);
+  --uc-red:           #A8454C;
 
-  --uc-red:           #BE123C;
-  --uc-red-bg:        rgba(190, 18, 60, 0.08);
-  --uc-red-bdr:       rgba(190, 18, 60, 0.22);
+  /* Role identity — light steps darken text for AA (spec §6) */
+  --role-faculty-text: #4E7E94;
+  --role-admin-text:   #8E4235;
+  --role-driver-text:  #5F666E;
+  --role-alumni-text:  #8A6B33;
 
-  /* Role identity — light steps darker for AA (spec §6) */
-  --role-faculty-text: #0E7490;
+  --overlay-bg:        rgba(38, 38, 38, 0.45);
+  --overlay-bg-soft:   rgba(38, 38, 38, 0.34);
+  --overlay-bg-strong: rgba(38, 38, 38, 0.52);
+  --overlay-media:     rgba(38, 38, 38, 0.40);
 
-  --role-admin:        #B93A28;
-  --role-admin-text:   #9C2F1F;
-  --role-admin-bg:     rgba(185, 58, 40, 0.10);
-  --role-admin-bdr:    rgba(185, 58, 40, 0.25);
+  --text-primary:     #262626;
+  --text-secondary:   rgba(38, 38, 38, 0.62);
+  --text-tertiary:    rgba(38, 38, 38, 0.40);
 
-  --role-driver:       #52617A;
-  --role-driver-text:  #43506A;
-  --role-driver-bg:    rgba(82, 97, 122, 0.08);
-  --role-driver-bdr:   rgba(82, 97, 122, 0.22);
+  /* Filled buttons keep saturated fills in light mode too — labels flip to
+     white here since the new accent set is dark/muted enough for AA. */
+  --on-accent:        #FFFFFF;
 
-  --overlay-bg:        rgba(250, 247, 242, 0.78);
-  --overlay-bg-soft:   rgba(250, 247, 242, 0.56);
-  --overlay-bg-strong: rgba(250, 247, 242, 0.90);
-  --overlay-media:     rgba(20, 20, 20, 0.50);
-  --uc-indigo-dot:     rgba(71, 71, 194, 0.28);
-  --surface-glint:     rgba(0, 0, 0, 0.04);
-
-  --text-primary:     #1A1F2E;
-  --text-secondary:   rgba(26, 31, 46, 0.62);
-  --text-tertiary:    rgba(26, 31, 46, 0.36);
-
-  /* Stays light in light mode too — filled buttons keep saturated fills,
-     so their label must NOT flip to dark navy (would drop to ~2.3:1). */
-  --on-accent:        #EEF2FF;
-
-  --border-default:   rgba(0, 0, 0, 0.08);
-  --border-hover:     rgba(0, 0, 0, 0.14);
-  --border-strong:    rgba(0, 0, 0, 0.22);
+  --border-default:   rgba(38, 38, 38, 0.09);
+  --border-hover:     rgba(38, 38, 38, 0.16);
+  --border-strong:    rgba(38, 38, 38, 0.24);
 
   /* Radius, easing, typography are theme-invariant — inherit from :root above. */
 }

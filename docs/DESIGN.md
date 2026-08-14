@@ -1,51 +1,51 @@
 ---
 name: UniConnecT
-description: The private campus social network for universities — dark-surface, role-aware, UIU-orange identity, mobile-first for South Asian campuses.
+description: The private campus social network for universities — graphite-surface, role-aware, study-mauve identity, mobile-first for South Asian campuses.
 colors:
   # ── Surfaces (dark by default) ─────────────────────────────────
-  surface-page:     "#060D1A"
-  surface-card:     "#0A1628"
-  surface-raised:   "#111D35"
-  surface-hover:    "#1A2D4A"
-  # ── Identity (UIU orange — "you / your actions") ───────────────
-  uc-orange:        "#F05A28"
-  uc-orange-l:      "#F5845A"
-  uc-orange-bg:     "#F05A281A"
-  uc-orange-bdr:    "#F05A2847"
-  # ── Network (UC indigo — "peers / system / wayfinding") ────────
-  uc-indigo:        "#5B5BD6"
-  uc-indigo-l:      "#7C7CF0"
-  uc-indigo-xl:     "#A5A5F8"
-  uc-indigo-bg:     "#5B5BD61A"
-  uc-indigo-bdr:    "#5B5BD647"
+  surface-page:     "#1A1A1A"
+  surface-card:     "#242424"
+  surface-raised:   "#2E2E2E"
+  surface-hover:    "#383838"
+  # ── Identity (study mauve — "you / your actions") ───────────────
+  uc-orange:        "#7B5E64"
+  uc-orange-l:      "#C79FAA"
+  uc-orange-bg:     "#7B5E642E"
+  uc-orange-bdr:    "#7B5E6466"
+  # ── Network (ledger periwinkle — "peers / system / wayfinding") ─
+  uc-indigo:        "#4E62BF"
+  uc-indigo-l:      "#93A0D8"
+  uc-indigo-xl:     "#B3BDE6"
+  uc-indigo-bg:     "#4E62BF1F"
+  uc-indigo-bdr:    "#4E62BF4D"
   # ── Indigo dot — decorative cover pattern only ─────────────────
-  uc-indigo-dot:    "#5B5BD64D"
+  uc-indigo-dot:    "#4E62BF4D"
   # ── Library carrel navy (avatar fallback slot) ─────────────────
-  uc-navy:          "#1E3A70"
+  uc-navy:          "#3B4A8C"
   # ── Semantic ───────────────────────────────────────────────────
-  uc-cyan:          "#06B6D4"
-  uc-cyan-bg:       "#06B6D41A"
-  uc-cyan-bdr:      "#06B6D447"
-  uc-mint:          "#10B981"
-  uc-mint-bg:       "#10B9811A"
-  uc-mint-bdr:      "#10B98147"
-  uc-red:           "#E11D48"
-  uc-red-bg:        "#E11D4814"
-  uc-red-bdr:       "#E11D4840"
+  uc-cyan:          "#6FA3B8"
+  uc-cyan-bg:       "#6FA3B81C"
+  uc-cyan-bdr:      "#6FA3B847"
+  uc-mint:          "#77AC6D"
+  uc-mint-bg:       "#77AC6D1C"
+  uc-mint-bdr:      "#77AC6D42"
+  uc-red:           "#C25B62"
+  uc-red-bg:        "#C25B621A"
+  uc-red-bdr:       "#C25B6247"
   # ── Text ───────────────────────────────────────────────────────
-  text-primary:     "#EEF2FF"
-  text-secondary:   "#EEF2FF94"
-  text-tertiary:    "#EEF2FF47"
-  # ── On-accent — theme-STABLE label on saturated button fills ────
-  # Never inverts: stays light in light mode so labels on indigo/orange/mint
-  # fills keep AA contrast. (text-primary flips to dark navy in light mode.)
-  on-accent:        "#EEF2FF"
+  text-primary:     "#EBEBEB"
+  text-secondary:   "#EBEBEB94"
+  text-tertiary:    "#EBEBEB4D"
+  # ── On-accent — label on saturated button fills; inverts per theme ──
+  # Light in dark mode, white in light mode, since the graphite accents
+  # are dark/muted enough for AA either way. (text-primary flips too.)
+  on-accent:        "#EBEBEB"
   # ── Borders (hairlines) ────────────────────────────────────────
   border-default:   "#FFFFFF12"
   border-hover:     "#FFFFFF21"
   border-strong:    "#FFFFFF38"
   # ── Overlay ────────────────────────────────────────────────────
-  overlay-bg:       "#060D1ABF"
+  overlay-bg:       "#141414BF"
 typography:
   display:
     fontFamily: "Fraunces, Source Serif 4, Georgia, serif"
@@ -168,57 +168,57 @@ components:
 
 **Creative North Star: "The After-Hours Campus"**
 
-UniConnecT is the campus after last bell. The quads are dim, the residence halls glow in their windows, and the people still moving — students between assignments, alumni catching up, faculty pinning tomorrow's notice — move with intention. The UI is the building that holds them. Dark navy surfaces are the walls. UIU orange is the institutional lamp that marks *you*: your post, your bookmark, your milestone. UC indigo is the network around you: the rooms you visit, the peers you find. The job of every screen is to recede so the people and the work surface; nothing in the chrome should clamor for attention.
+UniConnecT is the campus after last bell. The quads are dim, the residence halls glow in their windows, and the people still moving — students between assignments, alumni catching up, faculty pinning tomorrow's notice — move with intention. The UI is the building that holds them. Graphite surfaces are the walls. Study mauve is the institutional lamp that marks *you*: your post, your bookmark, your milestone. Ledger periwinkle is the network around you: the rooms you visit, the peers you find. The job of every screen is to recede so the people and the work surface; nothing in the chrome should clamor for attention.
 
 This system explicitly rejects the consumer-social aesthetic ("Facebook with a UIU logo"), the SaaS-template look ("Notion beige + indigo brand"), and the engagement-bait gravity (algorithmic suggestion noise, infinite-scroll dark patterns, bright red "you have unread" dots screaming for taps). It also rejects the first-order AI reflexes for the social-product category: glassmorphism, gradient hero copy, identical icon-and-heading card grids, glow effects under buttons. Warmth comes from context-awareness and good defaults, not decoration.
 
-Density is product-density: information-dense at small sizes, mobile-first, designed to survive mid-tier Android on slow campus 4G. Hairline 0.5px borders carry structure; pill radii (`999px`) carry interaction; sentence case carries voice. The system has two interactive accents (orange and indigo) with strictly assigned roles, six surface tints (page → card → raised → hover, plus two semantic), one body face (Inter), one display face (Fraunces). Variety happens through hierarchy and rhythm, never through new shapes.
+Density is product-density: information-dense at small sizes, mobile-first, designed to survive mid-tier Android on slow campus 4G. Hairline 0.5px borders carry structure; pill radii (`999px`) carry interaction; sentence case carries voice. The system has two interactive accents (mauve and periwinkle) with strictly assigned roles, six surface tints (page → card → raised → hover, plus two semantic), one body face (Inter), one display face (Fraunces). Variety happens through hierarchy and rhythm, never through new shapes.
 
 **Key Characteristics:**
-- Dark-first (Warm Futuristic Dark), with a Warm Neutral Light counterpart. Surface stacking, never shadows, for depth in both themes.
-- Two-accent palette. Orange = self; indigo = peer/system. The roles are not interchangeable.
+- Dark-first (Graphite Ledger Dark), with a Graphite Ledger Light counterpart. Surface stacking, never shadows, for depth in both themes.
+- Two-accent palette. Mauve = self; periwinkle = network. The roles are not interchangeable.
 - 0.5px hairlines everywhere. 1px borders are reserved for badge counters and avatar gaps.
 - Pill (`999px`) for every button. Card radius is `16px`. No sharp corners.
 - Sentence case. Always. No `ALL CAPS`, no `Title Case On Buttons`.
 - Weight 400 / 500 only. 600+ does not exist in this system.
 - Mobile is not "responsive desktop". Layout collapses meaningfully (sidebars → bottom nav with a More sheet), not by hiding columns.
 
-## 2. Colors: The After-Hours Palette
+## 2. Colors: The Graphite Ledger Palette
 
-A dark-first palette anchored to UIU's institutional orange, with a Warm Neutral Light counterpart defined under `[data-theme='light']`. Surfaces stack from near-black (page) up through three slate tints; the lightest is reserved for hover. Two interactive accents (orange and indigo) carry meaning, not decoration. Every token is redefined per theme in `tokens.css`; see The Theme-Token Rule below for how the accent steps and button labels behave in light mode.
+A dark-first palette anchored to a muted study mauve, with a Graphite Ledger Light counterpart defined under `[data-theme='light']`. Surfaces stack from near-black graphite (page) up through three graphite tints; the lightest is reserved for hover. Two interactive accents (mauve and periwinkle) carry meaning, not decoration. Every token is redefined per theme in `tokens.css`; see The Theme-Token Rule below for how the accent steps and button labels behave in light mode.
 
 ### Primary
-- **UIU Cinder Orange** (`#F05A28` / `oklch(67% 0.18 35)`): The brand identity. Reserved for things that are *yours*: your active filter tab, your saved-post bookmark, your progress milestones, your avatar ring on the profile mini-card. Surfaces this color does NOT touch: peer suggestions, others' content, system navigation. Rarity is the point — overdose dilutes the signal.
-- **UIU Cinder Light** (`#F5845A` / `oklch(74% 0.13 35)`): Orange text on orange-tinted backgrounds. Use *only* on `--uc-orange-bg`; never on a card or page surface (poor contrast).
-- **Orange Wash** (`#F05A281A` ≈ 10% alpha) + **Orange Edge** (`#F05A2847` ≈ 28% alpha): The two-stage tint used for filter pills, the announcement strip, and the first-post coachmark.
+- **Study Mauve** (`#7B5E64`): The brand identity. Reserved for things that are *yours*: your active filter tab, your saved-post bookmark, your progress milestones, your avatar ring on the profile mini-card. Surfaces this color does NOT touch: peer suggestions, others' content, system navigation. Rarity is the point — overdose dilutes the signal.
+- **Study Mauve Light** (`#C79FAA`): Mauve text on mauve-tinted backgrounds. Use *only* on `--uc-orange-bg`; never on a card or page surface (poor contrast).
+- **Mauve Wash** (`#7B5E642E` ≈ 18% alpha) + **Mauve Edge** (`#7B5E6466` ≈ 40% alpha): The two-stage tint used for filter pills, the announcement strip, and the first-post coachmark.
 
 ### Secondary
-- **Campus Twilight Indigo** (`#5B5BD6` / `oklch(53% 0.17 280)`): The network color. Active liked-state, primary CTA fills on system surfaces (`PrimaryBtn`), event date boxes, trending tag pills, nav-item active background — anything that signals "this is the system / your peers", not "this is you".
-- **Network Indigo Light** (`#7C7CF0`): Indigo text on indigo-tinted backgrounds.
-- **Network Indigo Pale** (`#A5A5F8`): The lightest indigo step; used only for active-state text inside nav items where the background is `--uc-indigo-bg`.
+- **Ledger Periwinkle** (`#4E62BF`): The network color. Active liked-state, primary CTA fills on system surfaces (`PrimaryBtn`), event date boxes, trending tag pills, nav-item active background — anything that signals "this is the system / your peers", not "this is you".
+- **Ledger Periwinkle Light** (`#93A0D8`): Periwinkle text on periwinkle-tinted backgrounds.
+- **Ledger Periwinkle Pale** (`#B3BDE6`): The lightest periwinkle step; used only for active-state text inside nav items where the background is `--uc-indigo-bg`.
 
 ### Tertiary (semantic — never decorative)
-- **Verified Mint** (`#10B981`): Success. Used as the "Done" check on a milestone and as the alumni-verified badge color. Never used for a button.
-- **Shuttle Beacon Cyan** (`#06B6D4`): The shuttle-live tool icon. The only place cyan appears.
-- **Alert Crimson** (`#E11D48`): Unread badge dot on the mobile bottom nav. Destructive confirmations (when added).
+- **Meadow Green** (`#77AC6D`): Success. Used as the "Done" check on a milestone and as the alumni-verified badge color. Never used for a button.
+- **Shuttle Slate Cyan** (`#6FA3B8`): The shuttle-live tool icon. The only place cyan appears.
+- **Alert Rose** (`#C25B62`): Unread badge dot on the mobile bottom nav. Destructive confirmations (when added).
 
 ### Neutral
-- **Midnight Quad** (`#060D1A`): The page background. The darkest surface in the system.
-- **Lecture-Hall Slate** (`#0A1628`): Card / widget background. One step up from page.
-- **Window-Lit Slate** (`#111D35`): The "raised" tier — input fill, skeleton fill, mobile More-sheet tiles.
-- **Reading-Lamp Slate** (`#1A2D4A`): Hover tier only. Never used as a resting surface.
-- **Page Ivory** (`#EEF2FF`): Primary text.
-- **Reading Ivory** (`#EEF2FF94` ≈ 58% alpha on page): Secondary text — body of posts when the headline is owned by names/roles, captions on event tiles.
-- **Tertiary Ivory** (`#EEF2FF47` ≈ 28% alpha): Tertiary text only. Timestamps, eyebrows, faint metadata. Do not use for anything a user is meant to *read at length*; only for things they scan.
+- **Graphite Quad** (`#1A1A1A`): The page background. The darkest surface in the system.
+- **Graphite Slate** (`#242424`): Card / widget background. One step up from page.
+- **Raised Graphite** (`#2E2E2E`): The "raised" tier — input fill, skeleton fill, mobile More-sheet tiles.
+- **Hover Graphite** (`#383838`): Hover tier only. Never used as a resting surface.
+- **Page Chalk** (`#EBEBEB`): Primary text.
+- **Reading Chalk** (`#EBEBEB94` ≈ 58% alpha on page): Secondary text — body of posts when the headline is owned by names/roles, captions on event tiles.
+- **Tertiary Chalk** (`#EBEBEB4D` ≈ 30% alpha): Tertiary text only. Timestamps, eyebrows, faint metadata. Do not use for anything a user is meant to *read at length*; only for things they scan.
 - **Frosted Glass** (`#FFFFFF12` ≈ 7%): Default 0.5px border. Separates cards from page, sections from each other, post rows from each other.
 - **Stronger Glass** (`#FFFFFF21` ≈ 13%): Hover border + "All caught up" divider — one step more visible.
 - **Etched Glass** (`#FFFFFF38` ≈ 22%): Reserved for the mobile More-sheet handle. The only border tier you can see without squinting.
 
 ### Library Carrel Navy
-- **Library Carrel Navy** (`#1E3A70`): A neutral *outside* the surface stack — used only as the 5th avatar fallback color. Never appears as a background or border anywhere else.
+- **Library Carrel Navy** (`#3B4A8C`): A neutral *outside* the surface stack — used only as the 5th avatar fallback color. Never appears as a background or border anywhere else.
 
 ### Decorative
-- **Indigo Dot** (`#5B5BD64D` ≈ 30% alpha indigo): The dot-pattern color in the profile mini-card cover. Used exactly once in the system, as a `radial-gradient` against `--surface-raised`. Not a structural color; do not use as a fill, border, or text.
+- **Periwinkle Dot** (`#4E62BF4D` ≈ 30% alpha periwinkle): The dot-pattern color in the profile mini-card cover. Used exactly once in the system, as a `radial-gradient` against `--surface-raised`. Not a structural color; do not use as a fill, border, or text.
 
 ### Role tokens
 Platform-global identity markers for the five user roles — student, alumni, faculty, admin, driver. Each family provides four tokens: the base color, plus `-text` (legible-on-card glyph and tooltip tone), `-bg` (tinted card background), and `-bdr` (border for cards). Student, alumni, and faculty alias the core color families (indigo, amber, cyan) so they track theme overrides automatically; admin (red-orange) and driver (slate-gray) are standalone and re-declared in light mode for AA contrast on white. Role colors decorate identity only — never use on buttons, links, or CTAs.
@@ -227,13 +227,13 @@ Platform-global identity markers for the five user roles — student, alumni, fa
 |---|---|---|---|---|---|
 | Student | `--uc-indigo` | `--uc-indigo-l` | `--uc-indigo-bg` | `--uc-indigo-bdr` | Aliases core indigo family; auto-updates in both themes. |
 | Alumni | `--uc-amber` | `--uc-amber-l` | `--uc-amber-bg` | `--uc-amber-bdr` | Aliases core amber family; auto-updates in both themes. |
-| Faculty | `--uc-cyan` | `#67E8F9` (dark) / `#0E7490` (light) | `--uc-cyan-bg` | `--uc-cyan-bdr` | Cyan base aliases; text darkened in light mode for AA. |
-| Admin | `#E8543F` (dark) / `#B93A28` (light) | `#F58A78` (dark) / `#9C2F1F` (light) | `rgba(232, 84, 63, 0.10)` (dark) / `rgba(185, 58, 40, 0.10)` (light) | `rgba(232, 84, 63, 0.28)` (dark) / `rgba(185, 58, 40, 0.25)` (light) | Red-orange identity; fully re-declared in light mode (`--role-admin*` tokens). |
-| Driver | `#8B99AD` (dark) / `#52617A` (light) | `#B7C3D4` (dark) / `#43506A` (light) | `rgba(139, 153, 173, 0.10)` (dark) / `rgba(82, 97, 122, 0.08)` (light) | `rgba(139, 153, 173, 0.28)` (dark) / `rgba(82, 97, 122, 0.22)` (light) | Slate-gray walled-garden role; fully re-declared (`--role-driver*` tokens). |
+| Faculty | `--uc-cyan` | `#A8CBD8` (dark) / `#4E7E94` (light) | `--uc-cyan-bg` | `--uc-cyan-bdr` | Cyan base aliases; text darkened in light mode for AA. |
+| Admin | `#B05A4B` (dark & light) | `#D89A8D` (dark) / `#8E4235` (light) | `rgba(176, 90, 75, 0.10)` (both) | `rgba(176, 90, 75, 0.28)` (both) | Muted red-orange identity; only the text step darkens in light mode. |
+| Driver | `#8E959E` (dark & light) | `#BCC2C9` (dark) / `#5F666E` (light) | `rgba(142, 149, 158, 0.10)` (both) | `rgba(142, 149, 158, 0.28)` (both) | Slate-gray walled-garden role; only the text step darkens in light mode. |
 
 ### Named Rules
 
-**The Self / Network Rule.** Orange marks the user themselves (their identity, their content, their actions). Indigo marks the system and their peers. The two accents are not interchangeable. If you're about to put indigo on a "you saved this" affordance, or orange on a "peer suggestion", stop and pick again. Mixing the roles defeats the legibility the palette exists to deliver.
+**The Self / Network Rule.** Mauve marks the user themselves (their identity, their content, their actions). Periwinkle marks the system and their peers. The two accents are not interchangeable. If you're about to put periwinkle on a "you saved this" affordance, or mauve on a "peer suggestion", stop and pick again. Mixing the roles defeats the legibility the palette exists to deliver.
 
 **The 28%-Alpha Floor.** Any text that the user is expected to *read* must use `--text-primary` or `--text-secondary`. The 28%-alpha `--text-tertiary` is for scannable metadata only (timestamps, eyebrows, "Done" labels), never for explanatory copy.
 
@@ -275,10 +275,10 @@ Platform-global identity markers for the five user roles — student, alumni, fa
 
 | Token | Hex | Role |
 |---|---|---|
-| `--surface-page`   | `#060D1A` | The page background. Lowest tier. |
-| `--surface-card`   | `#0A1628` | Cards, sidebar widgets, posts, mobile bottom nav. |
-| `--surface-raised` | `#111D35` | Inputs, skeleton fills, More-sheet tiles, raised inline elements. |
-| `--surface-hover`  | `#1A2D4A` | Hover-only. Never used at rest. |
+| `--surface-page`   | `#1A1A1A` | The page background. Lowest tier. |
+| `--surface-card`   | `#242424` | Cards, sidebar widgets, posts, mobile bottom nav. |
+| `--surface-raised` | `#2E2E2E` | Inputs, skeleton fills, More-sheet tiles, raised inline elements. |
+| `--surface-hover`  | `#383838` | Hover-only. Never used at rest. |
 
 ### Named Rules
 
@@ -351,8 +351,8 @@ Shown only when the user has incomplete milestones. Card-bodied (only card in th
 These guardrails enforce the strategic line from PRODUCT.md (anti-references quoted directly) and the impeccable absolute bans.
 
 ### Do:
-- **Do** use UIU Cinder Orange (`#F05A28`) for things that are *yours* — your active filter, your saved bookmark, your progress, your avatar ring. The brand identity must be visible on every screen, but always in this role.
-- **Do** use Campus Twilight Indigo (`#5B5BD6`) for the network around you — peer suggestions, primary CTAs, nav active states, event date boxes, trending tags.
+- **Do** use Study Mauve (`#7B5E64`) for things that are *yours* — your active filter, your saved bookmark, your progress, your avatar ring. The brand identity must be visible on every screen, but always in this role.
+- **Do** use Ledger Periwinkle (`#4E62BF`) for the network around you — peer suggestions, primary CTAs, nav active states, event date boxes, trending tags.
 - **Do** keep every border `0.5px solid var(--border-default)` unless there's a specific reason to step up. `1px` is loud in this system.
 - **Do** climb the surface stack for depth: `--surface-page → --surface-card → --surface-raised → --surface-hover`. Tint, not shadow.
 - **Do** use pill (`999px`) radii on every button and every chip. Card radius is `16px` (`--r-lg`).
@@ -364,7 +364,7 @@ These guardrails enforce the strategic line from PRODUCT.md (anti-references quo
 - **Do** respect `prefers-reduced-motion` — global rule in `index.css` already disables all animation/transition duration for users who request it.
 
 ### Don't:
-- **Don't** look like consumer social (Facebook / Instagram). PRODUCT.md is explicit: no engagement-bait patterns, no algorithmic suggestion noise, no blue-heavy identity. UIU orange is not negotiable as the identity color.
+- **Don't** look like consumer social (Facebook / Instagram). PRODUCT.md is explicit: no engagement-bait patterns, no algorithmic suggestion noise, no blue-heavy identity. Study mauve is not negotiable as the identity color.
 - **Don't** look like SaaS-template UI. No SaaS-cream light mode, no Notion-style beige, no "productivity tool" indigo-with-glow look.
 - **Don't** use `border-left` or `border-right` greater than 1px as a colored accent stripe. The announcement banner uses a *full-width tinted strip with a bottom border*, never a side stripe. Side-stripe borders are the absolute ban in this system.
 - **Don't** use `background-clip: text` with a gradient. No gradient headlines, no gradient buttons, no gradient anything in the brand surface. The accent colors are flat by design.

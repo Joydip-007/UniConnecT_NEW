@@ -18,7 +18,7 @@ const API_DEBOUNCE_MS = 300
  * fallback only — used if the stylesheet hasn't applied yet (e.g. SSR/HMR).
  */
 function resolvePageColors(): Record<ResolvedTheme, string> {
-  const fallback: Record<ResolvedTheme, string> = { light: '#FAF7F2', dark: '#060D1A' }
+  const fallback: Record<ResolvedTheme, string> = { light: '#EBEBEB', dark: '#1A1A1A' }
   if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return fallback
   const root = document.documentElement
   const prev = root.getAttribute('data-theme')
