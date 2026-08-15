@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { UserRole } from '@uniconnect/shared'
 import { FeedLayout } from './FeedLayout'
 import { PATHS } from '@/router/paths'
 
@@ -14,25 +15,35 @@ vi.mock('@/components/ToastHost', () => ({ ToastHost: () => null }))
 vi.mock('@/features/notifications', () => ({ useNotificationsSocket: () => {} }))
 vi.mock('@/features/presence', () => ({ usePresenceHeartbeat: () => {} }))
 vi.mock('@/features/learning', () => ({ useAchievementSocket: () => {} }))
+
+let currentRole: UserRole = 'student'
+
 vi.mock('@/stores/authStore', () => ({
-  useAuthStore: (selector: (s: unknown) => unknown) => selector({ user: { id: 'u1' } }),
+  useAuthStore: (selector: (s: unknown) => unknown) =>
+    selector({ user: { id: 'u1', role: currentRole } }),
 }))
 vi.mock('@/stores/socketStore', () => ({
   useSocketStore: () => ({ connected: true, hasConnected: true }),
 }))
 
-function renderLayout(route: string) {
+function renderLayout(route: string, role: UserRole = 'student') {
+  currentRole = role
   return render(
     <MemoryRouter initialEntries={[route]}>
       <Routes>
         <Route element={<FeedLayout />}>
           <Route path={PATHS.FEED} element={<div>feed content</div>} />
           <Route path={PATHS.ADMIN} element={<div>admin content</div>} />
+          <Route path={PATHS.NEWS} element={<div>news content</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
   )
 }
+
+beforeEach(() => {
+  currentRole = 'student'
+})
 
 describe('FeedLayout', () => {
   it('wraps the feed in the full three-column shell', () => {
@@ -44,20 +55,26 @@ describe('FeedLayout', () => {
   })
 
   it('renders the admin panel inside the same shell, keeping rail and top nav', () => {
-    renderLayout(PATHS.ADMIN)
+    renderLayout(PATHS.ADMIN, 'admin')
     expect(screen.getByText('admin content')).toBeInTheDocument()
     expect(screen.getByText('left rail')).toBeInTheDocument()
     expect(screen.getByText('top nav')).toBeInTheDocument()
   })
 
-  it('drops the right rail on admin, which has no right-rail payload of its own', () => {
-    const { container } = renderLayout(PATHS.ADMIN)
+  it('keeps the right rail for admin, which has a payload of its own', () => {
+    const { container } = renderLayout(PATHS.ADMIN, 'admin')
+    expect(screen.getByText('right rail')).toBeInTheDocument()
+    expect(container.querySelector('.feed-layout-grid')).not.toHaveAttribute('data-wide')
+  })
+
+  it('drops the right rail for a driver, whose manifest lists no widgets', () => {
+    const { container } = renderLayout(PATHS.NEWS, 'driver')
     expect(screen.queryByText('right rail')).not.toBeInTheDocument()
     expect(container.querySelector('.feed-layout-grid')).toHaveAttribute('data-wide')
   })
 
-  it('keeps the right rail everywhere else', () => {
-    const { container } = renderLayout(PATHS.FEED)
-    expect(container.querySelector('.feed-layout-grid')).not.toHaveAttribute('data-wide')
+  it('drops the column by role, not by route — the same driver rail is absent on shuttle too', () => {
+    renderLayout(PATHS.FEED, 'driver')
+    expect(screen.queryByText('right rail')).not.toBeInTheDocument()
   })
 })

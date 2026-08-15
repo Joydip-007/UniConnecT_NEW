@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { TopNav } from '@/components/TopNav'
 import { LeftSidebar } from '@/components/LeftSidebar'
@@ -12,7 +12,7 @@ import { useNotificationsSocket } from '@/features/notifications'
 import { usePresenceHeartbeat } from '@/features/presence'
 import { useAchievementSocket } from '@/features/learning'
 import { useSidebarRailPreference } from '@/hooks/useSidebarRailPreference'
-import { PATHS } from '@/router/paths'
+import { ROLE_SHELL } from '@/config/roleShell'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 
 const bannerStyle: React.CSSProperties = {
@@ -31,8 +31,8 @@ const bannerStyle: React.CSSProperties = {
 }
 
 export function FeedLayout() {
-  const { pathname } = useLocation()
   const userId = useAuthStore((s) => s.user?.id)
+  const role = useAuthStore((s) => s.user?.role)
   const { connected, hasConnected } = useSocketStore()
   const { isCollapsed, toggleCollapsed } = useSidebarRailPreference()
   const reduced = useReducedMotion()
@@ -61,10 +61,10 @@ export function FeedLayout() {
 
   const showReconnecting = hasConnected && !connected
 
-  // Admin runs on the same grid, not a forked layout — it simply has no right-rail
-  // payload of its own yet, and the student-shaped widgets would be noise beside a
-  // moderation queue. Dropping that column gives the dense tables the width instead.
-  const wide = pathname.startsWith(PATHS.ADMIN)
+  // Every role runs on the same grid, never a forked layout — only the payload differs.
+  // A role whose manifest lists no widgets (driver) drops the third column rather than
+  // holding an empty one, and the centre gets that width instead.
+  const wide = ROLE_SHELL[role ?? 'student'].rightRail.length === 0
 
   return (
     <div style={{ background: 'var(--surface-page)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>

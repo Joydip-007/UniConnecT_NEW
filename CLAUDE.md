@@ -243,7 +243,8 @@ Notable feature internals:
 
 | File | Owns |
 |------|------|
-| `src/config/roleShell.ts` | `ROLE_SHELL[role]`: `home` (where `/` and the logo resolve), `primaryAction`, `searchPlaceholder`, plus `isRouteAllowedForRole()` — the driver allowlist `ProtectedRoute` consults |
+| `src/config/roleShell.ts` | `ROLE_SHELL[role]`: `home` (where `/` and the logo resolve), `primaryAction`, `searchPlaceholder`, `rightRail` (`WidgetKey[]`), plus `isRouteAllowedForRole()` — the driver allowlist `ProtectedRoute` consults |
+| `src/components/rightRail/index.ts` | `RIGHT_RAIL_WIDGETS`: the total `Record<WidgetKey, ComponentType>` — a manifest key with no widget is a compile error |
 | `src/components/leftSidebar.config.ts` | `RAILS[role]`: `fixed` rows (max 5, driver 4), `contextual` rules, `tools`, and `secondary` |
 
 - `secondary` holds what the 5-row cap pushed out. It renders in **both** the avatar menu (desktop) and the mobile More sheet — mobile has no avatar menu, so omitting either makes the route unreachable on a phone.
@@ -251,7 +252,9 @@ Notable feature internals:
 - Which role gets a row follows what the API lets that role *do*, not the mockups — faculty gets Jobs (`requireRole('alumni','faculty','admin')`) but not Mentorship (no faculty write access there).
 - Rows can share a base path and differ only by query (`/admin?tab=…`), so `isActive` is query-aware and a `findIndex` picks exactly one active row — framer-motion's `layoutId="nav-active-pill"` must never mount twice.
 - Rail deep links must use `AdminPage`'s own `Tab` values (`overview`/`users`/`reports`); `config/adminTabs.test.ts` parses that union from source to enforce it.
-- `/admin` renders **inside** `FeedLayout`; `data-wide` on `.feed-layout-grid` drops the right rail there — same grid, not a forked layout.
+- `/admin` renders **inside** `FeedLayout` — same grid, not a forked layout.
+- **The right rail is manifest-driven, and `data-wide` is a consequence, not a route rule.** `RightSidebar` is a dispatcher over `ROLE_SHELL[role].rightRail`; each widget owns its own query and returns `null` when empty, so there is no role branch and no shared empty-state. `FeedLayout` sets `data-wide` on `.feed-layout-grid` when a role's list is empty (driver only) — keying that off the pathname instead would fork the layout the shell rule forbids.
+- A widget only goes to roles whose API would answer it: `mentee-requests` is alumni/admin (`requireRole('alumni','admin')`), `platform-today` is admin (`requireRole('admin')`). `roleShell.test.ts` enforces this — a widget that 403s is the "row that leads to a 403" the shell rule bans.
 - Sections that absorbed a former rail row, deep-linkable with the old route still valid: `/explore?section=lost-found`, `/groups?section=people`, `/feed?tab=` (`FEED_TABS`).
 
 **React conventions:**
