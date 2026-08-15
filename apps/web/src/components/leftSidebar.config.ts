@@ -165,8 +165,10 @@ export const RAILS: Record<UserRole, RoleRail> = {
   faculty: {
     fixed: [
       { key: 'home', label: 'Home', icon: Home, to: PATHS.FEED },
-      { key: 'sections', label: 'My sections', icon: GraduationCap, to: PATHS.GROUPS },
-      { key: 'groups', label: 'Groups & people', icon: Users, to: PATHS.GROUPS },
+      // Both land on /groups; the section param is what makes them different rows.
+      // `isActive` is query-aware, so exactly one of the two lights up.
+      { key: 'sections', label: 'My sections', icon: GraduationCap, to: `${PATHS.GROUPS}?section=sections` },
+      { key: 'groups', label: 'Groups & people', icon: Users, to: `${PATHS.GROUPS}?section=groups` },
       { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS },
       { key: 'announcements', label: 'Announcements', icon: Newspaper, to: PATHS.NEWS },
     ],

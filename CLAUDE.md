@@ -256,6 +256,8 @@ Notable feature internals:
 - **The right rail is manifest-driven, and `data-wide` is a consequence, not a route rule.** `RightSidebar` is a dispatcher over `ROLE_SHELL[role].rightRail`; each widget owns its own query and returns `null` when empty, so there is no role branch and no shared empty-state. `FeedLayout` sets `data-wide` on `.feed-layout-grid` when a role's list is empty (driver only) — keying that off the pathname instead would fork the layout the shell rule forbids.
 - A widget only goes to roles whose API would answer it: `mentee-requests` is alumni/admin (`requireRole('alumni','admin')`), `platform-today` is admin (`requireRole('admin')`). `roleShell.test.ts` enforces this — a widget that 403s is the "row that leads to a 403" the shell rule bans.
 - Sections that absorbed a former rail row, deep-linkable with the old route still valid: `/explore?section=lost-found`, `/groups?section=people`, `/feed?tab=` (`FEED_TABS`).
+- **Pages whose default view is role-dependent put the role's own default *out* of the URL** and write the param only for the non-default, so a shared link stays clean: `/jobs` is `view=mine` for alumni and `view=browse` for everyone else; `/groups` is `section=sections` for faculty and `section=groups` for everyone else. Both read the param back defensively — a role that cannot use a view (a student on `view=mine`, a non-faculty on `section=sections`) falls back to its default rather than rendering an empty or forbidden panel.
+- Faculty's two `/groups` rail rows differ only by query (`?section=sections` vs `?section=groups`); the sections view pins `type=academic` and hides the group-type filter.
 
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
