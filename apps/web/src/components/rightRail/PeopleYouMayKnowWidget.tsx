@@ -131,7 +131,6 @@ function PersonRow({
 
 /** Hides entirely once every suggestion is dismissed or the endpoint returns none. */
 export function PeopleYouMayKnowWidget() {
-  const navigate = useNavigate()
   const showToast = useToastStore((s) => s.show)
 
   // Dismissals are client-side only — there is no server-side "hide this suggestion".
@@ -165,10 +164,7 @@ export function PeopleYouMayKnowWidget() {
   return (
     <WidgetShell>
       <Section>
-        <SectionHeader
-          title="People you may know"
-          onSeeAll={() => navigate(PATHS.EXPLORE + '?type=people')}
-        />
+        <SectionHeader title="People you may know" />
 
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

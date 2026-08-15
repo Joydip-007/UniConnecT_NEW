@@ -43,34 +43,16 @@ export function Section({
   )
 }
 
-export function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+/**
+ * Title only — deliberately no "See all" escape hatch. Every page a widget could link
+ * out to (`/events`, `/explore`) is already a left-rail row, so the button was the rail
+ * repeated inside the rail's own neighbour. A widget's job is the specific items it
+ * lists; getting to the full list is the left rail's job.
+ */
+export function SectionHeader({ title }: { title: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-      }}
-    >
+    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
       <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</span>
-      {onSeeAll && (
-        <button
-          onClick={onSeeAll}
-          className="press-feedback"
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--uc-indigo-l)',
-            padding: 0,
-          }}
-        >
-          See all
-        </button>
-      )}
     </div>
   )
 }

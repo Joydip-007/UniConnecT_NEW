@@ -16,8 +16,6 @@ vi.mock('@/components/rightRail', () => ({
     'profile-progress': () => <div>widget:profile-progress</div>,
     'people-you-may-know': () => <div>widget:people-you-may-know</div>,
     'upcoming-events': () => <div>widget:upcoming-events</div>,
-    'mentee-requests': () => <div>widget:mentee-requests</div>,
-    'platform-today': () => <div>widget:platform-today</div>,
     'trending-tags': () => <div>widget:trending-tags</div>,
   },
 }))
@@ -32,8 +30,6 @@ const ALL_KEYS: WidgetKey[] = [
   'profile-progress',
   'people-you-may-know',
   'upcoming-events',
-  'mentee-requests',
-  'platform-today',
   'trending-tags',
 ]
 
@@ -82,14 +78,20 @@ describe('RightSidebar', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('does not leak student payload into the alumni rail', () => {
-    renderFor('alumni')
-    expect(screen.queryByText('widget:profile-progress')).not.toBeInTheDocument()
-    expect(screen.getByText('widget:mentee-requests')).toBeInTheDocument()
-  })
-
-  it('gives faculty no mentorship widget, since the module grants it no write access', () => {
-    renderFor('faculty')
-    expect(screen.queryByText('widget:mentee-requests')).not.toBeInTheDocument()
+  it('carries only widgets addressing something the left rail cannot reach', () => {
+    // Every surviving widget opens a *specific* event, person or tag. The two that were
+    // dropped (mentee-requests, platform-today) had no destination that was not already
+    // a rail row, so they were the left rail rendered a second time on the right.
+    const itemLevel = new Set<WidgetKey>([
+      'people-you-may-know',
+      'upcoming-events',
+      'trending-tags',
+      'profile-progress',
+    ])
+    roles.forEach((role) => {
+      ROLE_SHELL[role].rightRail.forEach((key) => {
+        expect(itemLevel.has(key), `${role} lists ${key}, which leads nowhere new`).toBe(true)
+      })
+    })
   })
 })

@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { PATHS } from '@/router/paths'
-import { RAILS } from './leftSidebar.config'
+import { RAILS, isRailRowActive } from './leftSidebar.config'
 
 interface MoreItem {
   icon: LucideIcon
@@ -60,22 +60,9 @@ export function MobileBottomNav() {
       })),
     )
 
-  // Mirrors the rail's matcher: rows can share a base path and differ only by a tab
-  // query param, so at most one slot may ever read as active.
-  function isActive(to: string): boolean {
-    const [rawPath, rawQuery] = to.split('?')
-    const base = rawPath.split(':')[0].replace(/\/$/, '')
-    const pathMatches = base === PATHS.FEED
-      ? pathname === base
-      : pathname === base || pathname.startsWith(base + '/')
-    if (!pathMatches) return false
-    if (!rawQuery) return true
-
-    const current = new URLSearchParams(search)
-    return [...new URLSearchParams(rawQuery)].every(
-      ([key, value]) => !current.has(key) || current.get(key) === value,
-    )
-  }
+  // The same matcher the desktop rail uses, so the two navigations can never disagree
+  // about which row is lit.
+  const isActive = (to: string) => isRailRowActive(to, pathname, search)
 
   const activeBarIndex = items.findIndex((item) => isActive(item.path))
   const moreActive = activeBarIndex === -1 && moreItems.some((m) => !m.external && isActive(m.path))
@@ -158,11 +145,14 @@ export function MobileBottomNav() {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                color: active ? 'var(--uc-orange-l)' : 'var(--text-tertiary)',
+                // Same indigo the desktop rail's active pill uses — one navigation should
+                // not change identity colour just because the viewport narrowed.
+                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-tertiary)',
                 transition: 'transform 120ms var(--ease-out-strong), color 120ms ease',
                 position: 'relative',
                 padding: '6px 0',
                 minHeight: 44,
+                minWidth: 0,
               }}
             >
               <div style={{ position: 'relative' }}>
@@ -192,7 +182,7 @@ export function MobileBottomNav() {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: 12, fontWeight: active ? 500 : 400, lineHeight: 1 }}>
+              <span className="mobile-nav-label" style={{ fontSize: 12, fontWeight: active ? 500 : 400, lineHeight: 1 }}>
                 {label}
               </span>
             </button>
@@ -217,7 +207,7 @@ export function MobileBottomNav() {
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            color: moreActive ? 'var(--uc-orange-l)' : 'var(--text-tertiary)',
+            color: moreActive ? 'var(--uc-indigo-xl)' : 'var(--text-tertiary)',
             transition: 'transform 120ms var(--ease-out-strong), color 120ms ease',
             position: 'relative',
             padding: '6px 0',
@@ -329,7 +319,7 @@ export function MobileBottomNav() {
                     border: 'none',
                     borderRadius: 'var(--r-md)',
                     cursor: 'pointer',
-                    color: active ? 'var(--uc-orange-l)' : 'var(--text-secondary)',
+                    color: active ? 'var(--uc-indigo-xl)' : 'var(--text-tertiary)',
                   }}
                 >
                   <div
@@ -338,8 +328,8 @@ export function MobileBottomNav() {
                       width: 44,
                       height: 44,
                       borderRadius: 'var(--r-md)',
-                      background: active ? 'var(--uc-orange-bg)' : 'var(--surface-raised)',
-                      border: '0.5px solid ' + (active ? 'var(--uc-orange-bdr)' : 'var(--border-default)'),
+                      background: active ? 'var(--uc-indigo-bg)' : 'var(--surface-raised)',
+                      border: '0.5px solid ' + (active ? 'var(--uc-indigo-bdr)' : 'var(--border-default)'),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

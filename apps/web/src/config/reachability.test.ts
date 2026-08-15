@@ -50,7 +50,6 @@ function shellDestinations(role: UserRole): Set<string> {
   rail.contextual.forEach((rule) => add(rule.to))
   rail.tools.forEach((tool) => tool.to && add(tool.to))
   add(ROLE_SHELL[role].home)
-  add(ROLE_SHELL[role].primaryAction.to)
   return out
 }
 

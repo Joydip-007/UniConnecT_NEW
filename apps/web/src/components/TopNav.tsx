@@ -15,8 +15,8 @@ import { BrandLogo } from '@/components/BrandLogo'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { popoverIn } from '@/lib/motion'
 import { useScrollDirection } from '@/hooks/useScrollDirection'
-import { ROLE_SHELL } from '@/config/roleShell'
-import { RAILS } from '@/components/leftSidebar.config'
+import { ROLE_SHELL, SEARCH_PLACEHOLDER } from '@/config/roleShell'
+import { RAILS, TOPNAV_ICON_ROUTES } from '@/components/leftSidebar.config'
 
 const iconBtnStyle: React.CSSProperties = {
   position: 'relative',
@@ -202,7 +202,10 @@ export function TopNav() {
   const color = user ? avatarColor(user.id) : 'var(--uc-indigo)'
   const hidden = scrollDir === 'down' && !menuOpen && !notifOpen && !msgOpen && !panelOpen && !searchFocused
   const shell = ROLE_SHELL[user?.role ?? 'student']
-  const secondary = RAILS[user?.role ?? 'student'].secondary
+  // Minus whatever already has its own badged icon a few pixels to the left.
+  const secondary = RAILS[user?.role ?? 'student'].secondary.filter(
+    (row) => !TOPNAV_ICON_ROUTES.includes(row.to),
+  )
 
   return (
     <header
@@ -230,27 +233,6 @@ export function TopNav() {
       >
         <BrandLogo height={36} />
       </a>
-
-      {/* Primary action — role-aware */}
-      <button
-        type="button"
-        onClick={() => navigate(shell.primaryAction.to)}
-        className="press-feedback topnav-mobile-hidden"
-        style={{
-          flexShrink: 0,
-          height: 36,
-          padding: '0 16px',
-          borderRadius: 'var(--r-pill)',
-          border: 'none',
-          background: 'var(--uc-indigo)',
-          color: 'var(--on-accent)',
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: 'pointer',
-        }}
-      >
-        {shell.primaryAction.label}
-      </button>
 
       {/* Center: search */}
       <div className="topnav-search-slot" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
@@ -281,7 +263,7 @@ export function TopNav() {
             aria-controls="search-panel"
             aria-autocomplete="list"
             aria-haspopup="listbox"
-            placeholder={compactSearch ? 'Search' : shell.searchPlaceholder}
+            placeholder={compactSearch ? 'Search' : SEARCH_PLACEHOLDER}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value)

@@ -114,8 +114,6 @@ function EventMini({ event, isLast = false }: { event: EventItem; isLast?: boole
 
 /** Hides entirely when nothing is scheduled from today onward. */
 export function UpcomingEventsWidget() {
-  const navigate = useNavigate()
-
   const { data: events, isLoading } = useQuery({
     queryKey: ['events', 'list', { from: 'today' }],
     queryFn: () => {
@@ -134,7 +132,7 @@ export function UpcomingEventsWidget() {
   return (
     <WidgetShell>
       <Section withTopDivider>
-        <SectionHeader title="Upcoming events" onSeeAll={() => navigate(PATHS.EVENTS)} />
+        <SectionHeader title="Upcoming events" />
 
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

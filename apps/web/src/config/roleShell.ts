@@ -6,13 +6,15 @@ import { PATHS } from '@/router/paths'
  * role's widget set is a data decision made here rather than a branch inside
  * `RightSidebar`. Every widget self-hides when its query comes back empty — a role that
  * lists three may legitimately render fewer, and that is the correct resting state.
+ *
+ * A widget earns its place by addressing something the left rail cannot: a *specific*
+ * event, person or tag. A widget whose every row leads back to a page the rail already
+ * owns is that rail row a second time, in a second place, and belongs on the left only.
  */
 export type WidgetKey =
   | 'profile-progress'
   | 'people-you-may-know'
   | 'upcoming-events'
-  | 'mentee-requests'
-  | 'platform-today'
   | 'trending-tags'
 
 /**
@@ -51,11 +53,17 @@ export function statsFor(role: UserRole, isOwnProfile: boolean): [StatSpec, Stat
   return pair.map((s) => (s.ownerOnly ? PUBLIC_STAT : s)) as [StatSpec, StatSpec]
 }
 
+/**
+ * Search is global — every query is routed to `/explore?q=`, and the endpoint behind it
+ * spans profiles, posts, jobs, events and groups for every role alike. The placeholder
+ * is therefore a single string rather than a per-role field: a manifest key that never
+ * varies by role is a promise of variance the shell does not actually keep.
+ */
+export const SEARCH_PLACEHOLDER = 'Search people, posts, events, lost & found'
+
 export interface RoleShell {
   /** Where '/' (once authenticated) and the top-nav logo resolve to. */
   home: string
-  primaryAction: { label: string; to: string }
-  searchPlaceholder: string
   /** Rendered top to bottom. Capped at four; see `roleShell.test.ts`. */
   rightRail: WidgetKey[]
   /** The profile card's two numbers, in the rail and on the profile header. */
@@ -92,8 +100,6 @@ export function isRouteAllowedForRole(role: UserRole, pathname: string): boolean
 export const ROLE_SHELL: Record<UserRole, RoleShell> = {
   student: {
     home: PATHS.FEED,
-    primaryAction: { label: 'Post', to: PATHS.FEED },
-    searchPlaceholder: 'Search people, posts, events, lost & found',
     // Progress disappears for good once the profile is complete, so the steady state
     // for an established student is the spec's three.
     rightRail: ['profile-progress', 'people-you-may-know', 'upcoming-events', 'trending-tags'],
@@ -104,10 +110,12 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
   },
   alumni: {
     home: PATHS.FEED,
-    primaryAction: { label: 'Post a job', to: PATHS.JOBS },
-    searchPlaceholder: 'Search people, posts, events, lost & found',
-    // Alumni contribute more than they browse, so the requests waiting on them lead.
-    rightRail: ['mentee-requests', 'people-you-may-know', 'upcoming-events'],
+    // No mentee-requests widget: every row in it — and its See all — went to
+    // /mentorship, which is the `mentees` fixed row, and its count came from the same
+    // query the contextual "Mentee requests" row already reads. One number, one
+    // destination, rendered twice on one screen. The rail keeps what the left cannot
+    // address: a specific person, a specific event, a specific tag.
+    rightRail: ['people-you-may-know', 'upcoming-events', 'trending-tags', 'profile-progress'],
     stats: [
       { key: 'connections', label: 'connections' },
       { key: 'mentees', label: 'mentees' },
@@ -115,11 +123,12 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
   },
   faculty: {
     home: PATHS.FEED,
-    primaryAction: { label: 'Announce', to: PATHS.NEWS },
-    searchPlaceholder: 'Search people, posts, events, lost & found',
     // No mentorship widget: the module gives faculty no write access anywhere, so a
     // request queue it cannot action would violate the render-only-if-actionable rule.
-    rightRail: ['upcoming-events', 'people-you-may-know', 'trending-tags'],
+    // Progress trails the duty widgets rather than leading as it does for students —
+    // `/users/me/progress` is own-profile, so every role can answer it, and the widget
+    // retires itself once complete.
+    rightRail: ['upcoming-events', 'people-you-may-know', 'trending-tags', 'profile-progress'],
     // Sections, not groups, are the unit of navigation for faculty.
     stats: [
       { key: 'sections', label: 'sections' },
@@ -128,9 +137,12 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
   },
   admin: {
     home: PATHS.ADMIN,
-    primaryAction: { label: 'Broadcast', to: PATHS.ADMIN },
-    searchPlaceholder: 'Search people, posts, events, lost & found',
-    rightRail: ['platform-today', 'people-you-may-know', 'trending-tags'],
+    // No platform-today widget: all four of its counters resolved to `?tab=reports`,
+    // `?tab=users` or /feed — every one a fixed row — its See all went to the Insights
+    // row, and its report count came from the same `['admin','stats']` query the
+    // contextual "Escalated report" row already reads. Events replace it: admin can
+    // create them (`requireRole('faculty','admin')`) and each card opens a specific one.
+    rightRail: ['upcoming-events', 'people-you-may-know', 'trending-tags', 'profile-progress'],
     stats: [
       { key: 'members', label: 'members' },
       { key: 'verifications', label: 'verifications' },
@@ -138,8 +150,6 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
   },
   driver: {
     home: PATHS.SHUTTLE_DRIVE,
-    primaryAction: { label: 'Start trip', to: PATHS.SHUTTLE_DRIVE },
-    searchPlaceholder: 'Search people, posts, events, lost & found',
     // A driver reaches the shell only on /news and /shuttle. Its spec'd widgets (live
     // map, week's totals) have no endpoint yet, and the member widgets are all surfaces
     // it cannot act on — so the rail stays empty rather than borrowing student payload.
