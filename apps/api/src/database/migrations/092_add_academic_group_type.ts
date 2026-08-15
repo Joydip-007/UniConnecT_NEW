@@ -25,6 +25,13 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   await knex.raw('ALTER TABLE groups DROP CONSTRAINT IF EXISTS groups_type_check')
+
+  // Fold the type being removed back to a permitted one before narrowing the CHECK,
+  // or any academic group makes the constraint unsatisfiable and the rollback fails.
+  // Converted rather than deleted: dropping the groups would cascade into their
+  // members and posts, losing far more than the type flag this migration added.
+  await knex('groups').where({ type: 'academic' }).update({ type: 'other' })
+
   await knex.raw(
     "ALTER TABLE groups ADD CONSTRAINT groups_type_check CHECK (type IN ('department','club','batch','research','interest','other'))",
   )

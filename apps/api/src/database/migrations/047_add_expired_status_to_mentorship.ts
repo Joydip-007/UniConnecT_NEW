@@ -16,8 +16,14 @@ export async function up(knex: Knex) {
 export async function down(knex: Knex) {
   await knex.raw(`
     ALTER TABLE mentorship_requests
-    DROP CONSTRAINT mentorship_requests_status_check
+    DROP CONSTRAINT IF EXISTS mentorship_requests_status_check
   `)
+
+  // Fold the status being removed onto a permitted one before narrowing the CHECK.
+  // The 7-day auto-expiry job produces these rows in normal operation, so skipping
+  // this makes the rollback fail on any environment that has run for a week.
+  // 'declined' is the closest surviving state: the request ended without being accepted.
+  await knex('mentorship_requests').where({ status: 'expired' }).update({ status: 'declined' })
 
   await knex.raw(`
     ALTER TABLE mentorship_requests
