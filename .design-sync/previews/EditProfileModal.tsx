@@ -1,4 +1,4 @@
-import { EditProfileModal } from 'web';
+import { EditProfileModal, useAuthStore } from 'web';
 
 
 // Force framer-motion's useReducedMotion() to true so animated enter/exit
@@ -18,15 +18,53 @@ if (typeof window !== 'undefined') {
   window.matchMedia = (() => mql) as typeof window.matchMedia;
 }
 
-// EditProfileModal reads from useAuthStore().user, not props. An attempt to
-// seed it via a `useAuthStore` extraEntries export (mirroring dsQueryClient)
-// was tried and reverted — esbuild bundles extraEntries as a separate module
-// graph from the component synth-entry, so the two `useAuthStore` references
-// are different zustand store instances (confirmed: the built bundle contains
-// two separate `create(...)` calls, one renamed `useAuthStore2`). Unlike
-// TanStack Query, zustand has no context/provider layer to unify them, so this
-// needs a real build-system fix (single shared esbuild module graph across all
-// entries), not a preview-authoring workaround — see NOTES.md systemic issue #5.
+// EditProfileModal reads from useAuthStore().user, not props, and returns null
+// without one. Seed the store from the SHARED 'web' export, which re-exports it
+// from inside the synth entry (src/components/ds-auth-store.tsx) — that is the
+// same store instance the component subscribes to.
+//
+// Seeding via `extraEntries` does NOT work and should not be retried: the synth
+// entry reaches every file through the apps/web/node_modules/web symlink and
+// `@/`-alias imports resolve against that same prefix, but esbuild realpaths an
+// extraEntries path to apps/web/src/... — a textually different path for the
+// same file, so zustand's create() runs twice and the exported store is not the
+// one components read.
+//
+// setState, not setAuth(): the latter writes localStorage and opens a socket.
+useAuthStore.setState({
+  isLoading: false,
+  accessToken: 'ds-preview-token',
+  user: {
+    id: 'u-nabila',
+    username: 'nabila',
+    email: 'nabila@uiu.ac.bd',
+    role: 'student',
+    universityId: 'uni-uiu',
+    isVerified: true,
+    themePreference: 'dark',
+    profile: {
+      fullName: 'Nabila Rahman',
+      bio: 'Final-year CSE student. Interested in design systems and accessible interfaces.',
+      avatarUrl: null,
+      coverUrl: null,
+      headline: 'CSE undergrad, batch 2026',
+      department: 'Computer Science & Engineering',
+      batchYear: '2026',
+      linkedinUrl: 'https://linkedin.com/in/nabila-rahman',
+      phone: null,
+      skills: ['React', 'TypeScript', 'Figma'],
+      isOpenToWork: true,
+      isOpenToMentorship: false,
+      mentorshipPoints: 0,
+      maxMentees: 3,
+      location: 'Dhaka, Bangladesh',
+      websiteUrl: null,
+      githubUrl: 'https://github.com/nabila',
+      portfolioUrl: null,
+      isOpenToMsg: true,
+    },
+  },
+});
 
 export function Open() {
   return (

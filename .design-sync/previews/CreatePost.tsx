@@ -1,4 +1,45 @@
-import { CreatePost, dsQueryClient } from 'web';
+import { CreatePost, dsQueryClient, useAuthStore } from 'web';
+
+// CreatePost hard-gates on `if (!user) return null`. Seed the store from the
+// SHARED 'web' export — that re-export lives inside the synth entry, so it is
+// the same store instance the component subscribes to. (An `extraEntries` copy
+// is NOT: esbuild realpaths it to a different module record and seeding does
+// nothing.) setState, not setAuth() — the latter writes localStorage and opens
+// a socket.
+useAuthStore.setState({
+  isLoading: false,
+  accessToken: 'ds-preview-token',
+  user: {
+    id: 'u-nabila',
+    username: 'nabila',
+    email: 'nabila@uiu.ac.bd',
+    role: 'student',
+    universityId: 'uni-uiu',
+    isVerified: true,
+    themePreference: 'dark',
+    profile: {
+      fullName: 'Nabila Rahman',
+      bio: null,
+      avatarUrl: null,
+      coverUrl: null,
+      headline: 'CSE undergrad, batch 2026',
+      department: 'Computer Science & Engineering',
+      batchYear: '2026',
+      linkedinUrl: null,
+      phone: null,
+      skills: [],
+      isOpenToWork: false,
+      isOpenToMentorship: false,
+      mentorshipPoints: 0,
+      maxMentees: 3,
+      location: 'Dhaka',
+      websiteUrl: null,
+      githubUrl: null,
+      portfolioUrl: null,
+      isOpenToMsg: true,
+    },
+  },
+});
 
 // CreatePost dedupes a first-post-hint query at ['users','me','progress'].
 // Seed it so the composer's collapsed trigger renders without hanging in
