@@ -19,10 +19,15 @@ export interface MyDrafts {
   counts: Record<DraftKind, number>
 }
 
-export function useMyDrafts() {
+/**
+ * `enabled` exists for the left rail, which mounts on every page: roles with no
+ * authoring surface (driver) have no drafts row, so they should not pay the request.
+ */
+export function useMyDrafts(enabled = true) {
   return useQuery({
     queryKey: ['drafts', 'mine'],
     queryFn: () => api.get<{ data: MyDrafts }>('/me/drafts').then((r) => r.data.data),
     staleTime: 15_000,
+    enabled,
   })
 }

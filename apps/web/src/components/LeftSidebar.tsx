@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, useReducedMotion } from 'framer-motion'
@@ -8,11 +9,11 @@ import { PanelLeftClose, PanelLeftOpen, ExternalLink, MoreHorizontal, type Lucid
 import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
-import { useMyDrafts } from '@/features/drafts/hooks/useMyDrafts'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
-import { RAILS, TONE_TOKENS, type RailContext } from './leftSidebar.config'
+import { RAILS, TONE_TOKENS } from './leftSidebar.config'
+import { useRailContext } from './useRailContext'
 import { ROLE_SHELL } from '@/config/roleShell'
 
 // ── NavItem ─────────────────────────────────────────────
@@ -302,7 +303,9 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
     staleTime: 60_000,
   })
 
-  const { data: drafts } = useMyDrafts()
+  // Every contextual signal, gated per role so no request 403s for a role that
+  // cannot see it. Verifications reuse the profile query already fetched above.
+  const ctx = useRailContext(role, user?.id, profileData?.stats.verifications)
 
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const avatarBg = user ? avatarColor(user.id) : 'var(--uc-indigo)'
@@ -344,16 +347,31 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
   // and two highlighted rows would be wrong regardless of the animation.
   const activeFixedIndex = rail.fixed.findIndex((row) => isActive(row.to))
 
-  const ctx: RailContext = { draftCount: drafts?.items.length ?? 0 }
   const active = rail.contextual
     .map((rule) => {
       const result = rule.when(ctx)
       return result ? { rule, ...result } : null
     })
     .filter((v): v is { rule: (typeof rail.contextual)[number]; meta: string; rank: number } => v != null)
-    .sort((a, b) => b.rank - a.rank)
-  const visibleContextual = active.slice(0, 2)
-  const overflowCount = active.length - visibleContextual.length
+    // Pinned rows sort ahead of everything so the 2-row cap can never bury one in
+    // the `+n more` overflow; below that it is plain tone rank, high to low.
+    .sort((a, b) => Number(b.rule.pinned ?? false) - Number(a.rule.pinned ?? false) || b.rank - a.rank)
+  /**
+   * Rows must not shuffle under a pointer that is already aiming at one, so while the
+   * zone is hovered we keep rendering the list as it was on entry and let the live one
+   * take over on mouseleave.
+   */
+  const [ctxHovered, setCtxHovered] = useState(false)
+  const frozenContextual = useRef<typeof active | null>(null)
+  if (ctxHovered) {
+    if (frozenContextual.current === null) frozenContextual.current = active
+  } else {
+    frozenContextual.current = null
+  }
+  const displayedContextual = frozenContextual.current ?? active
+
+  const visibleContextual = displayedContextual.slice(0, 2)
+  const overflowCount = displayedContextual.length - visibleContextual.length
 
   return (
     <aside
@@ -520,7 +538,11 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
 
       {/* Contextual zone — 0 to 2 rows, vanishes with its condition */}
       {visibleContextual.length > 0 && (
-        <div style={{ padding: '2px 2px', flexShrink: 0 }}>
+        <div
+          style={{ padding: '2px 2px', flexShrink: 0 }}
+          onMouseEnter={() => setCtxHovered(true)}
+          onMouseLeave={() => setCtxHovered(false)}
+        >
           {!collapsed && (
             <div
               style={{
