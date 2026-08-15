@@ -92,7 +92,7 @@ function UsersStatCard({ total, active }: { total: number; active: number }) {
       borderRadius: 'var(--r-lg)',
       padding: '20px 24px',
     }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 10 }}>
         Total users
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
@@ -131,7 +131,7 @@ function ReportsStatCard({ count }: { count: number }) {
       padding: '20px 24px',
       transition: 'background 0.3s, border-color 0.3s',
     }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 10 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 10 }}>
         Open reports
       </div>
       <div style={{ fontSize: 40, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>
@@ -170,7 +170,7 @@ function ContentMetricsStrip({ stats }: { stats: Stats }) {
           flexDirection: 'column',
           gap: 6,
         }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em' }}>
             {label}
           </div>
           <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>

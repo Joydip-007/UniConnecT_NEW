@@ -437,7 +437,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
   const valid = editorValid(e)
   const isNew = e.routeId === null
 
-  const labelSt: React.CSSProperties = { fontSize: 11, fontWeight: 500, color: 'var(--text-tertiary)', letterSpacing: '0.04em', marginBottom: 4 }
+  const labelSt: React.CSSProperties = { fontSize: 11, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 4 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
