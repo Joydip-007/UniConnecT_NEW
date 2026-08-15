@@ -6,8 +6,11 @@ import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
 import { CreateGroupModal, GroupCard } from '@/features/groups'
 import type { Group, GroupType } from '@/features/groups'
+import ConnectionsPage from '@/pages/ConnectionsPage'
+import { useAuthStore } from '@/stores/authStore'
 
 type FilterType = 'all' | GroupType
+type Section = 'groups' | 'people' | 'sections'
 
 interface GroupsResponse {
   items: Group[]
@@ -26,6 +29,44 @@ const FILTER_TABS: { label: string; value: FilterType }[] = [
 
 export default function GroupsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // Faculty teach sections, so academic groups are the unit of navigation for them and
+  // get their own tab — it is what the rail's "My sections" row points at. Nobody else
+  // sees it: academic groups are faculty-created, so the tab would be empty elsewhere.
+  const isFaculty = useAuthStore((s) => s.user?.role) === 'faculty'
+  const defaultSection: Section = isFaculty ? 'sections' : 'groups'
+
+  // The rail row is "Groups & people", so connections fold in here as a section.
+  // `/connections` stays routable for deep links and for the avatar menu.
+  const rawSection = searchParams.get('section')
+  const section: Section =
+    rawSection === 'people'
+      ? 'people'
+      : rawSection === 'sections' && isFaculty
+      ? 'sections'
+      : rawSection === 'groups'
+      ? 'groups'
+      : defaultSection
+
+  const SECTION_TABS: { key: Section; label: string }[] = isFaculty
+    ? [
+        { key: 'sections', label: 'My sections' },
+        { key: 'groups', label: 'Groups' },
+        { key: 'people', label: 'People' },
+      ]
+    : [
+        { key: 'groups', label: 'Groups' },
+        { key: 'people', label: 'People' },
+      ]
+
+  function setSection(next: Section) {
+    const params = new URLSearchParams(searchParams)
+    // Keep the role's own default out of the URL so a shared link stays clean.
+    if (next === defaultSection) params.delete('section')
+    else params.set('section', next)
+    setSearchParams(params, { replace: true })
+  }
+
   const rawType = searchParams.get('type') as FilterType | null
   const activeType: FilterType =
     rawType !== null && FILTER_TABS.some((t) => t.value === rawType) ? rawType : 'all'
@@ -54,20 +95,25 @@ export default function GroupsPage() {
 
   const sentinelRef = useRef<HTMLDivElement>(null)
 
+  // The sections view is the academic slice, so the type filter is fixed there rather
+  // than offered — a "Club" tab inside "My sections" would contradict the tab itself.
+  const effectiveType: FilterType = section === 'sections' ? 'academic' : activeType
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<GroupsResponse>({
-    queryKey: ['groups', 'list', { type: activeType, search: debounced }],
+    queryKey: ['groups', 'list', { type: effectiveType, search: debounced }],
     queryFn: ({ pageParam }) =>
       api
         .get<{ data: GroupsResponse }>('/groups', {
           params: {
             page: pageParam,
-            ...(activeType !== 'all' && { type: activeType }),
+            ...(effectiveType !== 'all' && { type: effectiveType }),
             ...(debounced && { search: debounced }),
           },
         })
         .then((r) => r.data.data),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
+    enabled: section !== 'people',
   })
 
   useEffect(() => {
@@ -102,6 +148,49 @@ export default function GroupsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Section switcher — "Groups & people" in the rail covers both */}
+      <nav
+        aria-label="Groups sections"
+        style={{
+          display: 'flex',
+          gap: 2,
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '4px 6px',
+        }}
+      >
+        {SECTION_TABS.map(({ key, label }) => {
+          const active = section === key
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSection(key)}
+              aria-current={active ? 'page' : undefined}
+              style={{
+                padding: '7px 14px',
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                borderRadius: 'var(--r-pill)',
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                transition: 'background 150ms, color 150ms',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </nav>
+
+      {section === 'people' && <ConnectionsPage />}
+
+      {(section === 'groups' || section === 'sections') && (
+        <>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <div
           style={{
@@ -137,12 +226,14 @@ export default function GroupsPage() {
       </div>
 
       <nav
+        aria-label="Group types"
+        hidden={section === 'sections'}
         style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-lg)',
           padding: '4px 6px',
-          display: 'flex',
+          display: section === 'sections' ? 'none' : 'flex',
           gap: 2,
           overflowX: 'auto',
           scrollbarWidth: 'none',
@@ -239,6 +330,8 @@ export default function GroupsPage() {
       )}
 
       {createOpen && <CreateGroupModal onClose={() => setCreateOpen(false)} />}
+        </>
+      )}
     </div>
   )
 }

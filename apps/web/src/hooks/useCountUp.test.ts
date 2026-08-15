@@ -10,6 +10,10 @@ describe('useCountUp', () => {
 
   it('reaches the target', async () => {
     const { result } = renderHook(() => useCountUp(42, 80))
-    await waitFor(() => expect(result.current).toBe(42), { timeout: 2000 })
+    // The 80ms animation is driven by requestAnimationFrame, which jsdom backs with a
+    // timer. Under a loaded suite those callbacks get starved well past the animation's
+    // own duration, so the patience here is about scheduling, not about the assertion —
+    // the hook must still land on exactly 42.
+    await waitFor(() => expect(result.current).toBe(42), { timeout: 10_000 })
   })
 })

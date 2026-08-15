@@ -10,7 +10,7 @@ import { moderationService } from '../moderation/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
 import { addUserAttachments, getAttachmentsFor, getAttachmentsForMany, removeAttachments } from '../content-sync/attachments'
 
-type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
+type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo' | 'job_promo'
 type ReactionType = 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry'
 
 // ── Hashtag helpers ───────────────────────────────────────────────────────────
@@ -126,6 +126,16 @@ export class FeedService {
     // Moderation: never surface posts from blocked (either direction) or muted authors.
     const hiddenAuthorIds = await moderationService.getHiddenAuthorIds(userId)
 
+    // scope=my_groups restricts the feed to groups the caller actually belongs to.
+    // Applied as a subquery on both the count and the rows so pagination stays honest.
+    const applyScope = (builder: Knex.QueryBuilder) => {
+      if (query.scope !== 'my_groups') return
+      builder.whereIn(
+        'posts.group_id',
+        db('group_members').select('group_id').where('group_members.user_id', userId),
+      )
+    }
+
     // Drafts (is_published = false) never appear in the public feed — only in the author's Drafts view.
     // Archived posts (archived_at set) are likewise hidden from every public list.
     const countQuery = db('posts')
@@ -135,6 +145,7 @@ export class FeedService {
     if (hiddenAuthorIds.length) countQuery.whereNotIn('posts.author_id', hiddenAuthorIds)
     if (query.type) countQuery.andWhere('posts.type', query.type)
     if (query.authorId) countQuery.andWhere('posts.author_id', query.authorId)
+    applyScope(countQuery)
     // "Top" only ranks the recent window, so the count must match.
     if (isTop) {
       countQuery.andWhereRaw(`posts.created_at > now() - interval '${FEED_RANKING.WINDOW_DAYS} days'`)
@@ -152,6 +163,7 @@ export class FeedService {
         if (hiddenAuthorIds.length) builder.whereNotIn('posts.author_id', hiddenAuthorIds)
         if (query.type) builder.andWhere('posts.type', query.type)
         if (query.authorId) builder.andWhere('posts.author_id', query.authorId)
+        applyScope(builder)
       })
       .orderBy('posts.is_pinned', 'desc')
 
@@ -1250,9 +1262,17 @@ function assertCanMutatePost(context: AuthContext, authorId: string) {
 }
 
 function assertCanUsePostType(role: UserRole, type: PostType) {
-  if (type !== 'announcement') return
-  if (role === 'faculty' || role === 'admin') return
-  throw forbidden('Only faculty and admins can create announcements', 'ANNOUNCEMENT_FORBIDDEN')
+  if (type === 'announcement') {
+    if (role === 'faculty' || role === 'admin') return
+    throw forbidden('Only faculty and admins can create announcements', 'ANNOUNCEMENT_FORBIDDEN')
+  }
+  // Sharing an opportunity in the feed follows the job board's own permission set
+  // (`requireRole('alumni','faculty','admin')` on POST /jobs) — a student browsing jobs
+  // should not be able to post one, in either surface.
+  if (type === 'job_promo') {
+    if (role === 'alumni' || role === 'faculty' || role === 'admin') return
+    throw forbidden('Only alumni, faculty and admins can post job opportunities', 'JOB_POST_FORBIDDEN')
+  }
 }
 
 /**

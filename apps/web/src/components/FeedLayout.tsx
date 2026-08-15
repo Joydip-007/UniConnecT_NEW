@@ -12,6 +12,7 @@ import { useNotificationsSocket } from '@/features/notifications'
 import { usePresenceHeartbeat } from '@/features/presence'
 import { useAchievementSocket } from '@/features/learning'
 import { useSidebarRailPreference } from '@/hooks/useSidebarRailPreference'
+import { ROLE_SHELL } from '@/config/roleShell'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 
 const bannerStyle: React.CSSProperties = {
@@ -31,6 +32,7 @@ const bannerStyle: React.CSSProperties = {
 
 export function FeedLayout() {
   const userId = useAuthStore((s) => s.user?.id)
+  const role = useAuthStore((s) => s.user?.role)
   const { connected, hasConnected } = useSocketStore()
   const { isCollapsed, toggleCollapsed } = useSidebarRailPreference()
   const reduced = useReducedMotion()
@@ -58,6 +60,11 @@ export function FeedLayout() {
   }, [])
 
   const showReconnecting = hasConnected && !connected
+
+  // Every role runs on the same grid, never a forked layout — only the payload differs.
+  // A role whose manifest lists no widgets (driver) drops the third column rather than
+  // holding an empty one, and the centre gets that width instead.
+  const wide = ROLE_SHELL[role ?? 'student'].rightRail.length === 0
 
   return (
     <div style={{ background: 'var(--surface-page)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -94,16 +101,22 @@ export function FeedLayout() {
       <TopNav />
       <MobileBottomNav />
       <ToastHost />
-      <div className="feed-layout-grid" data-left-sidebar={isCollapsed ? 'collapsed' : 'expanded'}>
+      <div
+        className="feed-layout-grid"
+        data-left-sidebar={isCollapsed ? 'collapsed' : 'expanded'}
+        data-wide={wide || undefined}
+      >
         <div className="feed-layout-left">
           <LeftSidebar collapsed={isCollapsed} onToggleCollapsed={toggleCollapsed} />
         </div>
         <main className="feed-layout-main" style={{ minWidth: 0, paddingTop: 18 }}>
           <Outlet />
         </main>
-        <div className="feed-layout-right">
-          <RightSidebar />
-        </div>
+        {!wide && (
+          <div className="feed-layout-right">
+            <RightSidebar />
+          </div>
+        )}
       </div>
     </div>
   )

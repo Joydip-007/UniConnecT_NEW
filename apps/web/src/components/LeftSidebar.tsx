@@ -1,39 +1,20 @@
+import { useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, useReducedMotion } from 'framer-motion'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 import { useCountUp } from '@/hooks/useCountUp'
 import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
-import {
-  Home,
-  Compass,
-  Users,
-  Network,
-  Calendar,
-  Briefcase,
-  Newspaper,
-  MessageSquare,
-  Bus,
-  PackageSearch,
-  FileText,
-  UserCircle2,
-  BookOpen,
-  BarChart2,
-  ExternalLink,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ShieldCheck,
-  Handshake,
-  GraduationCap,
-  type LucideIcon,
-} from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, ExternalLink, MoreHorizontal, type LucideIcon } from 'lucide-react'
 import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
-import { useNotificationsStore } from '@/stores/notificationsStore'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
+import { RAILS, TONE_TOKENS } from './leftSidebar.config'
+import { useRailContext } from './useRailContext'
+import { ROLE_SHELL } from '@/config/roleShell'
 
 // ── NavItem ─────────────────────────────────────────────
 
@@ -87,7 +68,19 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
             borderRadius: 'var(--r-sm)',
             zIndex: 0,
           }}
-        />
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 6,
+              bottom: 6,
+              width: 2,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--uc-indigo)',
+            }}
+          />
+        </motion.div>
       )}
 
       <span
@@ -112,7 +105,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: 'var(--uc-orange)',
+                background: 'var(--uc-indigo)',
                 border: '1.5px solid var(--surface-card)',
               }}
             />
@@ -176,6 +169,54 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
   )
 }
 
+// ── ContextualRow ────────────────────────────────────────
+
+interface ContextualRowProps {
+  icon: LucideIcon
+  label: string
+  meta: string
+  tone: keyof typeof TONE_TOKENS
+  collapsed?: boolean
+  onClick: () => void
+}
+
+function ContextualRow({ icon: Icon, label, meta, tone, collapsed = false, onClick }: ContextualRowProps) {
+  const { bg, fg } = TONE_TOKENS[tone]
+  return (
+    <li style={{ listStyle: 'none' }}>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={collapsed ? `${label}, ${meta}` : undefined}
+        title={collapsed ? `${label}, ${meta}` : undefined}
+        className="press-feedback"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : undefined,
+          gap: collapsed ? 0 : 10,
+          width: '100%',
+          minHeight: 44,
+          padding: collapsed ? '8px 0' : '8px 10px',
+          background: bg,
+          border: 'none',
+          borderRadius: 'var(--r-sm)',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        <Icon size={17} style={{ color: fg, flexShrink: 0 }} />
+        {!collapsed && (
+          <>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: fg }}>{meta}</span>
+          </>
+        )}
+      </button>
+    </li>
+  )
+}
+
 // ── CampusTool ───────────────────────────────────────────
 
 interface CampusToolProps {
@@ -183,11 +224,12 @@ interface CampusToolProps {
   label: string
   iconColor: string
   iconBg: string
+  external?: boolean
   collapsed?: boolean
   onClick: () => void
 }
 
-function CampusTool({ icon: Icon, label, iconColor, iconBg, collapsed = false, onClick }: CampusToolProps) {
+function CampusTool({ icon: Icon, label, iconColor, iconBg, external = false, collapsed = false, onClick }: CampusToolProps) {
   return (
     <button
       type="button"
@@ -228,7 +270,7 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, collapsed = false, o
       {!collapsed && (
         <>
           <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
-          <ExternalLink size={12} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+          {external && <ExternalLink size={12} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />}
         </>
       )}
     </button>
@@ -244,9 +286,10 @@ interface LeftSidebarProps {
 
 export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) {
   const navigate = useViewTransitionNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const { user } = useAuthStore()
-  const { messageCount } = useNotificationsStore()
+  const role = user?.role ?? 'student'
+  const rail = RAILS[role]
 
   const { data: profileData } = useQuery<PublicUserProfile>({
     queryKey: ['user', user?.id],
@@ -260,6 +303,10 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
     staleTime: 60_000,
   })
 
+  // Every contextual signal, gated per role so no request 403s for a role that
+  // cannot see it. Verifications reuse the profile query already fetched above.
+  const ctx = useRailContext(role, user?.id, profileData?.stats.verifications)
+
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const avatarBg = user ? avatarColor(user.id) : 'var(--uc-indigo)'
 
@@ -269,53 +316,62 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
 
   const profilePath = user ? PATHS.PROFILE.replace(':id', user.id) : PATHS.FEED
 
-  const connectionsShown = useCountUp(profileData?.stats.connections ?? 0)
-  const pendingShown = useCountUp(profileData?.stats.pendingReceived ?? 0)
+  // Which two numbers this role shows comes from the manifest, not from the card.
+  const [firstStat, secondStat] = ROLE_SHELL[user?.role ?? 'student'].stats
+  const firstShown = useCountUp(profileData?.stats[firstStat.key] ?? 0)
+  const secondShown = useCountUp(profileData?.stats[secondStat.key] ?? 0)
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose
 
-  const navGroups: Array<{
-    groupLabel: string
-    items: Array<{ icon: LucideIcon; label: string; path: string; badge?: number; hasDot?: boolean }>
-  }> = [
-    {
-      groupLabel: 'Main',
-      items: [
-        { icon: Home, label: 'Home', path: PATHS.FEED },
-        { icon: Compass, label: 'Explore', path: PATHS.EXPLORE },
-        { icon: Network, label: 'My network', path: PATHS.CONNECTIONS },
-        { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES, badge: messageCount },
-      ],
-    },
-    {
-      groupLabel: 'Community',
-      items: [
-        { icon: Users, label: 'Groups', path: PATHS.GROUPS, hasDot: false },
-        { icon: Calendar, label: 'Events', path: PATHS.EVENTS },
-        { icon: Briefcase, label: 'Jobs', path: PATHS.JOBS },
-        { icon: Newspaper, label: 'News', path: PATHS.NEWS },
-        { icon: Handshake, label: 'Mentorship', path: PATHS.MENTORSHIP },
-        { icon: GraduationCap, label: 'Learn', path: PATHS.LEARN },
-      ],
-    },
-    {
-      groupLabel: 'You',
-      items: [
-        { icon: FileText, label: 'Drafts', path: PATHS.DRAFTS },
-        { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
-        { icon: UserCircle2, label: 'My profile', path: profilePath },
-        ...(user?.role === 'admin'
-          ? [{ icon: ShieldCheck, label: 'Admin panel', path: PATHS.ADMIN }]
-          : []),
-      ],
-    },
-  ]
+  /**
+   * Several rows can share a base path and differ only by a tab query param
+   * (the three admin rows all live at /admin). Match the path first, then require
+   * every param the row pins to agree — treating a param the URL omits as a match,
+   * so the bare path lands on the first row rather than none.
+   */
+  function isActive(to: string): boolean {
+    const [rawPath, rawQuery] = to.split('?')
+    const base = rawPath.split(':')[0].replace(/\/$/, '')
+    const pathMatches = base === PATHS.FEED
+      ? pathname === base
+      : pathname === base || pathname.startsWith(base + '/')
+    if (!pathMatches) return false
+    if (!rawQuery) return true
 
-  function isActive(path: string): boolean {
-    if (path === PATHS.FEED) return pathname === path
-    // strip dynamic segments before comparing
-    const base = path.split(':')[0].replace(/\/$/, '')
-    return pathname === base || pathname.startsWith(base + '/')
+    const current = new URLSearchParams(search)
+    return [...new URLSearchParams(rawQuery)].every(
+      ([key, value]) => !current.has(key) || current.get(key) === value,
+    )
   }
+
+  // Guarantees a single active row: `layoutId` must never be mounted twice at once,
+  // and two highlighted rows would be wrong regardless of the animation.
+  const activeFixedIndex = rail.fixed.findIndex((row) => isActive(row.to))
+
+  const active = rail.contextual
+    .map((rule) => {
+      const result = rule.when(ctx)
+      return result ? { rule, ...result } : null
+    })
+    .filter((v): v is { rule: (typeof rail.contextual)[number]; meta: string; rank: number } => v != null)
+    // Pinned rows sort ahead of everything so the 2-row cap can never bury one in
+    // the `+n more` overflow; below that it is plain tone rank, high to low.
+    .sort((a, b) => Number(b.rule.pinned ?? false) - Number(a.rule.pinned ?? false) || b.rank - a.rank)
+  /**
+   * Rows must not shuffle under a pointer that is already aiming at one, so while the
+   * zone is hovered we keep rendering the list as it was on entry and let the live one
+   * take over on mouseleave.
+   */
+  const [ctxHovered, setCtxHovered] = useState(false)
+  const frozenContextual = useRef<typeof active | null>(null)
+  if (ctxHovered) {
+    if (frozenContextual.current === null) frozenContextual.current = active
+  } else {
+    frozenContextual.current = null
+  }
+  const displayedContextual = frozenContextual.current ?? active
+
+  const visibleContextual = displayedContextual.slice(0, 2)
+  const overflowCount = displayedContextual.length - visibleContextual.length
 
   return (
     <aside
@@ -447,11 +503,11 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
                 {deptLabel}
               </div>
 
-              {/* Connection stats */}
+              {/* Role stats pair — labels and sources both from the manifest */}
               <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
                 {[
-                  { label: 'connections', value: connectionsShown },
-                  { label: 'pending', value: pendingShown },
+                  { label: firstStat.label, value: firstShown },
+                  { label: secondStat.label, value: secondShown },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
@@ -466,39 +522,69 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
         )}
       </button>
 
-      {/* Nav list — grouped, no card chrome */}
+      {/* Fixed rows — role manifest, order never changes */}
       <nav style={{ padding: '2px 2px', flexShrink: 0 }}>
-        {navGroups.map((group, gi) => (
-          <div key={group.groupLabel} style={{ marginTop: gi === 0 ? 0 : 6 }}>
-            <div
-              className={collapsed ? 'left-sidebar-visually-hidden' : undefined}
-              style={collapsed
-                ? undefined
-                : {
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: 'var(--text-tertiary)',
-                    padding: '6px 10px 2px',
-                    letterSpacing: '0.04em',
-                  }}
-            >
-              {group.groupLabel}
-            </div>
-            {group.items.map((item) => (
-              <NavItem
-                key={item.label}
-                icon={item.icon}
-                label={item.label}
-                badge={item.badge}
-                hasDot={item.hasDot}
-                isActive={isActive(item.path)}
-                collapsed={collapsed}
-                onClick={() => navigate(item.path)}
-              />
-            ))}
-          </div>
+        {rail.fixed.map((item, index) => (
+          <NavItem
+            key={item.key}
+            icon={item.icon}
+            label={item.label}
+            isActive={index === activeFixedIndex}
+            collapsed={collapsed}
+            onClick={() => navigate(item.to)}
+          />
         ))}
       </nav>
+
+      {/* Contextual zone — 0 to 2 rows, vanishes with its condition */}
+      {visibleContextual.length > 0 && (
+        <div
+          style={{ padding: '2px 2px', flexShrink: 0 }}
+          onMouseEnter={() => setCtxHovered(true)}
+          onMouseLeave={() => setCtxHovered(false)}
+        >
+          {!collapsed && (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                color: 'var(--text-label)',
+                padding: '6px 10px 4px',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Shows up when relevant
+            </div>
+          )}
+          <ul
+            aria-live="polite"
+            aria-label="Contextual shortcuts"
+            style={{ display: 'flex', flexDirection: 'column', gap: 2, margin: 0, padding: 0 }}
+          >
+            {visibleContextual.map(({ rule, meta }) => (
+              <ContextualRow
+                key={rule.key}
+                icon={rule.icon}
+                label={rule.label}
+                meta={meta}
+                tone={rule.tone}
+                collapsed={collapsed}
+                onClick={() => navigate(rule.to)}
+              />
+            ))}
+            {overflowCount > 0 && !collapsed && (
+              <li style={{ listStyle: 'none' }}>
+                <NavItem
+                  icon={MoreHorizontal}
+                  label={`+${overflowCount} more`}
+                  collapsed={false}
+                  onClick={() => navigate(PATHS.NOTIFICATIONS)}
+                />
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
 
       {/* Campus tools — flat section with leading divider */}
       <div
@@ -514,7 +600,7 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
             style={{
               fontSize: 12,
               fontWeight: 500,
-              color: 'var(--text-tertiary)',
+              color: 'var(--text-label)',
               padding: '0 6px 6px',
               letterSpacing: '0.04em',
             }}
@@ -523,30 +609,22 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
           </div>
         )}
 
-        <CampusTool
-          icon={Bus}
-          label="Shuttle live"
-          iconColor="var(--uc-cyan)"
-          iconBg="var(--uc-cyan-bg)"
-          collapsed={collapsed}
-          onClick={() => navigate(PATHS.SHUTTLE)}
-        />
-        <CampusTool
-          icon={BookOpen}
-          label="eLMS"
-          iconColor="var(--uc-orange-l)"
-          iconBg="var(--uc-orange-bg)"
-          collapsed={collapsed}
-          onClick={() => window.open('https://elms.uiu.ac.bd', '_blank', 'noopener,noreferrer')}
-        />
-        <CampusTool
-          icon={BarChart2}
-          label="CGPA calculator"
-          iconColor="var(--uc-mint)"
-          iconBg="var(--uc-mint-bg)"
-          collapsed={collapsed}
-          onClick={() => window.open('https://cgpa.uiu.ac.bd', '_blank', 'noopener,noreferrer')}
-        />
+        {rail.tools.map((tool) => (
+          <CampusTool
+            key={tool.key}
+            icon={tool.icon}
+            label={tool.label}
+            iconColor={tool.iconColor}
+            iconBg={tool.iconBg}
+            external={!!tool.externalUrl}
+            collapsed={collapsed}
+            onClick={() =>
+              tool.externalUrl
+                ? window.open(tool.externalUrl, '_blank', 'noopener,noreferrer')
+                : navigate(tool.to!)
+            }
+          />
+        ))}
       </div>
     </aside>
   )

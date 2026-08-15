@@ -23,6 +23,7 @@ import {
   GroupResultCard,
 } from '@/features/search'
 import { PATHS } from '@/router/paths'
+import LostFoundPage from '@/pages/LostFoundPage'
 
 type Tab = 'all' | 'people' | 'posts' | 'jobs' | 'events' | 'groups'
 
@@ -199,6 +200,19 @@ export default function ExplorePage() {
 
   // view=search allows browse tabs without a query (e.g. "See all" from discovery sections)
   const isSearchMode = q.length >= 2 || searchParams.get('view') === 'search'
+
+  // Explore absorbs lost & found as a section. It sits above search/discovery rather
+  // than inside the search tab strip, which only exists while a query is active —
+  // `/lost-found` stays routable for deep links either way.
+  const section: 'discover' | 'lost-found' =
+    searchParams.get('section') === 'lost-found' ? 'lost-found' : 'discover'
+
+  function setSection(next: 'discover' | 'lost-found') {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'discover') params.delete('section')
+    else params.set('section', next)
+    setSearchParams(params, { replace: true })
+  }
 
   function handleInputChange(value: string) {
     setInputValue(value)
@@ -427,6 +441,53 @@ export default function ExplorePage() {
         {isContentLoading ? 'Loading content…' : ''}
       </div>
 
+      {/* Section switcher — explore absorbs lost & found */}
+      <nav
+        aria-label="Explore sections"
+        style={{
+          display: 'flex',
+          gap: 2,
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '4px 6px',
+          marginBottom: 12,
+        }}
+      >
+        {([
+          { key: 'discover', label: 'Discover' },
+          { key: 'lost-found', label: 'Lost & found' },
+        ] as const).map(({ key, label }) => {
+          const active = section === key
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSection(key)}
+              aria-current={active ? 'page' : undefined}
+              style={{
+                padding: '7px 14px',
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                borderRadius: 'var(--r-pill)',
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                transition: 'background 150ms, color 150ms',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </nav>
+
+      {section === 'lost-found' && <LostFoundPage />}
+
+      {section === 'discover' && (
+        <>
       {/* Search input */}
       <div style={searchInputWrapStyle}>
         <Search
@@ -558,6 +619,8 @@ export default function ExplorePage() {
           >
             {tabContent[tab]()}
           </div>
+        </>
+      )}
         </>
       )}
     </main>

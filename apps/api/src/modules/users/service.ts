@@ -250,6 +250,11 @@ export class UsersService {
       ? false
       : Boolean(await db('user_mutes').where({ muter_id: currentUserId, muted_id: targetUserId }).first('id'))
 
+    // The shell shows a role-specific stats pair, so the counts that pair needs are
+    // computed from the *target's* role — a faculty profile carries sections/students
+    // whoever is looking at it.
+    const roleStats = await countRoleStats(user.role, targetUserId, universityId)
+
     // Privacy: gate contact info by the target's `contact_info` tier, and return a
     // per-section visibility map so the client can render private states gracefully.
     const prefs = await loadPrivacy(targetUserId)
@@ -261,7 +266,7 @@ export class UsersService {
         includePhone: canSeeContact,
         includeContactInfo: canSeeContact,
       }),
-      stats: { connections, pendingReceived, posts },
+      stats: { connections, pendingReceived, posts, ...roleStats },
       connectionStatus,
       connectionId,
       mutualConnections: mutualCount,
@@ -877,6 +882,53 @@ async function countUserConnections(userId: string, universityId: string): Promi
     .andWhere('university_id', universityId)
     .count<CountRow[]>({ count: '*' })
   return Number(count)
+}
+
+/**
+ * The counts behind the shell's per-role stats pair. Only the keys that role actually
+ * carries are returned, so `stats` stays absent rather than zero for a role the number
+ * does not describe. Every query is university-scoped, like the rest of this service.
+ *
+ * Driver is deliberately absent: its spec'd pair is route and trips-today, which live
+ * in the shuttle tables behind no read endpoint yet, so the shell falls back for it.
+ */
+async function countRoleStats(
+  role: UserRole,
+  userId: string,
+  universityId: string,
+): Promise<Record<string, number>> {
+  if (role === 'alumni') {
+    const [{ count }] = await db('mentorship_requests')
+      .where({ alumni_id: userId, university_id: universityId, status: 'accepted', is_deleted: false })
+      .countDistinct<CountRow[]>({ count: 'student_id' })
+    return { mentees: Number(count) }
+  }
+
+  if (role === 'faculty') {
+    // `groups` carries no soft-delete column — deletion is a hard delete there, unlike
+    // `users` and `mentorship_requests`, which both have `is_deleted`.
+    const sectionFilter = { created_by: userId, university_id: universityId, type: 'academic' }
+    const sectionIds = db('groups').where(sectionFilter).select('id')
+
+    const [[sections], [students]] = await Promise.all([
+      db('groups').where(sectionFilter).count<CountRow[]>({ count: '*' }),
+      // Distinct so a student in two of this faculty's sections counts once.
+      db('group_members').whereIn('group_id', sectionIds).countDistinct<CountRow[]>({ count: 'user_id' }),
+    ])
+    return { sections: Number(sections.count), students: Number(students.count) }
+  }
+
+  if (role === 'admin') {
+    const [[members], [verifications]] = await Promise.all([
+      db('users').where({ university_id: universityId, is_deleted: false }).count<CountRow[]>({ count: '*' }),
+      db('users')
+        .where({ university_id: universityId, is_deleted: false, is_verified: false })
+        .count<CountRow[]>({ count: '*' }),
+    ])
+    return { members: Number(members.count), verifications: Number(verifications.count) }
+  }
+
+  return {}
 }
 
 async function countMutualConnections(userA: string, userB: string, universityId: string): Promise<number> {

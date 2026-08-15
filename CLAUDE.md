@@ -117,7 +117,7 @@ Mount points are all in `apps/api/src/app.ts` — check there rather than guessi
 | `quiz` | `/api/v1/quiz` | Daily quiz slots and attempts |
 | `moderation` | `/api/v1/moderation` | User-level blocks/reports |
 | `klipy` | `/api/v1/klipy` | GIF/sticker search proxy |
-| `feed` | `/api/v1/posts` | Note the prefix differs from the module name |
+| `feed` | `/api/v1/posts` | Note the prefix differs from the module name. `GET /` takes `type` (post type) **and** `scope=my_groups` — membership is a relationship, so it cannot be a `type`. Both must be applied to the count query as well as the rows, or pagination totals lie |
 | `messages` | `/api/v1/conversations` | Same |
 | `drafts` | `/api/v1/me/drafts` | Same |
 | `campus` | `/api/v1` | Mounted at the root prefix — lost-and-found and shuttle |
@@ -203,6 +203,8 @@ throw tooManyRequests()
 throw new AppError(message, statusCode, code)
 ```
 
+Zod validation failures surface as **422 `VALIDATION_ERROR`**, not 400 — assert 422 in tests that exercise a bad payload or query param.
+
 ### Shared services (`src/services/`)
 
 Cross-cutting services not owned by any module: `token.service.ts`, `email.service.ts`, `otp.service.ts`, `upload.service.ts`.
@@ -236,6 +238,34 @@ Notable feature internals:
 
 **All implemented page routes** (`src/router/paths.ts` + lazy pages in `src/pages/`):
 `/about`, `/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/feed/:id` (post detail), `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/shuttle/drive` (driver GPS broadcast view), `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/settings` (+ sub-routes `/settings/notifications`, `/settings/appearance`, `/settings/account`, `/settings/privacy`), `/drafts`, `/learn`, `/admin`
+
+**The app shell is role-aware and manifest-driven.** Two config files are the single source of navigation truth — never add a `user.role === '…'` branch to a component:
+
+| File | Owns |
+|------|------|
+| `src/config/roleShell.ts` | `ROLE_SHELL[role]`: `home` (where `/` and the logo resolve), `primaryAction`, `searchPlaceholder`, `rightRail` (`WidgetKey[]`), `stats` (`[StatSpec, StatSpec]`), plus `isRouteAllowedForRole()` — the driver allowlist `ProtectedRoute` consults — and `statsFor(role, isOwnProfile)` |
+| `src/components/rightRail/index.ts` | `RIGHT_RAIL_WIDGETS`: the total `Record<WidgetKey, ComponentType>` — a manifest key with no widget is a compile error |
+| `src/components/leftSidebar.config.ts` | `RAILS[role]`: `fixed` rows (max 5, driver 4), `contextual` rules, `tools`, and `secondary` |
+
+- **The contextual zone is rule-driven and its signals come from `src/components/useRailContext.ts`.** A `CtxRule.when(ctx)` reads only keys on `RailContext`; the hook fills them and is the only place that fetches. Rules there:
+  - **Every query is `enabled:`-gated by role** — the rail mounts on every authenticated page, so an ungated admin-only fetch would 403 on each one. A rule may only read a signal its role's API answers; `LeftSidebar.test.tsx` feeds each role the signals it is *not* entitled to and fails if any rule fires.
+  - **Reuse the existing query key** of whatever widget or page already fetches that endpoint (`['admin','stats']`, `['mentorship','incoming',{…}]`, `['jobs','my']` — the last is a `useInfiniteQuery`, so the rail uses one too) and `staleTime` 60s. Derive counts from the cache; add an endpoint properly rather than over-fetching a list, unless a page already holds that exact list (admin invites).
+  - **Sort order is pinned-first, then `TONE_RANK` descending**, capped at 2 with the remainder as `+n more`. A `pinned` rule (driver's "On duty now") can never land in that overflow. The zone freezes its rendered list while hovered so rows do not shuffle under the pointer.
+  - Faculty has **no** rule but drafts, by design: no timetable, unanswered-query, grade-window or cross-group join-request data exists. An empty zone is the correct resting state — never approximate a rule with a hardcoded value.
+- `secondary` holds what the 5-row cap pushed out. It renders in **both** the avatar menu (desktop) and the mobile More sheet — mobile has no avatar menu, so omitting either makes the route unreachable on a phone.
+- `src/config/reachability.test.ts` walks every `PATHS` entry and fails if it is unreachable from the shell for every role. **A new page must join a rail or `secondary`**, or be listed as reached-by-context (detail pages, auth flows).
+- Which role gets a row follows what the API lets that role *do*, not the mockups — faculty gets Jobs (`requireRole('alumni','faculty','admin')`) but not Mentorship (no faculty write access there).
+- Rows can share a base path and differ only by query (`/admin?tab=…`), so `isActive` is query-aware and a `findIndex` picks exactly one active row — framer-motion's `layoutId="nav-active-pill"` must never mount twice.
+- Rail deep links must use `AdminPage`'s own `Tab` values (`overview`/`users`/`reports`); `config/adminTabs.test.ts` parses that union from source to enforce it.
+- `/admin` renders **inside** `FeedLayout` — same grid, not a forked layout.
+- **The right rail is manifest-driven, and `data-wide` is a consequence, not a route rule.** `RightSidebar` is a dispatcher over `ROLE_SHELL[role].rightRail`; each widget owns its own query and returns `null` when empty, so there is no role branch and no shared empty-state. `FeedLayout` sets `data-wide` on `.feed-layout-grid` when a role's list is empty (driver only) — keying that off the pathname instead would fork the layout the shell rule forbids.
+- A widget only goes to roles whose API would answer it: `mentee-requests` is alumni/admin (`requireRole('alumni','admin')`), `platform-today` is admin (`requireRole('admin')`). `roleShell.test.ts` enforces this — a widget that 403s is the "row that leads to a 403" the shell rule bans.
+- Sections that absorbed a former rail row, deep-linkable with the old route still valid: `/explore?section=lost-found`, `/groups?section=people`, `/feed?tab=` (`FEED_TABS`).
+- **Pages whose default view is role-dependent put the role's own default *out* of the URL** and write the param only for the non-default, so a shared link stays clean: `/jobs` is `view=mine` for alumni and `view=browse` for everyone else; `/groups` is `section=sections` for faculty and `section=groups` for everyone else. Both read the param back defensively — a role that cannot use a view (a student on `view=mine`, a non-faculty on `section=sections`) falls back to its default rather than rendering an empty or forbidden panel.
+- Faculty's two `/groups` rail rows differ only by query (`?section=sections` vs `?section=groups`); the sections view pins `type=academic` and hides the group-type filter.
+- **The profile card's two numbers are manifest-driven, and the role-scoped ones are computed server-side only for the role they describe.** `countRoleStats()` in `users/service.ts` fills `mentees` (alumni), `sections`/`students` (faculty) and `members`/`verifications` (admin); they are **optional** on `publicUserProfileSchema.stats`, so absent means "not that role" while `0` means a real zero. Never add a stat to a role the API does not compute it for — `roleShell.test.ts` fails on that, since it would render a silent zero.
+- `pendingReceived` is returned as `0` for anyone but the profile owner, so it is flagged `ownerOnly` and `statsFor()` swaps in `PUBLIC_STAT` (`posts`) for visitors. Any future owner-only count needs the same flag, or a visitor reads the placeholder zero as real.
+- `groups` has **no** soft-delete column — do not add `is_deleted` to a groups query. `users` and `mentorship_requests` do have it.
 
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.
@@ -277,6 +307,9 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 | Font weight | 400 and 500 only — never 600, 700, or 800 |
 | Text case | Sentence case everywhere — no ALL CAPS or Title Case on UI labels/buttons |
 | Coloured surfaces | Text on a coloured background must use the matching light token (e.g. `--uc-orange-l` on `--uc-orange-bg`) |
+| Eyebrow labels | 11px `0.04em` section labels use `--text-label`; `--text-tertiary` is for 12px meta, timestamps and placeholders only |
+| No glassmorphism | Never `backdropFilter` / `WebkitBackdropFilter`; use a solid `--overlay-bg-strong` |
+| Self vs network | `--uc-orange*` signals *your own* activity, `--uc-indigo*` signals other people's — an unread-activity dot is indigo, never orange |
 
 ---
 
@@ -307,13 +340,17 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 ## Database
 
 - Migrations: `apps/api/src/database/migrations/`, filename `NNN_description.ts` (sequential number prefix, e.g. `020_create_mentorship.ts`). Never edit a committed migration — create a new one.
+- **The one exception: fixing a broken `down()`.** The rule above protects `up()`, which has already run against real databases and will never re-run. A `down()` that has never successfully executed anywhere is different, and no new migration can repair a previous migration's `down()` — so edit it in place. Never touch a committed `up()`.
+- **A `down()` that narrows a CHECK constraint must drop the constraint, fix the data, then re-add it — in that order, mirroring `up()`.** Getting it wrong fails two ways: rewriting rows while the old constraint is still live gives `new row … violates check constraint`, and re-adding the narrowed constraint while offending rows remain gives `violated by some row`. So fold or delete every row using the value being removed first. Prefer converting over deleting when rows carry dependents — deleting cascades. Worked examples: `073` deletes `driver` users, `092` folds `academic` groups to `other`, `047` folds `expired` mentorship requests to `declined`, `103` folds `job_promo` posts to `post`.
+- Verify a rollback with the hostile data actually present (an expired request, an academic group, a driver user), not against an empty database — `047`'s bug stayed invisible for months because the test DB had no `expired` rows, while the 7-day auto-expiry job creates them in any environment that has run a week.
 - Column defaults: `id` UUID (`uuid_generate_v4()`), `university_id` UUID FK indexed, `created_at`/`updated_at` timestamptz default `now()`.
 - Always index FK columns used in WHERE, and `(university_id, created_at DESC)` on high-volume tables.
 - Soft deletes: `is_deleted boolean default false` — not `deleted_at`.
 - Redis keys: `{prefix}:{university_id}:{id}`. Never hardcode TTL values — centralise them (see `src/config/redis.ts` for the client; OTP TTL lives in env `OTP_EXPIRES_MINUTES`).
 - DB schema domains: Core/Auth, Social Feed, Job Board, Events, Groups, Messaging, Notifications/News, Campus Tools, Engagement (mentorship, badges, reports), Connections (`connections`), Profile sections (`profile_experiences`, `profile_education`, `profile_featured`, `profile_views`), Settings (`user_settings`, `push_subscriptions`), Content sync (`content_sync_runs`, `content_attachments`), Audit (`university_audit_log`).
-- Latest migration: `102_create_group_quizzes` (`group_quizzes` — AI-generated quizzes per academic group, mirroring `group_flashcard_decks`). **Start the next migration at `103_`.**
-- Migration landmarks worth knowing: the `follows` table no longer exists (dropped in `052_drop_follows`); `user_settings` (`065`, notification + privacy JSONB); `push_subscriptions` (`066`); `users.deactivated_at` (`067`); `users.last_seen` (`069`); generated `search_vector` columns (`070`); `posts` feed-ranking columns (`071`); `posts` lifecycle columns (`072_add_post_lifecycle`); per-university-unique `users.username` (`072_add_username_to_users`); `driver` role + shuttle estimation params (`073`); generalized content attachments (`077`); user moderation (`078`); account deletion requests (`079`); message reactions/stickers (`081`–`082`); learning tables + badges (`085`–`087`); group study tools — flashcard decks, shared notes (`088`); daily quiz (`089`–`090`); `ai_quiz_pool` (`091`); the `academic` group type (`092`); course outline + academic LMS tables (`093`–`094`); session notes (`096`); AI learning/quiz settings (`097`–`100`).
+- Latest migration: `103_add_job_promo_post_type` (adds the `job_promo` value to `posts_type_check`). **Start the next migration at `104_`.**
+- Migration landmarks worth knowing: the `follows` table no longer exists (dropped in `052_drop_follows`); `user_settings` (`065`, notification + privacy JSONB); `push_subscriptions` (`066`); `users.deactivated_at` (`067`); `users.last_seen` (`069`); generated `search_vector` columns (`070`); `posts` feed-ranking columns (`071`); `posts` lifecycle columns (`072_add_post_lifecycle`); per-university-unique `users.username` (`072_add_username_to_users`); `driver` role + shuttle estimation params (`073`); generalized content attachments (`077`); user moderation (`078`); account deletion requests (`079`); message reactions/stickers (`081`–`082`); learning tables + badges (`085`–`087`); group study tools — flashcard decks, shared notes (`088`); daily quiz (`089`–`090`); `ai_quiz_pool` (`091`); the `academic` group type (`092`); course outline + academic LMS tables (`093`–`094`); session notes (`096`); AI learning/quiz settings (`097`–`100`); the `job_promo` post type (`103`).
+- Column names that differ from the obvious guess (verify with `psql -d <db> -c '\d <table>'` before writing a fixture): `groups.is_private` (not `privacy`); `group_members` has a composite `(group_id, user_id)` primary key and **no** `id` column.
 - **Two migration-number collisions exist:** two `072_` files (`072_add_post_lifecycle`, `072_add_username_to_users`) and two `098_` files (`098_add_ai_quiz_settings`, `098_add_skill_path_source_and_quiz_approval`). Never re-use a prefix — check `ls apps/api/src/database/migrations | tail -1` before creating one.
 
 ---
@@ -323,15 +360,29 @@ CSS tokens are in `apps/web/src/styles/tokens.css` and loaded globally via `src/
 ### Backend integration tests
 
 The test setup is in `apps/api/src/__tests__/setup.ts`. It:
-1. Runs pending migrations against `TEST_DATABASE_URL`
+1. Runs pending migrations against `DATABASE_URL` (there is no `TEST_DATABASE_URL` — point `DATABASE_URL` at a scratch DB)
 2. Upserts four seed users (admin, faculty, alumni, student) with known credentials
 3. Exports `loginAs(email, password)` → `{ accessToken, cookie }` for authenticated requests
 
 All supertest requests must include `.set('x-university-domain', DOMAIN)`. Use `loginAs()` to get the bearer token.
 
+**Running them without Docker.** There is no committed `.env`, so a bare `pnpm --filter api test` dies in `config/env.ts`. Every var has a default except `GEMINI_API_KEY`. Point it at any Postgres (a local `brew services` instance is fine) and pass env inline rather than writing a `.env`:
+
+```bash
+createdb uniconnect_test && psql -d uniconnect_test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+DATABASE_URL="postgresql://$(whoami)@localhost:5432/uniconnect_test" GEMINI_API_KEY=test-key npx pnpm --filter api test
+```
+
+`ai.service.test.ts` logs many "Gemini call failed" warnings — it is exercising the retry path on purpose, not a failure.
+
 ### Frontend tests
 
 React tests: `@testing-library/react` + `user-event`. Test behaviour, not implementation. Mock HTTP with MSW handlers at `src/tests/msw/handlers.ts`.
+
+- **Run `npx pnpm --filter @uniconnect/shared build` first** if `packages/shared/dist/` is absent, or every web test importing it fails with `Failed to resolve entry for package "@uniconnect/shared"`.
+- **MSW paths must start with the `*` wildcard** (`*/groups/:id/ai-settings`). `VITE_API_URL` is unset under vitest, so the axios baseURL is literally `"undefined/api/v1"` and a handler pinned to an absolute origin never matches — the component just hangs in "Loading…". Grep the output for `[MSW] Error: intercepted a request` when that happens.
+- **jsdom has no `IntersectionObserver`**; infinite-scroll pages (feed, groups, lost & found) need `vi.stubGlobal('IntersectionObserver', NoopObserver)`.
+- Mocking the hook layer cannot catch a bug in the hook — cover cache/optimistic-update behaviour over MSW instead (`AISettingsPanel.toggles.test.tsx`).
 
 ### General
 

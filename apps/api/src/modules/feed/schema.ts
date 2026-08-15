@@ -4,8 +4,8 @@ import { attachmentInputSchema, FEED_SORTS, MAX_ATTACHMENTS_PER_ENTITY } from '@
 const attachmentsField = z.array(attachmentInputSchema).max(MAX_ATTACHMENTS_PER_ENTITY).optional()
 const removedAttachmentIdsField = z.array(z.string().uuid()).optional()
 
-export const PostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'news', 'event_promo'])
-export const CreatePostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'event_promo'])
+export const PostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'news', 'event_promo', 'job_promo'])
+export const CreatePostTypeSchema = z.enum(['post', 'announcement', 'lost_found', 'event_promo', 'job_promo'])
 export const ReactionTypeSchema = z.enum(['like', 'love', 'care', 'haha', 'wow', 'sad', 'angry'])
 
 export const PaginationQuerySchema = z.object({
@@ -13,8 +13,16 @@ export const PaginationQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(20),
 })
 
+/**
+ * `scope` narrows *which* posts are in play, independently of their `type`.
+ * `my_groups` restricts the feed to groups the caller belongs to — group membership is
+ * a relationship, not a post type, so it cannot be folded into `type`.
+ */
+export const PostScopeSchema = z.enum(['my_groups'])
+
 export const PostListQuerySchema = PaginationQuerySchema.extend({
   type: PostTypeSchema.optional(),
+  scope: PostScopeSchema.optional(),
   authorId: z.string().uuid().optional(),
   sort: z.enum(FEED_SORTS).default('recent'),
 })

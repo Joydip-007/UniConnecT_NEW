@@ -6,6 +6,7 @@ import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { OrangeBtn } from '@/components/Button'
 import { JobCard, type Job } from '@/features/jobs/components/JobCard'
+import { MyPostingsPanel } from '@/features/jobs/components/MyPostingsPanel'
 import { PostJobForm } from '@/features/jobs/components/PostJobForm'
 import { SkeletonJobCard } from '@/components/skeletons/SkeletonJobCard'
 import { EmptyState } from '@/components/EmptyState'
@@ -32,6 +33,19 @@ const TABS: { label: string; value: JobType }[] = [
   { label: 'Contract', value: 'contract' },
 ]
 
+type JobsView = 'mine' | 'browse'
+
+/**
+ * Alumni open `/jobs` to author, not to browse — their rail row is literally "My
+ * postings" — so their default view is their own listings with the applicants inline.
+ * Faculty and admin may post too, but jobs are a secondary surface for them, so they
+ * land on browse and switch in. Students never see the switch: they cannot post, and
+ * `POST /jobs` is `requireRole('alumni','faculty','admin')`.
+ */
+function defaultView(role: string | undefined): JobsView {
+  return role === 'alumni' ? 'mine' : 'browse'
+}
+
 // ── JobsPage ──────────────────────────────────────────────────────────────────
 
 export default function JobsPage() {
@@ -47,6 +61,21 @@ export default function JobsPage() {
   const role = useAuthStore((s) => s.user?.role)
   const canPostJob = role === 'alumni' || role === 'faculty' || role === 'admin'
   const [postFormOpen, setPostFormOpen] = useState(false)
+
+  const rawView = searchParams.get('view')
+  const view: JobsView = !canPostJob
+    ? 'browse'
+    : rawView === 'mine' || rawView === 'browse'
+    ? rawView
+    : defaultView(role)
+
+  function setView(next: JobsView) {
+    const params = new URLSearchParams(searchParams)
+    // Keep the role's own default out of the URL so a shared link stays clean.
+    if (next === defaultView(role)) params.delete('view')
+    else params.set('view', next)
+    setSearchParams(params, { replace: true })
+  }
 
   // Debounce search input 400ms
   useEffect(() => {
@@ -72,6 +101,8 @@ export default function JobsPage() {
           .then((r) => r.data.data),
       initialPageParam: 1,
       getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
+      // An alumnus landing on "My postings" should not also pay for the browse feed.
+      enabled: view === 'browse',
     })
 
   // Infinite scroll sentinel
@@ -110,6 +141,54 @@ export default function JobsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* View switcher — only for roles the API lets post a job */}
+      {canPostJob && (
+        <nav
+          aria-label="Jobs views"
+          style={{
+            display: 'flex',
+            gap: 2,
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-lg)',
+            padding: '4px 6px',
+          }}
+        >
+          {([
+            { key: 'mine', label: 'My postings' },
+            { key: 'browse', label: 'Browse' },
+          ] as const).map(({ key, label }) => {
+            const active = view === key
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                aria-current={active ? 'page' : undefined}
+                style={{
+                  padding: '7px 14px',
+                  fontSize: 13,
+                  fontWeight: active ? 500 : 400,
+                  borderRadius: 'var(--r-pill)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                  color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                  transition: 'background 150ms, color 150ms',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </nav>
+      )}
+
+      {view === 'mine' && <MyPostingsPanel />}
+
+      {view === 'browse' && (
+        <>
       {/* Type filter tabs */}
       <nav
         style={{
@@ -250,6 +329,8 @@ export default function JobsPage() {
           </span>
           <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
         </div>
+      )}
+        </>
       )}
 
       {/* Floating post a job button — alumni / staff / admin only */}

@@ -31,7 +31,7 @@ export interface FeedPostAuthor {
 
 export interface FeedPost {
   id: string
-  type: 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo'
+  type: 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo' | 'job_promo'
   content: string
   mediaUrls: string[]
   author: FeedPostAuthor

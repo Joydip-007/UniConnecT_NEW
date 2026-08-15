@@ -104,19 +104,21 @@ export const router = createBrowserRouter([
               },
             ],
           },
+
+          // Admin lives inside the shell too — same grid, different payload — so an
+          // admin keeps the rail and top nav instead of landing on a chrome-less page.
+          {
+            element: <AdminRoute />,
+            children: [
+              { path: PATHS.ADMIN, element: page(() => import('@/pages/AdminPage')) },
+            ],
+          },
         ],
       },
 
       { path: PATHS.MESSAGES, element: page(() => import('@/pages/MessagesPage')) },
       { path: PATHS.CONVERSATION, element: page(() => import('@/pages/ConversationPage')) },
 
-    ],
-  },
-
-  {
-    element: <AdminRoute />,
-    children: [
-      { path: PATHS.ADMIN, element: page(() => import('@/pages/AdminPage')) },
     ],
   },
 
