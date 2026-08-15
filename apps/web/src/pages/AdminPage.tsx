@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
   Users, FileText, Mail, Flag, Trash2, X,
-  ArrowLeft, ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus, GraduationCap
+  ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus, GraduationCap
 } from 'lucide-react'
 import type { AccountDeletionRequest } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
@@ -12,7 +12,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
-import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
 import { ContentTab } from '@/pages/admin/ContentTab'
 import { ShuttleTab } from '@/pages/admin/ShuttleTab'
@@ -1536,15 +1535,22 @@ function Spinner() {
 export default function AdminPage() {
   const user = useAuthStore((s) => s.user)
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = (searchParams.get('tab') as Tab) || 'overview'
+  const rawTab = searchParams.get('tab')
+  const activeTab: Tab = TABS.some((t) => t.value === rawTab) ? (rawTab as Tab) : 'overview'
   const setActiveTab = (tab: Tab) => setSearchParams({ tab })
+
+  // Normalise the bare /admin URL onto its default tab so the rail's tab-scoped rows
+  // always have a param to match against, and a reload keeps the tab you were on.
+  useEffect(() => {
+    if (!rawTab) setSearchParams({ tab: 'overview' }, { replace: true })
+  }, [rawTab, setSearchParams])
 
   if (user && user.role !== 'admin') {
     return <Navigate to={PATHS.FEED} replace />
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--surface-page)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes modal-backdrop-in {
@@ -1572,23 +1578,17 @@ export default function AdminPage() {
         }
       `}</style>
 
-      {/* ── Top bar ── */}
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        background: 'var(--surface-card)',
-        borderBottom: '0.5px solid var(--border-default)',
-        padding: '0 24px',
-        height: 58,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <BrandLogo height={26} />
+      {/* Page heading — the shell's top nav and rail supply the branding and the way
+          back, so this keeps only what identifies the panel itself. */}
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>
+            Admin panel
+          </h1>
+          <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
+            Manage users, invitations, and content for United International University
+          </p>
         </div>
-
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -1597,50 +1597,18 @@ export default function AdminPage() {
           border: '0.5px solid var(--uc-indigo-bdr)',
           borderRadius: 'var(--r-pill)',
           padding: '5px 12px',
+          flexShrink: 0,
         }}>
           <ShieldCheck size={13} color="var(--uc-indigo-l)" />
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--uc-indigo-xl)' }}>Admin panel</span>
         </div>
-      </header>
+      </div>
 
-      {/* ── Page content ── */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '28px 24px 56px' }}>
-
-        {/* Page heading */}
-        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <Link
-            to={PATHS.FEED}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--text-secondary)',
-              textDecoration: 'none',
-              width: 32,
-              height: 32,
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--surface-raised)',
-              border: '0.5px solid var(--border-default)',
-              transition: 'color 150ms, background 150ms',
-              marginTop: 1,
-            }}
-            className="back-nav-hover"
-            aria-label="Back to feed"
-          >
-            <ArrowLeft size={16} />
-          </Link>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>
-              Admin panel
-            </h1>
-            <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-              Manage users, invitations, and content for United International University
-            </p>
-          </div>
-        </div>
-
-        {/* Tab nav */}
-        <nav style={{
+      {/* Tab nav — scrolls rather than squashing, since the shell column is narrower
+          than the old full-bleed page. */}
+      <nav
+        aria-label="Admin sections"
+        style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-lg)',
@@ -1648,47 +1616,51 @@ export default function AdminPage() {
           display: 'flex',
           gap: 3,
           marginBottom: 20,
-        }}>
-          {TABS.map(({ label, value, icon }) => {
-            const active = activeTab === value
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setActiveTab(value)}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 7,
-                  padding: '9px 0',
-                  fontSize: 13,
-                  fontWeight: active ? 500 : 400,
-                  borderRadius: 'var(--r-pill)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                  color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                  transition: 'background 150ms, color 150ms',
-                }}
-              >
-                {icon} {label}
-              </button>
-            )
-          })}
-        </nav>
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {TABS.map(({ label, value, icon }) => {
+          const active = activeTab === value
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setActiveTab(value)}
+              aria-current={active ? 'page' : undefined}
+              style={{
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 7,
+                padding: '9px 14px',
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                borderRadius: 'var(--r-pill)',
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                transition: 'background 150ms, color 150ms',
+              }}
+            >
+              {icon} {label}
+            </button>
+          )
+        })}
+      </nav>
 
-        {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'users' && <UsersTab />}
-        {activeTab === 'invitations' && <InvitationsTab />}
-        {activeTab === 'content' && <ContentTab />}
-        {activeTab === 'content-sync' && <ContentSyncPanel />}
-        {activeTab === 'learning' && <LearningAdminPanel />}
-        {activeTab === 'shuttle' && <ShuttleTab />}
-        {activeTab === 'reports' && <ReportsTab />}
-        {activeTab === 'deletion' && <DeletionRequestsTab />}
-      </div>
+      {activeTab === 'overview' && <OverviewTab />}
+      {activeTab === 'users' && <UsersTab />}
+      {activeTab === 'invitations' && <InvitationsTab />}
+      {activeTab === 'content' && <ContentTab />}
+      {activeTab === 'content-sync' && <ContentSyncPanel />}
+      {activeTab === 'learning' && <LearningAdminPanel />}
+      {activeTab === 'shuttle' && <ShuttleTab />}
+      {activeTab === 'reports' && <ReportsTab />}
+      {activeTab === 'deletion' && <DeletionRequestsTab />}
     </div>
   )
 }

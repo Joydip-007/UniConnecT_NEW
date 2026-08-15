@@ -92,6 +92,7 @@
   --text-primary:     #EBEBEB;
   --text-secondary:   rgba(235, 235, 235, 0.58);
   --text-tertiary:    rgba(235, 235, 235, 0.30);
+  --text-label:       rgba(235, 235, 235, 0.50);
 
   /* Foreground for filled saturated buttons. Theme-STABLE — never inverts,
      so labels stay legible on indigo/orange/mint fills in both themes. */
@@ -183,6 +184,7 @@
   --text-primary:     #262626;
   --text-secondary:   rgba(38, 38, 38, 0.62);
   --text-tertiary:    rgba(38, 38, 38, 0.40);
+  --text-label:       rgba(38, 38, 38, 0.55);
 
   /* Filled buttons keep saturated fills in light mode too — labels flip to
      white here since the new accent set is dark/muted enough for AA. */

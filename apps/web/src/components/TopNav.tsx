@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { Bell, Check, LogOut, MessageSquare, Monitor, Moon, Search, Settings, Sun, User } from 'lucide-react'
+import { Bell, Check, ChevronDown, LogOut, MessageSquare, Monitor, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
@@ -15,6 +15,8 @@ import { BrandLogo } from '@/components/BrandLogo'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { popoverIn } from '@/lib/motion'
 import { useScrollDirection } from '@/hooks/useScrollDirection'
+import { ROLE_SHELL } from '@/config/roleShell'
+import { RAILS } from '@/components/leftSidebar.config'
 
 const iconBtnStyle: React.CSSProperties = {
   position: 'relative',
@@ -199,6 +201,8 @@ export function TopNav() {
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const color = user ? avatarColor(user.id) : 'var(--uc-indigo)'
   const hidden = scrollDir === 'down' && !menuOpen && !notifOpen && !msgOpen && !panelOpen && !searchFocused
+  const shell = ROLE_SHELL[user?.role ?? 'student']
+  const secondary = RAILS[user?.role ?? 'student'].secondary
 
   return (
     <header
@@ -210,8 +214,6 @@ export function TopNav() {
         zIndex: 'var(--z-nav)',
         height: 60,
         background: 'var(--overlay-bg-strong)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
         borderBottom: '0.5px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
@@ -221,13 +223,34 @@ export function TopNav() {
     >
       {/* Left: logo */}
       <a
-        href={PATHS.FEED}
-        onClick={(e) => { e.preventDefault(); navigate(PATHS.FEED) }}
+        href={shell.home}
+        onClick={(e) => { e.preventDefault(); navigate(shell.home) }}
         className="topnav-brand-link"
         style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexShrink: 0 }}
       >
         <BrandLogo height={36} />
       </a>
+
+      {/* Primary action — role-aware */}
+      <button
+        type="button"
+        onClick={() => navigate(shell.primaryAction.to)}
+        className="press-feedback topnav-mobile-hidden"
+        style={{
+          flexShrink: 0,
+          height: 36,
+          padding: '0 16px',
+          borderRadius: 'var(--r-pill)',
+          border: 'none',
+          background: 'var(--uc-indigo)',
+          color: 'var(--on-accent)',
+          fontSize: 13,
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >
+        {shell.primaryAction.label}
+      </button>
 
       {/* Center: search */}
       <div className="topnav-search-slot" style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
@@ -258,7 +281,7 @@ export function TopNav() {
             aria-controls="search-panel"
             aria-autocomplete="list"
             aria-haspopup="listbox"
-            placeholder={compactSearch ? 'Search' : 'Search people, jobs, events…'}
+            placeholder={compactSearch ? 'Search' : shell.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value)
@@ -380,12 +403,29 @@ export function TopNav() {
             ref={profileButtonRef}
             onClick={() => setMenuOpen((o) => !o)}
             className="press-feedback"
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', borderRadius: '50%' }}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              borderRadius: 'var(--r-pill)',
+            }}
             aria-label="Profile menu"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
             <Avatar src={user?.profile.avatarUrl} initials={initials} color={color} size={32} />
+            <ChevronDown
+              size={14}
+              style={{
+                color: 'var(--text-tertiary)',
+                transition: 'transform var(--dur-med, 200ms) var(--ease-out-strong)',
+                transform: menuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
           </button>
 
           <AnimatePresence>
@@ -472,6 +512,25 @@ export function TopNav() {
                 <User size={14} />
                 View profile
               </button>
+
+              {/* Everything the rail demoted. The fixed rows are capped at 5, so this is
+                  what keeps the remaining surfaces one click away rather than orphaned. */}
+              {secondary.length > 0 && (
+                <div style={{ padding: '4px 0', borderTop: '0.5px solid var(--border-default)', borderBottom: '0.5px solid var(--border-default)', margin: '4px 0' }}>
+                  {secondary.map(({ key, label, icon: Icon, to }) => (
+                    <button
+                      key={key}
+                      role="menuitem"
+                      onClick={() => { setMenuOpen(false); navigate(to) }}
+                      className="nav-menu-item"
+                      style={menuItemStyle}
+                    >
+                      <Icon size={14} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <button
                 role="menuitem"

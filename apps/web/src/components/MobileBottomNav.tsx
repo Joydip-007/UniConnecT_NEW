@@ -1,75 +1,85 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import {
-  Bell,
-  BookOpen,
-  Briefcase,
-  Bus,
-  Calendar,
-  Compass,
-  Handshake,
-  Home,
-  LayoutGrid,
-  MessageSquare,
-  Newspaper,
-  PackageSearch,
-  ShieldCheck,
-  User,
-  Users,
-  type LucideIcon,
-} from 'lucide-react'
+import { LayoutGrid, type LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { PATHS } from '@/router/paths'
+import { RAILS } from './leftSidebar.config'
 
 interface MoreItem {
   icon: LucideIcon
   label: string
   path: string
   external?: boolean
+  badge?: number
 }
 
 export function MobileBottomNav() {
   const navigate = useViewTransitionNavigate()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const user = useAuthStore((s) => s.user)
   const { messageCount, notificationCount } = useNotificationsStore()
   const [moreOpen, setMoreOpen] = useState(false)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const sheetRef = useRef<HTMLDialogElement>(null)
 
-  const profilePath = user ? PATHS.PROFILE.replace(':id', user.id) : PATHS.FEED
+  const role = user?.role ?? 'student'
+  const rail = RAILS[role]
+
+  // Five slots: the role's first four fixed rail rows, then More. The bar mirrors the
+  // rail so the two navigations agree; More carries exactly what the rail demoted.
+  const barRows = rail.fixed.slice(0, 4)
+  const items = barRows.map((row) => ({
+    icon: row.icon,
+    label: row.label,
+    path: row.to,
+    badge: row.to === PATHS.MESSAGES ? messageCount : 0,
+  }))
+
+  // The sheet carries exactly what the bar demoted: the remaining fixed rows, every
+  // secondary destination (the avatar menu's set — mobile has no avatar menu), and the
+  // campus tools. Deduped by path so a role that pins one as a bar row sees it once.
+  const barPaths = new Set(barRows.map((row) => row.to))
+  const badgeFor = (path: string) =>
+    path === PATHS.MESSAGES ? messageCount : path === PATHS.NOTIFICATIONS ? notificationCount : undefined
 
   const moreItems: MoreItem[] = [
-    { icon: Users, label: 'Groups', path: PATHS.GROUPS },
-    { icon: Calendar, label: 'Events', path: PATHS.EVENTS },
-    { icon: Briefcase, label: 'Jobs', path: PATHS.JOBS },
-    { icon: Newspaper, label: 'News', path: PATHS.NEWS },
-    { icon: Handshake, label: 'Mentorship', path: PATHS.MENTORSHIP },
-    { icon: Bus, label: 'Shuttle', path: PATHS.SHUTTLE },
-    { icon: PackageSearch, label: 'Lost & found', path: PATHS.LOST_FOUND },
-    { icon: User, label: 'My profile', path: profilePath },
-    { icon: BookOpen, label: 'eLMS', path: 'https://lms.uiu.ac.bd', external: true },
-    ...(user?.role === 'admin'
-      ? [{ icon: ShieldCheck, label: 'Admin', path: PATHS.ADMIN }]
-      : []),
+    ...rail.fixed.slice(4),
+    ...rail.secondary,
   ]
+    .filter((row) => !barPaths.has(row.to))
+    .map((row) => ({ icon: row.icon, label: row.label, path: row.to, badge: badgeFor(row.to) }))
+    .concat(
+      rail.tools.map((tool) => ({
+        icon: tool.icon,
+        label: tool.label,
+        path: tool.externalUrl ?? tool.to ?? PATHS.FEED,
+        external: !!tool.externalUrl,
+        badge: undefined,
+      })),
+    )
 
-  const items = [
-    { icon: Home,          label: 'Home',     path: PATHS.FEED,          badge: 0                },
-    { icon: Compass,       label: 'Explore',  path: PATHS.EXPLORE,       badge: 0                },
-    { icon: MessageSquare, label: 'Messages', path: PATHS.MESSAGES,      badge: messageCount     },
-    { icon: Bell,          label: 'Alerts',   path: PATHS.NOTIFICATIONS, badge: notificationCount },
-  ]
+  // Mirrors the rail's matcher: rows can share a base path and differ only by a tab
+  // query param, so at most one slot may ever read as active.
+  function isActive(to: string): boolean {
+    const [rawPath, rawQuery] = to.split('?')
+    const base = rawPath.split(':')[0].replace(/\/$/, '')
+    const pathMatches = base === PATHS.FEED
+      ? pathname === base
+      : pathname === base || pathname.startsWith(base + '/')
+    if (!pathMatches) return false
+    if (!rawQuery) return true
 
-  function isActive(path: string): boolean {
-    if (path === PATHS.FEED) return pathname === path
-    const base = path.split(':')[0].replace(/\/$/, '')
-    return pathname === base || pathname.startsWith(base + '/')
+    const current = new URLSearchParams(search)
+    return [...new URLSearchParams(rawQuery)].every(
+      ([key, value]) => !current.has(key) || current.get(key) === value,
+    )
   }
 
-  const moreActive = moreItems.some((m) => !m.external && isActive(m.path))
+  const activeBarIndex = items.findIndex((item) => isActive(item.path))
+  const moreActive = activeBarIndex === -1 && moreItems.some((m) => !m.external && isActive(m.path))
+  const moreBadge = moreItems.reduce((sum, item) => sum + (item.badge ?? 0), 0)
 
   const closeMore = useCallback(({ restoreFocus = false }: { restoreFocus?: boolean } = {}) => {
     setMoreOpen(false)
@@ -129,8 +139,8 @@ export function MobileBottomNav() {
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {items.map(({ icon: Icon, label, path, badge }) => {
-          const active = isActive(path)
+        {items.map(({ icon: Icon, label, path, badge }, index) => {
+          const active = index === activeBarIndex
           return (
             <button
               key={label}
@@ -189,11 +199,11 @@ export function MobileBottomNav() {
           )
         })}
 
-        {/* More — exposes everything else (Groups, Events, Jobs, News, Shuttle, Lost & found, Profile, Admin) */}
+        {/* More — everything the rail demoted: the rest of the fixed rows plus campus tools */}
         <button
           ref={moreButtonRef}
           onClick={() => setMoreOpen(true)}
-          aria-label="More"
+          aria-label={moreBadge > 0 ? `More (${moreBadge} unread)` : 'More'}
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           className="press-feedback"
@@ -214,7 +224,34 @@ export function MobileBottomNav() {
             minHeight: 44,
           }}
         >
-          <LayoutGrid size={22} strokeWidth={moreActive ? 2 : 1.5} />
+          <div style={{ position: 'relative' }}>
+            <LayoutGrid size={22} strokeWidth={moreActive ? 2 : 1.5} />
+            {moreBadge > 0 && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -6,
+                  minWidth: 15,
+                  height: 15,
+                  borderRadius: 'var(--r-pill)',
+                  background: 'var(--uc-red)',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 3px',
+                  lineHeight: 1,
+                  border: '1.5px solid var(--surface-card)',
+                }}
+              >
+                {moreBadge > 99 ? '99+' : moreBadge}
+              </span>
+            )}
+          </div>
           <span style={{ fontSize: 12, fontWeight: moreActive ? 500 : 400, lineHeight: 1 }}>
             More
           </span>
@@ -280,6 +317,7 @@ export function MobileBottomNav() {
                   key={item.label}
                   onClick={() => handleMoreItem(item)}
                   aria-current={active ? 'page' : undefined}
+                  aria-label={item.badge ? `${item.label} (${item.badge} unread)` : undefined}
                   className="interactive-surface"
                   style={{
                     display: 'flex',
@@ -296,6 +334,7 @@ export function MobileBottomNav() {
                 >
                   <div
                     style={{
+                      position: 'relative',
                       width: 44,
                       height: 44,
                       borderRadius: 'var(--r-md)',
@@ -307,6 +346,31 @@ export function MobileBottomNav() {
                     }}
                   >
                     <Icon size={20} strokeWidth={1.5} />
+                    {!!item.badge && item.badge > 0 && (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          top: -4,
+                          right: -4,
+                          minWidth: 15,
+                          height: 15,
+                          borderRadius: 'var(--r-pill)',
+                          background: 'var(--uc-red)',
+                          color: 'var(--text-primary)',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0 3px',
+                          lineHeight: 1,
+                          border: '1.5px solid var(--surface-card)',
+                        }}
+                      >
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
                   </div>
                   <span
                     style={{

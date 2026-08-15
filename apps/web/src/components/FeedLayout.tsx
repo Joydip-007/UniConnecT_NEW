@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { TopNav } from '@/components/TopNav'
 import { LeftSidebar } from '@/components/LeftSidebar'
@@ -12,6 +12,7 @@ import { useNotificationsSocket } from '@/features/notifications'
 import { usePresenceHeartbeat } from '@/features/presence'
 import { useAchievementSocket } from '@/features/learning'
 import { useSidebarRailPreference } from '@/hooks/useSidebarRailPreference'
+import { PATHS } from '@/router/paths'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 
 const bannerStyle: React.CSSProperties = {
@@ -30,6 +31,7 @@ const bannerStyle: React.CSSProperties = {
 }
 
 export function FeedLayout() {
+  const { pathname } = useLocation()
   const userId = useAuthStore((s) => s.user?.id)
   const { connected, hasConnected } = useSocketStore()
   const { isCollapsed, toggleCollapsed } = useSidebarRailPreference()
@@ -58,6 +60,11 @@ export function FeedLayout() {
   }, [])
 
   const showReconnecting = hasConnected && !connected
+
+  // Admin runs on the same grid, not a forked layout — it simply has no right-rail
+  // payload of its own yet, and the student-shaped widgets would be noise beside a
+  // moderation queue. Dropping that column gives the dense tables the width instead.
+  const wide = pathname.startsWith(PATHS.ADMIN)
 
   return (
     <div style={{ background: 'var(--surface-page)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -94,16 +101,22 @@ export function FeedLayout() {
       <TopNav />
       <MobileBottomNav />
       <ToastHost />
-      <div className="feed-layout-grid" data-left-sidebar={isCollapsed ? 'collapsed' : 'expanded'}>
+      <div
+        className="feed-layout-grid"
+        data-left-sidebar={isCollapsed ? 'collapsed' : 'expanded'}
+        data-wide={wide || undefined}
+      >
         <div className="feed-layout-left">
           <LeftSidebar collapsed={isCollapsed} onToggleCollapsed={toggleCollapsed} />
         </div>
         <main className="feed-layout-main" style={{ minWidth: 0, paddingTop: 18 }}>
           <Outlet />
         </main>
-        <div className="feed-layout-right">
-          <RightSidebar />
-        </div>
+        {!wide && (
+          <div className="feed-layout-right">
+            <RightSidebar />
+          </div>
+        )}
       </div>
     </div>
   )

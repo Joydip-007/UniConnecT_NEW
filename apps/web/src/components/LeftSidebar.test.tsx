@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { UserRole } from '@uniconnect/shared'
 import { LeftSidebar } from './LeftSidebar'
+import { RAILS } from './leftSidebar.config'
 
 const navigate = vi.fn()
+let mockRole: UserRole = 'student'
+let mockDraftCount = 0
 
 vi.mock('@/hooks/useViewTransitionNavigate', () => ({
   useViewTransitionNavigate: () => navigate,
@@ -15,7 +19,7 @@ vi.mock('@/stores/authStore', () => ({
   useAuthStore: () => ({
     user: {
       id: 'user-1',
-      role: 'student',
+      role: mockRole,
       profile: {
         fullName: 'Ada Lovelace',
         avatarUrl: null,
@@ -27,8 +31,10 @@ vi.mock('@/stores/authStore', () => ({
   }),
 }))
 
-vi.mock('@/stores/notificationsStore', () => ({
-  useNotificationsStore: () => ({ messageCount: 7 }),
+vi.mock('@/features/drafts/hooks/useMyDrafts', () => ({
+  useMyDrafts: () => ({
+    data: { items: Array.from({ length: mockDraftCount }), counts: {} },
+  }),
 }))
 
 vi.mock('@/lib/axios', () => ({
@@ -60,20 +66,29 @@ vi.mock('@/lib/axios', () => ({
   },
 }))
 
-function renderSidebar(collapsed: boolean, onToggleCollapsed = vi.fn()) {
+function renderSidebar(collapsed: boolean, onToggleCollapsed = vi.fn(), route = '/feed') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/feed']}>
+      <MemoryRouter initialEntries={[route]}>
         <LeftSidebar collapsed={collapsed} onToggleCollapsed={onToggleCollapsed} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
 }
 
+function activeRowNames(): string[] {
+  return screen
+    .getAllByRole('button')
+    .filter((el) => el.getAttribute('aria-current') === 'page')
+    .map((el) => el.textContent ?? '')
+}
+
 describe('LeftSidebar', () => {
   beforeEach(() => {
     navigate.mockClear()
+    mockRole = 'student'
+    mockDraftCount = 0
   })
 
   it('renders the expanded sidebar with visible profile and labels', () => {
@@ -87,27 +102,16 @@ describe('LeftSidebar', () => {
   it('keeps the active route marked with aria-current page', () => {
     renderSidebar(false)
     expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('button', { name: 'Explore' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('button', { name: 'Groups & people' })).not.toHaveAttribute('aria-current')
   })
 
   it('renders collapsed nav as accessible icon buttons without visible labels', () => {
     const { container } = renderSidebar(true)
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('title', 'Home')
-    expect(screen.getByRole('button', { name: 'Messages' })).toHaveAttribute('title', 'Messages')
     expect(screen.getByRole('button', { name: 'Shuttle live' })).toHaveAttribute('title', 'Shuttle live')
     expect(container.querySelector('.left-sidebar--collapsed')).toBeInTheDocument()
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument()
-  })
-
-  it('keeps collapsed badges and group labels in the DOM', () => {
-    renderSidebar(true)
-
-    const messages = screen.getByRole('button', { name: 'Messages' })
-    expect(messages).toHaveTextContent('7')
-    expect(screen.getByText('Main')).toHaveClass('left-sidebar-visually-hidden')
-    expect(screen.getByText('Community')).toHaveClass('left-sidebar-visually-hidden')
-    expect(screen.getByText('You')).toHaveClass('left-sidebar-visually-hidden')
   })
 
   it('calls the collapse toggle from the rail button', async () => {
@@ -115,5 +119,48 @@ describe('LeftSidebar', () => {
     renderSidebar(false, onToggleCollapsed)
     await userEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
     expect(onToggleCollapsed).toHaveBeenCalledOnce()
+  })
+
+  it('hides the contextual zone when its condition is false', () => {
+    mockDraftCount = 0
+    renderSidebar(false)
+    expect(screen.queryByLabelText('Contextual shortcuts')).not.toBeInTheDocument()
+  })
+
+  it('shows the drafts contextual row once a draft exists', () => {
+    mockDraftCount = 3
+    renderSidebar(false)
+    expect(screen.getByLabelText('Contextual shortcuts')).toBeInTheDocument()
+    expect(screen.getByText('Drafts')).toBeInTheDocument()
+  })
+
+  const roles: UserRole[] = ['student', 'alumni', 'faculty', 'driver', 'admin']
+  it.each(roles)('renders every fixed row for the %s role, in manifest order', (role) => {
+    mockRole = role
+    renderSidebar(false)
+    const rail = RAILS[role]
+    rail.fixed.forEach((row) => {
+      expect(screen.getByRole('button', { name: row.label })).toBeInTheDocument()
+    })
+  })
+
+  it('marks exactly one row active, even when several share a base path', () => {
+    mockRole = 'admin'
+    renderSidebar(false, vi.fn(), '/admin')
+    // Moderation, Members & invites and Insights all live at /admin behind a tab param.
+    expect(activeRowNames()).toEqual(['Moderation'])
+  })
+
+  it('resolves the active admin row from the tab query param', () => {
+    mockRole = 'admin'
+    // `users` is AdminPage's own tab value — the rail must speak the page's vocabulary.
+    renderSidebar(false, vi.fn(), '/admin?tab=users')
+    expect(activeRowNames()).toEqual(['Members & invites'])
+  })
+
+  it('driver rail has no more than 4 fixed rows and no student-only routes', () => {
+    const rail = RAILS.driver
+    expect(rail.fixed.length).toBe(4)
+    expect(rail.fixed.some((row) => row.to === '/jobs' || row.to === '/mentorship')).toBe(false)
   })
 })

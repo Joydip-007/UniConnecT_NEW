@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
+import { isRouteAllowedForRole } from '@/config/roleShell'
 import { PATHS } from './paths'
 
 export default function ProtectedRoute() {
@@ -23,8 +24,10 @@ export default function ProtectedRoute() {
     )
   }
 
-  // Drivers are a service account, not a member — they only ever see the broadcast shell.
-  if (user?.role === 'driver') {
+  // Drivers are a service account, not a member. They keep the handful of routes their
+  // own rail offers (route, messages, notices, settings) and are sent to the duty board
+  // for everything else in the member shell.
+  if (user && !isRouteAllowedForRole(user.role, location.pathname)) {
     return <Navigate to={PATHS.SHUTTLE_DRIVE} replace />
   }
 

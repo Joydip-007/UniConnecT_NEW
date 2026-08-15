@@ -1,9 +1,10 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
-import { PATHS } from './paths'
+import { ROLE_SHELL } from '@/config/roleShell'
 
 export default function GuestRoute() {
   const accessToken = useAuthStore((s) => s.accessToken)
-  if (accessToken) return <Navigate to={PATHS.FEED} replace />
+  const user = useAuthStore((s) => s.user)
+  if (accessToken) return <Navigate to={ROLE_SHELL[user?.role ?? 'student'].home} replace />
   return <Outlet />
 }
