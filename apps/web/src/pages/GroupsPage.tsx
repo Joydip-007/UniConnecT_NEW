@@ -6,6 +6,7 @@ import { api } from '@/lib/axios'
 import { PrimaryBtn } from '@/components/Button'
 import { CreateGroupModal, GroupCard } from '@/features/groups'
 import type { Group, GroupType } from '@/features/groups'
+import ConnectionsPage from '@/pages/ConnectionsPage'
 
 type FilterType = 'all' | GroupType
 
@@ -26,6 +27,18 @@ const FILTER_TABS: { label: string; value: FilterType }[] = [
 
 export default function GroupsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // The rail row is "Groups & people", so connections fold in here as a section.
+  // `/connections` stays routable for deep links and for the avatar menu.
+  const section: 'groups' | 'people' = searchParams.get('section') === 'people' ? 'people' : 'groups'
+
+  function setSection(next: 'groups' | 'people') {
+    const params = new URLSearchParams(searchParams)
+    if (next === 'groups') params.delete('section')
+    else params.set('section', next)
+    setSearchParams(params, { replace: true })
+  }
+
   const rawType = searchParams.get('type') as FilterType | null
   const activeType: FilterType =
     rawType !== null && FILTER_TABS.some((t) => t.value === rawType) ? rawType : 'all'
@@ -102,6 +115,52 @@ export default function GroupsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Section switcher — "Groups & people" in the rail covers both */}
+      <nav
+        aria-label="Groups sections"
+        style={{
+          display: 'flex',
+          gap: 2,
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '4px 6px',
+        }}
+      >
+        {([
+          { key: 'groups', label: 'Groups' },
+          { key: 'people', label: 'People' },
+        ] as const).map(({ key, label }) => {
+          const active = section === key
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSection(key)}
+              aria-current={active ? 'page' : undefined}
+              style={{
+                padding: '7px 14px',
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                borderRadius: 'var(--r-pill)',
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                transition: 'background 150ms, color 150ms',
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </nav>
+
+      {section === 'people' && <ConnectionsPage />}
+
+      {section === 'groups' && (
+        <>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <div
           style={{
@@ -239,6 +298,8 @@ export default function GroupsPage() {
       )}
 
       {createOpen && <CreateGroupModal onClose={() => setCreateOpen(false)} />}
+        </>
+      )}
     </div>
   )
 }
