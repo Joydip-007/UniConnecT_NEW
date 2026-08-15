@@ -23,10 +23,17 @@ export async function up(knex: Knex) {
 }
 
 export async function down(knex: Knex) {
-  // Rows using the type being removed would violate the narrowed constraint, so fold
-  // them back to a plain post rather than failing the rollback.
-  await knex('posts').where({ type: 'job_promo' }).update({ type: 'post' })
+  // Drop, fold, re-add — in that order, mirroring up(). The fold happens to be legal
+  // under the live constraint here because 'post' is in both lists, but doing it before
+  // the drop is the ordering that fails the moment a fold target is not, and this file
+  // is the one people copy. 025 shipped broken for exactly that reason.
   await knex.raw('ALTER TABLE posts DROP CONSTRAINT IF EXISTS posts_type_check')
+
+  // Rows using the type being removed would violate the narrowed constraint. Folded to
+  // a plain post rather than deleted: a job_promo post carries reactions, comments and
+  // hashtags that a delete would cascade away, and only the type flag is being removed.
+  await knex('posts').where({ type: 'job_promo' }).update({ type: 'post' })
+
   await knex.raw(
     `ALTER TABLE posts ADD CONSTRAINT posts_type_check CHECK (type IN (${checkClause(TYPES_BEFORE)}))`,
   )
