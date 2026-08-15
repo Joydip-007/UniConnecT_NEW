@@ -243,7 +243,7 @@ Notable feature internals:
 
 | File | Owns |
 |------|------|
-| `src/config/roleShell.ts` | `ROLE_SHELL[role]`: `home` (where `/` and the logo resolve), `primaryAction`, `searchPlaceholder`, `rightRail` (`WidgetKey[]`), plus `isRouteAllowedForRole()` — the driver allowlist `ProtectedRoute` consults |
+| `src/config/roleShell.ts` | `ROLE_SHELL[role]`: `home` (where `/` and the logo resolve), `primaryAction`, `searchPlaceholder`, `rightRail` (`WidgetKey[]`), `stats` (`[StatSpec, StatSpec]`), plus `isRouteAllowedForRole()` — the driver allowlist `ProtectedRoute` consults — and `statsFor(role, isOwnProfile)` |
 | `src/components/rightRail/index.ts` | `RIGHT_RAIL_WIDGETS`: the total `Record<WidgetKey, ComponentType>` — a manifest key with no widget is a compile error |
 | `src/components/leftSidebar.config.ts` | `RAILS[role]`: `fixed` rows (max 5, driver 4), `contextual` rules, `tools`, and `secondary` |
 
@@ -258,6 +258,9 @@ Notable feature internals:
 - Sections that absorbed a former rail row, deep-linkable with the old route still valid: `/explore?section=lost-found`, `/groups?section=people`, `/feed?tab=` (`FEED_TABS`).
 - **Pages whose default view is role-dependent put the role's own default *out* of the URL** and write the param only for the non-default, so a shared link stays clean: `/jobs` is `view=mine` for alumni and `view=browse` for everyone else; `/groups` is `section=sections` for faculty and `section=groups` for everyone else. Both read the param back defensively — a role that cannot use a view (a student on `view=mine`, a non-faculty on `section=sections`) falls back to its default rather than rendering an empty or forbidden panel.
 - Faculty's two `/groups` rail rows differ only by query (`?section=sections` vs `?section=groups`); the sections view pins `type=academic` and hides the group-type filter.
+- **The profile card's two numbers are manifest-driven, and the role-scoped ones are computed server-side only for the role they describe.** `countRoleStats()` in `users/service.ts` fills `mentees` (alumni), `sections`/`students` (faculty) and `members`/`verifications` (admin); they are **optional** on `publicUserProfileSchema.stats`, so absent means "not that role" while `0` means a real zero. Never add a stat to a role the API does not compute it for — `roleShell.test.ts` fails on that, since it would render a silent zero.
+- `pendingReceived` is returned as `0` for anyone but the profile owner, so it is flagged `ownerOnly` and `statsFor()` swaps in `PUBLIC_STAT` (`posts`) for visitors. Any future owner-only count needs the same flag, or a visitor reads the placeholder zero as real.
+- `groups` has **no** soft-delete column — do not add `is_deleted` to a groups query. `users` and `mentorship_requests` do have it.
 
 **React conventions:**
 - Data fetching only in `hooks/` via TanStack Query. Components receive props, never call axios.

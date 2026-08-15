@@ -15,6 +15,42 @@ export type WidgetKey =
   | 'platform-today'
   | 'trending-tags'
 
+/**
+ * A key on the profile `stats` object. The role-scoped ones are computed server-side
+ * only for the role they describe, so reading `mentees` off a student profile yields
+ * undefined by design — the manifest is what guarantees a role only asks for its own.
+ */
+export type StatSource =
+  | 'connections'
+  | 'pendingReceived'
+  | 'posts'
+  | 'mentees'
+  | 'sections'
+  | 'students'
+  | 'members'
+  | 'verifications'
+
+export interface StatSpec {
+  key: StatSource
+  label: string
+  /**
+   * True when the count is only meaningful on your own profile — `pendingReceived` is
+   * returned as 0 for anyone else by design, so rendering it on a stranger's profile
+   * would show a permanent zero. Surfaces viewing someone else swap in `PUBLIC_STAT`.
+   */
+  ownerOnly?: boolean
+}
+
+/** What an `ownerOnly` stat degrades to when a visitor is looking. */
+export const PUBLIC_STAT: StatSpec = { key: 'posts', label: 'posts' }
+
+/** The pair to show for `role`, with owner-only entries swapped out for visitors. */
+export function statsFor(role: UserRole, isOwnProfile: boolean): [StatSpec, StatSpec] {
+  const pair = ROLE_SHELL[role].stats
+  if (isOwnProfile) return pair
+  return pair.map((s) => (s.ownerOnly ? PUBLIC_STAT : s)) as [StatSpec, StatSpec]
+}
+
 export interface RoleShell {
   /** Where '/' (once authenticated) and the top-nav logo resolve to. */
   home: string
@@ -22,6 +58,8 @@ export interface RoleShell {
   searchPlaceholder: string
   /** Rendered top to bottom. Capped at four; see `roleShell.test.ts`. */
   rightRail: WidgetKey[]
+  /** The profile card's two numbers, in the rail and on the profile header. */
+  stats: [StatSpec, StatSpec]
 }
 
 /**
@@ -59,6 +97,10 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
     // Progress disappears for good once the profile is complete, so the steady state
     // for an established student is the spec's three.
     rightRail: ['profile-progress', 'people-you-may-know', 'upcoming-events', 'trending-tags'],
+    stats: [
+      { key: 'connections', label: 'connections' },
+      { key: 'pendingReceived', label: 'pending', ownerOnly: true },
+    ],
   },
   alumni: {
     home: PATHS.FEED,
@@ -66,6 +108,10 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
     searchPlaceholder: 'Search people, posts, events, lost & found',
     // Alumni contribute more than they browse, so the requests waiting on them lead.
     rightRail: ['mentee-requests', 'people-you-may-know', 'upcoming-events'],
+    stats: [
+      { key: 'connections', label: 'connections' },
+      { key: 'mentees', label: 'mentees' },
+    ],
   },
   faculty: {
     home: PATHS.FEED,
@@ -74,12 +120,21 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
     // No mentorship widget: the module gives faculty no write access anywhere, so a
     // request queue it cannot action would violate the render-only-if-actionable rule.
     rightRail: ['upcoming-events', 'people-you-may-know', 'trending-tags'],
+    // Sections, not groups, are the unit of navigation for faculty.
+    stats: [
+      { key: 'sections', label: 'sections' },
+      { key: 'students', label: 'students' },
+    ],
   },
   admin: {
     home: PATHS.ADMIN,
     primaryAction: { label: 'Broadcast', to: PATHS.ADMIN },
     searchPlaceholder: 'Search people, posts, events, lost & found',
     rightRail: ['platform-today', 'people-you-may-know', 'trending-tags'],
+    stats: [
+      { key: 'members', label: 'members' },
+      { key: 'verifications', label: 'verifications' },
+    ],
   },
   driver: {
     home: PATHS.SHUTTLE_DRIVE,
@@ -89,5 +144,11 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
     // map, week's totals) have no endpoint yet, and the member widgets are all surfaces
     // it cannot act on — so the rail stays empty rather than borrowing student payload.
     rightRail: [],
+    // Route and trips-today have no read endpoint yet, so the driver card falls back
+    // to the two counts every account genuinely has.
+    stats: [
+      { key: 'connections', label: 'connections' },
+      { key: 'posts', label: 'posts' },
+    ],
   },
 }

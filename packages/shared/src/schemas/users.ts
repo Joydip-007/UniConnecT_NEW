@@ -97,6 +97,17 @@ export const publicUserProfileSchema = z.object({
     connections: z.number().int().nonnegative(),
     pendingReceived: z.number().int().nonnegative(),
     posts: z.number().int().nonnegative(),
+    /**
+     * Role-scoped counts. Each is computed only for the role it describes — the shell's
+     * `ROLE_SHELL[role].stats` picks which pair to show — so every one of these is
+     * absent on a profile whose role does not carry it. Optional rather than zero:
+     * "no mentees" and "not an alumnus" are different facts.
+     */
+    mentees: z.number().int().nonnegative().optional(),
+    sections: z.number().int().nonnegative().optional(),
+    students: z.number().int().nonnegative().optional(),
+    members: z.number().int().nonnegative().optional(),
+    verifications: z.number().int().nonnegative().optional(),
   }),
 })
 

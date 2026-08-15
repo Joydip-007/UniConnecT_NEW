@@ -10,6 +10,7 @@ import { UserActionsMenu } from '@/features/moderation'
 import { PresenceLabel, usePresence } from '@/features/presence'
 import { ShowcasedBadge } from '@/features/learning'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
+import { statsFor } from '@/config/roleShell'
 
 interface Props {
   user: PublicUserProfile
@@ -179,12 +180,9 @@ export function ProfileHeader({
             paddingTop: 14,
           }}
         >
-          {(
-            [
-              { label: 'connections', value: user.stats.connections },
-              { label: 'posts', value: user.stats.posts },
-            ] as const
-          ).map(({ label, value }, idx) => (
+          {/* The pair follows the profile owner's role, not the viewer's — you see a
+              faculty member's sections and students whoever you are. */}
+          {statsFor(user.role, isOwnProfile).map(({ key, label }, idx) => (
             <div
               key={label}
               style={{
@@ -205,7 +203,7 @@ export function ProfileHeader({
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                {value.toLocaleString()}
+                {(user.stats[key] ?? 0).toLocaleString()}
               </span>
               <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
                 {label}

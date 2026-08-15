@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { UserRole } from '@uniconnect/shared'
-import { ROLE_SHELL, type WidgetKey } from './roleShell'
+import { PUBLIC_STAT, ROLE_SHELL, statsFor, type WidgetKey } from './roleShell'
 import { RIGHT_RAIL_WIDGETS } from '@/components/rightRail'
 import { RAILS } from '@/components/leftSidebar.config'
 import { PATHS } from '@/router/paths'
@@ -102,5 +102,54 @@ describe('RAILS', () => {
     expect(RAILS.driver.fixed.length).toBe(4)
     const to = RAILS.driver.fixed.map((r) => r.to)
     expect(to).not.toContain(PATHS.FEED)
+  })
+})
+
+describe('ROLE_SHELL stats pair', () => {
+  it('gives every role exactly two stats', () => {
+    ROLES.forEach((role) => {
+      expect(ROLE_SHELL[role].stats).toHaveLength(2)
+    })
+  })
+
+  it('never shows the same number twice in a pair', () => {
+    ROLES.forEach((role) => {
+      const [a, b] = ROLE_SHELL[role].stats
+      expect(a.key, `${role} shows ${a.key} twice`).not.toBe(b.key)
+    })
+  })
+
+  it('keeps role-scoped counts on the roles the API computes them for', () => {
+    // countRoleStats in users/service.ts only fills these in for the matching role, so
+    // asking for one elsewhere would render a silent zero.
+    const scoped: Record<string, UserRole> = {
+      mentees: 'alumni',
+      sections: 'faculty',
+      students: 'faculty',
+      members: 'admin',
+      verifications: 'admin',
+    }
+    ROLES.forEach((role) => {
+      ROLE_SHELL[role].stats.forEach(({ key }) => {
+        const owner = scoped[key]
+        if (owner) expect(owner, `${role} asks for ${key}`).toBe(role)
+      })
+    })
+  })
+
+  it('swaps owner-only stats for a public one when a visitor is looking', () => {
+    // pendingReceived is returned as 0 for anyone but the owner, so a visitor must
+    // never see it — they would read a permanent zero as "no pending requests".
+    const own = statsFor('student', true)
+    const visiting = statsFor('student', false)
+
+    expect(own[1].key).toBe('pendingReceived')
+    expect(visiting[1]).toEqual(PUBLIC_STAT)
+    expect(visiting[0]).toEqual(own[0])
+  })
+
+  it('leaves pairs without owner-only entries untouched for visitors', () => {
+    expect(statsFor('faculty', false)).toEqual(statsFor('faculty', true))
+    expect(statsFor('alumni', false)).toEqual(statsFor('alumni', true))
   })
 })

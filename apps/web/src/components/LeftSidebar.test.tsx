@@ -164,3 +164,31 @@ describe('LeftSidebar', () => {
     expect(rail.fixed.some((row) => row.to === '/jobs' || row.to === '/mentorship')).toBe(false)
   })
 })
+
+describe('LeftSidebar profile stats pair', () => {
+  const expected: Record<UserRole, [string, string]> = {
+    student: ['connections', 'pending'],
+    alumni: ['connections', 'mentees'],
+    faculty: ['sections', 'students'],
+    admin: ['members', 'verifications'],
+    driver: ['connections', 'posts'],
+  }
+
+  it.each(Object.keys(expected) as UserRole[])(
+    'labels the %s card with that role’s pair, not a hardwired one',
+    async (role) => {
+      mockRole = role
+      renderSidebar(false)
+
+      const [first, second] = expected[role]
+      expect(await screen.findByText(first)).toBeInTheDocument()
+      expect(screen.getByText(second)).toBeInTheDocument()
+    },
+  )
+
+  it('does not show the student pair to a faculty member', () => {
+    mockRole = 'faculty'
+    renderSidebar(false)
+    expect(screen.queryByText('pending')).not.toBeInTheDocument()
+  })
+})

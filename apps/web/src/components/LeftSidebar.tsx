@@ -13,6 +13,7 @@ import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { RAILS, TONE_TOKENS, type RailContext } from './leftSidebar.config'
+import { ROLE_SHELL } from '@/config/roleShell'
 
 // ── NavItem ─────────────────────────────────────────────
 
@@ -312,8 +313,10 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
 
   const profilePath = user ? PATHS.PROFILE.replace(':id', user.id) : PATHS.FEED
 
-  const connectionsShown = useCountUp(profileData?.stats.connections ?? 0)
-  const pendingShown = useCountUp(profileData?.stats.pendingReceived ?? 0)
+  // Which two numbers this role shows comes from the manifest, not from the card.
+  const [firstStat, secondStat] = ROLE_SHELL[user?.role ?? 'student'].stats
+  const firstShown = useCountUp(profileData?.stats[firstStat.key] ?? 0)
+  const secondShown = useCountUp(profileData?.stats[secondStat.key] ?? 0)
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose
 
   /**
@@ -482,11 +485,11 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
                 {deptLabel}
               </div>
 
-              {/* Connection stats */}
+              {/* Role stats pair — labels and sources both from the manifest */}
               <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
                 {[
-                  { label: 'connections', value: connectionsShown },
-                  { label: 'pending', value: pendingShown },
+                  { label: firstStat.label, value: firstShown },
+                  { label: secondStat.label, value: secondShown },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
