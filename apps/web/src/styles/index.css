@@ -609,6 +609,16 @@ select:focus-visible {
     align-items: stretch;
   }
 
+  /* Five slots share the viewport, so a label like "Groups & people" or
+     "Members & invites" gets ~78px at 390px wide. Clamp rather than wrap — a
+     second line would push the bar's height around per role. */
+  .mobile-nav-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .topnav-mobile-hidden {
     display: none;
   }

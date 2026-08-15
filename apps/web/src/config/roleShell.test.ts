@@ -6,6 +6,8 @@ import { RAILS } from '@/components/leftSidebar.config'
 import { PATHS } from '@/router/paths'
 
 const ROLES: UserRole[] = ['student', 'alumni', 'faculty', 'admin', 'driver']
+/** The driver is a service account walled off from the social shell, so it opts out. */
+const MEMBER_ROLES: UserRole[] = ['student', 'alumni', 'faculty', 'admin']
 const PATH_VALUES = new Set(Object.values(PATHS))
 
 function stripQuery(to: string): string {
@@ -16,12 +18,6 @@ describe('ROLE_SHELL', () => {
   it('has an entry for every UserRole', () => {
     ROLES.forEach((role) => {
       expect(ROLE_SHELL[role]).toBeDefined()
-    })
-  })
-
-  it('every primaryAction.to resolves to a route in PATHS', () => {
-    ROLES.forEach((role) => {
-      expect(PATH_VALUES.has(stripQuery(ROLE_SHELL[role].primaryAction.to) as (typeof PATHS)[keyof typeof PATHS])).toBe(true)
     })
   })
 
@@ -47,19 +43,24 @@ describe('ROLE_SHELL', () => {
   })
 
   it('keeps role-gated widgets to the roles whose API allows them', () => {
-    // GET /mentorship/requests/incoming is requireRole('alumni','admin');
-    // GET /admin/stats is requireRole('admin'). A widget on a role that would 403 is
-    // exactly the "row that leads to a 403" the shell rule forbids.
-    const gated: Record<string, UserRole[]> = {
-      'mentee-requests': ['alumni', 'admin'],
-      'platform-today': ['admin'],
-    }
+    // Every surviving widget reads an endpoint open to any member role, so this map is
+    // empty today — it stays as the guard for the next role-gated widget added. A widget
+    // on a role that would 403 is the "row that leads to a 403" the shell rule forbids.
+    const gated: Record<string, UserRole[]> = {}
     ROLES.forEach((role) => {
       ROLE_SHELL[role].rightRail.forEach((key: WidgetKey) => {
         const allowed = gated[key]
         if (allowed) expect(allowed, `${role} may not render ${key}`).toContain(role)
       })
     })
+  })
+
+  it('gives every member role the same number of widgets', () => {
+    // The four member roles should not differ in rail *length* — only in payload.
+    // profile-progress self-retires once a student's profile is complete, so the
+    // steady state is four keys each, with each widget hiding itself when empty.
+    const counts = MEMBER_ROLES.map((role) => ROLE_SHELL[role].rightRail.length)
+    expect(new Set(counts).size, `member rails differ in length: ${counts.join(', ')}`).toBe(1)
   })
 
   it('every home resolves to a route in PATHS', () => {
@@ -76,17 +77,21 @@ describe('RAILS', () => {
     })
   })
 
-  it('every fixed and tool "to" is a value in PATHS', () => {
+  it('every fixed, secondary and tool "to" is a value in PATHS', () => {
     ROLES.forEach((role) => {
       const rail = RAILS[role]
-      rail.fixed.forEach((row) => {
+      // `secondary` carries 11 of admin's rows and is the only zone reachable solely
+      // through the avatar menu and the mobile More sheet, so a typo there is invisible.
+      ;[...rail.fixed, ...rail.secondary].forEach((row) => {
         expect(PATH_VALUES.has(stripQuery(row.to) as (typeof PATHS)[keyof typeof PATHS])).toBe(true)
       })
       rail.contextual.forEach((rule) => {
         expect(PATH_VALUES.has(stripQuery(rule.to) as (typeof PATHS)[keyof typeof PATHS])).toBe(true)
       })
       rail.tools.forEach((tool) => {
-        if (tool.to) expect(PATH_VALUES.has(tool.to as (typeof PATHS)[keyof typeof PATHS])).toBe(true)
+        // Tools deep-link with `?tab=`/`?section=` like rows do, so the query is stripped
+        // here as it is everywhere else — the tab itself is checked in adminTabs.test.ts.
+        if (tool.to) expect(PATH_VALUES.has(stripQuery(tool.to) as (typeof PATHS)[keyof typeof PATHS])).toBe(true)
         else expect(tool.externalUrl).toBeTruthy()
       })
     })
@@ -95,6 +100,31 @@ describe('RAILS', () => {
   it('no role has more than 5 fixed rows', () => {
     ROLES.forEach((role) => {
       expect(RAILS[role].fixed.length).toBeLessThanOrEqual(5)
+    })
+  })
+
+  it('never lists the same destination in both fixed and secondary', () => {
+    // The mobile More sheet dedupes by path, so a row in both zones would simply vanish
+    // from one of them rather than render twice — silently, and only on mobile.
+    ROLES.forEach((role) => {
+      const fixed = new Set(RAILS[role].fixed.map((row) => row.to))
+      RAILS[role].secondary.forEach((row) => {
+        expect(fixed.has(row.to), `${role} lists ${row.to} in both zones`).toBe(false)
+      })
+    })
+  })
+
+  it('never gives a tool tile a destination the rail already offers', () => {
+    // A tool is either an external campus utility or somewhere no row goes. Pointing a
+    // tile at a row's destination is that row under a second name — which is how the
+    // driver ended up with seven entries resolving to two routes.
+    ROLES.forEach((role) => {
+      const rail = RAILS[role]
+      const rows = new Set([...rail.fixed, ...rail.secondary].map((row) => row.to))
+      rail.tools.forEach((tool) => {
+        if (!tool.to) return
+        expect(rows.has(tool.to), `${role}'s ${tool.key} tile repeats a rail row`).toBe(false)
+      })
     })
   })
 

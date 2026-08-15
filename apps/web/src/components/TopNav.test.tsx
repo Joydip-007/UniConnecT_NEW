@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserRole } from '@uniconnect/shared'
 import { TopNav } from './TopNav'
-import { RAILS } from './leftSidebar.config'
+import { RAILS, TOPNAV_ICON_ROUTES } from './leftSidebar.config'
 
 const navigate = vi.fn()
 let mockRole: UserRole = 'student'
@@ -64,12 +64,29 @@ describe('TopNav avatar menu', () => {
     await user.click(screen.getByRole('button', { name: 'Profile menu' }))
 
     RAILS[role].secondary.forEach((row) => {
+      // Messages and Notifications are excluded on purpose: each already has its own
+      // badged icon and peek popover a few pixels away in this same bar, so a menu row
+      // would be the weaker of two controls for one feature.
+      if (TOPNAV_ICON_ROUTES.includes(row.to)) {
+        expect(screen.queryByRole('menuitem', { name: row.label })).not.toBeInTheDocument()
+        return
+      }
       expect(screen.getByRole('menuitem', { name: row.label })).toBeInTheDocument()
     })
     // The account items the rail gave up must survive alongside them.
     expect(screen.getByRole('menuitem', { name: 'View profile' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument()
+  })
+
+  it.each(roles)('still reaches the icon routes from the mobile More sheet for %s', (role) => {
+    // The sheet renders `secondary` verbatim and mobile hides both top-bar icons, so the
+    // filter above must live in TopNav, never in the manifest.
+    const sheet = RAILS[role].secondary.map((row) => row.to)
+    TOPNAV_ICON_ROUTES.forEach((path) => {
+      const reachable = sheet.includes(path) || RAILS[role].fixed.some((row) => row.to === path)
+      expect(reachable, `${role} cannot reach ${path} on a phone`).toBe(true)
+    })
   })
 
   it('navigates to a secondary destination when picked', async () => {
@@ -82,9 +99,16 @@ describe('TopNav avatar menu', () => {
     expect(navigate).toHaveBeenCalledWith('/lost-found')
   })
 
-  it('shows the role-aware primary action', async () => {
-    mockRole = 'alumni'
-    renderNav()
-    expect(screen.getByRole('button', { name: 'Post a job' })).toBeInTheDocument()
+  it('offers the same search placeholder to every role', () => {
+    // Search is global — one endpoint, one result set, no role scoping — so the nav must
+    // not imply otherwise. A per-role placeholder promised variance that never existed.
+    const seen = new Set<string>()
+    ;(['student', 'alumni', 'faculty', 'admin'] as const).forEach((role) => {
+      mockRole = role
+      const { unmount } = renderNav()
+      seen.add(screen.getByRole('combobox', { name: 'Search' }).getAttribute('placeholder') ?? '')
+      unmount()
+    })
+    expect(seen.size).toBe(1)
   })
 })

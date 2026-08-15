@@ -22,7 +22,15 @@ describe('admin rail deep links', () => {
     const valid = adminTabValues()
     expect(valid.length).toBeGreaterThan(0)
 
-    const adminRows = RAILS.admin.fixed.filter((row) => row.to.startsWith(PATHS.ADMIN))
+    // Every zone, not just `fixed`: the tool tiles deep-link too, and a bare `/admin`
+    // with no tab is the same failure as a drifted one — it lands on Overview whatever
+    // the tile promised. Two tiles used to do exactly that for screens that don't exist.
+    const adminRows = [
+      ...RAILS.admin.fixed,
+      ...RAILS.admin.secondary,
+      ...RAILS.admin.contextual,
+      ...RAILS.admin.tools.flatMap((tool) => (tool.to ? [{ key: tool.key, to: tool.to }] : [])),
+    ].filter((row) => row.to.startsWith(PATHS.ADMIN))
     expect(adminRows.length).toBeGreaterThan(0)
 
     adminRows.forEach((row) => {

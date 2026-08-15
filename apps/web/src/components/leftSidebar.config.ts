@@ -13,9 +13,8 @@ import {
   FileText,
   Network,
   Map,
-  Wrench,
-  ClipboardList,
-  Megaphone,
+  RefreshCw,
+  Trash2,
   MessageSquare,
   GraduationCap,
   Compass,
@@ -105,6 +104,17 @@ export interface RoleRail {
   secondary: RailRow[]
 }
 
+/**
+ * Destinations the top bar already gives a dedicated, badged icon and a peek popover.
+ * The avatar menu filters these out: a menu row inches from its own icon is a second
+ * control for one feature, and the weaker of the two — the icon carries the unread count.
+ *
+ * They stay in `secondary` rather than being deleted from it, because the mobile More
+ * sheet renders the same list and mobile hides both icons (`.topnav-mobile-hidden`) —
+ * dropping them outright would strand Messages and Notifications on a phone.
+ */
+export const TOPNAV_ICON_ROUTES: readonly string[] = [PATHS.MESSAGES, PATHS.NOTIFICATIONS]
+
 /** Shared by every member role; drivers deliberately get none of it. */
 const MEMBER_SECONDARY: RailRow[] = [
   { key: 'explore', label: 'Explore', icon: Compass, to: PATHS.EXPLORE },
@@ -132,6 +142,33 @@ const MENTORSHIP_ROW: RailRow = { key: 'mentorship', label: 'Mentorship', icon: 
 // carry no role guard at all) move here rather than disappearing.
 const GROUPS_ROW: RailRow = { key: 'groups', label: 'Groups & people', icon: Users, to: PATHS.GROUPS }
 const EVENTS_ROW: RailRow = { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS }
+// Every other role reaches the rider map through its "Shuttle" tool tile. Admin's tile
+// points at the ops tab instead, so the map it shares with everyone else lands here.
+const SHUTTLE_ROW: RailRow = { key: 'shuttle', label: 'Shuttle', icon: Bus, to: PATHS.SHUTTLE }
+
+/**
+ * True when `to` is the row the current URL is on. Rows can share a base path and differ
+ * only by a tab or section query (the three admin rows all live at /admin), so the path
+ * is matched first and then every param the row pins must agree — a param the URL omits
+ * counts as a match, so a bare path lands on the first row rather than none.
+ *
+ * The desktop rail and the mobile bar must never disagree about which row is lit, so this
+ * lives here and both call it rather than each keeping its own copy.
+ */
+export function isRailRowActive(to: string, pathname: string, search: string): boolean {
+  const [rawPath, rawQuery] = to.split('?')
+  const base = rawPath.split(':')[0].replace(/\/$/, '')
+  const pathMatches = base === PATHS.FEED
+    ? pathname === base
+    : pathname === base || pathname.startsWith(base + '/')
+  if (!pathMatches) return false
+  if (!rawQuery) return true
+
+  const current = new URLSearchParams(search)
+  return [...new URLSearchParams(rawQuery)].every(
+    ([key, value]) => !current.has(key) || current.get(key) === value,
+  )
+}
 
 /** live > action > deadline > network > self, per the rank-order rule. */
 export const TONE_RANK: Record<ContextualTone, number> = {
@@ -147,7 +184,10 @@ export const TONE_TOKENS: Record<ContextualTone, { bg: string; fg: string }> = {
   network: { bg: 'var(--uc-indigo-bg)', fg: 'var(--uc-indigo-l)' },
   live: { bg: 'var(--uc-cyan-bg)', fg: 'var(--uc-cyan)' },
   deadline: { bg: 'var(--uc-amber-bg)', fg: 'var(--uc-amber-l)' },
-  action: { bg: 'var(--role-admin-bg)', fg: 'var(--role-admin-text)' },
+  // Follows the `live` precedent for accents with no `-l` variant. Deliberately not the
+  // `--role-admin-*` pair: those are the admin *badge's* colours, and a tone that borrows
+  // them reads as "admin" rather than "needs action".
+  action: { bg: 'var(--uc-red-bg)', fg: 'var(--uc-red)' },
 }
 
 /** Every unpublished item across posts/jobs/news/events — real for any authoring role. */
@@ -304,9 +344,10 @@ export const RAILS: Record<UserRole, RoleRail> = {
     ],
     contextual: [newApplicantsRule, menteeRequestsRule, draftsRule('Drafts')],
     secondary: [...MEMBER_SECONDARY, NEWS_ROW],
+    // "Directory" repeated `secondary`'s My network and "Post a job" repeated the
+    // `postings` row above — same destination, second name — and neither started the
+    // action its label promised. Shuttle is the one utility no other zone offers.
     tools: [
-      { key: 'directory', label: 'Directory', icon: Network, iconColor: 'var(--uc-indigo-l)', iconBg: 'var(--uc-indigo-bg)', to: PATHS.CONNECTIONS },
-      { key: 'post-job', label: 'Post a job', icon: Briefcase, iconColor: 'var(--uc-mint)', iconBg: 'var(--uc-mint-bg)', to: PATHS.JOBS },
       { key: 'shuttle', label: 'Shuttle', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
     ],
   },
@@ -324,7 +365,9 @@ export const RAILS: Record<UserRole, RoleRail> = {
     secondary: [...MEMBER_SECONDARY, JOBS_ROW],
     tools: [
       { key: 'elms', label: 'eLMS', icon: BookOpen, iconColor: 'var(--uc-orange-l)', iconBg: 'var(--uc-orange-bg)', externalUrl: 'https://elms.uiu.ac.bd' },
-      { key: 'attendance', label: 'Attendance', icon: ClipboardList, iconColor: 'var(--uc-indigo-l)', iconBg: 'var(--uc-indigo-bg)', to: PATHS.GROUPS },
+      // No third tile: "Attendance" named a module that does not exist, and the gradebook
+      // it would honestly be renamed to is reached through the `sections` row above —
+      // a tile pointing there would just be that row under a second name.
       { key: 'shuttle', label: 'Shuttle', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
     ],
   },
@@ -342,15 +385,18 @@ export const RAILS: Record<UserRole, RoleRail> = {
     secondary: [
       { key: 'notifications', label: 'Notifications', icon: Bell, to: PATHS.NOTIFICATIONS },
     ],
-    tools: [
-      { key: 'trip-log', label: 'Trip log', icon: ClipboardList, iconColor: 'var(--uc-indigo-l)', iconBg: 'var(--uc-indigo-bg)', to: PATHS.SHUTTLE_DRIVE },
-      { key: 'report-issue', label: 'Report issue', icon: Wrench, iconColor: 'var(--uc-amber-l)', iconBg: 'var(--uc-amber-bg)', to: PATHS.SHUTTLE_DRIVE },
-      { key: 'live-map', label: 'Live map', icon: Map, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
-    ],
+    // Empty for the same reason `rightRail` is: a driver's whole surface is two routes,
+    // and both are fixed rows above. The three tiles that used to sit here resolved to
+    // exactly those two — "Trip log" and "Report issue" both to the duty board, "Live
+    // map" to Route & stops — and the first two named features the API has never had
+    // (`POST /shuttle/locations` is a driver's only write). Three names, no new places.
+    tools: [],
   },
   admin: {
     fixed: [
-      { key: 'home', label: 'Home', icon: Home, to: PATHS.FEED },
+      // Named "Feed", not "Home": admin's home is /admin, so a row called Home that led
+      // somewhere else is the one place the shell's own vocabulary contradicted itself.
+      { key: 'home', label: 'Feed', icon: Home, to: PATHS.FEED },
       // Tab values must match AdminPage's own `Tab` union, not the mockup wording.
       { key: 'moderation', label: 'Moderation', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=reports` },
       { key: 'members', label: 'Members & invites', icon: Users, to: `${PATHS.ADMIN}?tab=users` },
@@ -358,11 +404,18 @@ export const RAILS: Record<UserRole, RoleRail> = {
       { key: 'insights', label: 'Insights', icon: BarChart2, to: `${PATHS.ADMIN}?tab=overview` },
     ],
     contextual: [escalatedReportRule, verificationsRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
-    secondary: [...MEMBER_SECONDARY, GROUPS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW],
+    secondary: [...MEMBER_SECONDARY, GROUPS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW, SHUTTLE_ROW],
+    // The five fixed rows spend themselves on moderation, so the tools carry the admin
+    // tabs nothing else reaches. Both former tiles ("Audit log", "Broadcast") pointed at
+    // a bare /admin for a screen that does not exist — `university_audit_log` is written
+    // by the API but never rendered, and there is no broadcast surface at all — so each
+    // one silently dumped you on Overview. These three are tabs AdminPage really defines.
     tools: [
-      { key: 'audit', label: 'Audit log', icon: ClipboardList, iconColor: 'var(--uc-indigo-l)', iconBg: 'var(--uc-indigo-bg)', to: PATHS.ADMIN },
-      { key: 'broadcast', label: 'Broadcast', icon: Megaphone, iconColor: 'var(--uc-orange-l)', iconBg: 'var(--uc-orange-bg)', to: PATHS.ADMIN },
-      { key: 'shuttle-ops', label: 'Shuttle ops', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
+      { key: 'content-sync', label: 'Content sync', icon: RefreshCw, iconColor: 'var(--uc-indigo-l)', iconBg: 'var(--uc-indigo-bg)', to: `${PATHS.ADMIN}?tab=content-sync` },
+      { key: 'deletion-requests', label: 'Deletion requests', icon: Trash2, iconColor: 'var(--uc-amber-l)', iconBg: 'var(--uc-amber-bg)', to: `${PATHS.ADMIN}?tab=deletion` },
+      // The rider map, not the ops screen, is what /shuttle renders — the routes and
+      // schedules an admin manages live on the admin tab.
+      { key: 'shuttle-ops', label: 'Shuttle ops', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: `${PATHS.ADMIN}?tab=shuttle` },
     ],
   },
 }

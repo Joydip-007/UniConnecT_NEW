@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
-import { RAILS, TONE_TOKENS } from './leftSidebar.config'
+import { RAILS, TONE_TOKENS, isRailRowActive } from './leftSidebar.config'
 import { useRailContext } from './useRailContext'
 import { ROLE_SHELL } from '@/config/roleShell'
 
@@ -322,26 +322,7 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
   const secondShown = useCountUp(profileData?.stats[secondStat.key] ?? 0)
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose
 
-  /**
-   * Several rows can share a base path and differ only by a tab query param
-   * (the three admin rows all live at /admin). Match the path first, then require
-   * every param the row pins to agree — treating a param the URL omits as a match,
-   * so the bare path lands on the first row rather than none.
-   */
-  function isActive(to: string): boolean {
-    const [rawPath, rawQuery] = to.split('?')
-    const base = rawPath.split(':')[0].replace(/\/$/, '')
-    const pathMatches = base === PATHS.FEED
-      ? pathname === base
-      : pathname === base || pathname.startsWith(base + '/')
-    if (!pathMatches) return false
-    if (!rawQuery) return true
-
-    const current = new URLSearchParams(search)
-    return [...new URLSearchParams(rawQuery)].every(
-      ([key, value]) => !current.has(key) || current.get(key) === value,
-    )
-  }
+  const isActive = (to: string) => isRailRowActive(to, pathname, search)
 
   // Guarantees a single active row: `layoutId` must never be mounted twice at once,
   // and two highlighted rows would be wrong regardless of the animation.
@@ -586,7 +567,10 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
         </div>
       )}
 
-      {/* Campus tools — flat section with leading divider */}
+      {/* Campus tools — flat section with leading divider. A role whose every utility is
+          already a rail row (the driver) gets no section at all rather than a titled
+          empty box: the divider is the section, so it must not render without contents. */}
+      {rail.tools.length > 0 && (
       <div
         style={{
           borderTop: '0.5px solid var(--border-default)',
@@ -626,6 +610,7 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
           />
         ))}
       </div>
+      )}
     </aside>
   )
 }

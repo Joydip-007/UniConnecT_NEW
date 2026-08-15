@@ -1,8 +1,6 @@
 import type { ComponentType } from 'react'
 import type { WidgetKey } from '@/config/roleShell'
-import { MenteeRequestsWidget } from './MenteeRequestsWidget'
 import { PeopleYouMayKnowWidget } from './PeopleYouMayKnowWidget'
-import { PlatformTodayWidget } from './PlatformTodayWidget'
 import { ProfileProgressWidget } from './ProfileProgressWidget'
 import { TrendingTagsWidget } from './TrendingTagsWidget'
 import { UpcomingEventsWidget } from './UpcomingEventsWidget'
@@ -16,7 +14,5 @@ export const RIGHT_RAIL_WIDGETS: Record<WidgetKey, ComponentType> = {
   'profile-progress': ProfileProgressWidget,
   'people-you-may-know': PeopleYouMayKnowWidget,
   'upcoming-events': UpcomingEventsWidget,
-  'mentee-requests': MenteeRequestsWidget,
-  'platform-today': PlatformTodayWidget,
   'trending-tags': TrendingTagsWidget,
 }
