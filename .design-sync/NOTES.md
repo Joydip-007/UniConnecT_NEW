@@ -93,7 +93,9 @@ Confirmed on `SearchPanel` and `MessagesPopup` (non-Modal components using motio
 - **`CreateNewsForm`** — renders only a small sliver of its `position: fixed` overlay instead of the full form. Distinct root cause: the component imports `queryClient` from `@/lib/queryClient` (the real app singleton) rather than `dsQueryClient`, and something inside is likely stuck/erroring silently. Not fully diagnosed — flagged for a future session.
 - **`SearchPanel.WithResults`** — the panel itself renders correctly (all sections styled/complete/plausible), but the right-side action pill ("Connect"/"Pending") clips at the viewport edge regardless of capture viewport width (tried 600px and 760px) — the component is likely positioned via a fixed offset relative to a real page nav that doesn't exist in isolation. Cosmetic, not blocking; needs an app-level or capture-time positioning override to fully resolve.
 
-### Systemic issue #5 (new, unresolved — no config-level fix applied): no way to seed Zustand `authStore` from a preview file
+### Systemic issue #5 — RESOLVED 2026-08-16. See "Seeding Zustand stores" below; the diagnosis recorded here was wrong. Kept for the history of what was tried.
+
+### Systemic issue #5 (as originally recorded — superseded)
 
 `dsQueryClient` has a dedicated `extraEntries` export (`./src/ds-query-client.ts`) specifically so preview files can seed TanStack Query cache before mount. No equivalent exists for `useAuthStore` — `srcInclude` only covers `components/`/`features/*/components/`, not `src/stores/`, so a preview can't import or mutate it. This blocks any component that hard-gates on `useAuthStore().user` or `.role`:
 - **`CreatePost`** — `if (!user) return null` guard; renders fully blank since the preview harness's mock user is `null`.
@@ -137,8 +139,61 @@ Discovered 2026-07-24 after an entire sync session run with the wrong value prod
 - Upload was `bundle: true, styling: true, aux: false, deletePaths: []` (bundle bytes changed from the source edits; no components added/removed/regrouped). Uploaded via the atomic path (project was non-empty, pinned at run start) — all 990 component/asset files + 4 base files + sentinel + anchor, ~997 remote entries confirmed via `list_files`.
 - No config or previews changed this run — nothing new to commit from `.design-sync/` besides this NOTES.md entry.
 
+## Re-sync (2026-08-16) — role-aware shell components, SectionHeader collision, five blanks authored
+
+The role-aware app shell work (commits `fa2dfba`…`d7c4982`) added `src/components/rightRail/` and `MyPostingsPanel`. Diff came back **202 verified-by-upload, 0 changed, 10 added, 0 removed**.
+
+- **`SectionHeader` name collision — the one blocking error.** `components/rightRail/primitives.tsx` exports `SectionHeader`, and so does `features/settings/components/NotificationsSection.tsx`. Two `export *` sources for one name makes it ambiguous, esbuild drops it, and it stops being a `window.UniConnecT` property entirely — surfacing as `✗ [BUNDLE_EXPORT] 1/222 not a component` **plus** `✗ [RENDER] SectionHeader.html: root empty`, since the pre-existing authored preview then renders `undefined`. Fixed with `srcExcludeExports: {"components/rightRail/primitives.tsx": ["SectionHeader"]}`, keeping the anchored settings component (its preview and grade stay valid) — same precedent as `EmptyState`/`TypeBadge`. The widgets are unaffected: they import `SectionHeader` from `./primitives` directly, not through the synth entry.
+  - **`srcExcludeExports` is NOT part of the grade key.** `configSlicesFor` (`lib/sync-hashes.mjs`) keys only `provider`, `storyImports`, `extraEntries` and the fork file bytes — so unlike the `extraEntries` trap documented in the 2026-07-24 entry, adding a `srcExcludeExports` entry costs **zero** re-grades. Prefer it whenever a collision can be resolved that way.
+  - Watch for this on every future sync: `rightRail/primitives.tsx` exports five more generic names (`Widget`, `Section`, `EyebrowLabel`, `SkeletonLine`, `WidgetShell`). Any new file exporting one of those collides the same way.
+- **Two data-seeding rules that bit during authoring**, both worth applying up front to any new widget preview:
+  - **A component whose query key is a fixed constant gets exactly ONE story.** All cells of a card render on the same page against the same `dsQueryClient`, so a second cell's `setQueryData` overwrites the first and both cells show the last-written data. `UpcomingEventsWidget`, `TrendingTagsWidget`, `ProfileProgressWidget`, `PeopleYouMayKnowWidget` and `MyPostingsPanel` are all single-story for this reason — it is not laziness. Multi-cell only works when the key is parameterised (e.g. `BadgesPanel`'s `userId`).
+  - **`useInfiniteQuery` needs the full envelope**: `setQueryData(key, {pages: [...], pageParams: [...]})`. A bare array leaves the component in its skeleton forever (`MyPostingsPanel`, `ChatView`).
+- **`ProfileProgressWidget` must be seeded INCOMPLETE** — it self-hides once every step is done, so complete data renders an empty card.
+- **`ChatView` needs a fixed-height flex-column parent.** Its root is `flex: 1`; in an auto-height wrapper it collapses to zero and paints nothing. That, not the missing data alone, is why it was blank.
+- **JSX attribute strings do not process `\u` escapes.** `icon="\u{1F9E0}"` renders the literal seven characters; `icon={'\u{1F9E0}'}` renders the emoji. Cost one capture cycle on `AcademicOnlyNotice`.
+- **`package-capture.mjs`'s frozen page clock kills any `Date.now()`-derived variant.** `MyPostingsPanel`'s "Closed &lt;date&gt;" deadline branch renders as "Open until …" no matter how far in the past the date is, so an expired-deadline story is indistinguishable from a live one. Use a genuinely different state (`deadline: null`) instead of a past date. Same root cause family as the `ScrollProgressBar` flake in the 2026-07-24 entry.
+- **The auto-open-on-mount pattern is now 0 for 3 — stop trying it.** `UserActionsMenu` was given an `AutoOpen` helper that clicks the real trigger button in a mount effect; the popover never appears in the capture, exactly like `ShareMenu` (internal `toggle()`) and `ReactionsDialog`. All three hardcode `initial={{opacity: 0, …}}` on the `motion.div` instead of gating it on `useReducedMotion()`, so the matchMedia shim cannot reach them either. For this family, author the component's **resting state in real context** and say so in the preview file; do not spend a capture cycle re-discovering this.
+- **Five previously-blank components were authored this run** at the user's explicit request: `DiscoverySection`, `AcademicOnlyNotice`, `Skel`, `ChatView`, `UserActionsMenu`. All graded `good`.
+- `conventions.md` was validated against the fresh build and **two stale claims corrected**: it said Satoshi "loads via a remote `@import`" and `--font-mono` was a "system monospace fallback stack" — both false since the 2026-07-16 font work (Satoshi 400/500 woff2 and JetBrains Mono ship under `fonts/`; `grep -c "@import url("` is 0 across the bundle). Also added `--text-label` to the Text token row, since `EyebrowLabel` now encodes that rule as a component. Everything else in the header re-verified against `_ds_bundle.css` and the `components/` tree.
+- **Four `cardMode: "column"` overrides added this run**: `MyPostingsPanel` (560px panel), plus `DiscoverySection`, `AcademicOnlyNotice` and `ChatView`, which all tripped `[GRID_OVERFLOW]` on the first validate after authoring. Any preview wrapper wider than roughly 400px will trip it — either size the wrapper down or budget the override up front.
+
+## Seeding Zustand stores from a preview (resolves systemic issue #5)
+
+`CreatePost`, `CreateEventForm` and `EditProfileModal` are no longer blocked. All three are authored and graded `good`.
+
+**The real root cause was path identity, not "separate module graphs".** The synth entry reaches every source file by absolute path *through the `apps/web/node_modules/web` symlink*, and `tsconfigPathsPlugin` resolves `@/*` against that same prefix (`cfgPath(cfg.tsconfig)` is `<PKG_DIR>/tsconfig.json`, and `PKG_DIR` is the symlink). So components and their `@/`-alias imports share one module record. An `extraEntries` path does **not**: esbuild's own resolver realpaths it to `apps/web/src/...`, which is a textually different path for the same real file. esbuild dedupes by resolved path, so zustand's `create()` runs twice — that is where `useAuthStore2` came from. Nothing about zustand or context is special here; the same trap explains why a preview importing `dsQueryClient` from `@/ds-query-client` gets a different instance than the `'web'` export (2026-07-17 learning #1). One mechanism, two symptoms.
+
+**The fix: re-export the store from inside the synth entry.** `apps/web/src/components/ds-auth-store.tsx` is one line, `export { useAuthStore } from '@/stores/authStore'`. Because it sits under an `srcInclude` prefix and is `.tsx` (the synth entry only walks `.tsx`/`.jsx` — a `.ts` file would be skipped), it joins the `export *` list and resolves through the same symlinked prefix as every component. Confirmed: the built bundle now contains exactly one `useAuthStore` identifier, and `CreatePost`'s placeholder greets the seeded user by name.
+
+- Previews seed with `useAuthStore.setState({ user, isLoading: false })` — **never `setAuth()`**, which writes `localStorage` and opens a socket.
+- The file exports nothing PascalCase, so discovery adds no component: the count stayed at 222.
+- **This cost zero re-grades.** `srcInclude`-reachable source files are not in the grade key, so only the three edited preview files re-graded.
+- **Why not fix `bundle.mjs` instead**: realpath'ing the plugin's returned path would fix the whole class, but `configSlicesFor` hashes fork file bytes into the *global* grade slice, so editing the fork invalidates all 222 grades at once. The re-export is the cheap equivalent. If a future sync needs the general fix anyway, budget the full re-verify.
+- **Any other store a preview needs** (`themeStore`, `presenceStore`, …) gets the same one-line treatment: add it to `ds-auth-store.tsx` or a sibling `.tsx` under `src/components/`. Do **not** reach for `extraEntries`.
+
+`CreateEventForm` needed one more thing beyond the seed: it is a bare `position: fixed; inset: 0` overlay, **not** portalled through `Modal` like `EditProfileModal`. Returned bare from a preview its root has no measurable height and the card crops to a ~40px sliver of the backdrop — and the `viewport` override alone does **not** fix it. It needs an explicitly sized wrapper (`position: relative; width/height`), the same remedy as `ChatView`'s `flex: 1` root. Note `viewport` *is* grade-keyed (only `cardMode`/`primaryStory` are stripped), so adding one trips `[CONFIG_STALE]` on a targeted rebuild and requires a full `package-build.mjs`.
+
+## Known render warns — the full current list (checked 2026-08-16)
+
+The earlier "Known render warns" sections were incomplete, so several long-standing warns read as new on this run. This is the complete set validate currently prints, all triaged benign:
+
+| Component | Warn | Why it is benign |
+|---|---|---|
+| `ErrorBoundary` | `[RENDER_ERRORS]` | The preview deliberately renders a throwing child so the fallback UI shows. The error IS the preview. |
+| `MobileBottomNav` | `[RENDER_BLANK]` | `display: none` above ~767px via a real media query. The `cardMode:"single" + 390x800` override renders it correctly; this warn is the validator's default desktop viewport. |
+| `RoleBadge` | `[RENDER_THIN]` | Icon-only, 14–28px glyph, no text. The heuristic false-positives on all small icon components. |
+| `PresenceLabel` | `[RENDER_THIN]` (variants identical) | Single-look component. |
+| `OnboardingChecklist` | `[RENDER_THIN]` (variants identical) | Single-look component. |
+
+`CreateEventForm` and `EditProfileModal` were on this list until 2026-08-16 and are now authored and graded — see "Seeding Zustand stores" above. If either warns again, it is a genuine regression.
+
+`[FONT_MISSING]` no longer fires (fonts ship for real). `DiscoverySection`, `AcademicOnlyNotice`, `Skel`, `ChatView` and `UserActionsMenu` were on this list until this run and are now authored — if any of them warns again, it is a genuine regression.
+
 ## Re-sync risks
 - The Tailwind CSS entry is a snapshot from a full `apps/web` app build, not the DS's own isolated build — a component preview that uses a class not exercised anywhere else in the live app could be pruned. Watch for `[RENDER_BLANK]`/unstyled previews on niche components and re-check against `.ds-compiled/tailwind-compiled.css` before assuming a genuine styling bug.
 - No dist/library build exists for this package — every re-sync is effectively a synth-entry build; there's no "did the DS's own build change" signal beyond the source files themselves.
 - The `bundle.mjs` fork should be periodically diffed against the upstream `lib/bundle.mjs` in case the extension-probe order bug gets fixed upstream (the fork would then be redundant but harmless).
+- **Generic export names in `components/rightRail/primitives.tsx`** (`Widget`, `Section`, `EyebrowLabel`, `SkeletonLine`, `WidgetShell`, plus the already-excluded `SectionHeader`) are collision bait. Any new file exporting one of those names silently drops BOTH from `window.UniConnecT`. The symptom is `[BUNDLE_EXPORT]` naming one component plus `[RENDER] root empty` on it — resolve with `srcExcludeExports`, which is free (not grade-keyed).
+- **The staged `.ds-sync/resync.mjs` patch must be re-applied after every re-stage** (see the 2026-07-24 entry). It is a `const { validateConfig } = await (...)` block replacing the static `import` plus a `pathToFileURL` addition to the `node:url` import. Without it every driver run dies at `✗ config: unknown key "srcInclude"`.
 - **Grade contract does not track app source drift** (see 2026-08-13 entry above) — if a future re-sync needs to force a human look at components whose underlying app code changed materially (not just bytes), that has to be done manually (e.g. touch the relevant `previews/<Name>.tsx` file, or just eyeball `.review.html` / the live DS project after upload) — the automated `changed` partition won't surface it.

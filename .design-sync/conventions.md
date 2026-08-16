@@ -17,14 +17,14 @@ Real token families (from `styles.css` / `_ds_bundle.css`):
 | Family | Tokens |
 |---|---|
 | Surfaces | `--surface-page`, `--surface-card`, `--surface-raised`, `--surface-hover`, `--surface-glint` |
-| Text | `--text-primary`, `--text-secondary`, `--text-tertiary`, `--on-accent` (text on a colored/filled surface) |
+| Text | `--text-primary`, `--text-secondary`, `--text-tertiary`, `--text-label`, `--on-accent` (text on a colored/filled surface). `--text-label` is the 11px `0.04em` eyebrow tier specifically — `--text-tertiary` is for 12px meta, timestamps and placeholders, never for an eyebrow |
 | Borders | `--border-default`, `--border-hover`, `--border-strong` — always `0.5px solid`, never `1px` |
 | Radius | `--r-sm`, `--r-md`, `--r-lg`, `--r-xl`, `--r-pill` (buttons/chips are always `--r-pill`, never a sharp corner) |
 | Brand accents | `--uc-indigo`, `--uc-orange`, `--uc-mint`, `--uc-cyan`, `--uc-amber`, `--uc-red` — each has `-l` (light variant for text-on-tint), `-bg` (tinted background), `-bdr` (tinted border) siblings, e.g. `--uc-indigo-l`, `--uc-indigo-bg`, `--uc-indigo-bdr` |
 | Role colors | `--role-{student,alumni,faculty,admin,driver}` and `-bg`/`-bdr`/`-text` siblings, used by `RoleBadge` |
 | Overlay/z-index | `--overlay-bg`, `--overlay-bg-soft`, `--overlay-bg-strong`, `--z-modal`, `--z-nav`, `--z-popover`, `--z-toast`, `--z-banner` |
 | Motion | `--dur-fast`, `--dur-med`, `--dur-slow`, `--ease-out-expo`, `--ease-out-strong`, `--ease-in-out-strong`, `--ease-drawer` |
-| Fonts | `--font-display` (Satoshi, loads via a remote `@import` already in the bundle), `--font-mono` (system monospace fallback stack) |
+| Fonts | `--font-display` (Satoshi, weights 400/500) and `--font-mono` (JetBrains Mono, weight 400). Both ship as real font files under `fonts/` and are declared in `fonts/fonts.css`, which `styles.css` `@import`s — nothing is fetched from a font host at runtime |
 
 Rules that hold everywhere in this system: no `box-shadow` for depth — depth comes from surface stacking (`--surface-page` → `--surface-card` → `--surface-raised`); font-weight is only 400 or 500, never 600+; text is sentence case, never ALL CAPS or Title Case on labels/buttons; text on a colored/filled surface always uses the matching `-l` light token, never the plain `--text-*` tokens (which are tuned for surface backgrounds, not filled buttons/badges).
 
