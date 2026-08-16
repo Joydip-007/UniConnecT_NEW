@@ -37,7 +37,27 @@ const REACHED_BY_CONTEXT = new Set<string>([
   PATHS.SETTINGS_APPEARANCE,
   PATHS.SETTINGS_ACCOUNT,
   PATHS.SETTINGS_PRIVACY,
+  // Sub-navigation inside the page that absorbed them — see ABSORBED_INTO.
+  PATHS.LOST_FOUND,
+  PATHS.CONNECTIONS,
 ])
+
+/**
+ * Pages that were absorbed into another page as a section tab. Each still has a
+ * registered route so deep links and old links keep working, but the shell must offer
+ * exactly ONE home per feature: the section, which sits with the content it belongs to.
+ *
+ * This map exists because the duplicate is otherwise invisible to this file.
+ * `shellDestinations` strips the query string, so `/explore?section=lost-found` can only
+ * ever register as `/explore` — a section can never satisfy a feature, which is exactly
+ * the pressure that put a second "Lost & found" row in `secondary` next to its own tab.
+ * The `MEMBER_FEATURES` check below covers the absorbing page instead, and the tab's own
+ * existence is covered by `pages/sectionTabs.test.tsx`.
+ */
+const ABSORBED_INTO: Record<string, string> = {
+  [PATHS.LOST_FOUND]: `${PATHS.EXPLORE}?section=lost-found`,
+  [PATHS.CONNECTIONS]: `${PATHS.GROUPS}?section=people`,
+}
 
 /** Every destination the shell offers a given role, across all four nav zones. */
 function shellDestinations(role: UserRole): Set<string> {
@@ -70,9 +90,7 @@ describe('shell reachability', () => {
     PATHS.JOBS,
     PATHS.NEWS,
     PATHS.LEARN,
-    PATHS.LOST_FOUND,
     PATHS.DRAFTS,
-    PATHS.CONNECTIONS,
     PATHS.MESSAGES,
     PATHS.NOTIFICATIONS,
     PATHS.SHUTTLE,
@@ -104,6 +122,27 @@ describe('shell reachability', () => {
       )
       expect({ role, rejected }).toEqual({ role, rejected: [] })
     })
+  })
+
+  /**
+   * The guard for the redundancy this map documents. An absorbed page must not be
+   * advertised as its own row anywhere — fixed, secondary, contextual or tools — or the
+   * feature has two homes in one zone again, which is how "Lost & found" ended up both in
+   * the More sheet and as a tab inside Explore.
+   */
+  it.each(Object.entries(ABSORBED_INTO))(
+    '%s has no rail row of its own — it lives at %s',
+    (absorbed) => {
+      const offending = ROLES.filter((role) => shellDestinations(role).has(absorbed))
+      expect({ absorbed, offending }).toEqual({ absorbed, offending: [] })
+    },
+  )
+
+  /** The absorbing page itself must still be reachable, or the section is orphaned too. */
+  it.each(Object.entries(ABSORBED_INTO))('%s stays reachable via %s', (_absorbed, section) => {
+    const base = section.split('?')[0]
+    const roles = ROLES.filter((role) => shellDestinations(role).has(base))
+    expect(roles.length).toBeGreaterThan(0)
   })
 
   it('keeps the driver walled off from the social app', () => {
