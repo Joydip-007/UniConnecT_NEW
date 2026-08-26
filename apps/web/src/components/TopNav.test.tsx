@@ -90,13 +90,20 @@ describe('TopNav avatar menu', () => {
   })
 
   it('navigates to a secondary destination when picked', async () => {
+    // The row is taken from the manifest rather than named literally: this test cares
+    // that picking a menu row navigates, not that any particular feature is in the menu.
+    // Hardcoding one meant the test had to be edited when "Lost & found" was removed for
+    // being a second home for a feature that already owns an Explore section tab.
+    const row = RAILS.student.secondary.find((r) => !TOPNAV_ICON_ROUTES.includes(r.to))
+    if (!row) throw new Error('no non-icon secondary row to exercise the avatar menu with')
+
     const user = userEvent.setup()
     renderNav()
 
     await user.click(screen.getByRole('button', { name: 'Profile menu' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Lost & found' }))
+    await user.click(screen.getByRole('menuitem', { name: row.label }))
 
-    expect(navigate).toHaveBeenCalledWith('/lost-found')
+    expect(navigate).toHaveBeenCalledWith(row.to)
   })
 
   it('offers the same search placeholder to every role', () => {

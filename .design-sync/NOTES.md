@@ -174,6 +174,10 @@ The role-aware app shell work (commits `fa2dfba`…`d7c4982`) added `src/compone
 
 `CreateEventForm` needed one more thing beyond the seed: it is a bare `position: fixed; inset: 0` overlay, **not** portalled through `Modal` like `EditProfileModal`. Returned bare from a preview its root has no measurable height and the card crops to a ~40px sliver of the backdrop — and the `viewport` override alone does **not** fix it. It needs an explicitly sized wrapper (`position: relative; width/height`), the same remedy as `ChatView`'s `flex: 1` root. Note `viewport` *is* grade-keyed (only `cardMode`/`primaryStory` are stripped), so adding one trips `[CONFIG_STALE]` on a targeted rebuild and requires a full `package-build.mjs`.
 
+### Follow-on: unblocking a component can surface a `[GRID_OVERFLOW]` it could never trip while blank
+
+`CreatePost` had `cardMode: "column"` and was quiet for months — because its `EditModeOpen` story rendered nothing at all (the `if (!user) return null` gate). The moment the store seed made it render, its portal/fixed edit modal started positioning content outside its grid cell and validate flagged it. Changed to `cardMode: "single", primaryStory: "CollapsedTrigger"` (the canonical resting state). Expect the same class of follow-on warn whenever a previously-blank overlay component starts rendering for real — it is not a regression, it is the check finally having something to measure.
+
 ## Known render warns — the full current list (checked 2026-08-16)
 
 The earlier "Known render warns" sections were incomplete, so several long-standing warns read as new on this run. This is the complete set validate currently prints, all triaged benign:

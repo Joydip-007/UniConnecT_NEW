@@ -213,7 +213,8 @@
       "cardMode": "column"
     },
     "CreatePost": {
-      "cardMode": "column"
+      "cardMode": "single",
+      "primaryStory": "CollapsedTrigger"
     },
     "MediaGrid": {
       "cardMode": "column"
