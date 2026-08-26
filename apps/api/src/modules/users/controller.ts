@@ -112,7 +112,11 @@ export const getUser = asyncHandler(async (req: Request, res: Response) => {
 
 export const listUsers = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  const result = await usersService.listUsers(context.universityId, req.query as unknown as UserListQuery)
+  const result = await usersService.listUsers(
+    context.userId,
+    context.universityId,
+    req.query as unknown as UserListQuery,
+  )
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
 

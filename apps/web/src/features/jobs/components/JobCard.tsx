@@ -306,7 +306,7 @@ export function JobCard({ job, queryKey }: { job: Job; queryKey: unknown[] }) {
                 size={13}
                 strokeWidth={1.5}
                 fill={localSaved ? 'currentColor' : 'none'}
-                color={localSaved ? 'var(--uc-indigo-l)' : undefined}
+                color={localSaved ? 'var(--uc-orange-l)' : undefined}
               />
               {localSaved ? 'Saved' : 'Save'}
             </GhostBtn>

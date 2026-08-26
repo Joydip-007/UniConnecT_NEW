@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
@@ -7,11 +7,11 @@ import { useAuthStore } from '@/stores/authStore'
 import { GhostBtn } from '@/components/Button'
 import {
   EventsTab, FeedTab, GroupHeader, MembersTab,
-  AnimatedTabBar, PinnedBanner,
+  GroupTabRail, PinnedBanner,
   ResourcesTab, StudyToolsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
   AcademicLMSTab,
   useJoinRequests,
-  type TabDef,
+  type GroupTabDef,
 } from '@/features/groups'
 import type { Group } from '@/features/groups'
 
@@ -39,32 +39,16 @@ export default function GroupDetailPage() {
   const canEditRules = userRole === 'owner' || userRole === 'admin'
 
   // Build tab list based on role
-  const tabs: TabDef[] = [
+  const tabs: GroupTabDef[] = [
     { value: 'feed', label: 'Feed' },
     { value: 'resources', label: 'Resources' },
     { value: 'study-sessions', label: 'Study sessions' },
-    ...(group?.type === 'academic' ? [{ value: 'academic', label: 'Academic LMS' } as TabDef] : []),
+    ...(group?.type === 'academic' ? [{ value: 'academic', label: 'Academic LMS' }] : []),
     { value: 'members', label: 'Members' },
     { value: 'events', label: 'Events' },
     { value: 'about', label: 'About' },
-    ...(isModeratorOrAbove ? [{ value: 'stats', label: 'Stats' } as TabDef] : []),
-    ...(isAdmin
-      ? [
-          {
-            value: 'join-requests',
-            label: (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                Join requests
-                {pendingCount > 0 && (
-                  <span style={{ padding: '1px 6px', fontSize: 12, fontWeight: 500, borderRadius: 'var(--r-pill)', background: 'var(--uc-orange-bg)', color: 'var(--uc-orange-l)' }}>
-                    {pendingCount}
-                  </span>
-                )}
-              </span>
-            ) as ReactNode,
-          } as TabDef,
-        ]
-      : []),
+    ...(isModeratorOrAbove ? [{ value: 'stats', label: 'Stats' }] : []),
+    ...(isAdmin ? [{ value: 'join-requests', label: 'Join requests', badge: pendingCount }] : []),
   ]
 
   if (isError) {
@@ -115,30 +99,27 @@ export default function GroupDetailPage() {
         />
       )}
 
-      {/* Animated tab bar */}
-      <AnimatedTabBar
-        tabs={tabs}
-        active={activeTab}
-        onChange={(v) => setActiveTab(v as ActiveTab)}
-      />
+      {/* Tabs sit in their own column so every one a role earns stays visible */}
+      <div className="group-detail-body">
+        <GroupTabRail tabs={tabs} active={activeTab} onChange={(v) => setActiveTab(v as ActiveTab)} />
 
-      {/* Tab content */}
-      <div>
-        {id && activeTab === 'feed' && <FeedTab groupId={id} />}
-        {id && activeTab === 'resources' && (
-          <ResourcesTab groupId={id} userRole={userRole} currentUserId={user?.id} />
-        )}
-        {id && activeTab === 'study-sessions' && (
-          <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} groupType={group?.type} />
-        )}
-        {id && group?.type === 'academic' && activeTab === 'academic' && (
-          <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
-        )}
-        {id && group && activeTab === 'members' && <MembersTab group={group} />}
-        {id && activeTab === 'events' && <EventsTab groupId={id} />}
-        {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}
-        {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}
-        {id && isAdmin && activeTab === 'join-requests' && <JoinRequestsTab groupId={id} />}
+        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {id && activeTab === 'feed' && <FeedTab groupId={id} />}
+          {id && activeTab === 'resources' && (
+            <ResourcesTab groupId={id} userRole={userRole} currentUserId={user?.id} />
+          )}
+          {id && activeTab === 'study-sessions' && (
+            <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} groupType={group?.type} />
+          )}
+          {id && group?.type === 'academic' && activeTab === 'academic' && (
+            <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
+          )}
+          {id && group && activeTab === 'members' && <MembersTab group={group} />}
+          {id && activeTab === 'events' && <EventsTab groupId={id} />}
+          {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}
+          {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}
+          {id && isAdmin && activeTab === 'join-requests' && <JoinRequestsTab groupId={id} />}
+        </div>
       </div>
     </div>
   )

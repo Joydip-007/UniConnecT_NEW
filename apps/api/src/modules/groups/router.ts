@@ -32,6 +32,7 @@ import {
   inviteToGroup,
   joinOrRequestGroup,
   leaveGroup,
+  updateMyMute,
   listFlashcardDecks,
   listFlashcards,
   listGroupCollaborations,
@@ -88,6 +89,7 @@ import {
   UpdateGroupAISettingsSchema,
   UpdateGroupSchema,
   UpdateMemberSchema,
+  UpdateMyMuteSchema,
   UpdateSharedNoteSchema,
   UploadUrlQuerySchema,
 } from './schema'
@@ -106,6 +108,7 @@ groupsRouter.post('/:groupId/join', validate(JoinGroupSchema), joinOrRequestGrou
 groupsRouter.delete('/:groupId/leave', leaveGroup)
 groupsRouter.post('/:groupId/members', validate(JoinGroupSchema), joinOrRequestGroup)
 groupsRouter.delete('/:groupId/members/me', leaveGroup)
+groupsRouter.patch('/:groupId/members/me/mute', validate(UpdateMyMuteSchema), updateMyMute)
 groupsRouter.get('/:groupId/members', validateRequest({ query: MembersQuerySchema }), listGroupMembers)
 groupsRouter.patch('/:groupId/members/:userId', validate(UpdateMemberSchema), updateMember)
 groupsRouter.delete('/:groupId/members/:userId', removeMember)

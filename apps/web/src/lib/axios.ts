@@ -54,6 +54,15 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    // DEV ONLY: under `?dev-auth=1` the session is a seeded mock and its token is not
+    // real, so every endpoint `devMocks` does not stub answers 401. Refreshing that is
+    // guaranteed to fail, and the failure path clears the mock session and bounces to
+    // /login — which is what the screenshot harness would capture instead of the page.
+    // `queryClient.ts` suppresses the matching global error toast for the same reason.
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev-auth') === '1') {
+      return Promise.reject(error)
+    }
+
     // No active session — don't attempt a refresh (e.g. bad login credentials)
     if (!useAuthStore.getState().accessToken) {
       return Promise.reject(error)

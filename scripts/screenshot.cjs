@@ -35,6 +35,9 @@ const ROUTES = {
   'feed':        { path: '/feed',                     auth: true,  w: 1440, h: 900  },
   'profile':     { path: `/profile/${DEV_USER_ID}`,   auth: true,  w: 1440, h: 900  },
   'learn':       { path: '/learn',                    auth: true,  w: 1440, h: 900  },
+  'groups':      { path: '/groups',                   auth: true,  w: 1440, h: 900  },
+  'groups-people': { path: '/groups?section=people',  auth: true,  w: 1440, h: 900  },
+  'saved':       { path: '/saved',                    auth: true,  w: 1440, h: 900  },
 };
 
 async function capture(name, route) {
@@ -58,12 +61,21 @@ async function capture(name, route) {
     }, route.theme);
   }
 
-  const url = `http://localhost:5173${route.path}${route.auth ? '?dev-auth=1' : ''}`;
+  // Routes may carry their own query (e.g. ?section=people), so the dev-auth flag has to
+  // join with & rather than always opening a second query string.
+  const authQuery = route.auth ? `${route.path.includes('?') ? '&' : '?'}dev-auth=1` : '';
+  const url = `http://localhost:5173${route.path}${authQuery}`;
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
   await page.addStyleTag({
     content: `
       .tsqd-open-btn-container,
       .tsqd-open-btn {
+        display: none !important;
+      }
+      /* Authed pages are captured against ?dev-auth=1 with no API behind them, so
+         every data hook fails and toasts a connection error over the layout. The
+         reference shot is about the layout, not the failure. */
+      [data-sonner-toaster] {
         display: none !important;
       }
     `,

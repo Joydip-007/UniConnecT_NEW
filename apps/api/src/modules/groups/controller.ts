@@ -22,6 +22,7 @@ import type {
   UpdateGroupAISettingsInput,
   UpdateGroupInput,
   UpdateMemberInput,
+  UpdateMyMuteInput,
   UpdateSharedNoteInput,
   UploadUrlQuery,
 } from './schema'
@@ -104,6 +105,12 @@ export const cancelJoinRequest = asyncHandler(async (req: Request, res: Response
 export const leaveGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.leaveGroup(context, getGroupIdParam(req)))
+})
+
+export const updateMyMute = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { muted } = req.body as UpdateMyMuteInput
+  sendSuccess(res, await groupsService.setMyMute(context, getGroupIdParam(req), muted))
 })
 
 export const listGroupMembers = asyncHandler(async (req: Request, res: Response) => {

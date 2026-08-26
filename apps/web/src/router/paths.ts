@@ -45,6 +45,7 @@ export const PATHS = {
   CONNECTIONS: '/connections',
 
   DRAFTS: '/drafts',
+  SAVED: '/saved',
 
   SETTINGS: '/settings',
   SETTINGS_NOTIFICATIONS: '/settings/notifications',

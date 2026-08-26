@@ -20,6 +20,7 @@ import {
   Compass,
   PackageSearch,
   Bell,
+  Bookmark,
   Flag,
   Mail,
   Radio,
@@ -124,6 +125,7 @@ const MEMBER_SECONDARY: RailRow[] = [
   { key: 'learn', label: 'Learn', icon: GraduationCap, to: PATHS.LEARN },
   { key: 'lost-found', label: 'Lost & found', icon: PackageSearch, to: PATHS.LOST_FOUND },
   { key: 'drafts', label: 'Drafts', icon: FileText, to: PATHS.DRAFTS },
+  { key: 'saved', label: 'Saved', icon: Bookmark, to: PATHS.SAVED },
 ]
 
 /**

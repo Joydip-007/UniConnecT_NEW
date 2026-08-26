@@ -10,6 +10,10 @@ import { useAuthStore } from '@/stores/authStore'
  * itself when it has no data — so there is no role branch and no empty-state to manage
  * here. A role with an empty list renders no rail at all, which is the correct resting
  * state rather than a gap to fill.
+ *
+ * Widget chrome is positional (`.right-rail` / `.right-rail-slot` in index.css) rather
+ * than baked into each widget: the manifest orders the column differently per role, so
+ * the card surface belongs to whichever widget lands first, not to one named widget.
  */
 export function RightSidebar() {
   const prefersReducedMotion = useReducedMotion()
@@ -36,7 +40,7 @@ export function RightSidebar() {
         gap: 10,
         paddingBottom: 20,
       }}
-      className="rail-scroll"
+      className="right-rail rail-scroll"
     >
       {widgetKeys.map((key) => {
         const WidgetComponent = RIGHT_RAIL_WIDGETS[key]

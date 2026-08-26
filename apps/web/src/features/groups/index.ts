@@ -1,4 +1,5 @@
 export { GroupCard } from './components/GroupCard'
+export { TYPE_LOOK } from './groupTypeLook'
 export { GroupHeader } from './components/GroupHeader'
 export { CreateGroupModal } from './components/CreateGroupModal'
 export { InviteMemberModal } from './components/InviteMemberModal'
@@ -15,6 +16,7 @@ export type {
   FlashcardReviewItem,
   FlashcardReviewResult,
   Group,
+  GroupPreviewMember,
   GroupCollabJob,
   GroupEventEntry,
   GroupMember,
@@ -27,6 +29,8 @@ export type {
 } from './types'
 export * from './hooks/useGroupExtended'
 export { AnimatedTabBar } from './components/AnimatedTabBar'
+export { GroupTabRail } from './components/GroupTabRail'
+export type { GroupTabDef } from './components/GroupTabRail'
 export { PinnedBanner } from './components/PinnedBanner'
 export type { TabDef } from './components/AnimatedTabBar'
 export { ResourcesTab } from './components/ResourcesTab'

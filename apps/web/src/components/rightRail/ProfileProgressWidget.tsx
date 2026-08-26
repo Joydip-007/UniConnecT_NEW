@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle2, Circle, Lock, type LucideIcon } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { DUR, EASE_OUT_EXPO, listItem } from '@/lib/motion'
-import { SectionHeader, SkeletonLine, Widget } from './primitives'
+import { RailSlot, SectionHeader, SkeletonLine } from './primitives'
 
 interface UserProgress {
   profileScore: number
@@ -129,7 +129,7 @@ export function ProfileProgressWidget() {
           exit={{ opacity: 0, height: 0 }}
           style={{ overflow: 'hidden' }}
         >
-          <Widget>
+          <RailSlot>
             <SectionHeader title="Your progress" />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {[0, 1, 2, 3].map((i) => (
@@ -139,7 +139,7 @@ export function ProfileProgressWidget() {
                 </div>
               ))}
             </div>
-          </Widget>
+          </RailSlot>
         </motion.div>
       ) : justCompleted && progress ? (
         <motion.div
@@ -150,7 +150,7 @@ export function ProfileProgressWidget() {
           transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
           style={{ overflow: 'hidden' }}
         >
-          <Widget>
+          <RailSlot>
             <SectionHeader title="Your progress" />
             <p
               style={{
@@ -163,7 +163,7 @@ export function ProfileProgressWidget() {
             >
               All set — profile complete
             </p>
-          </Widget>
+          </RailSlot>
         </motion.div>
       ) : progressIncomplete && progress ? (
         <motion.div
@@ -173,7 +173,7 @@ export function ProfileProgressWidget() {
           exit={{ opacity: 0, height: 0 }}
           style={{ overflow: 'hidden' }}
         >
-          <Widget>
+          <RailSlot>
             <SectionHeader title="Your progress" />
             <div>
               {(
@@ -217,7 +217,7 @@ export function ProfileProgressWidget() {
             >
               Finish your profile to unlock the campus directory.
             </p>
-          </Widget>
+          </RailSlot>
         </motion.div>
       ) : null}
     </AnimatePresence>

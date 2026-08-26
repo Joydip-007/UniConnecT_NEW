@@ -80,6 +80,7 @@ export const router = createBrowserRouter([
           { path: PATHS.CONNECTIONS, element: page(() => import('@/pages/ConnectionsPage')) },
 
           { path: PATHS.DRAFTS, element: page(() => import('@/pages/DraftsPage')) },
+          { path: PATHS.SAVED, element: page(() => import('@/pages/SavedPage')) },
 
           {
             path: PATHS.SETTINGS,

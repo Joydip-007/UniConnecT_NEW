@@ -207,6 +207,23 @@ export function TopNav() {
     (row) => !TOPNAV_ICON_ROUTES.includes(row.to),
   )
 
+  /**
+   * Anything that sticks *under* the nav has to know when the nav has slid away —
+   * otherwise it holds a nav-height offset over empty space and content scrolls
+   * through the gap. Published as a document-level flag rather than a prop or context
+   * because the consumers are sticky page chrome (the feed filter bar), not children
+   * of this component, and the value they need is a CSS length: `--topnav-offset`
+   * resolves against `[data-nav-hidden]` in index.css.
+   */
+  useEffect(() => {
+    const root = document.documentElement
+    if (hidden) root.dataset.navHidden = 'true'
+    else delete root.dataset.navHidden
+    return () => {
+      delete root.dataset.navHidden
+    }
+  }, [hidden])
+
   return (
     <header
       className="topnav-shell"

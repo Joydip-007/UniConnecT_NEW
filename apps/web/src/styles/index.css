@@ -547,6 +547,105 @@ select:focus-visible {
   contain-intrinsic-size: 0 420px;
 }
 
+/* ── Sticky offset under the nav ────────────────────────────────────
+   The nav is 60px (56px on a phone) and slides away on scroll-down, so anything
+   sticking beneath it has to follow — pinned to a fixed 60px it would hold its
+   place over empty space and let content scroll through the gap. `TopNav` sets
+   `data-nav-hidden` on the root element whenever it is translated off-screen. */
+:root {
+  --topnav-offset: 60px;
+}
+
+:root[data-nav-hidden] {
+  --topnav-offset: 0px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --topnav-offset: 56px;
+  }
+}
+
+/* ── Feed filter bar ────────────────────────────────────────────────
+   One row: the type tabs scroll horizontally on the left, sort pills are pinned
+   to the right edge behind a hairline. It sticks directly under the nav so
+   the filter stays reachable while the list scrolls; z-index sits below
+   --z-nav (50) so the nav always paints over it. The offset transition mirrors
+   the nav's own transform timing, so the two move as one. */
+.feed-filter-bar {
+  position: sticky;
+  top: var(--topnav-offset);
+  transition: top var(--dur-slow) var(--ease-drawer);
+  z-index: 40;
+  background: var(--surface-card);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--r-lg);
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.feed-filter-tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.feed-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.feed-filter-sort {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 0.5px solid var(--border-default);
+}
+
+@media (max-width: 767px) {
+  .feed-filter-sort {
+    gap: 2px;
+    padding-left: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-filter-bar {
+    transition: none;
+  }
+}
+
+/* Horizontal event strip — the one right-rail payload worth keeping on a phone,
+   where the rail itself is dropped. Hidden wherever the real rail exists. */
+.feed-events-strip {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .feed-events-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+.feed-events-strip__scroller {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.feed-events-strip__scroller::-webkit-scrollbar {
+  display: none;
+}
+
 .topnav-shell {
   transition: transform var(--dur-slow) var(--ease-drawer);
 }
@@ -911,6 +1010,20 @@ select:focus-visible {
   transform: translate(-50%, 0) translateZ(0);
 }
 
+/* Below-the-badge placement. `.feed-post-card` carries `content-visibility: auto`,
+   which applies paint containment — anything crossing the card's edge is cut
+   whatever its z-index, and the header badge sits ~14px from the top, so an
+   above-the-badge tip loses its upper half. Flipping it below keeps it inside the
+   card box without giving up the card's rendering optimisation. */
+.role-badge__tip--below {
+  bottom: auto;
+  top: calc(100% + 6px);
+  transform: translate(-50%, -4px) translateZ(0);
+}
+.role-badge:hover .role-badge__tip--below {
+  transform: translate(-50%, 0) translateZ(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .role-badge__tip { transition: none; }
 }
@@ -945,4 +1058,75 @@ select:focus-visible {
 @keyframes role-pulse-ring {
   0%   { transform: scale(0.85); opacity: 0.9; }
   100% { transform: scale(1.35); opacity: 0; }
+}
+
+/* ── Right rail slot chrome ─────────────────────────────────────────────
+   Widget chrome is positional, not per-widget: the manifest orders the column
+   differently per role, so a widget that hardcoded "card" or "flat section"
+   only looked right in the one role whose list happened to start with it.
+   The first *rendered* widget gets the card surface — a widget that hides
+   itself renders no element at all, so :first-child tracks what the reader
+   actually sees. Everything below it is a flat section, with a hairline from
+   the third onward: the card already separates the second. Head and tail,
+   instead of one long borderless list. */
+.right-rail-slot {
+  padding: 14px 4px 4px;
+  flex-shrink: 0;
+}
+
+.right-rail > *:first-child .right-rail-slot {
+  background: var(--surface-card);
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--r-lg);
+  padding: 16px;
+}
+
+.right-rail > *:nth-child(n + 3) .right-rail-slot {
+  border-top: 0.5px solid var(--border-default);
+}
+
+/* ── Group detail tab rail ─────────────────────────────────────────────
+   A group carries up to nine tabs. Stacked in a 176px column they are all
+   visible at once; below 900px that column costs more than it returns, so
+   the same markup folds back into a horizontal scroller. */
+.group-detail-body {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.group-tab-rail {
+  flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .group-detail-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .group-tab-rail {
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .group-tab-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .group-tab-rail > button {
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  /* Vertical marker on a horizontal row reads as an underline instead. */
+  .group-tab-rail__marker {
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 2px;
+    width: auto;
+    height: 2px;
+  }
 }
