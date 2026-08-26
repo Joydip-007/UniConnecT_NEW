@@ -12,7 +12,7 @@ import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 import { PATHS } from '@/router/paths'
 import { useToastStore } from '@/stores/toastStore'
 import { avatarColor, getInitials } from '@/utils/avatar'
-import { Section, SectionHeader, SkeletonLine, WidgetShell } from './primitives'
+import { RailSlot, SectionHeader, SkeletonLine, WidgetShell } from './primitives'
 
 interface SuggestedUser {
   id: string
@@ -163,7 +163,7 @@ export function PeopleYouMayKnowWidget() {
 
   return (
     <WidgetShell>
-      <Section>
+      <RailSlot>
         <SectionHeader title="People you may know" />
 
         {isLoading ? (
@@ -200,7 +200,7 @@ export function PeopleYouMayKnowWidget() {
             </AnimatePresence>
           </div>
         )}
-      </Section>
+      </RailSlot>
     </WidgetShell>
   )
 }

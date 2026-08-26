@@ -117,7 +117,7 @@ Mount points are all in `apps/api/src/app.ts` — check there rather than guessi
 | `quiz` | `/api/v1/quiz` | Daily quiz slots and attempts |
 | `moderation` | `/api/v1/moderation` | User-level blocks/reports |
 | `klipy` | `/api/v1/klipy` | GIF/sticker search proxy |
-| `feed` | `/api/v1/posts` | Note the prefix differs from the module name. `GET /` takes `type` (post type) **and** `scope=my_groups` — membership is a relationship, so it cannot be a `type`. Both must be applied to the count query as well as the rows, or pagination totals lie |
+| `feed` | `/api/v1/posts` | Note the prefix differs from the module name. `GET /` takes `type` (post type) **and** `scope=my_groups` — membership is a relationship, so it cannot be a `type`. Both must be applied to the count query as well as the rows, or pagination totals lie. `GET /saved` (the caller's bookmarks, backing `/saved`) and `GET /archived` are declared **before** `/:postId`, or the param route swallows them |
 | `messages` | `/api/v1/conversations` | Same |
 | `drafts` | `/api/v1/me/drafts` | Same |
 | `campus` | `/api/v1` | Mounted at the root prefix — lost-and-found and shuttle |
@@ -237,7 +237,7 @@ Notable feature internals:
 - `src/features/profile/` — `ProfileHeader`, `ProfileAbout`, `ProfileExperience`, `ProfileEducation`, `ProfileSkills`, `ProfileFeatured`, `ProfileContactInfo`, `ProfileActivity`, `ProfileAnalytics`, `ProfileViewers`, `ResumeExportButton`, plus editing modals (`ExperienceModal`, `EducationModal`, `FeaturedModal`, `EditProfileModal`)
 
 **All implemented page routes** (`src/router/paths.ts` + lazy pages in `src/pages/`):
-`/about`, `/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/feed/:id` (post detail), `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/shuttle/drive` (driver GPS broadcast view), `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/settings` (+ sub-routes `/settings/notifications`, `/settings/appearance`, `/settings/account`, `/settings/privacy`), `/drafts`, `/learn`, `/admin`
+`/about`, `/login`, `/register` (entry), `/register/:token`, `/otp`, `/verify-otp`, `/forgot-password`, `/feed`, `/feed/:id` (post detail), `/jobs`, `/jobs/:id`, `/events`, `/events/:id`, `/messages`, `/messages/:id`, `/profile/:id`, `/groups`, `/groups/:id`, `/notifications`, `/news`, `/news/:id`, `/lost-found`, `/mentorship`, `/shuttle`, `/shuttle/drive` (driver GPS broadcast view), `/explore`, `/explore/tag/:tag`, `/connections` (displayed as "My Network"), `/saved`, `/settings` (+ sub-routes `/settings/notifications`, `/settings/appearance`, `/settings/account`, `/settings/privacy`), `/drafts`, `/learn`, `/admin`
 
 **The app shell is role-aware and manifest-driven.** Two config files are the single source of navigation truth — never add a `user.role === '…'` branch to a component:
 
@@ -461,6 +461,9 @@ node scripts/screenshot.cjs all      # all pages
 | `register` | `/register` | no |
 | `otp` | `/otp` | no |
 | `learn` | `/learn` | yes |
+| `groups` | `/groups` | yes |
+| `groups-people` | `/groups?section=people` | yes |
+| `saved` | `/saved` | yes |
 
 Rules:
 - Requires Vite dev server running (`npx pnpm --filter web dev`, port 5173). No backend needed.

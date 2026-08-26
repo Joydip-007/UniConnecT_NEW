@@ -7,40 +7,19 @@ import { listItem } from '@/lib/motion'
  * skeleton — while each one owns its own data and can hide itself.
  */
 
-export function Widget({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: 16,
-        flexShrink: 0,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-export function Section({
-  children,
-  withTopDivider = false,
-}: {
-  children: React.ReactNode
-  withTopDivider?: boolean
-}) {
-  return (
-    <div
-      style={{
-        padding: '14px 4px 4px',
-        flexShrink: 0,
-        borderTop: withTopDivider ? '0.5px solid var(--border-default)' : 'none',
-      }}
-    >
-      {children}
-    </div>
-  )
+/**
+ * Every widget's outer box. The chrome itself is positional and lives in CSS
+ * (`.right-rail-slot` in index.css): the first *rendered* widget gets the card
+ * surface, the rest are flat sections with a hairline from the third onward.
+ *
+ * It has to be positional rather than per-widget because `ROLE_SHELL[role].rightRail`
+ * orders the column differently per role — a widget that hardcoded "card" only looked
+ * right in the one role whose list happened to start with it, and every other role got
+ * a borderless column with no head. A widget that hides itself renders no element at
+ * all, so `:first-child` tracks what the reader actually sees.
+ */
+export function RailSlot({ children }: { children: React.ReactNode }) {
+  return <div className="right-rail-slot">{children}</div>
 }
 
 /**

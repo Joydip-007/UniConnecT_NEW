@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -90,13 +90,20 @@ describe('TopNav avatar menu', () => {
   })
 
   it('navigates to a secondary destination when picked', async () => {
+    // The row is taken from the manifest rather than named literally: this test cares
+    // that picking a menu row navigates, not that any particular feature is in the menu.
+    // Hardcoding one meant the test had to be edited when "Lost & found" was removed for
+    // being a second home for a feature that already owns an Explore section tab.
+    const row = RAILS.student.secondary.find((r) => !TOPNAV_ICON_ROUTES.includes(r.to))
+    if (!row) throw new Error('no non-icon secondary row to exercise the avatar menu with')
+
     const user = userEvent.setup()
     renderNav()
 
     await user.click(screen.getByRole('button', { name: 'Profile menu' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Lost & found' }))
+    await user.click(screen.getByRole('menuitem', { name: row.label }))
 
-    expect(navigate).toHaveBeenCalledWith('/lost-found')
+    expect(navigate).toHaveBeenCalledWith(row.to)
   })
 
   it('offers the same search placeholder to every role', () => {
@@ -110,5 +117,44 @@ describe('TopNav avatar menu', () => {
       unmount()
     })
     expect(seen.size).toBe(1)
+  })
+})
+
+/**
+ * The nav slides away on scroll-down, and the feed filter bar sticks underneath it.
+ * Without this flag the bar keeps a nav-height offset over empty space and posts scroll
+ * through the gap, so the flag is the contract between the two.
+ */
+describe('TopNav sticky-offset flag', () => {
+  function scrollTo(y: number) {
+    Object.defineProperty(window, 'scrollY', { value: y, writable: true, configurable: true })
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+  }
+
+  beforeEach(() => {
+    scrollTo(0)
+    delete document.documentElement.dataset.navHidden
+  })
+
+  it('flags the root element only while the nav is off-screen', () => {
+    renderNav()
+    expect(document.documentElement.dataset.navHidden).toBeUndefined()
+
+    scrollTo(400)
+    expect(document.documentElement.dataset.navHidden).toBe('true')
+
+    scrollTo(200)
+    expect(document.documentElement.dataset.navHidden).toBeUndefined()
+  })
+
+  it('clears the flag on unmount rather than stranding it on a page with no nav', () => {
+    const { unmount } = renderNav()
+    scrollTo(400)
+    expect(document.documentElement.dataset.navHidden).toBe('true')
+
+    unmount()
+    expect(document.documentElement.dataset.navHidden).toBeUndefined()
   })
 })

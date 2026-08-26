@@ -10,9 +10,17 @@ import GroupsPage from './GroupsPage'
 import ExplorePage from './ExplorePage'
 
 let currentRole: UserRole = 'student'
-vi.mock('@/stores/authStore', () => ({
-  useAuthStore: (selector: (s: unknown) => unknown) => selector({ user: { id: 'u1', role: currentRole } }),
-}))
+// The axios request interceptor reads `useAuthStore.getState().accessToken`, so a mock
+// that only supplies the hook makes every request throw before it reaches MSW — and the
+// failure is silent, since TanStack Query just leaves the list empty. Anything asserting
+// on fetched rows needs `getState` here.
+vi.mock('@/stores/authStore', () => {
+  const state = { user: { id: 'u1', role: 'student' as UserRole }, accessToken: 'test-token' }
+  const useAuthStore = (selector: (s: unknown) => unknown) =>
+    selector({ ...state, user: { id: 'u1', role: currentRole } })
+  useAuthStore.getState = () => ({ ...state, user: { id: 'u1', role: currentRole }, clearAuth: () => {} })
+  return { useAuthStore }
+})
 
 // The sections view differs from the groups view only in the `type` it asks the API
 // for, and GroupCard is stubbed out here — so the request itself is the observable.
@@ -39,8 +47,8 @@ class NoopObserver {
 }
 vi.stubGlobal('IntersectionObserver', NoopObserver)
 
-vi.mock('@/pages/ConnectionsPage', () => ({
-  default: () => <div>connections panel</div>,
+vi.mock('@/features/connections', () => ({
+  PeopleDirectory: () => <div>people directory</div>,
 }))
 vi.mock('@/pages/LostFoundPage', () => ({
   default: () => <div>lost and found panel</div>,
@@ -76,19 +84,75 @@ function renderPage(ui: React.ReactElement, route: string) {
 }
 
 describe('GroupsPage people section', () => {
-  it('shows groups by default and folds connections in behind a People tab', async () => {
+  it('shows groups by default and folds the people directory in behind a People tab', async () => {
     const user = userEvent.setup()
     renderPage(<GroupsPage />, '/groups')
 
-    expect(screen.queryByText('connections panel')).not.toBeInTheDocument()
+    expect(screen.queryByText('people directory')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'People' }))
-    expect(screen.getByText('connections panel')).toBeInTheDocument()
+    expect(screen.getByText('people directory')).toBeInTheDocument()
   })
 
   it('honours a deep link to the people section', () => {
     renderPage(<GroupsPage />, '/groups?section=people')
-    expect(screen.getByText('connections panel')).toBeInTheDocument()
+    expect(screen.getByText('people directory')).toBeInTheDocument()
+  })
+
+  // Each view owns its own chip set, so a chip that only exists on one side of the
+  // switch must not survive the crossing — it would filter the other list by nothing.
+  it('swaps the filter chips with the view and drops the one that was applied', async () => {
+    const user = userEvent.setup()
+    renderPage(<GroupsPage />, '/groups')
+
+    await user.click(screen.getByRole('button', { name: 'Clubs' }))
+    expect(screen.getByRole('button', { name: 'Clubs' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'People' }))
+    expect(screen.queryByRole('button', { name: 'Clubs' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Alumni' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  // "Suggested for you / from your department and batch" is a claim about how the
+  // list was built. Once you filter or search, it is simply not true any more.
+  it('stops calling results suggestions once the list is narrowed', async () => {
+    const user = userEvent.setup()
+    server.use(
+      http.get('*/groups', () =>
+        HttpResponse.json({
+          data: {
+            items: [{ id: 'g1', name: 'Campus photography', type: 'interest', isMember: false }],
+            total: 1,
+            hasMore: false,
+            page: 1,
+          },
+        }),
+      ),
+    )
+    renderPage(<GroupsPage />, '/groups')
+
+    expect(await screen.findByRole('heading', { name: 'Suggested for you' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Interest' }))
+
+    expect(await screen.findByRole('heading', { name: 'Other matches' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Suggested for you' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Browse by type' })).not.toBeInTheDocument()
+  })
+
+  // "Joined" is a relationship, not a group `type` — sending it as one would 422.
+  it('applies the Joined chip client-side rather than as a type filter', async () => {
+    const user = userEvent.setup()
+    renderPage(<GroupsPage />, '/groups')
+
+    await waitFor(() => expect(groupsGet).toHaveBeenCalled())
+    groupsGet.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'Joined' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Joined' })).toHaveAttribute('aria-pressed', 'true'))
+
+    const params = groupsGet.mock.calls.map((c) => (c[1] as { params?: Record<string, unknown> })?.params)
+    expect(params.every((p) => p?.type === undefined)).toBe(true)
   })
 })
 
@@ -128,21 +192,21 @@ describe('GroupsPage faculty sections view', () => {
     expect(requestedType()).toBe('academic')
   })
 
-  it('hides the group-type filter there, which would contradict the tab', async () => {
+  it('hides the group-type chips there, which would contradict the tab', async () => {
     currentRole = 'faculty'
     renderPage(<GroupsPage />, '/groups')
 
     await screen.findByRole('button', { name: 'My sections' })
-    expect(screen.getByLabelText('Group types')).not.toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Clubs' })).not.toBeInTheDocument()
   })
 
-  it('restores the type filter once faculty switches to all groups', async () => {
+  it('restores the type chips once faculty switches to all groups', async () => {
     const user = userEvent.setup()
     currentRole = 'faculty'
     renderPage(<GroupsPage />, '/groups')
 
-    await user.click(await screen.findByRole('button', { name: 'Groups' }))
-    expect(screen.getByLabelText('Group types')).toBeVisible()
+    await user.click(await screen.findByRole('button', { name: /^Groups/ }))
+    expect(screen.getByRole('button', { name: 'Clubs' })).toBeInTheDocument()
   })
 
   it('gives no other role the sections tab, and ignores the param for them', async () => {

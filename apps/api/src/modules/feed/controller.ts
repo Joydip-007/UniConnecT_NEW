@@ -58,6 +58,12 @@ export const listArchived = asyncHandler(async (req: Request, res: Response) => 
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
 
+export const listSaved = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await feedService.listSaved(context.universityId, context.userId, req.query as unknown as PaginationQuery)
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
 export const addReaction = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await feedService.upsertReaction(context, getPostIdParam(req), (req.body as ReactionInput).reaction_type!))

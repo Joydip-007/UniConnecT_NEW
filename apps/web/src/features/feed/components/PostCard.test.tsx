@@ -78,4 +78,44 @@ describe('PostCard markdown sanitization', () => {
     expect(screen.getByRole('img', { name: 'Student' })).toBeInTheDocument()
     expect(screen.queryByText('Student', { selector: '.role-badge__tip' })).toBeInTheDocument()
   })
+
+  /**
+   * `.feed-post-card` carries `content-visibility: auto`, which applies paint
+   * containment — an upward tooltip from a badge this close to the card's top edge is
+   * clipped whatever its z-index. The flip is the fix, so it is worth asserting.
+   */
+  it('opens the role badge tooltip below the badge, clear of the card edge', () => {
+    renderCard(makePost('hello'))
+    expect(screen.getByText('Student', { selector: '.role-badge__tip' })).toHaveClass(
+      'role-badge__tip--below',
+    )
+  })
+})
+
+describe('PostCard author meta line', () => {
+  function withProfile(profile: Partial<FeedPost['author']['profile']>): FeedPost {
+    const post = makePost('hello')
+    return { ...post, author: { ...post.author, profile: { ...post.author.profile, ...profile } } }
+  }
+
+  it('folds headline, department and timestamp onto one line', () => {
+    renderCard(withProfile({ headline: 'Associate professor', department: 'CSE', batchYear: '2021' }))
+
+    const timestamp = screen.getByRole('button', { name: 'View post' })
+    const metaLine = timestamp.closest('p')
+    expect(metaLine).not.toBeNull()
+    expect(metaLine).toHaveTextContent("Associate professor · CSE '21 · less than a minute ago")
+  })
+
+  it('omits the separators for the parts an author has not filled in', () => {
+    renderCard(withProfile({ headline: null, department: null, batchYear: null }))
+
+    const metaLine = screen.getByRole('button', { name: 'View post' }).closest('p')
+    expect(metaLine).toHaveTextContent(/^less than a minute ago$/)
+  })
+
+  it('keeps the timestamp a link to the post detail rather than plain text', () => {
+    renderCard(withProfile({ headline: 'Associate professor', department: 'CSE', batchYear: null }))
+    expect(screen.getByRole('button', { name: 'View post' })).toBeInTheDocument()
+  })
 })

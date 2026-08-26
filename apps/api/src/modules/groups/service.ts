@@ -69,6 +69,9 @@ interface CountRow {
   count: string | number
 }
 
+/** Faces rendered in the group-card avatar stack. Kept small — the card has room for three. */
+const GROUP_PREVIEW_MEMBER_COUNT = 3
+
 interface GroupRow {
   id: string
   university_id: string
@@ -85,11 +88,25 @@ interface GroupRow {
   is_system: boolean
   department: string | null
   user_role: GroupRole | null
+  is_muted: boolean | null
   pinned_text: string | null
   pinned_at: Date | null
   pinned_by: string | null
   rules_md: string | null
   ai_settings: Record<string, unknown> | null
+}
+
+/** A handful of members rendered as an avatar stack on the group card. */
+interface GroupPreviewMemberRow {
+  group_id: string
+  user_id: string
+  full_name: string
+  avatar_url: string | null
+}
+
+interface GroupKnownCountRow {
+  group_id: string
+  known_count: string | number
 }
 
 interface GroupAccessRow {
@@ -259,7 +276,34 @@ export class GroupsService {
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as GroupRow[]
 
-    return { items: rows.map(toGroup), total, page: query.page, limit: query.limit }
+    const { previewByGroup, knownByGroup } = await loadGroupSocialProof(
+      rows.map((row) => row.id),
+      context.userId,
+    )
+
+    const items = rows.map((row) => ({
+      ...toGroup(row),
+      previewMembers: previewByGroup.get(row.id) ?? [],
+      knownMemberCount: knownByGroup.get(row.id) ?? 0,
+    }))
+
+    return { items, total, page: query.page, limit: query.limit }
+  }
+
+  /**
+   * Mute or unmute a group's notifications for the current user. Membership carries the
+   * preference, so someone who is not a member has nothing to mute.
+   */
+  async setMyMute(context: AuthContext, groupId: string, muted: boolean) {
+    await assertGroupAccess(context, groupId)
+
+    const updated = await db('group_members')
+      .where({ group_id: groupId, user_id: context.userId })
+      .update({ is_muted: muted })
+
+    if (updated === 0) throw notFound('You are not a member of this group', 'GROUP_MEMBERSHIP_NOT_FOUND')
+
+    return { isMuted: muted }
   }
 
   async createGroup(context: AuthContext, input: CreateGroupInput) {
@@ -2143,6 +2187,7 @@ function groupSelectQuery(knex: Knex, userId: string) {
       'groups.is_system',
       'groups.department',
       'current_member.role as user_role',
+      'current_member.is_muted',
       'groups.pinned_text',
       'groups.pinned_at',
       'groups.pinned_by',
@@ -2563,8 +2608,82 @@ function toGroup(row: GroupRow) {
     pinnedText: row.pinned_text,
     pinnedAt: row.pinned_at,
     pinnedBy: row.pinned_by,
+    // `is_muted` comes from the left-joined membership row, so it is null for non-members.
+    // Collapse that to `false` — "not muted" is the honest answer for someone who is not in.
+    isMuted: Boolean(row.is_muted),
     aiSettings: withAiSettingsDefaults(row.ai_settings),
   }
+}
+
+/**
+ * Avatar-stack members and the "n people you know" count for a page of groups.
+ *
+ * Both are per-group aggregates over `group_members`, so they are fetched once for the
+ * whole page rather than as correlated subqueries on the list query — the list is already
+ * paginated, so the id set is bounded by `limit`.
+ */
+async function loadGroupSocialProof(groupIds: string[], currentUserId: string) {
+  const previewByGroup = new Map<string, { id: string; fullName: string; avatarUrl: string | null }[]>()
+  const knownByGroup = new Map<string, number>()
+
+  if (groupIds.length === 0) return { previewByGroup, knownByGroup }
+
+  const previewRows = (await db
+    .select<GroupPreviewMemberRow[]>('group_id', 'user_id', 'full_name', 'avatar_url')
+    .from(
+      db('group_members')
+        .join('profiles', 'profiles.user_id', 'group_members.user_id')
+        .whereIn('group_members.group_id', groupIds)
+        .select(
+          'group_members.group_id',
+          'group_members.user_id',
+          'profiles.full_name',
+          'profiles.avatar_url',
+          db.raw(
+            `row_number() over (
+               partition by group_members.group_id
+               order by case group_members.role
+                 when 'owner' then 0 when 'admin' then 1 when 'moderator' then 2 else 3 end,
+                 group_members.joined_at asc
+             ) as rn`,
+          ),
+        )
+        .as('ranked'),
+    )
+    .where('rn', '<=', GROUP_PREVIEW_MEMBER_COUNT)) as GroupPreviewMemberRow[]
+
+  for (const row of previewRows) {
+    const list = previewByGroup.get(row.group_id) ?? []
+    list.push({ id: row.user_id, fullName: row.full_name, avatarUrl: row.avatar_url })
+    previewByGroup.set(row.group_id, list)
+  }
+
+  const knownRows = (await db('group_members')
+    .join('connections', function joinAcceptedConnections() {
+      this.on('connections.status', '=', db.raw('?', ['accepted'])).andOn(function matchEitherSide() {
+        this.on(function requesterSide() {
+          this.on('connections.requester_id', '=', db.raw('?', [currentUserId])).andOn(
+            'connections.addressee_id',
+            '=',
+            'group_members.user_id',
+          )
+        }).orOn(function addresseeSide() {
+          this.on('connections.addressee_id', '=', db.raw('?', [currentUserId])).andOn(
+            'connections.requester_id',
+            '=',
+            'group_members.user_id',
+          )
+        })
+      })
+    })
+    .whereIn('group_members.group_id', groupIds)
+    .groupBy('group_members.group_id')
+    .select<GroupKnownCountRow[]>('group_members.group_id')
+    .count({ known_count: '*' })) as GroupKnownCountRow[]
+
+  for (const row of knownRows) knownByGroup.set(row.group_id, Number(row.known_count))
+
+  return { previewByGroup, knownByGroup }
 }
 
 function toResource(row: ResourceRow) {

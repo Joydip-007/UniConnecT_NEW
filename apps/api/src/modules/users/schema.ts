@@ -32,6 +32,12 @@ export const UserListQuerySchema = z.object({
   department: z.string().trim().min(1).optional(),
   batch_year: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional(),
+  // Resolved server-side against the caller's own profile — the client should not have to
+  // know (or be trusted with) which department that is.
+  same_department: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((v) => v === true || v === 'true')
+    .optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 })

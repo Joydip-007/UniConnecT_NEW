@@ -1,29 +1,12 @@
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { MapPin } from 'lucide-react'
-import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
-import { Section, SectionHeader, SkeletonLine, WidgetShell } from './primitives'
+import { RailSlot, SectionHeader, SkeletonLine, WidgetShell } from './primitives'
+import { formatEventDate, useUpcomingEvents, type UpcomingEvent } from './useUpcomingEvents'
 
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  return {
-    day: d.getDate(),
-    month: d.toLocaleString('en-US', { month: 'short' }),
-    time: d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-  }
-}
-
-interface EventItem {
-  id: string
-  title: string
-  location: string | null
-  startsAt: string
-}
-
-function EventMini({ event, isLast = false }: { event: EventItem; isLast?: boolean }) {
+function EventMini({ event, isLast = false }: { event: UpcomingEvent; isLast?: boolean }) {
   const navigate = useNavigate()
-  const { day, month, time } = formatDate(event.startsAt)
+  const { day, month, time } = formatEventDate(event.startsAt)
 
   return (
     <button
@@ -114,24 +97,13 @@ function EventMini({ event, isLast = false }: { event: EventItem; isLast?: boole
 
 /** Hides entirely when nothing is scheduled from today onward. */
 export function UpcomingEventsWidget() {
-  const { data: events, isLoading } = useQuery({
-    queryKey: ['events', 'list', { from: 'today' }],
-    queryFn: () => {
-      const startOfDay = new Date()
-      startOfDay.setHours(0, 0, 0, 0)
-      return api
-        .get<{ data: { items: EventItem[] } }>('/events', {
-          params: { from: startOfDay.toISOString(), limit: 3 },
-        })
-        .then((r) => r.data.data.items)
-    },
-  })
+  const { data: events, isLoading } = useUpcomingEvents()
 
   if (!isLoading && (!events || events.length === 0)) return null
 
   return (
     <WidgetShell>
-      <Section withTopDivider>
+      <RailSlot>
         <SectionHeader title="Upcoming events" />
 
         {isLoading ? (
@@ -161,7 +133,7 @@ export function UpcomingEventsWidget() {
             ))}
           </div>
         )}
-      </Section>
+      </RailSlot>
     </WidgetShell>
   )
 }

@@ -17,6 +17,7 @@ import { useFeedShortcuts } from '@/features/feed/hooks/useFeedShortcuts'
 import { SkeletonPost } from '@/components/skeletons/SkeletonPost'
 import { EmptyState } from '@/components/EmptyState'
 import { LearnFeedCard } from '@/features/learning'
+import { MobileEventsStrip } from '@/features/feed/components/MobileEventsStrip'
 
 const EMPTY_FEED = {
   icon: Rss,
@@ -116,82 +117,76 @@ export default function FeedPage() {
 
       <CreatePost editPost={editPost} onDismissEdit={() => setEditPost(null)} />
 
-      {/* Filter tabs — each is a server-side post type, so /news no longer needs a rail
-          row while staying deep-linkable at ?tab=news. */}
-      <nav
-        aria-label="Feed filter"
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '4px 6px',
-          display: 'flex',
-          gap: 2,
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {FEED_TABS.map(({ key, label }) => {
-          const active = activeTab.key === key
-          return (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-current={active ? 'page' : undefined}
-              onClick={() => updateParams({ tab: key })}
-              style={{
-                flexShrink: 0,
-                padding: '7px 14px',
-                fontSize: 13,
-                fontWeight: active ? 500 : 400,
-                borderRadius: 'var(--r-pill)',
-                border: 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                transition: 'background 150ms, color 150ms',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
+      {/* One filter row: type tabs on the left, sort folded into the right edge behind
+          a hairline. It sticks under the nav, so the filter stays reachable while the
+          list scrolls instead of leaving with the top of the page. Each tab is a real
+          server-side post type, so /news needs no rail row while staying deep-linkable
+          at ?tab=news. */}
+      <nav className="feed-filter-bar" aria-label="Feed filter and sort">
+        <div className="feed-filter-tabs" role="tablist" aria-label="Feed filter">
+          {FEED_TABS.map(({ key, label }) => {
+            const active = activeTab.key === key
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => updateParams({ tab: key })}
+                style={{
+                  flexShrink: 0,
+                  padding: '7px 12px',
+                  fontSize: 13,
+                  fontWeight: active ? 500 : 400,
+                  borderRadius: 'var(--r-pill)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                  color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                  transition: 'background 150ms, color 150ms',
+                }}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="feed-filter-sort" role="group" aria-label="Feed sort">
+          {(['recent', 'top'] as const).map((value) => {
+            const active = sort === value
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setSort(value)}
+                style={{
+                  padding: '4px 11px',
+                  fontSize: 12,
+                  fontWeight: active ? 500 : 400,
+                  borderRadius: 'var(--r-pill)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                  color: active ? 'var(--uc-indigo-l)' : 'var(--text-tertiary)',
+                  transition: 'background 150ms, color 150ms',
+                }}
+              >
+                {value === 'recent' ? 'Recent' : 'Top'}
+              </button>
+            )
+          })}
+        </div>
       </nav>
 
-      {/* Sort toggle */}
-      <div
-        role="group"
-        aria-label="Feed sort"
-        style={{ display: 'flex', gap: 4, alignSelf: 'flex-start', paddingLeft: 2 }}
-      >
-        {(['recent', 'top'] as const).map((value) => {
-          const active = sort === value
-          return (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setSort(value)}
-              style={{
-                padding: '4px 12px',
-                fontSize: 12,
-                fontWeight: active ? 500 : 400,
-                borderRadius: 'var(--r-pill)',
-                border: '0.5px solid var(--border-default)',
-                cursor: 'pointer',
-                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                color: active ? 'var(--uc-indigo-l)' : 'var(--text-tertiary)',
-                transition: 'background 150ms, color 150ms',
-              }}
-            >
-              {value === 'recent' ? 'Recent' : 'Top'}
-            </button>
-          )
-        })}
-      </div>
+      {/* Mobile only — the rail is dropped below 767px, and upcoming events is the one
+          widget worth keeping there. Manifest-driven, so it follows the same rule the
+          rail does rather than branching on role. */}
+      <MobileEventsStrip />
 
       {/* Initial loading */}
       {isLoading && (

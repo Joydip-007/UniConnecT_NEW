@@ -16,6 +16,7 @@ import {
   getPostReactions,
   getTrending,
   listArchived,
+  listSaved,
   listPosts,
   removeCommentReaction,
   removeReaction,
@@ -49,6 +50,7 @@ feedRouter.post('/', writeLimiter, validate(CreatePostSchema), createPost)
 feedRouter.get('/trending', getTrending)
 // Static paths must precede '/:postId' so they aren't captured as a post id.
 feedRouter.get('/archived', validateRequest({ query: PaginationQuerySchema }), listArchived)
+feedRouter.get('/saved', validateRequest({ query: PaginationQuerySchema }), listSaved)
 feedRouter.get('/:postId', getPost)
 feedRouter.patch('/:postId', validate(UpdatePostSchema), updatePost)
 feedRouter.delete('/:postId', deletePost)

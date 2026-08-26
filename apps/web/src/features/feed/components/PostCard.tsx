@@ -121,21 +121,25 @@ const articleStyle: React.CSSProperties = {
   transition: 'border-color 200ms ease',
 }
 const postInnerStyle: React.CSSProperties = { padding: '14px 16px 12px' }
-const postHeaderStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }
+const postHeaderStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }
 const authorAvatarLinkStyle: React.CSSProperties = { flexShrink: 0, lineHeight: 0 }
 const authorMetaColStyle: React.CSSProperties = { flex: 1, minWidth: 0 }
 const authorNameRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }
 const authorNameLinkStyle: React.CSSProperties = { fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }
-const authorDeptStyle: React.CSSProperties = { fontSize: 12, color: 'var(--text-tertiary)' }
-const authorHeadlineStyle: React.CSSProperties = { margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }
+/**
+ * Headline, department and timestamp share one line. Stacking them cost three rows
+ * of header per card before a single word of the post; folded, the same values read
+ * as one sentence and the card starts two rows earlier.
+ */
+const authorMetaLineStyle: React.CSSProperties = { margin: '2px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }
 const timestampBtnStyle: React.CSSProperties = {
-  margin: '2px 0 0',
+  margin: 0,
   padding: 0,
   background: 'none',
   border: 'none',
   cursor: 'pointer',
-  fontSize: 12,
-  color: 'var(--text-tertiary)',
+  font: 'inherit',
+  color: 'inherit',
   textAlign: 'left',
 }
 const sharedAttributionStyle: React.CSSProperties = { margin: '-4px 0 10px', fontSize: 12, color: 'var(--text-tertiary)' }
@@ -461,6 +465,13 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
   const isAnnouncement = post.type === 'announcement' || post.isPinned
   const author = post.author
   const authorProfileUrl = PATHS.PROFILE.replace(':id', author.id)
+  // Everything that used to own its own line, in reading order; the timestamp is
+  // appended separately because it stays an interactive link to the post detail.
+  const authorMeta = [
+    author.profile.headline,
+    author.profile.department &&
+      `${author.profile.department}${author.profile.batchYear ? ` '${author.profile.batchYear.slice(-2)}` : ''}`,
+  ].filter((part): part is string => Boolean(part))
 
   return (
     <article
@@ -478,34 +489,30 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
           </Link>
           <div style={authorMetaColStyle}>
             <div style={authorNameRowStyle}>
-              <RoleBadge role={author.role} size={15} />
+              {/* Below-the-badge tooltip: the card is paint-contained, so an
+                  upward tip from a badge this close to the top edge gets clipped. */}
+              <RoleBadge role={author.role} size={15} tipPlacement="below" />
               <Link
                 to={authorProfileUrl}
                 style={authorNameLinkStyle}
               >
                 {author.fullName}
               </Link>
-              {author.profile.department && (
-                <span style={authorDeptStyle}>
-                  · {author.profile.department}
-                  {author.profile.batchYear && ` '${author.profile.batchYear.slice(-2)}`}
-                </span>
-              )}
             </div>
-            {author.profile.headline && (
-              <p style={authorHeadlineStyle}>
-                {author.profile.headline}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => viewTransitionNavigate(PATHS.POST_DETAIL.replace(':id', post.id))}
-              className="post-timestamp-link"
-              aria-label="View post"
-              style={timestampBtnStyle}
-            >
-              {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
-            </button>
+            <p style={authorMetaLineStyle}>
+              {authorMeta.map((part) => (
+                <span key={part}>{part} · </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => viewTransitionNavigate(PATHS.POST_DETAIL.replace(':id', post.id))}
+                className="post-timestamp-link"
+                aria-label="View post"
+                style={timestampBtnStyle}
+              >
+                {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
+              </button>
+            </p>
           </div>
           {user && (
             <ThreeDotMenu

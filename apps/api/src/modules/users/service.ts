@@ -301,14 +301,35 @@ export class UsersService {
     return !existing || existing.id === userId
   }
 
-  async listUsers(universityId: string, query: UserListQuery) {
-    const baseQuery = getUserProfileQuery().where('users.university_id', universityId)
-    applyUserFilters(baseQuery, query)
+  async listUsers(currentUserId: string, universityId: string, query: UserListQuery) {
+    // `same_department` is resolved here rather than taken from the client so the filter
+    // always means "my department", not "whichever department was put in the query string".
+    let department = query.department
+    if (query.same_department) {
+      const me = await db('profiles')
+        .select('department')
+        .where('user_id', currentUserId)
+        .first<{ department: string | null }>()
+      // No department on the profile means the filter cannot match anything. Returning an
+      // empty page is right — silently dropping the filter would show the full directory.
+      if (!me?.department) {
+        return { items: [], total: 0, page: query.page, limit: query.limit }
+      }
+      department = me.department
+    }
 
-    const countQuery = db('users')
-      .join('profiles', 'profiles.user_id', 'users.id')
-      .where('users.university_id', universityId)
-    applyUserFilters(countQuery, query)
+    const filters = { ...query, department }
+
+    const applyDirectoryScope = (builder: Knex.QueryBuilder) => {
+      builder.where('users.university_id', universityId).whereNot('users.id', currentUserId)
+      applyUserFilters(builder, filters)
+    }
+
+    const baseQuery = getUserProfileQuery()
+    applyDirectoryScope(baseQuery)
+
+    const countQuery = db('users').join('profiles', 'profiles.user_id', 'users.id')
+    applyDirectoryScope(countQuery)
 
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
@@ -319,8 +340,18 @@ export class UsersService {
       .limit(query.limit)
       .offset(offset) as UserProfileRow[]
 
+    const targetIds = rows.map((row) => row.id)
+    const [mutualByUser, statusByUser] = await Promise.all([
+      countMutualConnectionsBulk(currentUserId, targetIds),
+      loadConnectionStatuses(currentUserId, targetIds),
+    ])
+
     return {
-      items: rows.map((row) => toUserProfile(row, { includePhone: false, includeContactInfo: false })),
+      items: rows.map((row) => ({
+        ...toUserProfile(row, { includePhone: false, includeContactInfo: false }),
+        mutualConnections: mutualByUser.get(row.id) ?? 0,
+        connectionStatus: statusByUser.get(row.id) ?? ('none' as const),
+      })),
       total,
       page: query.page,
       limit: query.limit,
@@ -803,6 +834,88 @@ function getUserProfileQuery() {
       'profiles.github_url',
       'profiles.portfolio_url',
     )
+}
+
+/** Every user the given user is accepted-connected to, as a subquery of `partner_id`. */
+function acceptedPartnersSubquery(userId: string) {
+  return db('connections')
+    .where('status', 'accepted')
+    .andWhere(function eitherSide() {
+      this.where('requester_id', userId).orWhere('addressee_id', userId)
+    })
+    .select(
+      db.raw('case when requester_id = ? then addressee_id else requester_id end as partner_id', [userId]),
+    )
+}
+
+/**
+ * How many connections the caller shares with each of `targetIds`, in one pass.
+ *
+ * A per-row `getMutualConnections` call would be N round trips for a page of the directory,
+ * so this joins the caller's partner set against everyone else's and groups by target.
+ */
+async function countMutualConnectionsBulk(currentUserId: string, targetIds: string[]) {
+  const byUser = new Map<string, number>()
+  if (targetIds.length === 0) return byUser
+
+  const theirPartners = db('connections')
+    .where('status', 'accepted')
+    .andWhere(function eitherSideIsTarget() {
+      this.whereIn('requester_id', targetIds).orWhereIn('addressee_id', targetIds)
+    })
+    .select(
+      db.raw(
+        `case when requester_id = any(?) then requester_id else addressee_id end as target_id`,
+        [targetIds],
+      ),
+      db.raw(
+        `case when requester_id = any(?) then addressee_id else requester_id end as partner_id`,
+        [targetIds],
+      ),
+    )
+
+  const rows = (await db
+    .from(theirPartners.as('theirs'))
+    .join(acceptedPartnersSubquery(currentUserId).as('mine'), 'mine.partner_id', 'theirs.partner_id')
+    .whereNot('theirs.target_id', currentUserId)
+    .groupBy('theirs.target_id')
+    .select<{ target_id: string; mutual_count: string | number }[]>('theirs.target_id')
+    .count({ mutual_count: '*' })) as { target_id: string; mutual_count: string | number }[]
+
+  for (const row of rows) byUser.set(row.target_id, Number(row.mutual_count))
+  return byUser
+}
+
+export type DirectoryConnectionStatus = 'none' | 'connected' | 'pending_sent' | 'pending_received'
+
+/** The caller's connection state with each of `targetIds`, so the directory can label its CTA. */
+async function loadConnectionStatuses(currentUserId: string, targetIds: string[]) {
+  const byUser = new Map<string, DirectoryConnectionStatus>()
+  if (targetIds.length === 0) return byUser
+
+  const rows = await db('connections')
+    .select<{ requester_id: string; addressee_id: string; status: string }[]>(
+      'requester_id',
+      'addressee_id',
+      'status',
+    )
+    .where(function callerIsRequester() {
+      this.where('requester_id', currentUserId).whereIn('addressee_id', targetIds)
+    })
+    .orWhere(function callerIsAddressee() {
+      this.where('addressee_id', currentUserId).whereIn('requester_id', targetIds)
+    })
+
+  for (const row of rows) {
+    const sentByCaller = row.requester_id === currentUserId
+    const otherId = sentByCaller ? row.addressee_id : row.requester_id
+    byUser.set(
+      otherId,
+      row.status === 'accepted' ? 'connected' : sentByCaller ? 'pending_sent' : 'pending_received',
+    )
+  }
+
+  return byUser
 }
 
 function applyUserFilters(query: Knex.QueryBuilder, filters: Partial<UserListQuery>) {

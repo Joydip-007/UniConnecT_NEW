@@ -15,6 +15,12 @@ export const GroupListQuerySchema = PaginationQuerySchema.extend({
   search: z.string().trim().min(1).optional(),
 })
 
+export const UpdateMyMuteSchema = z
+  .object({
+    muted: z.boolean(),
+  })
+  .strict()
+
 export const MembersQuerySchema = PaginationQuerySchema.extend({
   search: z.string().trim().optional(),
   role: GroupRoleSchema.optional(),
@@ -53,6 +59,7 @@ export const InviteToGroupSchema = z.object({
 })
 
 export type GroupListQuery = z.infer<typeof GroupListQuerySchema>
+export type UpdateMyMuteInput = z.infer<typeof UpdateMyMuteSchema>
 export type MembersQuery = z.infer<typeof MembersQuerySchema>
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type CreateGroupInput = z.infer<typeof CreateGroupSchema>

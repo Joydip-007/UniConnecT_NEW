@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
-import { EyebrowLabel, WidgetShell } from './primitives'
+import { EyebrowLabel, RailSlot, WidgetShell } from './primitives'
 
 interface TrendingTag {
   name: string
@@ -26,7 +26,7 @@ export function TrendingTagsWidget() {
 
   return (
     <WidgetShell>
-      <div style={{ padding: '14px 4px 0', borderTop: '0.5px solid var(--border-default)' }}>
+      <RailSlot>
         <EyebrowLabel>Trending now</EyebrowLabel>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {tags.map((tag) => (
@@ -51,7 +51,7 @@ export function TrendingTagsWidget() {
             </button>
           ))}
         </div>
-      </div>
+      </RailSlot>
     </WidgetShell>
   )
 }

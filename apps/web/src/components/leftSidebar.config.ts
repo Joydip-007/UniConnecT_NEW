@@ -11,15 +11,14 @@ import {
   BookOpen,
   BarChart2,
   FileText,
-  Network,
   Map,
   RefreshCw,
   Trash2,
   MessageSquare,
   GraduationCap,
   Compass,
-  PackageSearch,
   Bell,
+  Bookmark,
   Flag,
   Mail,
   Radio,
@@ -115,15 +114,25 @@ export interface RoleRail {
  */
 export const TOPNAV_ICON_ROUTES: readonly string[] = [PATHS.MESSAGES, PATHS.NOTIFICATIONS]
 
-/** Shared by every member role; drivers deliberately get none of it. */
+/**
+ * Shared by every member role; drivers deliberately get none of it.
+ *
+ * Deliberately absent: "Lost & found" and "My network". Both pages were absorbed into
+ * another page as a section tab (`/explore?section=lost-found`, `/groups?section=people`)
+ * and each renders the very same component the standalone route does. Keeping a row here
+ * as well gave one feature two homes in one zone — the thing the shell rule forbids — and
+ * the row was the weaker control, since the section sits next to the content it belongs
+ * with. The old routes stay registered for deep links and old links; they are simply not
+ * advertised twice. `reachability.test.ts` treats them as sub-navigation and asserts no
+ * rail row points at them again.
+ */
 const MEMBER_SECONDARY: RailRow[] = [
   { key: 'explore', label: 'Explore', icon: Compass, to: PATHS.EXPLORE },
-  { key: 'network', label: 'My network', icon: Network, to: PATHS.CONNECTIONS },
   { key: 'messages', label: 'Messages', icon: MessageSquare, to: PATHS.MESSAGES },
   { key: 'notifications', label: 'Notifications', icon: Bell, to: PATHS.NOTIFICATIONS },
   { key: 'learn', label: 'Learn', icon: GraduationCap, to: PATHS.LEARN },
-  { key: 'lost-found', label: 'Lost & found', icon: PackageSearch, to: PATHS.LOST_FOUND },
   { key: 'drafts', label: 'Drafts', icon: FileText, to: PATHS.DRAFTS },
+  { key: 'saved', label: 'Saved', icon: Bookmark, to: PATHS.SAVED },
 ]
 
 /**

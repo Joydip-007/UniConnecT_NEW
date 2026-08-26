@@ -23,6 +23,13 @@ export interface GroupUserSummary {
   avatarUrl: string | null
 }
 
+/** A face in the group card's avatar stack. */
+export interface GroupPreviewMember {
+  id: string
+  fullName: string
+  avatarUrl: string | null
+}
+
 export interface Group {
   id: string
   name: string
@@ -43,6 +50,12 @@ export interface Group {
   pinnedBy?: string | null
   rulesMd?: string | null
   aiSettings?: AISettings
+  /** Per-member notification mute. Always false for non-members. */
+  isMuted?: boolean
+  /** Populated by the list endpoint only — absent on `GET /groups/:id`. */
+  previewMembers?: GroupPreviewMember[]
+  /** Members of this group the viewer is connected to. List endpoint only. */
+  knownMemberCount?: number
 }
 
 export interface GroupMember {

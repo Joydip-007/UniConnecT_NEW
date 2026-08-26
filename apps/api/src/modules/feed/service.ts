@@ -521,6 +521,51 @@ export class FeedService {
     return { items: withAttachments, total, page: query.page, limit: query.limit }
   }
 
+  /**
+   * The caller's own bookmarks, newest save first. `postSelectQuery` already left-joins
+   * `saved_posts` for the `is_saved` flag, so this narrows that same join rather than
+   * adding a second one.
+   *
+   * A save outlives the post's visibility — the author can archive or unpublish it, and
+   * a blocked author's posts must stay hidden — so the same filters the public feed
+   * applies are applied here. `saved_posts` cascades on post delete, so a removed post
+   * simply stops appearing.
+   */
+  async listSaved(universityId: string, userId: string, query: PaginationQuery) {
+    const hiddenAuthorIds = await moderationService.getHiddenAuthorIds(userId)
+
+    const countQuery = db('saved_posts')
+      .join('posts', 'posts.id', 'saved_posts.post_id')
+      .where({
+        'saved_posts.user_id': userId,
+        'posts.university_id': universityId,
+        'posts.is_published': true,
+      })
+      .whereNull('posts.archived_at')
+    if (hiddenAuthorIds.length) countQuery.whereNotIn('posts.author_id', hiddenAuthorIds)
+    const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
+    const total = Number(count)
+
+    const rows = (await postSelectQuery(db, userId, universityId)
+      .whereNotNull('saved_posts.user_id')
+      .andWhere({ 'posts.university_id': universityId, 'posts.is_published': true })
+      .whereNull('posts.archived_at')
+      .modify((builder) => {
+        if (hiddenAuthorIds.length) builder.whereNotIn('posts.author_id', hiddenAuthorIds)
+      })
+      .orderBy('saved_posts.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)) as PostRow[]
+
+    const postIds = rows.map((row) => row.id)
+    const [posts, attachmentsMap] = await Promise.all([
+      this.attachPolls(rows.map((r) => toPost(r, userId)), postIds, userId),
+      getAttachmentsForMany('post', postIds),
+    ])
+    const withAttachments = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
+    return { items: withAttachments, total, page: query.page, limit: query.limit }
+  }
+
   async deletePost(context: AuthContext, postId: string) {
     const post = await assertPostInUniversity(postId, context.universityId)
     assertCanMutatePost(context, post.author_id)
