@@ -1535,7 +1535,6 @@ function relativeTime(iso: string): string {
 
 function ReportedContentTab() {
   const qc = useQueryClient()
-  const [actionedKeys, setActionedKeys] = useState<Set<string>>(new Set())
 
   const { data, isLoading } = useQuery<{ items: ReportGroup[]; total: number }>({
     queryKey: ['admin', 'reports', 'grouped'],
@@ -1545,14 +1544,13 @@ function ReportedContentTab() {
   const actionMutation = useMutation({
     mutationFn: ({ targetType, targetId, action }: { targetType: string; targetId: string; action: 'remove' | 'dismiss' }) =>
       api.patch(`/admin/reports/target/${targetType}/${targetId}`, { action }),
-    onSuccess: (_res, variables) => {
-      setActionedKeys((prev) => new Set(prev).add(`${variables.targetType}:${variables.targetId}`))
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['admin', 'reports', 'grouped'] })
       void qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
     },
   })
 
-  const items = (data?.items ?? []).filter((item) => !actionedKeys.has(`${item.targetType}:${item.targetId}`))
+  const items = data?.items ?? []
 
   return (
     <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 4 }}>

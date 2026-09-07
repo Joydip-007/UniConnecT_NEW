@@ -13,7 +13,10 @@ const GROUPED_ITEM = {
   severity: 'high', reason: 'spam', reportCount: 3, lastReportedAt: new Date().toISOString(), removable: true,
 }
 
+let dismissed = false
+
 beforeEach(() => {
+  dismissed = false
   useAuthStore.setState({ user: { id: 'admin-1', role: 'admin' } as never })
   server.use(
     http.get('*/admin/stats', () => HttpResponse.json({
@@ -24,9 +27,14 @@ beforeEach(() => {
         moderationHealth: { reportsOpen: 4, resolvedPct7d: 94, medianResponseHours: 3.2, repeatOffenders: 4 },
       },
     })),
-    http.get('*/admin/reports/grouped', () => HttpResponse.json({ data: { items: [GROUPED_ITEM], total: 1, page: 1, limit: 20 } })),
+    http.get('*/admin/reports/grouped', () => HttpResponse.json({
+      data: dismissed ? { items: [], total: 0, page: 1, limit: 20 } : { items: [GROUPED_ITEM], total: 1, page: 1, limit: 20 },
+    })),
     http.get('*/admin/content/:kind', () => HttpResponse.json({ data: { items: [], total: 0, page: 1, limit: 20 } })),
-    http.patch('*/admin/reports/target/:targetType/:targetId', () => HttpResponse.json({ data: { targetId: 'post-1', targetType: 'post', status: 'dismissed' } })),
+    http.patch('*/admin/reports/target/:targetType/:targetId', () => {
+      dismissed = true
+      return HttpResponse.json({ data: { targetId: 'post-1', targetType: 'post', status: 'dismissed' } })
+    }),
   )
 })
 
