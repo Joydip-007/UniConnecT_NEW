@@ -96,14 +96,31 @@ export function AnnouncementsTab() {
     staleTime: 60_000,
   })
 
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [scheduleAt, setScheduleAt] = useState('')
+
   const postMutation = useMutation({
-    mutationFn: (content: string) => api.post('/posts', { content, type: 'announcement' }),
+    mutationFn: (payload: { content: string; is_published?: boolean; publish_at?: string }) =>
+      api.post('/posts', { type: 'announcement', ...payload }),
     onSuccess: () => {
       setDraft('')
+      setScheduleAt('')
+      setScheduleOpen(false)
       void qc.invalidateQueries({ queryKey: ['admin', 'content', 'posts', 'announcement'] })
       void qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
     },
   })
+
+  function publishNow() {
+    postMutation.mutate({ content: draft.trim() })
+  }
+  function saveAsDraft() {
+    postMutation.mutate({ content: draft.trim(), is_published: false })
+  }
+  function schedule() {
+    if (!scheduleAt) return
+    postMutation.mutate({ content: draft.trim(), publish_at: new Date(scheduleAt).toISOString() })
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -122,12 +139,52 @@ export function AnnouncementsTab() {
             fontFamily: 'inherit', outline: 'none',
           }}
         />
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+
+        {scheduleOpen && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label htmlFor="announcement-schedule-at" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              Schedule date and time
+            </label>
+            <input
+              id="announcement-schedule-at"
+              aria-label="Schedule date and time"
+              type="datetime-local"
+              value={scheduleAt}
+              onChange={(e) => setScheduleAt(e.target.value)}
+              min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+              style={{
+                background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-sm)', padding: '7px 10px', fontSize: 13, color: 'var(--text-primary)',
+                fontFamily: 'inherit', outline: 'none',
+              }}
+            />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          <GhostBtn
+            disabled={!draft.trim() || postMutation.isPending}
+            onClick={saveAsDraft}
+          >
+            Save as draft
+          </GhostBtn>
+          {scheduleOpen ? (
+            <>
+              <GhostBtn onClick={() => { setScheduleOpen(false); setScheduleAt('') }}>Cancel</GhostBtn>
+              <PrimaryBtn disabled={!draft.trim() || !scheduleAt || postMutation.isPending} onClick={schedule}>
+                {postMutation.isPending ? 'Scheduling…' : 'Schedule'}
+              </PrimaryBtn>
+            </>
+          ) : (
+            <GhostBtn disabled={!draft.trim() || postMutation.isPending} onClick={() => setScheduleOpen(true)}>
+              Schedule for…
+            </GhostBtn>
+          )}
           <PrimaryBtn
             disabled={!draft.trim() || postMutation.isPending}
-            onClick={() => postMutation.mutate(draft.trim())}
+            onClick={publishNow}
           >
-            {postMutation.isPending ? 'Posting…' : 'New announcement'}
+            {postMutation.isPending ? 'Posting…' : 'Publish now'}
           </PrimaryBtn>
         </div>
       </div>
