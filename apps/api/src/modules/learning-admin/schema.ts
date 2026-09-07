@@ -65,3 +65,19 @@ export const SetPathPublishedSchema = z.object({ isPublished: z.boolean() })
 export type SetPathPublishedBody = z.infer<typeof SetPathPublishedSchema>
 
 export const PathIdParamSchema = z.object({ id: z.string().uuid() })
+
+export const CreatePathUnitSchema = PathUnitInputSchema
+export type CreatePathUnitBody = z.infer<typeof CreatePathUnitSchema>
+
+export const UpdatePathUnitSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  type: z.enum(['read', 'video', 'exercise', 'quiz']).optional(),
+  content: z.record(z.string(), z.unknown()).optional(),
+  completionRule: z.object({ passScore: z.number().int().min(0).max(100) }).optional(),
+})
+export type UpdatePathUnitBody = z.infer<typeof UpdatePathUnitSchema>
+
+export const ReorderPathUnitsSchema = z.object({ unitIds: z.array(z.string().uuid()).min(1) })
+export type ReorderPathUnitsBody = z.infer<typeof ReorderPathUnitsSchema>
+
+export const UnitIdParamSchema = z.object({ id: z.string().uuid(), unitId: z.string().uuid() })

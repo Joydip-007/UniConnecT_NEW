@@ -9,6 +9,9 @@ import type {
   CreateLearningPathBody,
   UpdateLearningPathBody,
   SetPathPublishedBody,
+  CreatePathUnitBody,
+  UpdatePathUnitBody,
+  ReorderPathUnitsBody,
 } from './schema'
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
@@ -105,6 +108,36 @@ export const setPathPublished = asyncHandler(async (req: Request, res: Response)
   const { isPublished } = req.body as SetPathPublishedBody
   const updated = await learningAdminService.setPathPublished(universityId, req.params.id as string, isPublished)
   sendSuccess(res, updated)
+})
+
+export const getPathDetail = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.getPathDetail(universityId, req.params.id as string))
+})
+
+export const createUnit = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.createUnit(universityId, req.params.id as string, req.body as CreatePathUnitBody)
+  sendSuccess(res, { success: true }, 201)
+})
+
+export const updateUnit = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.updateUnit(universityId, req.params.id as string, req.params.unitId as string, req.body as UpdatePathUnitBody)
+  sendSuccess(res, { success: true })
+})
+
+export const deleteUnit = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  await learningAdminService.deleteUnit(universityId, req.params.id as string, req.params.unitId as string)
+  sendSuccess(res, { success: true })
+})
+
+export const reorderUnits = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  const { unitIds } = req.body as ReorderPathUnitsBody
+  await learningAdminService.reorderUnits(universityId, req.params.id as string, unitIds)
+  sendSuccess(res, { success: true })
 })
 
 function getContext(req: Request) {

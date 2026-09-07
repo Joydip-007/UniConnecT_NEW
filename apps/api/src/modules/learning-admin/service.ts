@@ -1,8 +1,15 @@
 import { db } from '../../config/db'
 import { notFound } from '../../utils/errors'
 import { aiContentQueue } from '../../queues/ai-content.queue'
-import type { LearningAdminConfigInput, AdminListPathsQuery, CreateLearningPathBody, UpdateLearningPathBody } from './schema'
-import type { AdminLearningPath } from '@uniconnect/shared'
+import type {
+  LearningAdminConfigInput,
+  AdminListPathsQuery,
+  CreateLearningPathBody,
+  UpdateLearningPathBody,
+  CreatePathUnitBody,
+  UpdatePathUnitBody,
+} from './schema'
+import type { AdminLearningPath, AdminLearningPathUnit } from '@uniconnect/shared'
 
 interface LearningTopic {
   category: string
@@ -406,6 +413,90 @@ export class LearningAdminService {
       rows.filter((r) => r.id === pathId),
     )
     return updated
+  }
+
+  /** Full path + ordered units, for the Manage page's initial load (Task 10). */
+  async getPathDetail(universityId: string, pathId: string): Promise<AdminLearningPath & { units: AdminLearningPathUnit[] }> {
+    const [path] = await this.listAdminPaths(universityId, { status: 'all' }).then((rows) =>
+      rows.filter((r) => r.id === pathId),
+    )
+    if (!path) throw notFound('Learning path not found')
+
+    const units = await db('skill_path_units')
+      .where({ path_id: pathId })
+      .orderBy('display_order', 'asc')
+      .select<{ id: string; display_order: number; title: string; type: AdminLearningPathUnit['type']; content: unknown; completion_rule: unknown }[]>(
+        'id', 'display_order', 'title', 'type', 'content', 'completion_rule',
+      )
+
+    return {
+      ...path,
+      units: units.map((u) => ({
+        id: u.id,
+        displayOrder: u.display_order,
+        title: u.title,
+        type: u.type,
+        content: u.content as AdminLearningPathUnit['content'],
+        completionRule: u.completion_rule as AdminLearningPathUnit['completionRule'],
+      })),
+    }
+  }
+
+  async createUnit(universityId: string, pathId: string, input: CreatePathUnitBody): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+    const [{ maxOrder }] = await db('skill_path_units')
+      .where({ path_id: pathId })
+      .max('display_order as maxOrder')
+    await db('skill_path_units').insert({
+      path_id: pathId,
+      display_order: Number(maxOrder ?? 0) + 1,
+      title: input.title,
+      type: input.type,
+      content: JSON.stringify(input.content),
+      completion_rule: JSON.stringify(input.completionRule ?? {}),
+    })
+    await db('skill_paths').where({ id: pathId }).update({ updated_at: db.fn.now() })
+  }
+
+  async updateUnit(universityId: string, pathId: string, unitId: string, patch: UpdatePathUnitBody): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+    const columnPatch: Record<string, unknown> = {}
+    if (patch.title !== undefined) columnPatch.title = patch.title
+    if (patch.type !== undefined) columnPatch.type = patch.type
+    if (patch.content !== undefined) columnPatch.content = JSON.stringify(patch.content)
+    if (patch.completionRule !== undefined) columnPatch.completion_rule = JSON.stringify(patch.completionRule)
+
+    const updated = await db('skill_path_units').where({ id: unitId, path_id: pathId }).update(columnPatch)
+    if (updated === 0) throw notFound('Unit not found')
+    await db('skill_paths').where({ id: pathId }).update({ updated_at: db.fn.now() })
+  }
+
+  async deleteUnit(universityId: string, pathId: string, unitId: string): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+    const deleted = await db('skill_path_units').where({ id: unitId, path_id: pathId }).delete()
+    if (deleted === 0) throw notFound('Unit not found')
+    await db('skill_paths').where({ id: pathId }).update({ updated_at: db.fn.now() })
+  }
+
+  async reorderUnits(universityId: string, pathId: string, unitIds: string[]): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+    await db.transaction(async (trx) => {
+      // Two-phase update: `skill_path_units` has a unique (path_id, display_order)
+      // constraint, so writing final positions in a single pass can collide mid-loop
+      // (e.g. moving unit B into slot 1 while unit A still occupies it). Stage every
+      // row onto a negative, collision-free offset first, then assign final positions.
+      for (let i = 0; i < unitIds.length; i++) {
+        const staged = await trx('skill_path_units')
+          .where({ id: unitIds[i], path_id: pathId })
+          .update({ display_order: -(i + 1) })
+        if (staged === 0) throw notFound('Unit not found')
+      }
+      for (let i = 0; i < unitIds.length; i++) {
+        await trx('skill_path_units')
+          .where({ id: unitIds[i], path_id: pathId })
+          .update({ display_order: i + 1 })
+      }
+    })
   }
 
   /** Ensures a university_settings row exists; returns the AI-learning columns. */

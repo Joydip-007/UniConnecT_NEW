@@ -20,6 +20,11 @@ import {
   createPath,
   updatePath,
   setPathPublished,
+  getPathDetail,
+  createUnit,
+  updateUnit,
+  deleteUnit,
+  reorderUnits,
 } from './controller'
 import {
   LearningAdminConfigSchema,
@@ -28,6 +33,10 @@ import {
   PathIdParamSchema,
   UpdateLearningPathSchema,
   SetPathPublishedSchema,
+  UnitIdParamSchema,
+  CreatePathUnitSchema,
+  UpdatePathUnitSchema,
+  ReorderPathUnitsSchema,
 } from './schema'
 
 export const learningAdminRouter = Router()
@@ -65,3 +74,13 @@ learningAdminRouter.patch(
   validateRequest({ params: PathIdParamSchema, body: SetPathPublishedSchema }),
   setPathPublished,
 )
+
+learningAdminRouter.get('/paths/:id', validateRequest({ params: PathIdParamSchema }), getPathDetail)
+learningAdminRouter.post('/paths/:id/units', validateRequest({ params: PathIdParamSchema, body: CreatePathUnitSchema }), createUnit)
+// IMPORTANT: register '/paths/:id/units/reorder' before '/paths/:id/units/:unitId' —
+// Express matches the more specific literal segment first only if it's declared first,
+// otherwise 'reorder' is captured as a :unitId value and the reorder schema's UUID check
+// (which would 422, not silently misroute) fires instead of the intended handler.
+learningAdminRouter.patch('/paths/:id/units/reorder', validateRequest({ params: PathIdParamSchema, body: ReorderPathUnitsSchema }), reorderUnits)
+learningAdminRouter.patch('/paths/:id/units/:unitId', validateRequest({ params: UnitIdParamSchema, body: UpdatePathUnitSchema }), updateUnit)
+learningAdminRouter.delete('/paths/:id/units/:unitId', validateRequest({ params: UnitIdParamSchema }), deleteUnit)
