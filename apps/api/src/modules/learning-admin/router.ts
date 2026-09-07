@@ -18,8 +18,17 @@ import {
   getAnalytics,
   listAdminPaths,
   createPath,
+  updatePath,
+  setPathPublished,
 } from './controller'
-import { LearningAdminConfigSchema, AdminListPathsQuerySchema, CreateLearningPathSchema } from './schema'
+import {
+  LearningAdminConfigSchema,
+  AdminListPathsQuerySchema,
+  CreateLearningPathSchema,
+  PathIdParamSchema,
+  UpdateLearningPathSchema,
+  SetPathPublishedSchema,
+} from './schema'
 
 export const learningAdminRouter = Router()
 
@@ -46,3 +55,13 @@ learningAdminRouter.get('/analytics', getAnalytics)
 
 learningAdminRouter.get('/paths', validateRequest({ query: AdminListPathsQuerySchema }), listAdminPaths)
 learningAdminRouter.post('/paths', validate(CreateLearningPathSchema), createPath)
+learningAdminRouter.patch(
+  '/paths/:id',
+  validateRequest({ params: PathIdParamSchema, body: UpdateLearningPathSchema }),
+  updatePath,
+)
+learningAdminRouter.patch(
+  '/paths/:id/publish',
+  validateRequest({ params: PathIdParamSchema, body: SetPathPublishedSchema }),
+  setPathPublished,
+)

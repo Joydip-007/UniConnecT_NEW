@@ -1,7 +1,7 @@
 import { db } from '../../config/db'
 import { notFound } from '../../utils/errors'
 import { aiContentQueue } from '../../queues/ai-content.queue'
-import type { LearningAdminConfigInput, AdminListPathsQuery, CreateLearningPathBody } from './schema'
+import type { LearningAdminConfigInput, AdminListPathsQuery, CreateLearningPathBody, UpdateLearningPathBody } from './schema'
 import type { AdminLearningPath } from '@uniconnect/shared'
 
 interface LearningTopic {
@@ -375,6 +375,37 @@ export class LearningAdminService {
         passRate: Number(row.attemptCount) > 0 ? Number(row.passCount) / Number(row.attemptCount) : 0,
       })),
     }
+  }
+
+  private async findOwnedPath(universityId: string, pathId: string): Promise<void> {
+    const path = await db('skill_paths').where({ id: pathId, university_id: universityId }).first('id')
+    if (!path) throw notFound('Learning path not found')
+  }
+
+  async updatePath(universityId: string, pathId: string, patch: UpdateLearningPathBody): Promise<AdminLearningPath> {
+    await this.findOwnedPath(universityId, pathId)
+    const columnPatch: Record<string, unknown> = { updated_at: db.fn.now() }
+    if (patch.title !== undefined) columnPatch.title = patch.title
+    if (patch.description !== undefined) columnPatch.description = patch.description
+    if (patch.department !== undefined) columnPatch.department = patch.department
+    if (patch.category !== undefined) columnPatch.category = patch.category
+    if (patch.difficulty !== undefined) columnPatch.difficulty = patch.difficulty
+    if (patch.estimatedDays !== undefined) columnPatch.estimated_days = patch.estimatedDays
+
+    await db('skill_paths').where({ id: pathId }).update(columnPatch)
+    const [updated] = await this.listAdminPaths(universityId, { status: 'all' }).then((rows) =>
+      rows.filter((r) => r.id === pathId),
+    )
+    return updated
+  }
+
+  async setPathPublished(universityId: string, pathId: string, isPublished: boolean): Promise<AdminLearningPath> {
+    await this.findOwnedPath(universityId, pathId)
+    await db('skill_paths').where({ id: pathId }).update({ is_published: isPublished, updated_at: db.fn.now() })
+    const [updated] = await this.listAdminPaths(universityId, { status: 'all' }).then((rows) =>
+      rows.filter((r) => r.id === pathId),
+    )
+    return updated
   }
 
   /** Ensures a university_settings row exists; returns the AI-learning columns. */

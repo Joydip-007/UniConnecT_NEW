@@ -47,3 +47,21 @@ export const CreateLearningPathSchema = z.object({
   units: z.array(PathUnitInputSchema).min(1).max(30),
 })
 export type CreateLearningPathBody = z.infer<typeof CreateLearningPathSchema>
+
+// Independent object, not `.partial()` of a defaulted schema — every field here is
+// genuinely optional with no `.default()`, so the jsonb-merge trap documented for
+// ai_settings does not apply.
+export const UpdateLearningPathSchema = z.object({
+  title: z.string().min(1).max(255).optional(),
+  description: z.string().max(2000).nullable().optional(),
+  department: z.string().max(100).nullable().optional(),
+  category: z.string().min(1).max(100).optional(),
+  difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+  estimatedDays: z.number().int().min(1).max(90).optional(),
+})
+export type UpdateLearningPathBody = z.infer<typeof UpdateLearningPathSchema>
+
+export const SetPathPublishedSchema = z.object({ isPublished: z.boolean() })
+export type SetPathPublishedBody = z.infer<typeof SetPathPublishedSchema>
+
+export const PathIdParamSchema = z.object({ id: z.string().uuid() })

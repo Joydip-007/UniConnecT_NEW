@@ -3,7 +3,13 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { unauthorized } from '../../utils/errors'
 import { sendSuccess } from '../../utils/response'
 import { learningAdminService } from './service'
-import type { LearningAdminConfigInput, AdminListPathsQuery, CreateLearningPathBody } from './schema'
+import type {
+  LearningAdminConfigInput,
+  AdminListPathsQuery,
+  CreateLearningPathBody,
+  UpdateLearningPathBody,
+  SetPathPublishedBody,
+} from './schema'
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
@@ -86,6 +92,19 @@ export const createPath = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
   const created = await learningAdminService.createPath(universityId, req.body as CreateLearningPathBody)
   sendSuccess(res, created, 201)
+})
+
+export const updatePath = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  const updated = await learningAdminService.updatePath(universityId, req.params.id as string, req.body as UpdateLearningPathBody)
+  sendSuccess(res, updated)
+})
+
+export const setPathPublished = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  const { isPublished } = req.body as SetPathPublishedBody
+  const updated = await learningAdminService.setPathPublished(universityId, req.params.id as string, isPublished)
+  sendSuccess(res, updated)
 })
 
 function getContext(req: Request) {
