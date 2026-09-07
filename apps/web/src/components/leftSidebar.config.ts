@@ -281,7 +281,7 @@ const escalatedReportRule: CtxRule = {
   key: 'escalated-report',
   label: 'Escalated report',
   icon: Flag,
-  to: `${PATHS.ADMIN}?tab=reports`,
+  to: `${PATHS.ADMIN}?tab=moderation`,
   tone: 'action',
   when: (ctx) => (ctx.pendingReports > 0 ? { meta: String(ctx.pendingReports), rank: TONE_RANK.action } : false),
 }
@@ -291,7 +291,7 @@ const verificationsRule: CtxRule = {
   key: 'verifications',
   label: 'Verification requests',
   icon: ShieldCheck,
-  to: `${PATHS.ADMIN}?tab=users`,
+  to: `${PATHS.ADMIN}?tab=members`,
   tone: 'action',
   when: (ctx) => (ctx.verifications > 0 ? { meta: String(ctx.verifications), rank: TONE_RANK.action } : false),
 }
@@ -301,7 +301,7 @@ const inviteExpiringRule: CtxRule = {
   key: 'invite-expiring',
   label: 'Invite batch expiring',
   icon: Mail,
-  to: `${PATHS.ADMIN}?tab=users`,
+  to: `${PATHS.ADMIN}?tab=members`,
   tone: 'deadline',
   when: (ctx) =>
     ctx.inviteExpiryDays !== null
@@ -406,11 +406,12 @@ export const RAILS: Record<UserRole, RoleRail> = {
       // Named "Feed", not "Home": admin's home is /admin, so a row called Home that led
       // somewhere else is the one place the shell's own vocabulary contradicted itself.
       { key: 'home', label: 'Feed', icon: Home, to: PATHS.FEED },
-      // Tab values must match AdminPage's own `Tab` union, not the mockup wording.
-      { key: 'moderation', label: 'Moderation', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=reports` },
-      { key: 'members', label: 'Members & invites', icon: Users, to: `${PATHS.ADMIN}?tab=users` },
+      // Tab values now match AdminPage's own `Tab` union (renamed to mirror the mockup
+      // wording directly, so rail label and query param never drift again).
+      { key: 'moderation', label: 'Moderation', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=moderation` },
+      { key: 'members', label: 'Members & invites', icon: Users, to: `${PATHS.ADMIN}?tab=members` },
       { key: 'announcements', label: 'Announcements', icon: Newspaper, to: PATHS.NEWS },
-      { key: 'insights', label: 'Insights', icon: BarChart2, to: `${PATHS.ADMIN}?tab=overview` },
+      { key: 'insights', label: 'Insights', icon: BarChart2, to: `${PATHS.ADMIN}?tab=insights` },
     ],
     contextual: [escalatedReportRule, verificationsRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
     secondary: [...MEMBER_SECONDARY, GROUPS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW, SHUTTLE_ROW],

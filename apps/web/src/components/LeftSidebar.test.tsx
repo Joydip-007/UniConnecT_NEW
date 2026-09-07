@@ -172,8 +172,8 @@ describe('LeftSidebar', () => {
 
   it('resolves the active admin row from the tab query param', () => {
     mockRole = 'admin'
-    // `users` is AdminPage's own tab value — the rail must speak the page's vocabulary.
-    renderSidebar(false, vi.fn(), '/admin?tab=users')
+    // `members` is AdminPage's own tab value — the rail must speak the page's vocabulary.
+    renderSidebar(false, vi.fn(), '/admin?tab=members')
     expect(activeRowNames()).toEqual(['Members & invites'])
   })
 

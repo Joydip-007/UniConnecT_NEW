@@ -3,8 +3,8 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
-  Users, FileText, Mail, Flag, Trash2, X,
-  ShieldCheck, LayoutGrid, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus, GraduationCap
+  Users, FileText, Flag, Trash2, X,
+  ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus, GraduationCap
 } from 'lucide-react'
 import type { AccountDeletionRequest } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
@@ -32,6 +32,8 @@ interface Stats {
   news: number
   reports: number
   activeUsers: number
+  usersByRole: { role: string; count: number }[]
+  postsByDay: { date: string; count: number }[]
 }
 
 interface AdminUser {
@@ -184,16 +186,14 @@ function ContentMetricsStrip({ stats }: { stats: Stats }) {
 
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'users' | 'invitations' | 'content' | 'content-sync' | 'learning' | 'shuttle' | 'reports' | 'deletion'
+type Tab = 'insights' | 'moderation' | 'members' | 'content-sync' | 'learning' | 'shuttle' | 'deletion'
 const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
-  { label: 'Overview', value: 'overview', icon: <FileText size={14} /> },
-  { label: 'Users', value: 'users', icon: <Users size={14} /> },
-  { label: 'Invite', value: 'invitations', icon: <Mail size={14} /> },
-  { label: 'Content', value: 'content', icon: <LayoutGrid size={14} /> },
+  { label: 'Insights', value: 'insights', icon: <FileText size={14} /> },
+  { label: 'Moderation', value: 'moderation', icon: <Flag size={14} /> },
+  { label: 'Members', value: 'members', icon: <Users size={14} /> },
   { label: 'Content sync', value: 'content-sync', icon: <RefreshCw size={14} /> },
   { label: 'Learning', value: 'learning', icon: <GraduationCap size={14} /> },
   { label: 'Shuttle', value: 'shuttle', icon: <Bus size={14} /> },
-  { label: 'Reports', value: 'reports', icon: <Flag size={14} /> },
   { label: 'Deletion requests', value: 'deletion', icon: <Trash2 size={14} /> },
 ]
 
@@ -416,7 +416,7 @@ function AllowedDomainsPanel() {
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
 
-function OverviewTab() {
+function InsightsTab() {
   const { data } = useQuery<Stats>({
     queryKey: ['admin', 'stats'],
     queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
@@ -431,7 +431,78 @@ function OverviewTab() {
         <ReportsStatCard count={data.reports} />
       </div>
       <ContentMetricsStrip stats={data} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
+        <ActivityChart postsByDay={data.postsByDay} />
+        <RoleBreakdown usersByRole={data.usersByRole} total={data.users} />
+      </div>
       <AllowedDomainsPanel />
+    </div>
+  )
+}
+
+function ActivityChart({ postsByDay }: { postsByDay: Stats['postsByDay'] }) {
+  const max = Math.max(1, ...postsByDay.map((d) => d.count))
+  return (
+    <div style={{
+      background: 'var(--surface-card)', border: '0.5px solid var(--border-default)',
+      borderRadius: 'var(--r-lg)', padding: 16,
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 16 }}>
+        Post activity this week
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, height: 140 }}>
+        {postsByDay.map((d) => (
+          <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: '100%', justifyContent: 'flex-end' }}>
+            <div
+              title={`${d.count} posts`}
+              style={{
+                width: '100%', maxWidth: 26, borderRadius: 'var(--r-sm) var(--r-sm) 0 0',
+                background: 'var(--uc-indigo)', height: `${(d.count / max) * 100}%`, minHeight: d.count > 0 ? 4 : 0,
+              }}
+            />
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+              {new Date(d.date).toLocaleDateString('en-GB', { weekday: 'short' })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  student: 'Students', alumni: 'Alumni', faculty: 'Faculty', admin: 'Admins', driver: 'Drivers',
+}
+
+function RoleBreakdown({ usersByRole, total }: { usersByRole: Stats['usersByRole']; total: number }) {
+  return (
+    <div style={{
+      background: 'var(--surface-card)', border: '0.5px solid var(--border-default)',
+      borderRadius: 'var(--r-lg)', padding: 16,
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 14 }}>
+        Members by role
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {usersByRole.map((r) => {
+          const pct = total > 0 ? Math.round((r.count / total) * 100) : 0
+          return (
+            <div key={r.role} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ROLE_LABELS[r.role] ?? r.role}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.count.toLocaleString()} · {pct}%</span>
+              </div>
+              <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 'var(--r-pill)',
+                  background: `var(--role-${r.role}, var(--uc-indigo))`,
+                  transform: `scaleX(${pct / 100})`, transformOrigin: 'left center',
+                }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -1405,6 +1476,32 @@ function ReportsTab() {
   )
 }
 
+// ── Moderation tab (reports + per-kind content review, merged) ────────────────
+
+function ModerationTab() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <ReportsTab />
+      <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
+        <ContentTab />
+      </div>
+    </div>
+  )
+}
+
+// ── Members tab (users + invitations, merged) ──────────────────────────────
+
+function MembersTab() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <UsersTab />
+      <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
+        <InvitationsTab />
+      </div>
+    </div>
+  )
+}
+
 // ── Deletion requests tab ───────────────────────────────────────────────────
 
 function DeletionRequestsTab() {
@@ -1536,13 +1633,13 @@ export default function AdminPage() {
   const user = useAuthStore((s) => s.user)
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const activeTab: Tab = TABS.some((t) => t.value === rawTab) ? (rawTab as Tab) : 'overview'
+  const activeTab: Tab = TABS.some((t) => t.value === rawTab) ? (rawTab as Tab) : 'insights'
   const setActiveTab = (tab: Tab) => setSearchParams({ tab })
 
   // Normalise the bare /admin URL onto its default tab so the rail's tab-scoped rows
   // always have a param to match against, and a reload keeps the tab you were on.
   useEffect(() => {
-    if (!rawTab) setSearchParams({ tab: 'overview' }, { replace: true })
+    if (!rawTab) setSearchParams({ tab: 'insights' }, { replace: true })
   }, [rawTab, setSearchParams])
 
   if (user && user.role !== 'admin') {
@@ -1652,14 +1749,12 @@ export default function AdminPage() {
         })}
       </nav>
 
-      {activeTab === 'overview' && <OverviewTab />}
-      {activeTab === 'users' && <UsersTab />}
-      {activeTab === 'invitations' && <InvitationsTab />}
-      {activeTab === 'content' && <ContentTab />}
+      {activeTab === 'insights' && <InsightsTab />}
+      {activeTab === 'moderation' && <ModerationTab />}
+      {activeTab === 'members' && <MembersTab />}
       {activeTab === 'content-sync' && <ContentSyncPanel />}
       {activeTab === 'learning' && <LearningAdminPanel />}
       {activeTab === 'shuttle' && <ShuttleTab />}
-      {activeTab === 'reports' && <ReportsTab />}
       {activeTab === 'deletion' && <DeletionRequestsTab />}
     </div>
   )

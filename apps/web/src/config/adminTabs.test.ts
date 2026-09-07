@@ -6,8 +6,7 @@ import { PATHS } from '@/router/paths'
 
 /**
  * The admin rail deep-links into AdminPage via `?tab=`. Those values are a contract with
- * AdminPage's own `Tab` union — the mockups used different wording ("moderation",
- * "members", "insights"), and a drifted value silently lands on the default tab.
+ * AdminPage's own `Tab` union — a drifted value silently lands on the default tab.
  * Parsed from source so renaming a tab in AdminPage fails here rather than in the UI.
  */
 function adminTabValues(): string[] {
@@ -23,7 +22,7 @@ describe('admin rail deep links', () => {
     expect(valid.length).toBeGreaterThan(0)
 
     // Every zone, not just `fixed`: the tool tiles deep-link too, and a bare `/admin`
-    // with no tab is the same failure as a drifted one — it lands on Overview whatever
+    // with no tab is the same failure as a drifted one — it lands on Insights whatever
     // the tile promised. Two tiles used to do exactly that for screens that don't exist.
     const adminRows = [
       ...RAILS.admin.fixed,

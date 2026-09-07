@@ -137,8 +137,8 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
   },
   admin: {
     home: PATHS.ADMIN,
-    // No platform-today widget: all four of its counters resolved to `?tab=reports`,
-    // `?tab=users` or /feed — every one a fixed row — its See all went to the Insights
+    // No platform-today widget: all four of its counters resolved to `?tab=moderation`,
+    // `?tab=members` or /feed — every one a fixed row — its See all went to the Insights
     // row, and its report count came from the same `['admin','stats']` query the
     // contextual "Escalated report" row already reads. Events replace it: admin can
     // create them (`requireRole('faculty','admin')`) and each card opens a specific one.

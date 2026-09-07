@@ -109,8 +109,12 @@ export class AdminService {
     ])
 
     const activeUsers = await countActive(universityId)
+    const [usersByRole, postsByDay] = await Promise.all([
+      countUsersByRole(universityId),
+      countPostsByDay(universityId),
+    ])
 
-    return { users, posts, jobs, events, groups, news, reports, activeUsers }
+    return { users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay }
   }
 
   async listUsers(universityId: string, query: PaginationQuery) {
@@ -865,6 +869,39 @@ export const adminService = new AdminService()
 async function countWhere(table: string, where: Record<string, unknown>): Promise<number> {
   const [{ count }] = await db(table).where(where).count<CountRow[]>({ count: '*' })
   return Number(count)
+}
+
+async function countUsersByRole(universityId: string): Promise<{ role: string; count: number }[]> {
+  const rows = await db('users')
+    .where({ university_id: universityId, is_deleted: false })
+    .select('role')
+    .count<{ role: string; count: string }[]>({ count: '*' })
+    .groupBy('role')
+  return rows.map((r) => ({ role: r.role, count: Number(r.count) }))
+}
+
+/** Last 7 calendar days (oldest first), including days with zero posts. */
+async function countPostsByDay(universityId: string): Promise<{ date: string; count: number }[]> {
+  const since = new Date()
+  since.setUTCDate(since.getUTCDate() - 6)
+  since.setUTCHours(0, 0, 0, 0)
+
+  const rows = await db('posts')
+    .where('university_id', universityId)
+    .andWhere('created_at', '>=', since)
+    .select(db.raw("to_char(created_at, 'YYYY-MM-DD') as day"))
+    .count<{ day: string; count: string }[]>({ count: '*' })
+    .groupBy('day')
+
+  const byDay = new Map(rows.map((r) => [r.day, Number(r.count)]))
+  const days: { date: string; count: number }[] = []
+  for (let i = 0; i < 7; i += 1) {
+    const d = new Date(since)
+    d.setUTCDate(d.getUTCDate() + i)
+    const key = d.toISOString().slice(0, 10)
+    days.push({ date: key, count: byDay.get(key) ?? 0 })
+  }
+  return days
 }
 
 async function countActive(universityId: string): Promise<number> {
