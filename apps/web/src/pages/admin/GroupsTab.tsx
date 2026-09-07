@@ -5,6 +5,14 @@ import { Building2, Users, Lock, Sparkles, FlaskConical, GraduationCap, Layers }
 import { api } from '@/lib/axios'
 import { GhostBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
+import { Avatar } from '@/components/Avatar'
+import { avatarColor, getInitials } from '@/utils/avatar'
+
+interface PendingRequester {
+  userId: string
+  fullName: string
+  avatarUrl: string | null
+}
 
 interface AdminGroupItem {
   id: string
@@ -14,6 +22,7 @@ interface AdminGroupItem {
   isPrivate: boolean
   memberCount: number
   pendingRequestCount: number
+  pendingRequesters: PendingRequester[]
   createdAt: string
 }
 
@@ -91,6 +100,50 @@ export function GroupsTab() {
   )
 }
 
+function PendingRequesterStack({ requesters, total }: { requesters: PendingRequester[]; total: number }) {
+  if (requesters.length === 0) return null
+  const overflow = total - requesters.length
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      {requesters.map((r, i) => (
+        <div
+          key={r.userId}
+          title={r.fullName}
+          style={{
+            marginLeft: i === 0 ? 0 : -8,
+            border: '2px solid var(--surface-card)',
+            borderRadius: '50%',
+            zIndex: requesters.length - i,
+          }}
+        >
+          <Avatar initials={getInitials(r.fullName)} color={avatarColor(r.userId)} size={22} src={r.avatarUrl} />
+        </div>
+      ))}
+      {overflow > 0 && (
+        <div
+          style={{
+            marginLeft: -8,
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            border: '2px solid var(--surface-card)',
+            background: 'var(--surface-raised)',
+            color: 'var(--text-tertiary)',
+            fontSize: 10,
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          +{overflow}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function GroupCard({ group }: { group: AdminGroupItem }) {
   const Icon = TYPE_ICON[group.type] ?? Users
   return (
@@ -124,6 +177,7 @@ function GroupCard({ group }: { group: AdminGroupItem }) {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, paddingTop: 12, borderTop: '0.5px solid var(--border-default)',
       }}>
+        <PendingRequesterStack requesters={group.pendingRequesters} total={group.pendingRequestCount} />
         <span style={{
           fontSize: 12, fontWeight: 500, flex: 1, minWidth: 0,
           color: group.pendingRequestCount > 0 ? 'var(--uc-orange-l)' : 'var(--text-tertiary)',
