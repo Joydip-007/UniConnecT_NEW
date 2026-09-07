@@ -1,7 +1,7 @@
 import { db } from '../../config/db'
 import { notFound } from '../../utils/errors'
 import { aiContentQueue } from '../../queues/ai-content.queue'
-import type { LearningAdminConfigInput, AdminListPathsQuery } from './schema'
+import type { LearningAdminConfigInput, AdminListPathsQuery, CreateLearningPathBody } from './schema'
 import type { AdminLearningPath } from '@uniconnect/shared'
 
 interface LearningTopic {
@@ -283,6 +283,43 @@ export class LearningAdminService {
         updatedAt: row.updated_at,
       }
     })
+  }
+
+  /** Transactionally inserts a manual, unpublished path plus its ordered units. */
+  async createPath(universityId: string, input: CreateLearningPathBody): Promise<AdminLearningPath> {
+    const pathId = await db.transaction(async (trx) => {
+      const [path] = await trx('skill_paths')
+        .insert({
+          university_id: universityId,
+          title: input.title,
+          description: input.description ?? null,
+          department: input.department ?? null,
+          category: input.category,
+          difficulty: input.difficulty,
+          estimated_days: input.estimatedDays,
+          is_published: false,
+          source: 'manual',
+        })
+        .returning<{ id: string }[]>('id')
+
+      await trx('skill_path_units').insert(
+        input.units.map((u, i) => ({
+          path_id: path.id,
+          display_order: i + 1,
+          title: u.title,
+          type: u.type,
+          content: JSON.stringify(u.content),
+          completion_rule: JSON.stringify(u.completionRule ?? {}),
+        })),
+      )
+
+      return path.id
+    })
+
+    const rows = await this.listAdminPaths(universityId, { status: 'all' })
+    const created = rows.find((r) => r.id === pathId)
+    if (!created) throw notFound()
+    return created
   }
 
   /** Participation + outcome analytics for learning paths and daily quizzes, last `days`. */

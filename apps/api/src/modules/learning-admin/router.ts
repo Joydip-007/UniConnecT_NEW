@@ -17,8 +17,9 @@ import {
   getUpcomingQuizzes,
   getAnalytics,
   listAdminPaths,
+  createPath,
 } from './controller'
-import { LearningAdminConfigSchema, AdminListPathsQuerySchema } from './schema'
+import { LearningAdminConfigSchema, AdminListPathsQuerySchema, CreateLearningPathSchema } from './schema'
 
 export const learningAdminRouter = Router()
 
@@ -44,3 +45,4 @@ learningAdminRouter.get('/upcoming-quizzes', getUpcomingQuizzes)
 learningAdminRouter.get('/analytics', getAnalytics)
 
 learningAdminRouter.get('/paths', validateRequest({ query: AdminListPathsQuerySchema }), listAdminPaths)
+learningAdminRouter.post('/paths', validate(CreateLearningPathSchema), createPath)

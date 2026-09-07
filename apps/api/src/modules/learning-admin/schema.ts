@@ -29,3 +29,21 @@ export const AdminListPathsQuerySchema = z.object({
   category: z.string().min(1).max(100).optional(),
 })
 export type AdminListPathsQuery = z.infer<typeof AdminListPathsQuerySchema>
+
+export const PathUnitInputSchema = z.object({
+  title: z.string().min(1).max(255),
+  type: z.enum(['read', 'video', 'exercise', 'quiz']),
+  content: z.record(z.string(), z.unknown()),
+  completionRule: z.object({ passScore: z.number().int().min(0).max(100) }).optional(),
+})
+
+export const CreateLearningPathSchema = z.object({
+  title: z.string().min(1).max(255),
+  description: z.string().max(2000).nullable().optional(),
+  department: z.string().max(100).nullable().optional(),
+  category: z.string().min(1).max(100),
+  difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
+  estimatedDays: z.number().int().min(1).max(90),
+  units: z.array(PathUnitInputSchema).min(1).max(30),
+})
+export type CreateLearningPathBody = z.infer<typeof CreateLearningPathSchema>

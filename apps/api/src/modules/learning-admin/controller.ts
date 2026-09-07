@@ -3,7 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { unauthorized } from '../../utils/errors'
 import { sendSuccess } from '../../utils/response'
 import { learningAdminService } from './service'
-import type { LearningAdminConfigInput, AdminListPathsQuery } from './schema'
+import type { LearningAdminConfigInput, AdminListPathsQuery, CreateLearningPathBody } from './schema'
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
@@ -80,6 +80,12 @@ export const getAnalytics = asyncHandler(async (req: Request, res: Response) => 
 export const listAdminPaths = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
   sendSuccess(res, await learningAdminService.listAdminPaths(universityId, req.query as unknown as AdminListPathsQuery))
+})
+
+export const createPath = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  const created = await learningAdminService.createPath(universityId, req.body as CreateLearningPathBody)
+  sendSuccess(res, created, 201)
 })
 
 function getContext(req: Request) {
