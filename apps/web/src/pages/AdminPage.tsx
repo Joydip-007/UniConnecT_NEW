@@ -37,6 +37,12 @@ interface Stats {
   usersByRole: { role: string; count: number }[]
   verificationsByRole: { role: string; count: number }[]
   postsByDay: { date: string; count: number }[]
+  escalatedReports: number
+  verificationRequests: number
+  deletionRequests: number
+  resolvedPct7d: number
+  pendingInviteBatches: number
+  moderationHealth: { reportsOpen: number; resolvedPct7d: number; medianResponseHours: number; repeatOffenders: number }
 }
 
 interface AdminUser {
@@ -103,67 +109,6 @@ function daysLeft(iso: string | null): number | null {
 }
 
 // ── Stat cards ────────────────────────────────────────────────────────────────
-
-function UsersStatCard({ total, active }: { total: number; active: number }) {
-  const pct = total > 0 ? Math.round((active / total) * 100) : 0
-  return (
-    <div style={{
-      background: 'var(--surface-card)',
-      border: '0.5px solid var(--border-default)',
-      borderRadius: 'var(--r-lg)',
-      padding: '20px 24px',
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 10 }}>
-        Total users
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-        <span style={{ fontSize: 40, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
-          {total.toLocaleString()}
-        </span>
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          {active.toLocaleString()} active
-        </span>
-      </div>
-      <div style={{ marginTop: 14, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: '100%',
-          background: 'var(--uc-indigo)',
-          borderRadius: 'var(--r-pill)',
-          transform: `scaleX(${pct / 100})`,
-          transformOrigin: 'left center',
-          transition: 'transform 0.6s var(--ease-out-strong)',
-        }} />
-      </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-        {pct}% active in 30 days
-      </div>
-    </div>
-  )
-}
-
-function ReportsStatCard({ count }: { count: number }) {
-  const hot = count > 0
-  return (
-    <div style={{
-      background: hot ? 'var(--uc-orange-bg)' : 'var(--surface-card)',
-      border: `0.5px solid ${hot ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
-      borderRadius: 'var(--r-lg)',
-      padding: '20px 24px',
-      transition: 'background 0.3s, border-color 0.3s',
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 10 }}>
-        Open reports
-      </div>
-      <div style={{ fontSize: 40, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>
-        {count.toLocaleString()}
-      </div>
-      <div style={{ marginTop: 8, fontSize: 12, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)', opacity: hot ? 0.85 : 1 }}>
-        {hot ? 'Needs review' : 'All clear'}
-      </div>
-    </div>
-  )
-}
 
 function ContentMetricsStrip({ stats }: { stats: Stats }) {
   const metrics: { label: string; value: number }[] = [
@@ -437,7 +382,55 @@ function AllowedDomainsPanel() {
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
 
-function InsightsTab() {
+function MetricTile({ label, value, hint, hot }: { label: string; value: string; hint: string; hot?: boolean }) {
+  return (
+    <div style={{
+      background: hot ? 'var(--uc-orange-bg)' : 'var(--surface-card)',
+      border: `0.5px solid ${hot ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
+      borderRadius: 'var(--r-lg)',
+      padding: '16px 20px',
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>{hint}</div>
+    </div>
+  )
+}
+
+function NeedsAttentionList({ stats, onNavigate }: { stats: Stats; onNavigate: (tab: Tab) => void }) {
+  const rows = [
+    { label: 'Escalated reports', value: stats.escalatedReports, tab: 'moderation' as Tab },
+    { label: 'Verification requests', value: stats.verificationRequests, tab: 'members' as Tab },
+    { label: 'Invite batches expiring', value: stats.pendingInviteBatches, tab: 'members' as Tab },
+  ]
+  return (
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Needs attention</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {rows.map((r) => (
+          <button
+            key={r.label}
+            type="button"
+            onClick={() => onNavigate(r.tab)}
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '9px 10px', borderRadius: 'var(--r-md)', border: 'none',
+              background: 'transparent', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)',
+              transition: 'background 150ms',
+            }}
+          >
+            <span>{r.label}</span>
+            <Badge variant={r.value > 0 ? 'neutral' : 'alumni'}>{r.value}</Badge>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InsightsTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   const { data } = useQuery<Stats>({
     queryKey: ['admin', 'stats'],
     queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
@@ -447,14 +440,32 @@ function InsightsTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <UsersStatCard total={data.users} active={data.activeUsers} />
-        <ReportsStatCard count={data.reports} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <MetricTile label="Active members" value={data.activeUsers.toLocaleString()} hint={`of ${data.users.toLocaleString()} total`} />
+        <MetricTile label="Posts today" value={String(data.postsByDay[data.postsByDay.length - 1]?.count ?? 0)} hint="vs. last 7-day avg" />
+        <MetricTile label="Reports resolved" value={`${data.resolvedPct7d}%`} hint="last 7 days" />
+        <MetricTile
+          label="Pending invites"
+          value={`${data.pendingInviteBatches} batch${data.pendingInviteBatches === 1 ? '' : 'es'}`}
+          hint="expiring soon"
+          hot={data.pendingInviteBatches > 0}
+        />
       </div>
-      <ContentMetricsStrip stats={data} />
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
         <ActivityChart postsByDay={data.postsByDay} />
         <RoleBreakdown usersByRole={data.usersByRole} total={data.users} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Content mix</span>
+            <GhostBtn onClick={() => onNavigate('moderation')} style={{ fontSize: 12, padding: '4px 10px' }}>
+              Review all
+            </GhostBtn>
+          </div>
+          <ContentMetricsStrip stats={data} />
+        </div>
+        <NeedsAttentionList stats={data} onNavigate={onNavigate} />
       </div>
       <AllowedDomainsPanel />
     </div>
@@ -1889,7 +1900,7 @@ export default function AdminPage() {
         })}
       </nav>
 
-      {activeTab === 'insights' && <InsightsTab />}
+      {activeTab === 'insights' && <InsightsTab onNavigate={setActiveTab} />}
       {activeTab === 'moderation' && <ModerationTab />}
       {activeTab === 'groups' && <GroupsTab />}
       {activeTab === 'members' && <MembersTab />}
