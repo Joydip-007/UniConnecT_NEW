@@ -13,6 +13,7 @@ import type {
   CreateBulkInvitationsInput,
   CreateDriverInput,
   CreateInvitationInput,
+  ListUsersQuery,
   PaginationQuery,
   ResolveReportInput,
   ToggleActiveInput,
@@ -30,7 +31,7 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
 
 export const listUsers = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
-  const result = await adminService.listUsers(universityId, req.query as unknown as PaginationQuery)
+  const result = await adminService.listUsers(universityId, req.query as unknown as ListUsersQuery)
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
 
@@ -50,6 +51,12 @@ export const updateUserStatus = asyncHandler(async (req: Request, res: Response)
   const { universityId } = getAdminContext(req)
   const userId = req.params.userId as string
   sendSuccess(res, await adminService.updateUserStatus(universityId, userId, req.body as UpdateUserStatusInput))
+})
+
+export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId: actorId } = getAdminContext(req)
+  const userId = req.params.userId as string
+  sendSuccess(res, await adminService.verifyUser(universityId, actorId, userId))
 })
 
 export const deleteUser = asyncHandler(async (req: Request, res: Response) => {

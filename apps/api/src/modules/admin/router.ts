@@ -32,6 +32,7 @@ import {
   updateAllowedDomains,
   updateUserRole,
   updateUserStatus,
+  verifyUser,
 } from './controller'
 import {
   AdminFulfillRedemptionSchema,
@@ -41,6 +42,7 @@ import {
   CreateBulkInvitationsSchema,
   CreateDriverSchema,
   CreateInvitationSchema,
+  ListUsersQuerySchema,
   PaginationQuerySchema,
   ResolveReportSchema,
   ToggleActiveSchema,
@@ -65,10 +67,11 @@ adminRouter.use(requireAuth, resolveUniversity, requireRole('faculty', 'admin'))
 
 adminRouter.get('/stats', requireRole('admin'), getStats)
 
-adminRouter.get('/users', validateRequest({ query: PaginationQuerySchema }), listUsers)
+adminRouter.get('/users', validateRequest({ query: ListUsersQuerySchema }), listUsers)
 adminRouter.get('/groups', validateRequest({ query: PaginationQuerySchema }), listGroups)
 adminRouter.patch('/users/:userId/role', requireRole('admin'), validate(UpdateUserRoleSchema), updateUserRole)
 adminRouter.patch('/users/:userId/status', requireRole('admin'), validate(UpdateUserStatusSchema), updateUserStatus)
+adminRouter.patch('/users/:userId/verify', requireRole('admin'), verifyUser)
 adminRouter.delete('/users/:userId', requireRole('admin'), deleteUser)
 adminRouter.post('/users/driver', requireRole('admin'), validate(CreateDriverSchema), createDriver)
 

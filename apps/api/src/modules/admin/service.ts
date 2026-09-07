@@ -13,6 +13,7 @@ import type {
   CreateBulkInvitationsInput,
   CreateDriverInput,
   CreateInvitationInput,
+  ListUsersQuery,
   PaginationQuery,
   ResolveReportInput,
   UpdateUserRoleInput,
@@ -120,19 +121,23 @@ export class AdminService {
     ])
 
     const activeUsers = await countActive(universityId)
-    const [usersByRole, postsByDay] = await Promise.all([
+    const [usersByRole, postsByDay, verificationsByRole] = await Promise.all([
       countUsersByRole(universityId),
       countPostsByDay(universityId),
+      countUnverifiedByRole(universityId),
     ])
 
-    return { users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay }
+    return { users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay, verificationsByRole }
   }
 
-  async listUsers(universityId: string, query: PaginationQuery) {
+  async listUsers(universityId: string, query: ListUsersQuery) {
     const baseQuery = db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where('users.university_id', universityId)
       .where('users.is_deleted', false)
+      .modify((builder) => {
+        if (query.verified === 'unverified') builder.where('users.is_verified', false)
+      })
       .select<AdminUserRow[]>(
         'users.id',
         'users.university_id',
@@ -148,9 +153,12 @@ export class AdminService {
         'profiles.batch_year',
       )
 
-    const [{ count }] = await db('users')
+    const countQuery = db('users')
       .where({ university_id: universityId, is_deleted: false })
-      .count<CountRow[]>({ count: '*' })
+      .modify((builder) => {
+        if (query.verified === 'unverified') builder.where('is_verified', false)
+      })
+    const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
 
     const rows = await baseQuery
       .orderBy('users.created_at', 'desc')
@@ -350,6 +358,26 @@ export class AdminService {
     }
 
     return { userId, isActive: input.is_active }
+  }
+
+  async verifyUser(universityId: string, actorId: string, userId: string) {
+    const user = await db('users')
+      .where({ id: userId, university_id: universityId, is_deleted: false })
+      .first<{ is_verified: boolean }>('is_verified')
+
+    if (!user) throw notFound('User not found')
+    if (user.is_verified) throw badRequest('User is already verified', 'ALREADY_VERIFIED')
+
+    await db('users').where({ id: userId, university_id: universityId }).update({ is_verified: true })
+
+    await db('university_audit_logs').insert({
+      university_id: universityId,
+      actor_id: actorId,
+      action: 'user.verified',
+      payload: JSON.stringify({ userId }),
+    })
+
+    return { userId, isVerified: true as const }
   }
 
   async listReports(universityId: string, query: PaginationQuery) {
@@ -978,6 +1006,15 @@ async function countWhere(table: string, where: Record<string, unknown>): Promis
 async function countUsersByRole(universityId: string): Promise<{ role: string; count: number }[]> {
   const rows = await db('users')
     .where({ university_id: universityId, is_deleted: false })
+    .select('role')
+    .count<{ role: string; count: string }[]>({ count: '*' })
+    .groupBy('role')
+  return rows.map((r) => ({ role: r.role, count: Number(r.count) }))
+}
+
+async function countUnverifiedByRole(universityId: string): Promise<{ role: string; count: number }[]> {
+  const rows = await db('users')
+    .where({ university_id: universityId, is_deleted: false, is_verified: false })
     .select('role')
     .count<{ role: string; count: string }[]>({ count: '*' })
     .groupBy('role')

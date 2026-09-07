@@ -64,6 +64,10 @@ export const AdminRedemptionListSchema = PaginationQuerySchema.extend({
   status: z.enum(['pending', 'fulfilled', 'rejected']).optional(),
 })
 
+export const ListUsersQuerySchema = PaginationQuerySchema.extend({
+  verified: z.enum(['unverified']).optional(),
+})
+
 export const AdminFulfillRedemptionSchema = z
   .object({
     status: z.enum(['fulfilled', 'rejected']),
@@ -89,4 +93,5 @@ export type TogglePinInput = z.infer<typeof TogglePinSchema>
 export type TogglePublishInput = z.infer<typeof TogglePublishSchema>
 export type ToggleActiveInput = z.infer<typeof ToggleActiveSchema>
 export type AdminRedemptionListQuery = z.infer<typeof AdminRedemptionListSchema>
+export type ListUsersQuery = z.infer<typeof ListUsersQuerySchema>
 export type AdminFulfillRedemptionInput = z.infer<typeof AdminFulfillRedemptionSchema>
