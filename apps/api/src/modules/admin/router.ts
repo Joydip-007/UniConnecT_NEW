@@ -18,6 +18,7 @@ import {
   listContent,
   listDeletionRequests,
   resolveDeletionRequest,
+  listGroups,
   listInvitations,
   listMentors,
   listReports,
@@ -64,6 +65,7 @@ adminRouter.use(requireAuth, resolveUniversity, requireRole('faculty', 'admin'))
 adminRouter.get('/stats', requireRole('admin'), getStats)
 
 adminRouter.get('/users', validateRequest({ query: PaginationQuerySchema }), listUsers)
+adminRouter.get('/groups', validateRequest({ query: PaginationQuerySchema }), listGroups)
 adminRouter.patch('/users/:userId/role', requireRole('admin'), validate(UpdateUserRoleSchema), updateUserRole)
 adminRouter.patch('/users/:userId/status', requireRole('admin'), validate(UpdateUserStatusSchema), updateUserStatus)
 adminRouter.delete('/users/:userId', requireRole('admin'), deleteUser)

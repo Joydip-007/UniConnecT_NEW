@@ -83,6 +83,7 @@ export class AdminContentService {
     const base = db('posts').where('posts.university_id', universityId)
 
     if (query.filter === 'pinned') base.andWhere('posts.is_pinned', true)
+    if (query.filter === 'announcement') base.andWhere('posts.type', 'announcement')
 
     const [{ count }] = await base.clone().count<CountRow[]>({ count: '*' })
 

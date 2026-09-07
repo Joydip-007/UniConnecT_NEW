@@ -79,6 +79,17 @@ interface ReportRow {
   reporter_full_name: string | null
 }
 
+interface AdminGroupRow {
+  id: string
+  name: string
+  description: string
+  type: string
+  is_private: boolean
+  member_count: number
+  created_at: Date
+  pending_request_count: string | number
+}
+
 interface InvitationRow {
   id: string
   university_id: string
@@ -148,6 +159,58 @@ export class AdminService {
 
     return {
       items: rows.map(toAdminUser),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  /**
+   * Every group in the university, private or not — unlike `groups.listGroups`, which
+   * only shows a private group to members. Platform admin oversight needs the full roster.
+   */
+  async listGroups(universityId: string, query: PaginationQuery) {
+    const [{ count }] = await db('groups')
+      .where('university_id', universityId)
+      .count<CountRow[]>({ count: '*' })
+
+    const rows = await db('groups')
+      .where('groups.university_id', universityId)
+      .leftJoin(
+        db('group_join_requests')
+          .select('group_id')
+          .count<{ group_id: string; count: string }[]>({ count: '*' })
+          .where('status', 'pending')
+          .groupBy('group_id')
+          .as('jr'),
+        'jr.group_id',
+        'groups.id',
+      )
+      .select<AdminGroupRow[]>(
+        'groups.id',
+        'groups.name',
+        'groups.description',
+        'groups.type',
+        'groups.is_private',
+        'groups.member_count',
+        'groups.created_at',
+        db.raw('COALESCE(jr.count, 0) as pending_request_count'),
+      )
+      .orderBy('groups.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        type: r.type,
+        isPrivate: r.is_private,
+        memberCount: r.member_count,
+        pendingRequestCount: Number(r.pending_request_count),
+        createdAt: r.created_at,
+      })),
       total: Number(count),
       page: query.page,
       limit: query.limit,

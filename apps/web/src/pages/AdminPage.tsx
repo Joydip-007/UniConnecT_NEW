@@ -3,7 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import {
-  Users, FileText, Flag, Trash2, X,
+  Users, FileText, Flag, Trash2, X, Megaphone,
   ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus, GraduationCap
 } from 'lucide-react'
 import type { AccountDeletionRequest } from '@uniconnect/shared'
@@ -14,6 +14,8 @@ import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
 import { ContentTab } from '@/pages/admin/ContentTab'
+import { GroupsTab } from '@/pages/admin/GroupsTab'
+import { AnnouncementsTab } from '@/pages/admin/AnnouncementsTab'
 import { ShuttleTab } from '@/pages/admin/ShuttleTab'
 import { ContentSyncPanel } from '@/features/content-sync'
 import { LearningAdminPanel } from '@/features/learning-admin'
@@ -186,11 +188,13 @@ function ContentMetricsStrip({ stats }: { stats: Stats }) {
 
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
-type Tab = 'insights' | 'moderation' | 'members' | 'content-sync' | 'learning' | 'shuttle' | 'deletion'
+type Tab = 'insights' | 'moderation' | 'groups' | 'members' | 'announcements' | 'content-sync' | 'learning' | 'shuttle' | 'deletion'
 const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
   { label: 'Insights', value: 'insights', icon: <FileText size={14} /> },
   { label: 'Moderation', value: 'moderation', icon: <Flag size={14} /> },
+  { label: 'Groups', value: 'groups', icon: <Users size={14} /> },
   { label: 'Members', value: 'members', icon: <Users size={14} /> },
+  { label: 'Announcements', value: 'announcements', icon: <Megaphone size={14} /> },
   { label: 'Content sync', value: 'content-sync', icon: <RefreshCw size={14} /> },
   { label: 'Learning', value: 'learning', icon: <GraduationCap size={14} /> },
   { label: 'Shuttle', value: 'shuttle', icon: <Bus size={14} /> },
@@ -1751,7 +1755,9 @@ export default function AdminPage() {
 
       {activeTab === 'insights' && <InsightsTab />}
       {activeTab === 'moderation' && <ModerationTab />}
+      {activeTab === 'groups' && <GroupsTab />}
       {activeTab === 'members' && <MembersTab />}
+      {activeTab === 'announcements' && <AnnouncementsTab />}
       {activeTab === 'content-sync' && <ContentSyncPanel />}
       {activeTab === 'learning' && <LearningAdminPanel />}
       {activeTab === 'shuttle' && <ShuttleTab />}

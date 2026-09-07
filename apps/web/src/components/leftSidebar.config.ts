@@ -148,8 +148,12 @@ const JOBS_ROW: RailRow = { key: 'jobs', label: 'Jobs', icon: Briefcase, to: PAT
 const MENTORSHIP_ROW: RailRow = { key: 'mentorship', label: 'Mentorship', icon: Handshake, to: PATHS.MENTORSHIP }
 // The admin rail spends all five fixed rows on moderation duties, so the ordinary
 // member surfaces it still owns (events are `requireRole('faculty','admin')`; groups
-// carry no role guard at all) move here rather than disappearing.
+// carry no role guard at all; news is where every other role's "Announcements"/"Notices"
+// row already points) move here rather than disappearing.
 const GROUPS_ROW: RailRow = { key: 'groups', label: 'Groups & people', icon: Users, to: PATHS.GROUPS }
+// Platform-wide group oversight (private groups included, unlike the browse view above) —
+// AdminPage's own `?tab=groups` screen, distinct from GROUPS_ROW's member-facing /groups.
+const ADMIN_GROUPS_ROW: RailRow = { key: 'admin-groups', label: 'Manage groups', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=groups` }
 const EVENTS_ROW: RailRow = { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS }
 // Every other role reaches the rider map through its "Shuttle" tool tile. Admin's tile
 // points at the ops tab instead, so the map it shares with everyone else lands here.
@@ -410,16 +414,16 @@ export const RAILS: Record<UserRole, RoleRail> = {
       // wording directly, so rail label and query param never drift again).
       { key: 'moderation', label: 'Moderation', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=moderation` },
       { key: 'members', label: 'Members & invites', icon: Users, to: `${PATHS.ADMIN}?tab=members` },
-      { key: 'announcements', label: 'Announcements', icon: Newspaper, to: PATHS.NEWS },
+      { key: 'announcements', label: 'Announcements', icon: Newspaper, to: `${PATHS.ADMIN}?tab=announcements` },
       { key: 'insights', label: 'Insights', icon: BarChart2, to: `${PATHS.ADMIN}?tab=insights` },
     ],
     contextual: [escalatedReportRule, verificationsRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
-    secondary: [...MEMBER_SECONDARY, GROUPS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW, SHUTTLE_ROW],
+    secondary: [...MEMBER_SECONDARY, GROUPS_ROW, ADMIN_GROUPS_ROW, NEWS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW, SHUTTLE_ROW],
     // The five fixed rows spend themselves on moderation, so the tools carry the admin
     // tabs nothing else reaches. Both former tiles ("Audit log", "Broadcast") pointed at
     // a bare /admin for a screen that does not exist — `university_audit_log` is written
     // by the API but never rendered, and there is no broadcast surface at all — so each
-    // one silently dumped you on Overview. These three are tabs AdminPage really defines.
+    // one silently dumped you on Insights. These three are tabs AdminPage really defines.
     tools: [
       { key: 'content-sync', label: 'Content sync', icon: RefreshCw, iconColor: 'var(--uc-indigo-l)', iconBg: 'var(--uc-indigo-bg)', to: `${PATHS.ADMIN}?tab=content-sync` },
       { key: 'deletion-requests', label: 'Deletion requests', icon: Trash2, iconColor: 'var(--uc-amber-l)', iconBg: 'var(--uc-amber-bg)', to: `${PATHS.ADMIN}?tab=deletion` },

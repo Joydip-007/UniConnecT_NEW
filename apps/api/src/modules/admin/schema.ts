@@ -44,7 +44,7 @@ export const CreateBulkInvitationsSchema = z.object({
 export const ContentKindSchema = z.enum(['posts', 'events', 'jobs', 'news'])
 
 export const ContentListQuerySchema = PaginationQuerySchema.extend({
-  filter: z.enum(['all', 'pinned', 'published', 'unpublished', 'active', 'closed']).default('all'),
+  filter: z.enum(['all', 'pinned', 'published', 'unpublished', 'active', 'closed', 'announcement']).default('all'),
 })
 
 export const TogglePinSchema = z.object({
