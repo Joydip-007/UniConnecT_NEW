@@ -18,6 +18,8 @@ interface PostRow extends AuthorJoinRow {
   media_urls: string[] | null
   type: string
   is_pinned: boolean
+  is_published: boolean
+  publish_at: Date | null
   view_count: number
   created_at: Date
   reaction_count: string | number
@@ -111,6 +113,8 @@ export class AdminContentService {
         'posts.media_urls',
         'posts.type',
         'posts.is_pinned',
+        'posts.is_published',
+        'posts.publish_at',
         'posts.view_count',
         'posts.created_at',
         'posts.author_id',
@@ -319,6 +323,8 @@ function toAdminPost(row: PostRow) {
     mediaUrls: row.media_urls ?? [],
     type: row.type,
     isPinned: row.is_pinned,
+    isPublished: row.is_published,
+    publishAt: row.publish_at ? new Date(row.publish_at).toISOString() : null,
     viewCount: row.view_count,
     reactionCount: Number(row.reaction_count),
     commentCount: Number(row.comment_count),
