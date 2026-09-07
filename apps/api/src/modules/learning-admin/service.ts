@@ -1,7 +1,8 @@
 import { db } from '../../config/db'
 import { notFound } from '../../utils/errors'
 import { aiContentQueue } from '../../queues/ai-content.queue'
-import type { LearningAdminConfigInput } from './schema'
+import type { LearningAdminConfigInput, AdminListPathsQuery } from './schema'
+import type { AdminLearningPath } from '@uniconnect/shared'
 
 interface LearningTopic {
   category: string
@@ -217,6 +218,71 @@ export class LearningAdminService {
         queuedBatches: Number(row.queuedBatches),
       })),
     }
+  }
+
+  /** Lists every learning path for a university (published and draft) with per-path enrollment/completion aggregates. */
+  async listAdminPaths(universityId: string, query: AdminListPathsQuery): Promise<AdminLearningPath[]> {
+    let base = db('skill_paths as p')
+      .where('p.university_id', universityId)
+      .leftJoin('skill_path_units as u', 'u.path_id', 'p.id')
+      .leftJoin('skill_path_enrollments as e', 'e.path_id', 'p.id')
+      .leftJoin('unit_completions as c', 'c.path_id', 'p.id')
+
+    if (query.status === 'published') base = base.where('p.is_published', true)
+    if (query.status === 'draft') base = base.where('p.is_published', false)
+    if (query.category) base = base.where('p.category', query.category)
+
+    const rows = await base
+      .groupBy('p.id')
+      .orderBy('p.updated_at', 'desc')
+      .select<
+        {
+          id: string
+          title: string
+          description: string | null
+          department: string | null
+          category: string
+          difficulty: 'beginner' | 'intermediate' | 'advanced'
+          estimated_days: number
+          is_published: boolean
+          source: 'manual' | 'ai'
+          updated_at: string
+          unitCount: string
+          enrolledCount: string
+          completedCount: string
+        }[]
+      >(
+        'p.id', 'p.title', 'p.description', 'p.department', 'p.category', 'p.difficulty',
+        'p.estimated_days', 'p.is_published', 'p.source', 'p.updated_at',
+        db.raw('count(distinct u.id) as "unitCount"'),
+        db.raw("count(distinct e.id) filter (where e.status in ('active','completed')) as \"enrolledCount\""),
+        db.raw('count(distinct c.id) as "completedCount"'),
+      )
+
+    return rows.map((row) => {
+      const unitCount = Number(row.unitCount)
+      const enrolledCount = Number(row.enrolledCount)
+      const completedCount = Number(row.completedCount)
+      // Avg completion = share of (enrollment × unit) pairs actually completed —
+      // matches the mockup's "NN% avg completion" per path.
+      const possible = unitCount * enrolledCount
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        department: row.department,
+        category: row.category,
+        difficulty: row.difficulty,
+        estimatedDays: row.estimated_days,
+        isPublished: row.is_published,
+        source: row.source,
+        unitCount,
+        enrolledCount,
+        completedCount,
+        completionRate: possible > 0 ? completedCount / possible : 0,
+        updatedAt: row.updated_at,
+      }
+    })
   }
 
   /** Participation + outcome analytics for learning paths and daily quizzes, last `days`. */

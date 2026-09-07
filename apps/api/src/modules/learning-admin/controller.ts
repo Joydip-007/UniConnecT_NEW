@@ -3,7 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { unauthorized } from '../../utils/errors'
 import { sendSuccess } from '../../utils/response'
 import { learningAdminService } from './service'
-import type { LearningAdminConfigInput } from './schema'
+import type { LearningAdminConfigInput, AdminListPathsQuery } from './schema'
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
@@ -75,6 +75,11 @@ export const getAnalytics = asyncHandler(async (req: Request, res: Response) => 
   const { universityId } = getContext(req)
   const days = Math.min(90, Math.max(1, Number(req.query.days) || 14))
   sendSuccess(res, await learningAdminService.getAnalytics(universityId, days))
+})
+
+export const listAdminPaths = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.listAdminPaths(universityId, req.query as unknown as AdminListPathsQuery))
 })
 
 function getContext(req: Request) {

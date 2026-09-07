@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { requireAuth, requireRole } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
-import { validate } from '../../middleware/validate'
+import { validate, validateRequest } from '../../middleware/validate'
 import {
   getConfig,
   updateConfig,
@@ -16,8 +16,9 @@ import {
   triggerGenerateNow,
   getUpcomingQuizzes,
   getAnalytics,
+  listAdminPaths,
 } from './controller'
-import { LearningAdminConfigSchema } from './schema'
+import { LearningAdminConfigSchema, AdminListPathsQuerySchema } from './schema'
 
 export const learningAdminRouter = Router()
 
@@ -41,3 +42,5 @@ learningAdminRouter.post('/generate', triggerGenerateNow)
 
 learningAdminRouter.get('/upcoming-quizzes', getUpcomingQuizzes)
 learningAdminRouter.get('/analytics', getAnalytics)
+
+learningAdminRouter.get('/paths', validateRequest({ query: AdminListPathsQuerySchema }), listAdminPaths)

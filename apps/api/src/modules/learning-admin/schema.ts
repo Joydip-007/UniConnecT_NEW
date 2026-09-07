@@ -23,3 +23,9 @@ export const LearningAdminConfigSchema = z.object({
 })
 
 export type LearningAdminConfigInput = z.infer<typeof LearningAdminConfigSchema>
+
+export const AdminListPathsQuerySchema = z.object({
+  status: z.enum(['all', 'published', 'draft']).optional().default('all'),
+  category: z.string().min(1).max(100).optional(),
+})
+export type AdminListPathsQuery = z.infer<typeof AdminListPathsQuerySchema>
