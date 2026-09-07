@@ -72,6 +72,16 @@ interface Invitation {
   createdAt: string
 }
 
+interface InviteBatch {
+  id: string
+  label: string
+  role: string
+  total: number
+  accepted: number
+  expiresAt: string | null
+  createdAt: string
+}
+
 interface Paginated<T> {
   items: T[]
   total: number
@@ -83,6 +93,12 @@ interface Paginated<T> {
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function daysLeft(iso: string | null): number | null {
+  if (!iso) return null
+  const ms = new Date(iso).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
 }
 
 // ── Stat cards ────────────────────────────────────────────────────────────────
@@ -1060,6 +1076,7 @@ function InvitationsTab() {
   const [bulkText, setBulkText] = useState('')
   const [bulkRole, setBulkRole] = useState<UserRole>('student')
   const [bulkDays, setBulkDays] = useState(7)
+  const [bulkLabel, setBulkLabel] = useState('')
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const limit = 20
 
@@ -1068,6 +1085,11 @@ function InvitationsTab() {
     queryFn: () =>
       api.get<{ data: Paginated<Invitation> }>(`/admin/invitations?page=${page}&limit=${limit}`)
         .then((r) => r.data.data),
+  })
+
+  const { data: batches } = useQuery<InviteBatch[]>({
+    queryKey: ['admin', 'invite-batches'],
+    queryFn: () => api.get<{ data: InviteBatch[] }>('/admin/invitations/batches').then((r) => r.data.data),
   })
 
   const singleMutation = useMutation({
@@ -1085,10 +1107,12 @@ function InvitationsTab() {
 
   const bulkMutation = useMutation({
     mutationFn: (emails: string[]) =>
-      api.post('/admin/invitations/bulk', { emails, role: bulkRole, expires_in_days: bulkDays }),
+      api.post('/admin/invitations/bulk', { emails, role: bulkRole, expires_in_days: bulkDays, batch_label: bulkLabel.trim() }),
     onSuccess: (_data, emails) => {
       void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'invite-batches'] })
       setBulkText('')
+      setBulkLabel('')
       flash(`${emails.length} invitation${emails.length === 1 ? '' : 's'} sent`)
     },
   })
@@ -1246,6 +1270,13 @@ function InvitationsTab() {
                 ))}
               </select>
             </div>
+            <input
+              type="text"
+              placeholder="Batch name, e.g. CSE Fall 2026 intake"
+              value={bulkLabel}
+              onChange={(e) => setBulkLabel(e.target.value)}
+              style={inputStyle}
+            />
             <textarea
               value={bulkText}
               onChange={(e) => setBulkText(e.target.value)}
@@ -1265,7 +1296,7 @@ function InvitationsTab() {
             )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <PrimaryBtn
-                disabled={parsedEmails.length === 0 || parsedEmails.length > 50 || bulkMutation.isPending}
+                disabled={parsedEmails.length === 0 || parsedEmails.length > 50 || !bulkLabel.trim() || bulkMutation.isPending}
                 onClick={() => bulkMutation.mutate(parsedEmails)}
               >
                 {bulkMutation.isPending
@@ -1305,6 +1336,45 @@ function InvitationsTab() {
           </div>
         )}
       </div>
+
+      {/* ── Invite batches ── */}
+      {batches !== undefined && batches.length > 0 && (
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '20px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Invite batches</span>
+          {batches.map((b) => {
+            const pct = b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0
+            const left = daysLeft(b.expiresAt)
+            return (
+              <div key={b.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{b.label}</span>
+                  <Badge variant="neutral">{b.role}</Badge>
+                </div>
+                <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 'var(--r-pill)', background: 'var(--uc-mint)',
+                    transform: `scaleX(${pct / 100})`, transformOrigin: 'left center',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                  <span>{b.accepted} of {b.total} accepted · {pct}%</span>
+                  <span style={{ color: left !== null && left <= 3 ? 'var(--uc-orange-l)' : 'var(--text-tertiary)' }}>
+                    {left === null ? 'all resolved' : `${left} day${left === 1 ? '' : 's'} left`}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Past invitations ── */}
       {isLoading || !data ? (
