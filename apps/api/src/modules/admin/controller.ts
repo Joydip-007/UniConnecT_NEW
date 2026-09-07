@@ -129,6 +129,11 @@ export const listInvitations = asyncHandler(async (req: Request, res: Response) 
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
 
+export const listInviteBatches = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await adminService.listInviteBatches(universityId))
+})
+
 export const deleteInvitation = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
   const invitationId = req.params.invitationId as string

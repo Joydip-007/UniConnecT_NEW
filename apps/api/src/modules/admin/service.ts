@@ -576,6 +576,8 @@ export class AdminService {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + input.expires_in_days)
 
+    const batchId = crypto.randomUUID()
+
     const rows = unique.map((email) => ({
       university_id: universityId,
       invited_by: invitedById,
@@ -583,6 +585,8 @@ export class AdminService {
       role: input.role,
       token: crypto.randomBytes(32).toString('hex'),
       expires_at: expiresAt,
+      batch_id: batchId,
+      batch_label: input.batch_label,
     }))
 
     await db.transaction(async (trx) => {
@@ -605,16 +609,53 @@ export class AdminService {
       })
     }
 
-    return { created: rows.length, emails: rows.map((r) => r.email) }
+    return { created: rows.length, emails: rows.map((r) => r.email), batchId }
+  }
+
+  async listInviteBatches(universityId: string) {
+    const rows = await db('invitations')
+      .where({ university_id: universityId })
+      .whereNotNull('batch_id')
+      .select(
+        'batch_id',
+        'batch_label',
+        'role',
+        db.raw('COUNT(*)::int as total'),
+        db.raw('COUNT(*) FILTER (WHERE is_used = true)::int as accepted'),
+        db.raw('MIN(expires_at) FILTER (WHERE is_used = false) as soonest_expiry'),
+        db.raw('MIN(created_at) as created_at'),
+      )
+      .groupBy('batch_id', 'batch_label', 'role')
+      .orderBy('created_at', 'desc')
+
+    return (
+      rows as {
+        batch_id: string
+        batch_label: string
+        role: string
+        total: number
+        accepted: number
+        soonest_expiry: Date | null
+        created_at: Date
+      }[]
+    ).map((r) => ({
+      id: r.batch_id,
+      label: r.batch_label,
+      role: r.role,
+      total: r.total,
+      accepted: r.accepted,
+      expiresAt: r.soonest_expiry,
+      createdAt: r.created_at,
+    }))
   }
 
   async listInvitations(universityId: string, query: PaginationQuery) {
-    const [{ count }] = await db('invitations')
-      .where({ university_id: universityId })
-      .count<CountRow[]>({ count: '*' })
+    const base = db('invitations').where({ university_id: universityId }).whereNull('batch_id')
 
-    const rows = await db('invitations')
-      .where({ university_id: universityId })
+    const [{ count }] = await base.clone().count<CountRow[]>({ count: '*' })
+
+    const rows = await base
+      .clone()
       .select<InvitationRow[]>('*')
       .orderBy('created_at', 'desc')
       .limit(query.limit)

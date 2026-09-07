@@ -39,6 +39,7 @@ export const CreateBulkInvitationsSchema = z.object({
   emails: z.array(z.string().email()).min(1).max(50),
   role: z.enum(['student', 'alumni', 'faculty', 'admin']).default('student'),
   expires_in_days: z.number().int().min(1).max(30).default(7),
+  batch_label: z.string().trim().min(1).max(120),
 })
 
 export const ContentKindSchema = z.enum(['posts', 'events', 'jobs', 'news'])

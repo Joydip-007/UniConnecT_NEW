@@ -20,6 +20,7 @@ import {
   resolveDeletionRequest,
   listGroups,
   listInvitations,
+  listInviteBatches,
   listMentors,
   listReports,
   listUsers,
@@ -85,6 +86,7 @@ adminRouter.patch(
 adminRouter.post('/invitations/bulk', requireRole('admin'), validate(CreateBulkInvitationsSchema), createBulkInvitations)
 adminRouter.post('/invitations', validate(CreateInvitationSchema), createInvitation)
 adminRouter.get('/invitations', validateRequest({ query: PaginationQuerySchema }), listInvitations)
+adminRouter.get('/invitations/batches', requireRole('admin'), listInviteBatches)
 adminRouter.delete('/invitations/:invitationId', requireRole('admin'), deleteInvitation)
 
 adminRouter.get('/university/domains', requireRole('admin'), getAllowedDomains)
