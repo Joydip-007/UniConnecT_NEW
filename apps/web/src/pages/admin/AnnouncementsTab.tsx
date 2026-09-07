@@ -58,6 +58,16 @@ interface Paginated<T> {
 
 const LIMIT = 20
 
+// datetime-local inputs read/write local wall-clock time with no timezone
+// conversion, so the floor passed to `min` must be built from local getters
+// (getFullYear/getMonth/getDate/getHours/getMinutes) — never toISOString(),
+// which is UTC-based and silently disables the "no past scheduling" guard
+// outside UTC+0 (including UIU Dhaka, UTC+6).
+function toLocalDateTimeInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function relativeTime(iso: string) {
   const date = new Date(iso)
   const diff = Date.now() - date.getTime()
@@ -119,6 +129,7 @@ export function AnnouncementsTab() {
   }
   function schedule() {
     if (!scheduleAt) return
+    if (new Date(scheduleAt).getTime() <= Date.now()) return
     postMutation.mutate({ content: draft.trim(), publish_at: new Date(scheduleAt).toISOString() })
   }
 
@@ -151,7 +162,7 @@ export function AnnouncementsTab() {
               type="datetime-local"
               value={scheduleAt}
               onChange={(e) => setScheduleAt(e.target.value)}
-              min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+              min={toLocalDateTimeInputValue(new Date(Date.now() + 60_000))}
               style={{
                 background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)',
                 borderRadius: 'var(--r-sm)', padding: '7px 10px', fontSize: 13, color: 'var(--text-primary)',
