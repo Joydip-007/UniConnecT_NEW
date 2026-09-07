@@ -22,9 +22,11 @@ import {
   listInvitations,
   listInviteBatches,
   listMentors,
+  listReportedContentGroups,
   listReports,
   listUsers,
   resolveReport,
+  resolveReportGroup,
   toggleActive,
   togglePin,
   togglePublish,
@@ -44,6 +46,7 @@ import {
   CreateInvitationSchema,
   ListUsersQuerySchema,
   PaginationQuerySchema,
+  ResolveReportGroupSchema,
   ResolveReportSchema,
   ToggleActiveSchema,
   TogglePinSchema,
@@ -76,6 +79,12 @@ adminRouter.delete('/users/:userId', requireRole('admin'), deleteUser)
 adminRouter.post('/users/driver', requireRole('admin'), validate(CreateDriverSchema), createDriver)
 
 adminRouter.get('/reports', validateRequest({ query: PaginationQuerySchema }), listReports)
+adminRouter.get('/reports/grouped', validateRequest({ query: PaginationQuerySchema }), listReportedContentGroups)
+adminRouter.patch(
+  '/reports/target/:targetType/:targetId',
+  validate(ResolveReportGroupSchema),
+  resolveReportGroup,
+)
 adminRouter.patch('/reports/:reportId', validate(ResolveReportSchema), resolveReport)
 
 adminRouter.get('/deletion-requests', validateRequest({ query: PaginationQuerySchema }), listDeletionRequests)

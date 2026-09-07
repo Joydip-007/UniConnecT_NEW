@@ -17,6 +17,10 @@ export const ResolveReportSchema = z.object({
   status: z.enum(['reviewed', 'resolved', 'dismissed']),
 })
 
+export const ResolveReportGroupSchema = z.object({
+  action: z.enum(['remove', 'dismiss']),
+})
+
 export const CreateInvitationSchema = z.object({
   email: z.string().email(),
   role: z.enum(['student', 'alumni', 'faculty', 'admin']).default('student'),
@@ -83,6 +87,7 @@ export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>
 export type ResolveReportInput = z.infer<typeof ResolveReportSchema>
+export type ResolveReportGroupInput = z.infer<typeof ResolveReportGroupSchema>
 export type CreateInvitationInput = z.infer<typeof CreateInvitationSchema>
 export type CreateDriverInput = z.infer<typeof CreateDriverSchema>
 export type UpdateAllowedDomainsInput = z.infer<typeof UpdateAllowedDomainsSchema>

@@ -15,6 +15,7 @@ import type {
   CreateInvitationInput,
   ListUsersQuery,
   PaginationQuery,
+  ResolveReportGroupInput,
   ResolveReportInput,
   ToggleActiveInput,
   TogglePinInput,
@@ -75,6 +76,20 @@ export const resolveReport = asyncHandler(async (req: Request, res: Response) =>
   const { universityId, userId } = getAdminContext(req)
   const reportId = req.params.reportId as string
   sendSuccess(res, await adminService.resolveReport(universityId, userId, reportId, req.body as ResolveReportInput))
+})
+
+export const listReportedContentGroups = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const result = await adminService.listReportedContentGroups(universityId, req.query as unknown as PaginationQuery)
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const resolveReportGroup = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  const targetType = req.params.targetType as string
+  const targetId = req.params.targetId as string
+  const { action } = req.body as ResolveReportGroupInput
+  sendSuccess(res, await adminService.resolveReportGroup(universityId, userId, targetType, targetId, action))
 })
 
 export const listDeletionRequests = asyncHandler(async (req: Request, res: Response) => {

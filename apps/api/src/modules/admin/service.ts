@@ -7,7 +7,7 @@ import { emailQueue } from '../../queues/email.queue'
 import { env } from '../../config/env'
 import { getIo } from '../../socket'
 import { systemGroupsService } from '../groups/system-groups.service'
-import { severityCaseSql } from './severity'
+import { severityCaseSql, severityFromRank } from './severity'
 import type {
   AdminFulfillRedemptionInput,
   AdminRedemptionListQuery,
@@ -42,6 +42,17 @@ interface RedemptionListRow {
 interface CountRow {
   count: string | number
 }
+
+interface ReportGroupRow {
+  target_id: string
+  target_type: string
+  report_count: string | number
+  severity_rank: number
+  latest_reason: string
+  last_reported_at: Date
+}
+
+const REMOVABLE_TARGET_TABLES: Record<string, string> = { post: 'posts', job: 'jobs', event: 'events' }
 
 interface FeedbackEntry {
   id: string
@@ -450,6 +461,74 @@ export class AdminService {
 
     if (updated === 0) throw notFound('Report not found')
     return { reportId, status: input.status }
+  }
+
+  async listReportedContentGroups(universityId: string, query: PaginationQuery) {
+    const universityUserIds = db('users').where('university_id', universityId).select('id')
+
+    const groupedBase = () =>
+      db('reports')
+        .whereIn('reporter_id', universityUserIds)
+        .whereIn('status', ['pending', 'reviewed'])
+        .groupBy('target_id', 'target_type')
+
+    const totalRow = await db
+      .from(groupedBase().select('target_id', 'target_type').as('groups'))
+      .count<CountRow[]>({ count: '*' })
+      .first()
+
+    const rows = await groupedBase()
+      .select<ReportGroupRow[]>(
+        'target_id',
+        'target_type',
+        db.raw('COUNT(*)::int as report_count'),
+        db.raw(`MAX(${severityCaseSql('reason')}) as severity_rank`),
+        db.raw('(ARRAY_AGG(reason ORDER BY created_at DESC))[1] as latest_reason'),
+        db.raw('MAX(created_at) as last_reported_at'),
+      )
+      .orderBy('last_reported_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    const titleMap = await hydrateTargetTitles(rows.map((r) => ({ targetId: r.target_id, targetType: r.target_type })))
+
+    return {
+      items: rows.map((r) => ({
+        targetId: r.target_id,
+        targetType: r.target_type,
+        title: titleMap.get(`${r.target_type}:${r.target_id}`) ?? `Reported ${r.target_type}`,
+        severity: severityFromRank(Number(r.severity_rank)),
+        reason: r.latest_reason,
+        reportCount: Number(r.report_count),
+        lastReportedAt: r.last_reported_at,
+        removable: r.target_type in REMOVABLE_TARGET_TABLES,
+      })),
+      total: Number(totalRow?.count ?? 0),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async resolveReportGroup(universityId: string, resolvedById: string, targetType: string, targetId: string, action: 'remove' | 'dismiss') {
+    const universityUserIds = db('users').where('university_id', universityId).select('id')
+    const status = action === 'remove' ? 'resolved' : 'dismissed'
+
+    const updated = await db('reports')
+      .where({ target_id: targetId, target_type: targetType })
+      .whereIn('reporter_id', universityUserIds)
+      .whereIn('status', ['pending', 'reviewed'])
+      .update({ status, resolved_by: resolvedById, resolved_at: db.fn.now() })
+
+    if (updated === 0) throw notFound('No open reports for this target')
+
+    if (action === 'remove') {
+      const table = REMOVABLE_TARGET_TABLES[targetType]
+      if (table) {
+        await db(table).where({ id: targetId, university_id: universityId }).delete()
+      }
+    }
+
+    return { targetId, targetType, status }
   }
 
   async listDeletionRequests(universityId: string, query: PaginationQuery) {
@@ -1192,6 +1271,28 @@ function toReport(row: ReportRow) {
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
   }
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
+}
+
+async function hydrateTargetTitles(targets: { targetId: string; targetType: string }[]): Promise<Map<string, string>> {
+  const postIds = targets.filter((t) => t.targetType === 'post').map((t) => t.targetId)
+  const jobIds = targets.filter((t) => t.targetType === 'job').map((t) => t.targetId)
+  const eventIds = targets.filter((t) => t.targetType === 'event').map((t) => t.targetId)
+
+  const [posts, jobs, events] = await Promise.all([
+    postIds.length ? db('posts').whereIn('id', postIds).select<{ id: string; content: string }[]>('id', 'content') : [],
+    jobIds.length ? db('jobs').whereIn('id', jobIds).select<{ id: string; title: string }[]>('id', 'title') : [],
+    eventIds.length ? db('events').whereIn('id', eventIds).select<{ id: string; title: string }[]>('id', 'title') : [],
+  ])
+
+  const map = new Map<string, string>()
+  posts.forEach((p) => map.set(`post:${p.id}`, truncate(p.content, 60)))
+  jobs.forEach((j) => map.set(`job:${j.id}`, j.title))
+  events.forEach((e) => map.set(`event:${e.id}`, e.title))
+  return map
 }
 
 function toAdminRedemption(row: RedemptionListRow) {
