@@ -56,19 +56,6 @@ interface AdminUser {
   profile: { fullName: string; avatarUrl: string | null; department: string | null; batchYear: string | null }
 }
 
-interface Report {
-  id: string
-  reporterId: string
-  reporterName: string | null
-  targetId: string
-  targetType: string
-  reason: string
-  description: string | null
-  status: string
-  createdAt: string
-  resolvedAt: string | null
-}
-
 interface Invitation {
   id: string
   email: string
@@ -1517,122 +1504,157 @@ function InvitationsTab() {
   )
 }
 
-// ── Reports tab ───────────────────────────────────────────────────────────────
+// ── Moderation tab (grouped reported content + health panel + per-kind content review) ──
 
-function ReportsTab() {
+interface ReportGroup {
+  targetId: string
+  targetType: string
+  title: string
+  severity: 'high' | 'medium' | 'low'
+  reason: string
+  reportCount: number
+  lastReportedAt: string
+  removable: boolean
+}
+
+const SEVERITY_STYLE: Record<ReportGroup['severity'], { bg: string; bdr: string; text: string; label: string }> = {
+  high: { bg: 'var(--uc-red-bg)', bdr: 'var(--uc-red-bdr)', text: 'var(--uc-red)', label: 'High' },
+  medium: { bg: 'var(--uc-amber-bg)', bdr: 'var(--uc-amber-bdr)', text: 'var(--uc-amber-l)', label: 'Medium' },
+  low: { bg: 'var(--surface-raised)', bdr: 'var(--border-default)', text: 'var(--text-tertiary)', label: 'Low' },
+}
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.round(diffMs / 60000)
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.round(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
+function ReportedContentTab() {
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const limit = 20
+  const [actionedKeys, setActionedKeys] = useState<Set<string>>(new Set())
 
-  const { data, isLoading } = useQuery<Paginated<Report>>({
-    queryKey: ['admin', 'reports', page],
-    queryFn: () =>
-      api.get<{ data: Paginated<Report> }>(`/admin/reports?page=${page}&limit=${limit}`)
-        .then((r) => r.data.data),
+  const { data, isLoading } = useQuery<{ items: ReportGroup[]; total: number }>({
+    queryKey: ['admin', 'reports', 'grouped'],
+    queryFn: () => api.get<{ data: { items: ReportGroup[]; total: number } }>('/admin/reports/grouped?limit=50').then((r) => r.data.data),
   })
 
-  const resolveMutation = useMutation({
-    mutationFn: ({ reportId, status }: { reportId: string; status: string }) =>
-      api.patch(`/admin/reports/${reportId}`, { status }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'reports'] }) },
+  const actionMutation = useMutation({
+    mutationFn: ({ targetType, targetId, action }: { targetType: string; targetId: string; action: 'remove' | 'dismiss' }) =>
+      api.patch(`/admin/reports/target/${targetType}/${targetId}`, { action }),
+    onSuccess: (_res, variables) => {
+      setActionedKeys((prev) => new Set(prev).add(`${variables.targetType}:${variables.targetId}`))
+      void qc.invalidateQueries({ queryKey: ['admin', 'reports', 'grouped'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
   })
 
-  if (isLoading || !data) return <Spinner />
-
-  const totalPages = Math.ceil(data.total / limit)
+  const items = (data?.items ?? []).filter((item) => !actionedKeys.has(`${item.targetType}:${item.targetId}`))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-        {data.total.toLocaleString()} reports
-      </p>
-
-      {data.items.length === 0 && (
-        <div style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '48px 0',
-          textAlign: 'center',
-          fontSize: 14,
-          color: 'var(--text-tertiary)',
-        }}>
-          No reports yet
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {data.items.map((r) => (
-          <div key={r.id} style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-md)',
-            padding: '16px 18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.reason}</span>
-                  <Badge variant="neutral">{r.targetType}</Badge>
-                  <Badge variant={r.status === 'pending' ? 'dept' : r.status === 'resolved' ? 'alumni' : 'neutral'}>
-                    {r.status}
-                  </Badge>
-                </div>
-                {r.description && (
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {r.description}
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 4 }}>
+      <h2 style={{ margin: 0, padding: '14px 16px 8px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Reported content</h2>
+      {isLoading ? (
+        <Spinner />
+      ) : items.length === 0 ? (
+        <div style={{ padding: '32px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>Nothing reported right now</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {items.map((item) => {
+            const sev = SEVERITY_STYLE[item.severity]
+            return (
+              <div
+                key={`${item.targetType}:${item.targetId}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: '0.5px solid var(--border-default)' }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.title}
                   </p>
-                )}
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  Reported by {r.reporterName ?? 'unknown'} · {fmtDate(r.createdAt)}
-                </span>
-              </div>
-
-              {r.status === 'pending' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    <span style={{ background: sev.bg, border: `0.5px solid ${sev.bdr}`, color: sev.text, borderRadius: 'var(--r-pill)', padding: '1px 8px', fontWeight: 500 }}>
+                      {sev.label}
+                    </span>
+                    <span>{item.reason}</span>
+                    <span>·</span>
+                    <span>{item.reportCount} report{item.reportCount === 1 ? '' : 's'}</span>
+                    <span>·</span>
+                    <span>{relativeTime(item.lastReportedAt)}</span>
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  {item.removable && (
+                    <GhostBtn
+                      onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'remove' })}
+                      disabled={actionMutation.isPending}
+                      style={{ fontSize: 12, padding: '4px 10px', color: 'var(--uc-red)' }}
+                    >
+                      Remove
+                    </GhostBtn>
+                  )}
                   <GhostBtn
-                    onClick={() => resolveMutation.mutate({ reportId: r.id, status: 'resolved' })}
-                    disabled={resolveMutation.isPending}
-                    style={{ fontSize: 12, padding: '4px 10px' }}
-                  >
-                    Resolve
-                  </GhostBtn>
-                  <GhostBtn
-                    onClick={() => resolveMutation.mutate({ reportId: r.id, status: 'dismissed' })}
-                    disabled={resolveMutation.isPending}
+                    onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'dismiss' })}
+                    disabled={actionMutation.isPending}
                     style={{ fontSize: 12, padding: '4px 10px' }}
                   >
                     Dismiss
                   </GhostBtn>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
-          <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
-            {page} / {totalPages}
-          </span>
-          <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
 
-// ── Moderation tab (reports + per-kind content review, merged) ────────────────
+function ModerationHealthTile({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
+      <div style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)' }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{hint}</div>
+    </div>
+  )
+}
+
+function ModerationHealthPanel({ health }: { health: Stats['moderationHealth'] }) {
+  return (
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Moderation health</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <ModerationHealthTile label="Reports open" value={String(health.reportsOpen)} hint="awaiting action" />
+        <ModerationHealthTile label="Resolved" value={`${health.resolvedPct7d}%`} hint="last 7 days" />
+        <ModerationHealthTile label="Median response" value={`${health.medianResponseHours}h`} hint="target 6h" />
+        <ModerationHealthTile label="Repeat offenders" value={String(health.repeatOffenders)} hint="flagged twice+" />
+      </div>
+    </div>
+  )
+}
 
 function ModerationTab() {
+  const { data: stats } = useQuery<Stats>({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
+  })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <ReportsTab />
+      {stats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <MetricTile label="Escalated reports" value={String(stats.escalatedReports)} hint="high severity, open" hot={stats.escalatedReports > 0} />
+          <MetricTile label="Verification requests" value={String(stats.verificationRequests)} hint="unverified accounts" />
+          <MetricTile label="Deletion requests" value={String(stats.deletionRequests)} hint="awaiting review" />
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12, alignItems: 'start' }}>
+        <ReportedContentTab />
+        {stats && <ModerationHealthPanel health={stats.moderationHealth} />}
+      </div>
       <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
         <ContentTab />
       </div>
