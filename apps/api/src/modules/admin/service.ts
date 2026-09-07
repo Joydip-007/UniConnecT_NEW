@@ -101,6 +101,14 @@ interface AdminGroupRow {
   member_count: number
   created_at: Date
   pending_request_count: string | number
+  pending_requesters: { userId: string; fullName: string; avatarUrl: string | null }[] | null
+}
+
+interface GroupsSummaryRow {
+  total_groups: string | number
+  private_groups: string | number
+  total_members: string | number
+  created_this_week: string | number
 }
 
 interface InvitationRow {
@@ -223,6 +231,26 @@ export class AdminService {
         'jr.group_id',
         'groups.id',
       )
+      .leftJoin(
+        db.raw(`(
+          SELECT group_id, json_agg(json_build_object(
+            'userId', user_id,
+            'fullName', full_name,
+            'avatarUrl', avatar_url
+          ) ORDER BY created_at DESC) AS requesters
+          FROM (
+            SELECT gjr.group_id, gjr.user_id, gjr.created_at, p.full_name, p.avatar_url,
+                   row_number() OVER (PARTITION BY gjr.group_id ORDER BY gjr.created_at DESC) AS rn
+            FROM group_join_requests gjr
+            JOIN profiles p ON p.user_id = gjr.user_id
+            WHERE gjr.status = 'pending'
+          ) ranked
+          WHERE rn <= 3
+          GROUP BY group_id
+        ) as jrt`),
+        'jrt.group_id',
+        'groups.id',
+      )
       .select<AdminGroupRow[]>(
         'groups.id',
         'groups.name',
@@ -232,10 +260,25 @@ export class AdminService {
         'groups.member_count',
         'groups.created_at',
         db.raw('COALESCE(jr.count, 0) as pending_request_count'),
+        db.raw(`COALESCE(jrt.requesters, '[]'::json) as pending_requesters`),
       )
       .orderBy('groups.created_at', 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)
+
+    const summaryRow = await db('groups')
+      .where('university_id', universityId)
+      .select<GroupsSummaryRow[]>(
+        db.raw('COUNT(*)::int as total_groups'),
+        db.raw('COUNT(*) FILTER (WHERE is_private)::int as private_groups'),
+        db.raw('COALESCE(SUM(member_count), 0)::int as total_members'),
+        db.raw(`COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')::int as created_this_week`),
+      )
+      .first()
+
+    const [{ count: pendingTotal }] = await db('group_join_requests')
+      .where({ university_id: universityId, status: 'pending' })
+      .count<CountRow[]>({ count: '*' })
 
     return {
       items: rows.map((r) => ({
@@ -246,11 +289,19 @@ export class AdminService {
         isPrivate: r.is_private,
         memberCount: r.member_count,
         pendingRequestCount: Number(r.pending_request_count),
+        pendingRequesters: r.pending_requesters ?? [],
         createdAt: r.created_at,
       })),
       total: Number(count),
       page: query.page,
       limit: query.limit,
+      summary: {
+        totalGroups: Number(summaryRow?.total_groups ?? 0),
+        privateGroups: Number(summaryRow?.private_groups ?? 0),
+        totalMembers: Number(summaryRow?.total_members ?? 0),
+        pendingRequests: Number(pendingTotal ?? 0),
+        createdThisWeek: Number(summaryRow?.created_this_week ?? 0),
+      },
     }
   }
 

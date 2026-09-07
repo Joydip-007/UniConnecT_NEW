@@ -39,7 +39,13 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
 export const listGroups = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
   const result = await adminService.listGroups(universityId, req.query as unknown as PaginationQuery)
-  sendPaginated(res, result.items, result.total, result.page, result.limit)
+  sendSuccess(res, {
+    items: result.items,
+    total: result.total,
+    page: result.page,
+    hasMore: result.page * result.limit < result.total,
+    summary: result.summary,
+  })
 })
 
 export const updateUserRole = asyncHandler(async (req: Request, res: Response) => {
