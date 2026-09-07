@@ -7,6 +7,7 @@ import { emailQueue } from '../../queues/email.queue'
 import { env } from '../../config/env'
 import { getIo } from '../../socket'
 import { systemGroupsService } from '../groups/system-groups.service'
+import { severityCaseSql } from './severity'
 import type {
   AdminFulfillRedemptionInput,
   AdminRedemptionListQuery,
@@ -127,7 +128,24 @@ export class AdminService {
       countUnverifiedByRole(universityId),
     ])
 
-    return { users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay, verificationsByRole }
+    const [escalatedReports, verificationRequests, deletionRequests, resolvedPct7d, moderationHealth, pendingInviteBatches] =
+      await Promise.all([
+        countEscalatedReports(universityId),
+        countWhere('users', { university_id: universityId, is_deleted: false, is_verified: false }),
+        db('account_deletion_requests')
+          .where({ university_id: universityId, status: 'pending' })
+          .count<CountRow[]>({ count: '*' })
+          .first()
+          .then((r) => Number(r?.count ?? 0)),
+        resolvedPercentLast7Days(universityId),
+        getModerationHealth(universityId),
+        countPendingInviteBatches(universityId),
+      ])
+
+    return {
+      users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay, verificationsByRole,
+      escalatedReports, verificationRequests, deletionRequests, resolvedPct7d, pendingInviteBatches, moderationHealth,
+    }
   }
 
   async listUsers(universityId: string, query: ListUsersQuery) {
@@ -1043,6 +1061,92 @@ async function countPostsByDay(universityId: string): Promise<{ date: string; co
     days.push({ date: key, count: byDay.get(key) ?? 0 })
   }
   return days
+}
+
+async function countEscalatedReports(universityId: string): Promise<number> {
+  const universityUserIds = db('users').where('university_id', universityId).select('id')
+  const row = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .where('status', 'pending')
+    .whereRaw(`${severityCaseSql('reason')} = 3`)
+    .count<CountRow[]>({ count: '*' })
+    .first()
+  return Number(row?.count ?? 0)
+}
+
+async function resolvedPercentLast7Days(universityId: string): Promise<number> {
+  const universityUserIds = db('users').where('university_id', universityId).select('id')
+  const since = new Date()
+  since.setUTCDate(since.getUTCDate() - 7)
+
+  const row = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .where('created_at', '>=', since)
+    .select(
+      db.raw("COUNT(*) FILTER (WHERE status IN ('resolved', 'dismissed'))::int as closed"),
+      db.raw('COUNT(*)::int as total'),
+    )
+    .first<{ closed: number; total: number }>()
+
+  if (!row || row.total === 0) return 100
+  return Math.round((row.closed / row.total) * 100)
+}
+
+async function getModerationHealth(universityId: string) {
+  const universityUserIds = db('users').where('university_id', universityId).select('id')
+
+  const reportsOpen = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .whereIn('status', ['pending', 'reviewed'])
+    .count<CountRow[]>({ count: '*' })
+    .first()
+    .then((r) => Number(r?.count ?? 0))
+
+  const resolvedPct7d = await resolvedPercentLast7Days(universityId)
+
+  const since = new Date()
+  since.setUTCDate(since.getUTCDate() - 7)
+  const medianRow = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .where('status', 'resolved')
+    .andWhere('resolved_at', '>=', since)
+    .select(
+      db.raw(
+        "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600.0) as median_hours",
+      ),
+    )
+    .first<{ median_hours: string | null }>()
+  const medianResponseHours = medianRow?.median_hours ? Math.round(Number(medianRow.median_hours) * 10) / 10 : 0
+
+  const repeatOffendersRow = await db
+    .from(
+      db('reports')
+        .whereIn('reporter_id', universityUserIds)
+        .whereIn('status', ['pending', 'reviewed'])
+        .groupBy('target_id', 'target_type')
+        .having(db.raw('COUNT(*)'), '>=', 2)
+        .select('target_id')
+        .as('repeats'),
+    )
+    .count<CountRow[]>({ count: '*' })
+    .first()
+  const repeatOffenders = Number(repeatOffendersRow?.count ?? 0)
+
+  return { reportsOpen, resolvedPct7d, medianResponseHours, repeatOffenders }
+}
+
+/** Depends on `invitations.batch_id` from the admin-members-invite-batches-and-verification plan. Returns 0 until that column exists. */
+async function countPendingInviteBatches(universityId: string): Promise<number> {
+  const hasColumn = await db.schema.hasColumn('invitations', 'batch_id')
+  if (!hasColumn) return 0
+
+  const row = await db('invitations')
+    .where({ university_id: universityId, is_used: false })
+    .andWhere('expires_at', '>', db.fn.now())
+    .whereNotNull('batch_id')
+    .countDistinct<CountRow[]>({ count: 'batch_id' })
+    .first()
+  return Number(row?.count ?? 0)
 }
 
 async function countActive(universityId: string): Promise<number> {
