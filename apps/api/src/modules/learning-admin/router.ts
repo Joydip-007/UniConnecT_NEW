@@ -37,6 +37,7 @@ import {
   CreatePathUnitSchema,
   UpdatePathUnitSchema,
   ReorderPathUnitsSchema,
+  TriggerGenerateSchema,
 } from './schema'
 
 export const learningAdminRouter = Router()
@@ -57,7 +58,7 @@ learningAdminRouter.get('/pending-quiz/:id', getPendingQuizDetail)
 learningAdminRouter.post('/pending-quiz/:id/approve', approveQuizBatch)
 learningAdminRouter.post('/pending-quiz/:id/discard', discardQuizBatch)
 
-learningAdminRouter.post('/generate', triggerGenerateNow)
+learningAdminRouter.post('/generate', validate(TriggerGenerateSchema), triggerGenerateNow)
 
 learningAdminRouter.get('/upcoming-quizzes', getUpcomingQuizzes)
 learningAdminRouter.get('/analytics', getAnalytics)

@@ -81,3 +81,8 @@ export const ReorderPathUnitsSchema = z.object({ unitIds: z.array(z.string().uui
 export type ReorderPathUnitsBody = z.infer<typeof ReorderPathUnitsSchema>
 
 export const UnitIdParamSchema = z.object({ id: z.string().uuid(), unitId: z.string().uuid() })
+
+export const TriggerGenerateSchema = z.object({
+  task: z.enum(['learning', 'quiz', 'both']).optional().default('both'),
+})
+export type TriggerGenerateBody = z.infer<typeof TriggerGenerateSchema>

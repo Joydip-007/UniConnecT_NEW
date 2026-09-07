@@ -12,6 +12,7 @@ import type {
   CreatePathUnitBody,
   UpdatePathUnitBody,
   ReorderPathUnitsBody,
+  TriggerGenerateBody,
 } from './schema'
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
@@ -71,7 +72,8 @@ export const discardQuizBatch = asyncHandler(async (req: Request, res: Response)
 
 export const triggerGenerateNow = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getContext(req)
-  await learningAdminService.triggerGenerateNow(universityId)
+  const { task } = req.body as TriggerGenerateBody
+  await learningAdminService.triggerGenerateNow(universityId, task)
   sendSuccess(res, { success: true })
 })
 

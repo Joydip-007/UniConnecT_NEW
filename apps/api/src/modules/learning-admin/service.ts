@@ -179,9 +179,13 @@ export class LearningAdminService {
     if (count === 0) throw notFound()
   }
 
-  async triggerGenerateNow(universityId: string): Promise<void> {
-    await aiContentQueue.add({ task: 'learning-gen', universityId })
-    await aiContentQueue.add({ task: 'quiz-gen', universityId })
+  async triggerGenerateNow(universityId: string, task: 'learning' | 'quiz' | 'both' = 'both'): Promise<void> {
+    if (task === 'learning' || task === 'both') {
+      await aiContentQueue.add({ task: 'learning-gen', universityId })
+    }
+    if (task === 'quiz' || task === 'both') {
+      await aiContentQueue.add({ task: 'quiz-gen', universityId })
+    }
   }
 
   /**
