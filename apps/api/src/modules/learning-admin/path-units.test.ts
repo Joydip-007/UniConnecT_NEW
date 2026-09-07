@@ -76,4 +76,23 @@ describe('learning path unit management', () => {
     expect(rows[0].id).toBe(second.id)
     expect(rows[1].id).toBe(unitId)
   })
+
+  it('rejects a partial reorder that omits a unit in the path', async () => {
+    const [second] = await db('skill_path_units')
+      .insert({ path_id: pathId, display_order: 2, title: 'Second', type: 'read', content: JSON.stringify({ body: 'y' }) })
+      .returning('id')
+    const [third] = await db('skill_path_units')
+      .insert({ path_id: pathId, display_order: 3, title: 'Third', type: 'read', content: JSON.stringify({ body: 'z' }) })
+      .returning('id')
+    const res = await request(app)
+      .patch(`/api/v1/admin/learning/paths/${pathId}/units/reorder`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${accessToken}`)
+      // Omits `unitId` (the first unit), so this only covers 2 of the path's 3 units.
+      .send({ unitIds: [third.id, second.id] })
+    expect(res.status).toBe(400)
+    // Order must be unchanged since the request was rejected before any writes.
+    const rows = await db('skill_path_units').where({ path_id: pathId }).orderBy('display_order')
+    expect(rows.map((r) => r.id)).toEqual([unitId, second.id, third.id])
+  })
 })

@@ -1,5 +1,5 @@
 import { db } from '../../config/db'
-import { notFound } from '../../utils/errors'
+import { badRequest, notFound } from '../../utils/errors'
 import { aiContentQueue } from '../../queues/ai-content.queue'
 import type {
   LearningAdminConfigInput,
@@ -480,6 +480,19 @@ export class LearningAdminService {
 
   async reorderUnits(universityId: string, pathId: string, unitIds: string[]): Promise<void> {
     await this.findOwnedPath(universityId, pathId)
+
+    // The two-phase staged update below is only collision-safe for a complete reorder:
+    // a partial submission (omitting a unit) can still collide with an untouched unit's
+    // display_order in phase 2, violating the (path_id, display_order) unique constraint.
+    const existingUnits = await db('skill_path_units').where({ path_id: pathId }).select<{ id: string }[]>('id')
+    const existingIds = new Set(existingUnits.map((u) => u.id))
+    const submittedIds = new Set(unitIds)
+    const sameSet =
+      existingIds.size === submittedIds.size && [...existingIds].every((id) => submittedIds.has(id))
+    if (!sameSet) {
+      throw badRequest('unitIds must include every unit in the path exactly once')
+    }
+
     await db.transaction(async (trx) => {
       // Two-phase update: `skill_path_units` has a unique (path_id, display_order)
       // constraint, so writing final positions in a single pass can collide mid-loop
