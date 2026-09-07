@@ -390,11 +390,11 @@ function MetricTile({ label, value, hint, hot }: { label: string; value: string;
       borderRadius: 'var(--r-lg)',
       padding: '16px 20px',
     }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
         {label}
       </div>
-      <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
-      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>{hint}</div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div style={{ marginTop: 6, fontSize: 12, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)' }}>{hint}</div>
     </div>
   )
 }
