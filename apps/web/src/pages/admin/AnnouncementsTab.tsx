@@ -14,11 +14,39 @@ interface AnnouncementItem {
   id: string
   content: string
   isPinned: boolean
+  isPublished: boolean
+  publishAt: string | null
   viewCount: number
   reactionCount: number
   commentCount: number
   createdAt: string
   author: AuthorMeta
+}
+
+export type AnnouncementStatus = 'published' | 'scheduled' | 'draft'
+
+export function announcementStatus(item: Pick<AnnouncementItem, 'isPublished' | 'publishAt'>): AnnouncementStatus {
+  if (item.isPublished) return 'published'
+  if (item.publishAt && new Date(item.publishAt).getTime() > Date.now()) return 'scheduled'
+  return 'draft'
+}
+
+const STATUS_META: Record<AnnouncementStatus, { label: string; color: string; bg: string; bdr: string }> = {
+  published: { label: 'Published', color: 'var(--uc-mint)', bg: 'var(--uc-mint-bg)', bdr: 'var(--uc-mint-bdr)' },
+  scheduled: { label: 'Scheduled', color: 'var(--uc-indigo-l)', bg: 'var(--uc-indigo-bg)', bdr: 'var(--uc-indigo-bdr)' },
+  draft: { label: 'Draft', color: 'var(--text-tertiary)', bg: 'var(--surface-raised)', bdr: 'var(--border-default)' },
+}
+
+function StatusPill({ status }: { status: AnnouncementStatus }) {
+  const meta = STATUS_META[status]
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 'var(--r-pill)',
+      fontSize: 11, fontWeight: 500, color: meta.color, background: meta.bg, border: `0.5px solid ${meta.bdr}`,
+    }}>
+      {meta.label}
+    </span>
+  )
 }
 
 interface Paginated<T> {
@@ -60,6 +88,12 @@ export function AnnouncementsTab() {
           params: { page, limit: LIMIT, filter: 'announcement' },
         })
         .then((r) => ({ ...r.data.data, limit: LIMIT })),
+  })
+
+  const { data: stats } = useQuery<{ activeUsers: number }>({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => api.get<{ data: { activeUsers: number } }>('/admin/stats').then((r) => r.data.data),
+    staleTime: 60_000,
   })
 
   const postMutation = useMutation({
@@ -105,7 +139,7 @@ export function AnnouncementsTab() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.items.map((item) => (
-            <AnnouncementRow key={item.id} item={item} queryKey={queryKey} />
+            <AnnouncementRow key={item.id} item={item} queryKey={queryKey} activeUsers={stats?.activeUsers} />
           ))}
           {Math.ceil(data.total / LIMIT) > 1 && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
@@ -122,10 +156,11 @@ export function AnnouncementsTab() {
   )
 }
 
-function AnnouncementRow({ item, queryKey }: { item: AnnouncementItem; queryKey: QueryKey }) {
+function AnnouncementRow({ item, queryKey, activeUsers }: { item: AnnouncementItem; queryKey: QueryKey; activeUsers?: number }) {
   const qc = useQueryClient()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const status = announcementStatus(item)
 
   const pinMutation = useMutation({
     mutationFn: (next: boolean) => api.patch(`/admin/content/posts/${item.id}/pin`, { is_pinned: next }),
@@ -166,9 +201,14 @@ function AnnouncementRow({ item, queryKey }: { item: AnnouncementItem; queryKey:
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.4 }}>{item.content}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
+          <StatusPill status={status} />
           <span>{item.author.fullName ?? 'Unknown'}</span>
           <span>· {relativeTime(item.createdAt)}</span>
-          <span>· {item.reactionCount} reactions · {item.commentCount} comments</span>
+          {status === 'published' ? (
+            <span>· ≈{(activeUsers ?? 0).toLocaleString()} members reached · {item.reactionCount + item.commentCount} engagement</span>
+          ) : status === 'scheduled' && item.publishAt ? (
+            <span>· publishes {new Date(item.publishAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+          ) : null}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
