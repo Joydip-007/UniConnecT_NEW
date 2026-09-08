@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { Megaphone, Pin, PinOff, Trash2, AlertTriangle } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { announcementStatus, type AnnouncementStatus } from './announcementStatus'
 
 interface AuthorMeta {
   id: string
@@ -14,11 +15,31 @@ interface AnnouncementItem {
   id: string
   content: string
   isPinned: boolean
+  isPublished: boolean
+  publishAt: string | null
   viewCount: number
   reactionCount: number
   commentCount: number
   createdAt: string
   author: AuthorMeta
+}
+
+const STATUS_META: Record<AnnouncementStatus, { label: string; color: string; bg: string; bdr: string }> = {
+  published: { label: 'Published', color: 'var(--uc-mint)', bg: 'var(--uc-mint-bg)', bdr: 'var(--uc-mint-bdr)' },
+  scheduled: { label: 'Scheduled', color: 'var(--uc-indigo-l)', bg: 'var(--uc-indigo-bg)', bdr: 'var(--uc-indigo-bdr)' },
+  draft: { label: 'Draft', color: 'var(--text-tertiary)', bg: 'var(--surface-raised)', bdr: 'var(--border-default)' },
+}
+
+function StatusPill({ status }: { status: AnnouncementStatus }) {
+  const meta = STATUS_META[status]
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 'var(--r-pill)',
+      fontSize: 11, fontWeight: 500, color: meta.color, background: meta.bg, border: `0.5px solid ${meta.bdr}`,
+    }}>
+      {meta.label}
+    </span>
+  )
 }
 
 interface Paginated<T> {
@@ -29,6 +50,16 @@ interface Paginated<T> {
 }
 
 const LIMIT = 20
+
+// datetime-local inputs read/write local wall-clock time with no timezone
+// conversion, so the floor passed to `min` must be built from local getters
+// (getFullYear/getMonth/getDate/getHours/getMinutes) — never toISOString(),
+// which is UTC-based and silently disables the "no past scheduling" guard
+// outside UTC+0 (including UIU Dhaka, UTC+6).
+function toLocalDateTimeInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
 function relativeTime(iso: string) {
   const date = new Date(iso)
@@ -62,14 +93,38 @@ export function AnnouncementsTab() {
         .then((r) => ({ ...r.data.data, limit: LIMIT })),
   })
 
+  const { data: stats } = useQuery<{ activeUsers: number }>({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => api.get<{ data: { activeUsers: number } }>('/admin/stats').then((r) => r.data.data),
+    staleTime: 60_000,
+  })
+
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [scheduleAt, setScheduleAt] = useState('')
+
   const postMutation = useMutation({
-    mutationFn: (content: string) => api.post('/posts', { content, type: 'announcement' }),
+    mutationFn: (payload: { content: string; is_published?: boolean; publish_at?: string }) =>
+      api.post('/posts', { type: 'announcement', ...payload }),
     onSuccess: () => {
       setDraft('')
+      setScheduleAt('')
+      setScheduleOpen(false)
       void qc.invalidateQueries({ queryKey: ['admin', 'content', 'posts', 'announcement'] })
       void qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
     },
   })
+
+  function publishNow() {
+    postMutation.mutate({ content: draft.trim() })
+  }
+  function saveAsDraft() {
+    postMutation.mutate({ content: draft.trim(), is_published: false })
+  }
+  function schedule() {
+    if (!scheduleAt) return
+    if (new Date(scheduleAt).getTime() <= Date.now()) return
+    postMutation.mutate({ content: draft.trim(), publish_at: new Date(scheduleAt).toISOString() })
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -88,12 +143,52 @@ export function AnnouncementsTab() {
             fontFamily: 'inherit', outline: 'none',
           }}
         />
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+
+        {scheduleOpen && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label htmlFor="announcement-schedule-at" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              Schedule date and time
+            </label>
+            <input
+              id="announcement-schedule-at"
+              aria-label="Schedule date and time"
+              type="datetime-local"
+              value={scheduleAt}
+              onChange={(e) => setScheduleAt(e.target.value)}
+              min={toLocalDateTimeInputValue(new Date(Date.now() + 60_000))}
+              style={{
+                background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-sm)', padding: '7px 10px', fontSize: 13, color: 'var(--text-primary)',
+                fontFamily: 'inherit', outline: 'none',
+              }}
+            />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+          <GhostBtn
+            disabled={!draft.trim() || postMutation.isPending}
+            onClick={saveAsDraft}
+          >
+            Save as draft
+          </GhostBtn>
+          {scheduleOpen ? (
+            <>
+              <GhostBtn onClick={() => { setScheduleOpen(false); setScheduleAt('') }}>Cancel</GhostBtn>
+              <PrimaryBtn disabled={!draft.trim() || !scheduleAt || postMutation.isPending} onClick={schedule}>
+                {postMutation.isPending ? 'Scheduling…' : 'Schedule'}
+              </PrimaryBtn>
+            </>
+          ) : (
+            <GhostBtn disabled={!draft.trim() || postMutation.isPending} onClick={() => setScheduleOpen(true)}>
+              Schedule for…
+            </GhostBtn>
+          )}
           <PrimaryBtn
             disabled={!draft.trim() || postMutation.isPending}
-            onClick={() => postMutation.mutate(draft.trim())}
+            onClick={publishNow}
           >
-            {postMutation.isPending ? 'Posting…' : 'New announcement'}
+            {postMutation.isPending ? 'Posting…' : 'Publish now'}
           </PrimaryBtn>
         </div>
       </div>
@@ -105,7 +200,7 @@ export function AnnouncementsTab() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.items.map((item) => (
-            <AnnouncementRow key={item.id} item={item} queryKey={queryKey} />
+            <AnnouncementRow key={item.id} item={item} queryKey={queryKey} activeUsers={stats?.activeUsers} />
           ))}
           {Math.ceil(data.total / LIMIT) > 1 && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
@@ -122,10 +217,11 @@ export function AnnouncementsTab() {
   )
 }
 
-function AnnouncementRow({ item, queryKey }: { item: AnnouncementItem; queryKey: QueryKey }) {
+function AnnouncementRow({ item, queryKey, activeUsers }: { item: AnnouncementItem; queryKey: QueryKey; activeUsers?: number }) {
   const qc = useQueryClient()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const status = announcementStatus(item)
 
   const pinMutation = useMutation({
     mutationFn: (next: boolean) => api.patch(`/admin/content/posts/${item.id}/pin`, { is_pinned: next }),
@@ -166,9 +262,14 @@ function AnnouncementRow({ item, queryKey }: { item: AnnouncementItem; queryKey:
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.4 }}>{item.content}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
+          <StatusPill status={status} />
           <span>{item.author.fullName ?? 'Unknown'}</span>
           <span>· {relativeTime(item.createdAt)}</span>
-          <span>· {item.reactionCount} reactions · {item.commentCount} comments</span>
+          {status === 'published' ? (
+            <span>· ≈{(activeUsers ?? 0).toLocaleString()} members reached · {item.reactionCount + item.commentCount} engagement</span>
+          ) : status === 'scheduled' && item.publishAt ? (
+            <span>· publishes {new Date(item.publishAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+          ) : null}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

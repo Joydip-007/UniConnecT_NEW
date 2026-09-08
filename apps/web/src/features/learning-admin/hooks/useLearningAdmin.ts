@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
+  AdminLearningPath,
+  CreateLearningPathInput,
   LearningAdminConfig,
   LearningAdminConfigInput,
   LearningAnalytics,
@@ -8,6 +10,7 @@ import type {
   PendingQuizBatch,
   PendingQuizBatchDetail,
   UpcomingQuizzes,
+  UpdateLearningPathInput,
 } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 
@@ -34,8 +37,8 @@ export function useUpdateLearningAdminConfig() {
 export function useTriggerLearningGenerate() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      api.post<{ data: { status: string } }>('/admin/learning/generate').then((r) => r.data.data),
+    mutationFn: (task: 'learning' | 'quiz' | 'both' = 'both') =>
+      api.post<{ data: { status: string } }>('/admin/learning/generate', { task }).then((r) => r.data.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin'] })
     },
@@ -145,5 +148,96 @@ export function useLearningAnalytics(days: number) {
         .get<{ data: LearningAnalytics }>('/admin/learning/analytics', { params: { days } })
         .then((r) => r.data.data),
     refetchInterval: 60000,
+  })
+}
+
+interface AdminLearningPathDetail extends AdminLearningPath {
+  units: Array<{
+    id: string
+    displayOrder: number
+    title: string
+    type: 'read' | 'video' | 'exercise' | 'quiz'
+    content: { body?: string; questions?: Array<{ q: string; options: string[]; answer: number }> } | null
+    completionRule: { passScore?: number } | null
+  }>
+}
+
+export function useAdminLearningPaths(query: { status?: 'all' | 'published' | 'draft'; category?: string }) {
+  return useQuery<AdminLearningPath[]>({
+    queryKey: ['learning-admin', 'paths', query],
+    queryFn: () =>
+      api.get<{ data: AdminLearningPath[] }>('/admin/learning/paths', { params: query }).then((r) => r.data.data),
+  })
+}
+
+export function usePathDetail(pathId: string | null) {
+  return useQuery<AdminLearningPathDetail>({
+    queryKey: ['learning-admin', 'path', pathId],
+    queryFn: () => api.get<{ data: AdminLearningPathDetail }>(`/admin/learning/paths/${pathId}`).then((r) => r.data.data),
+    enabled: !!pathId,
+  })
+}
+
+export function useCreateLearningPath() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateLearningPathInput) =>
+      api.post<{ data: AdminLearningPath }>('/admin/learning/paths', input).then((r) => r.data.data),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'paths'] }) },
+  })
+}
+
+export function useUpdateLearningPath() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ pathId, patch }: { pathId: string; patch: UpdateLearningPathInput }) =>
+      api.patch<{ data: AdminLearningPath }>(`/admin/learning/paths/${pathId}`, patch).then((r) => r.data.data),
+    onSuccess: (_data, { pathId }) => {
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'paths'] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] })
+    },
+  })
+}
+
+export function useSetPathPublished() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ pathId, isPublished }: { pathId: string; isPublished: boolean }) =>
+      api.patch<{ data: AdminLearningPath }>(`/admin/learning/paths/${pathId}/publish`, { isPublished }).then((r) => r.data.data),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'paths'] }) },
+  })
+}
+
+export function useCreatePathUnit(pathId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (unit: { title: string; type: string; content: Record<string, unknown>; completionRule?: { passScore?: number } }) =>
+      api.post(`/admin/learning/paths/${pathId}/units`, unit),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] }) },
+  })
+}
+
+export function useUpdatePathUnit(pathId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ unitId, patch }: { unitId: string; patch: Record<string, unknown> }) =>
+      api.patch(`/admin/learning/paths/${pathId}/units/${unitId}`, patch),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] }) },
+  })
+}
+
+export function useDeletePathUnit(pathId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (unitId: string) => api.delete(`/admin/learning/paths/${pathId}/units/${unitId}`),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] }) },
+  })
+}
+
+export function useReorderPathUnits(pathId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (unitIds: string[]) => api.patch(`/admin/learning/paths/${pathId}/units/reorder`, { unitIds }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] }) },
   })
 }

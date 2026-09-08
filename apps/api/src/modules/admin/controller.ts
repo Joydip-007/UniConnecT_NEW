@@ -5,6 +5,7 @@ import { sendPaginated, sendSuccess } from '../../utils/response'
 import { AppError } from '../../utils/errors'
 import { adminService } from './service'
 import { adminContentService } from './content.service'
+import { adminShuttleService } from './shuttle.service'
 import type {
   AdminFulfillRedemptionInput,
   AdminRedemptionListQuery,
@@ -13,8 +14,11 @@ import type {
   CreateBulkInvitationsInput,
   CreateDriverInput,
   CreateInvitationInput,
+  ListUsersQuery,
   PaginationQuery,
+  ResolveReportGroupInput,
   ResolveReportInput,
+  ShuttleOpsSettingsInput,
   ToggleActiveInput,
   TogglePinInput,
   TogglePublishInput,
@@ -28,16 +32,38 @@ export const getStats = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await adminService.getStats(universityId))
 })
 
+export const getShuttleStats = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await adminShuttleService.getStats(universityId))
+})
+
+export const getShuttleSettings = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await adminShuttleService.getSettings(universityId))
+})
+
+export const updateShuttleSettings = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const input = req.body as ShuttleOpsSettingsInput
+  sendSuccess(res, await adminShuttleService.updateSettings(universityId, input))
+})
+
 export const listUsers = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
-  const result = await adminService.listUsers(universityId, req.query as unknown as PaginationQuery)
+  const result = await adminService.listUsers(universityId, req.query as unknown as ListUsersQuery)
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
 
 export const listGroups = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
   const result = await adminService.listGroups(universityId, req.query as unknown as PaginationQuery)
-  sendPaginated(res, result.items, result.total, result.page, result.limit)
+  sendSuccess(res, {
+    items: result.items,
+    total: result.total,
+    page: result.page,
+    hasMore: result.page * result.limit < result.total,
+    summary: result.summary,
+  })
 })
 
 export const updateUserRole = asyncHandler(async (req: Request, res: Response) => {
@@ -50,6 +76,12 @@ export const updateUserStatus = asyncHandler(async (req: Request, res: Response)
   const { universityId } = getAdminContext(req)
   const userId = req.params.userId as string
   sendSuccess(res, await adminService.updateUserStatus(universityId, userId, req.body as UpdateUserStatusInput))
+})
+
+export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId: actorId } = getAdminContext(req)
+  const userId = req.params.userId as string
+  sendSuccess(res, await adminService.verifyUser(universityId, actorId, userId))
 })
 
 export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
@@ -68,6 +100,20 @@ export const resolveReport = asyncHandler(async (req: Request, res: Response) =>
   const { universityId, userId } = getAdminContext(req)
   const reportId = req.params.reportId as string
   sendSuccess(res, await adminService.resolveReport(universityId, userId, reportId, req.body as ResolveReportInput))
+})
+
+export const listReportedContentGroups = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const result = await adminService.listReportedContentGroups(universityId, req.query as unknown as PaginationQuery)
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const resolveReportGroup = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  const targetType = req.params.targetType as string
+  const targetId = req.params.targetId as string
+  const { action } = req.body as ResolveReportGroupInput
+  sendSuccess(res, await adminService.resolveReportGroup(universityId, userId, targetType, targetId, action))
 })
 
 export const listDeletionRequests = asyncHandler(async (req: Request, res: Response) => {
@@ -127,6 +173,11 @@ export const listInvitations = asyncHandler(async (req: Request, res: Response) 
   const { universityId } = getAdminContext(req)
   const result = await adminService.listInvitations(universityId, req.query as unknown as PaginationQuery)
   sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const listInviteBatches = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await adminService.listInviteBatches(universityId))
 })
 
 export const deleteInvitation = asyncHandler(async (req: Request, res: Response) => {

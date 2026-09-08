@@ -807,6 +807,21 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
 
 // ── ShuttleTab ────────────────────────────────────────────────────────────────
 
+interface ShuttleStats {
+  busesLive: number
+  activeRoutes: number
+  onDutyDrivers: number
+  onTimeRatePct: number | null
+  routes: { routeId: string; isLive: boolean }[]
+}
+
+interface ShuttleOpsSettings {
+  liveGpsEnabled: boolean
+  riderEtaEnabled: boolean
+  autoAssignEnabled: boolean
+  serviceAlertsEnabled: boolean
+}
+
 export function ShuttleTab() {
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
 
@@ -814,6 +829,26 @@ export function ShuttleTab() {
     queryKey: ['admin', 'shuttle', 'routes'],
     queryFn: () =>
       api.get<{ data: ShuttleRoute[] }>('/shuttle/routes?includeInactive=true').then((r) => r.data.data),
+  })
+
+  const { data: stats } = useQuery<ShuttleStats>({
+    queryKey: ['admin', 'shuttle', 'stats'],
+    queryFn: () => api.get<{ data: ShuttleStats }>('/admin/shuttle/stats').then((r) => r.data.data),
+    refetchInterval: 30_000,
+  })
+
+  const liveRouteIds = new Set((stats?.routes ?? []).filter((r) => r.isLive).map((r) => r.routeId))
+
+  const qc = useQueryClient()
+
+  const { data: settings } = useQuery<ShuttleOpsSettings>({
+    queryKey: ['admin', 'shuttle', 'settings'],
+    queryFn: () => api.get<{ data: ShuttleOpsSettings }>('/admin/shuttle/settings').then((r) => r.data.data),
+  })
+
+  const settingsMutation = useMutation({
+    mutationFn: (patch: Partial<ShuttleOpsSettings>) => api.patch('/admin/shuttle/settings', patch),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'shuttle', 'settings'] }) },
   })
 
   function selectRoute(id: string) {
@@ -837,7 +872,19 @@ export function ShuttleTab() {
         : null
 
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <ShuttleStatTile label="Buses live" value={stats ? String(stats.busesLive) : '—'} sub="broadcasting now" />
+        <ShuttleStatTile label="Active routes" value={stats ? String(stats.activeRoutes) : '—'} sub="in service today" />
+        <ShuttleStatTile label="On-duty drivers" value={stats ? String(stats.onDutyDrivers) : '—'} sub="across all routes" />
+        <ShuttleStatTile
+          label="On-time rate"
+          value={stats ? (stats.onTimeRatePct === null ? '—' : `${stats.onTimeRatePct}%`) : '—'}
+          sub={stats?.onTimeRatePct === null ? 'Not enough data yet' : 'today so far'}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
       {/* ── Route list ── */}
       <div style={{
         width: 268,
@@ -938,6 +985,23 @@ export function ShuttleTab() {
                     off
                   </span>
                 )}
+                {r.isActive && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    borderRadius: 'var(--r-pill)',
+                    padding: '2px 8px',
+                    flexShrink: 0,
+                    color: liveRouteIds.has(r.id) ? 'var(--uc-mint)' : 'var(--text-tertiary)',
+                    background: liveRouteIds.has(r.id) ? 'var(--uc-mint-bg)' : 'var(--surface-raised)',
+                    border: `0.5px solid ${liveRouteIds.has(r.id) ? 'var(--uc-mint-bdr)' : 'var(--border-default)'}`,
+                  }}>
+                    {liveRouteIds.has(r.id) ? 'Live' : 'Idle'}
+                  </span>
+                )}
               </button>
             )
           })
@@ -987,6 +1051,123 @@ export function ShuttleTab() {
           </div>
         )}
       </div>
+      </div>
+
+      <div style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: '20px 24px',
+      }}>
+        <p style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>Ops settings</p>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <OpsSettingToggle
+            label="Live GPS broadcast"
+            description="Drivers share location while on duty"
+            checked={settings?.liveGpsEnabled ?? true}
+            onChange={(v) => settingsMutation.mutate({ liveGpsEnabled: v })}
+          />
+          <OpsSettingToggle
+            label="Show rider ETA"
+            description="Estimate arrival times on the rider map"
+            checked={settings?.riderEtaEnabled ?? true}
+            onChange={(v) => settingsMutation.mutate({ riderEtaEnabled: v })}
+          />
+          {/* Auto-assign drivers: persisted preference only — there is no driver-to-route
+              assignment feature in the schema today. Flipping this has no runtime effect. */}
+          <OpsSettingToggle
+            label="Auto-assign drivers"
+            description="Match on-duty drivers to open routes"
+            checked={settings?.autoAssignEnabled ?? false}
+            onChange={(v) => settingsMutation.mutate({ autoAssignEnabled: v })}
+          />
+          {/* Service alerts: persisted preference only — there is no delay/route-change
+              notification pipeline in the codebase today. Flipping this has no runtime effect. */}
+          <OpsSettingToggle
+            label="Service alerts"
+            description="Notify riders of delays and route changes"
+            checked={settings?.serviceAlertsEnabled ?? true}
+            onChange={(v) => settingsMutation.mutate({ serviceAlertsEnabled: v })}
+            last
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OpsSettingToggle({
+  label,
+  description,
+  checked,
+  onChange,
+  last,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (value: boolean) => void
+  last?: boolean
+}) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 16,
+      padding: '14px 0',
+      borderBottom: last ? 'none' : '0.5px solid var(--border-default)',
+    }}>
+      <div>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{label}</p>
+        <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        style={{
+          flexShrink: 0,
+          width: 36,
+          height: 20,
+          borderRadius: 'var(--r-pill)',
+          border: 'none',
+          cursor: 'pointer',
+          position: 'relative',
+          background: checked ? 'var(--uc-indigo)' : 'var(--surface-raised)',
+          transition: 'background 150ms',
+        }}
+      >
+        <span style={{
+          position: 'absolute',
+          top: 2,
+          left: checked ? 18 : 2,
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: 'var(--on-accent)',
+          transition: 'left 150ms',
+        }} />
+      </button>
+    </div>
+  )
+}
+
+function ShuttleStatTile({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div style={{
+      background: 'var(--surface-card)',
+      border: '0.5px solid var(--border-default)',
+      borderRadius: 'var(--r-lg)',
+      padding: '16px 18px',
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>{sub}</div>
     </div>
   )
 }

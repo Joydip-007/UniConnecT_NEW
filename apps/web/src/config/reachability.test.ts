@@ -29,6 +29,10 @@ const REACHED_BY_CONTEXT = new Set<string>([
   PATHS.GROUP_DETAIL,
   PATHS.CONVERSATION,
   PATHS.TAG,
+  // Manage page for one learning path's units — reached via the "Manage" button on the
+  // admin learning library, same as GROUP_DETAIL is reached from the group list. It is a
+  // builder function rather than a plain pattern, so it's normalized with a placeholder id.
+  PATHS.ADMIN_LEARNING_PATH(':pathId'),
   // Owned by the avatar menu, which every role renders.
   PATHS.PROFILE,
   PATHS.SETTINGS,
@@ -74,7 +78,12 @@ function shellDestinations(role: UserRole): Set<string> {
 }
 
 describe('shell reachability', () => {
-  const navigable = Object.values(PATHS).filter((p) => !REACHED_BY_CONTEXT.has(p))
+  // Most PATHS entries are plain route-pattern strings; ADMIN_LEARNING_PATH is a builder
+  // function instead (it needs a real id at call sites), so it's excluded here and its
+  // normalized pattern is covered directly via the REACHED_BY_CONTEXT entry above.
+  const navigable = (Object.values(PATHS) as Array<string | ((id: string) => string)>)
+    .filter((p): p is string => typeof p === 'string')
+    .filter((p) => !REACHED_BY_CONTEXT.has(p))
 
   it.each(navigable)('%s is reachable from the shell for at least one role', (path) => {
     const roles = ROLES.filter((role) => shellDestinations(role).has(path))

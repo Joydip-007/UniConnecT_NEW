@@ -54,6 +54,7 @@ export const PATHS = {
   SETTINGS_PRIVACY: '/settings/privacy',
 
   ADMIN: '/admin',
+  ADMIN_LEARNING_PATH: (id: string) => `/admin/learning/paths/${id}`,
 } as const
 
 export type PathKey = keyof typeof PATHS

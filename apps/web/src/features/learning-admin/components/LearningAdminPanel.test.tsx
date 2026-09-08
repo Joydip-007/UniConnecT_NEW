@@ -12,6 +12,9 @@ const {
   discardPathMutate,
   approveQuizMutate,
   discardQuizMutate,
+  setPublishedMutate,
+  createPathMutate,
+  updatePathMutate,
   configData,
 } = vi.hoisted(() => ({
   updateMutate: vi.fn(),
@@ -21,6 +24,9 @@ const {
   discardPathMutate: vi.fn(),
   approveQuizMutate: vi.fn(),
   discardQuizMutate: vi.fn(),
+  setPublishedMutate: vi.fn(),
+  createPathMutate: vi.fn(),
+  updatePathMutate: vi.fn(),
   configData: {
     enabled: true,
     topics: [{ category: 'React', difficulty: 'intermediate' }],
@@ -54,7 +60,19 @@ vi.mock('../hooks/useLearningAdmin', () => ({
   useDiscardQuizBatch: () => ({ mutate: discardQuizMutate, isPending: false }),
   useUpcomingQuizzes: () => ({ data: { today: [], queuedByDepartment: [] } }),
   useLearningAnalytics: () => ({ data: null, isLoading: false }),
+  useAdminLearningPaths: () => ({ data: [], isLoading: false }),
+  useSetPathPublished: () => ({ mutate: setPublishedMutate, isPending: false }),
+  useCreateLearningPath: () => ({ mutate: createPathMutate, isPending: false, isError: false }),
+  useUpdateLearningPath: () => ({ mutate: updatePathMutate, isPending: false, isError: false }),
 }))
+
+function renderPanel() {
+  return render(
+    <MemoryRouter>
+      <LearningAdminPanel />
+    </MemoryRouter>,
+  )
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -63,11 +81,8 @@ beforeEach(() => {
 describe('LearningAdminPanel', () => {
   it('loads settings and saves with expected payload', async () => {
     const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <LearningAdminPanel />
-      </MemoryRouter>,
-    )
+    renderPanel()
+    await user.click(screen.getByRole('button', { name: /ai settings/i }))
 
     // Wait for load (synchronous with mocked data)
     expect(screen.getByDisplayValue('React')).toBeInTheDocument()
@@ -86,11 +101,8 @@ describe('LearningAdminPanel', () => {
 
   it('approve/discard buttons call the correct mutators', async () => {
     const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <LearningAdminPanel />
-      </MemoryRouter>,
-    )
+    renderPanel()
+    await user.click(screen.getByRole('button', { name: /ai settings/i }))
 
     // Path discard
     const discardBtns = screen.getAllByRole('button', { name: /discard/i })
@@ -103,27 +115,33 @@ describe('LearningAdminPanel', () => {
     expect(approveQuizMutate).toHaveBeenCalledWith('q1')
   })
 
-  it('hides quiz batches card when quizRequireApproval is false', () => {
+  it('hides quiz batches card when quizRequireApproval is false', async () => {
     configData.quizRequireApproval = false
-    render(
-      <MemoryRouter>
-        <LearningAdminPanel />
-      </MemoryRouter>,
-    )
+    const user = userEvent.setup()
+    renderPanel()
+    await user.click(screen.getByRole('button', { name: /ai settings/i }))
     expect(screen.queryByText('Pending quiz batches')).not.toBeInTheDocument()
     configData.quizRequireApproval = true // reset
   })
 
   it('saves current settings before generating', async () => {
     const user = userEvent.setup()
-    render(
-      <MemoryRouter>
-        <LearningAdminPanel />
-      </MemoryRouter>,
-    )
+    renderPanel()
+    await user.click(screen.getByRole('button', { name: /ai settings/i }))
 
     await user.click(screen.getByRole('button', { name: /generate now/i }))
     expect(updateMutateAsync).toHaveBeenCalled()
-    expect(triggerMutate).toHaveBeenCalled()
+    expect(triggerMutate).toHaveBeenCalledWith('both', expect.any(Object))
+  })
+})
+
+describe('LearningAdminPanel tabs', () => {
+  it('defaults to the Content library tab and can switch to AI settings', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+    expect(await screen.findByRole('button', { name: /new learning path/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /ai settings/i }))
+    expect(await screen.findByText(/learning ai preferences/i)).toBeInTheDocument()
   })
 })

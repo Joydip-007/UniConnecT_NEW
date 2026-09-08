@@ -88,3 +88,48 @@ export interface LearningAnalytics {
     passRate: number
   }>
 }
+
+export interface AdminLearningPathUnit {
+  id: string
+  displayOrder: number
+  title: string
+  type: 'read' | 'video' | 'exercise' | 'quiz'
+  content: { body?: string; questions?: PendingQuizQuestion[] } | null
+  completionRule: { passScore?: number } | null
+}
+
+export interface AdminLearningPath {
+  id: string
+  title: string
+  description: string | null
+  department: string | null
+  category: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  estimatedDays: number
+  isPublished: boolean
+  source: 'manual' | 'ai'
+  unitCount: number
+  enrolledCount: number
+  completedCount: number
+  completionRate: number
+  updatedAt: string
+}
+
+export interface CreateLearningPathInput {
+  title: string
+  description?: string | null
+  department?: string | null
+  category: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  estimatedDays: number
+  units: Array<{
+    title: string
+    type: 'read' | 'video' | 'exercise' | 'quiz'
+    content: Record<string, unknown>
+    completionRule?: { passScore?: number }
+  }>
+}
+
+export type UpdateLearningPathInput = Partial<
+  Pick<CreateLearningPathInput, 'title' | 'description' | 'department' | 'category' | 'difficulty' | 'estimatedDays'>
+>

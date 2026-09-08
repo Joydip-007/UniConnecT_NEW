@@ -14,16 +14,22 @@ import {
   getAllowedDomains,
   getMentorRequests,
   getStats,
+  getShuttleStats,
+  getShuttleSettings,
+  updateShuttleSettings,
   listAdminRedemptions,
   listContent,
   listDeletionRequests,
   resolveDeletionRequest,
   listGroups,
   listInvitations,
+  listInviteBatches,
   listMentors,
+  listReportedContentGroups,
   listReports,
   listUsers,
   resolveReport,
+  resolveReportGroup,
   toggleActive,
   togglePin,
   togglePublish,
@@ -31,6 +37,7 @@ import {
   updateAllowedDomains,
   updateUserRole,
   updateUserStatus,
+  verifyUser,
 } from './controller'
 import {
   AdminFulfillRedemptionSchema,
@@ -40,8 +47,11 @@ import {
   CreateBulkInvitationsSchema,
   CreateDriverSchema,
   CreateInvitationSchema,
+  ListUsersQuerySchema,
   PaginationQuerySchema,
+  ResolveReportGroupSchema,
   ResolveReportSchema,
+  ShuttleOpsSettingsSchema,
   ToggleActiveSchema,
   TogglePinSchema,
   TogglePublishSchema,
@@ -64,14 +74,25 @@ adminRouter.use(requireAuth, resolveUniversity, requireRole('faculty', 'admin'))
 
 adminRouter.get('/stats', requireRole('admin'), getStats)
 
-adminRouter.get('/users', validateRequest({ query: PaginationQuerySchema }), listUsers)
+adminRouter.get('/shuttle/stats', requireRole('admin'), getShuttleStats)
+adminRouter.get('/shuttle/settings', requireRole('admin'), getShuttleSettings)
+adminRouter.patch('/shuttle/settings', requireRole('admin'), validate(ShuttleOpsSettingsSchema), updateShuttleSettings)
+
+adminRouter.get('/users', validateRequest({ query: ListUsersQuerySchema }), listUsers)
 adminRouter.get('/groups', validateRequest({ query: PaginationQuerySchema }), listGroups)
 adminRouter.patch('/users/:userId/role', requireRole('admin'), validate(UpdateUserRoleSchema), updateUserRole)
 adminRouter.patch('/users/:userId/status', requireRole('admin'), validate(UpdateUserStatusSchema), updateUserStatus)
+adminRouter.patch('/users/:userId/verify', requireRole('admin'), verifyUser)
 adminRouter.delete('/users/:userId', requireRole('admin'), deleteUser)
 adminRouter.post('/users/driver', requireRole('admin'), validate(CreateDriverSchema), createDriver)
 
 adminRouter.get('/reports', validateRequest({ query: PaginationQuerySchema }), listReports)
+adminRouter.get('/reports/grouped', validateRequest({ query: PaginationQuerySchema }), listReportedContentGroups)
+adminRouter.patch(
+  '/reports/target/:targetType/:targetId',
+  validate(ResolveReportGroupSchema),
+  resolveReportGroup,
+)
 adminRouter.patch('/reports/:reportId', validate(ResolveReportSchema), resolveReport)
 
 adminRouter.get('/deletion-requests', validateRequest({ query: PaginationQuerySchema }), listDeletionRequests)
@@ -85,6 +106,7 @@ adminRouter.patch(
 adminRouter.post('/invitations/bulk', requireRole('admin'), validate(CreateBulkInvitationsSchema), createBulkInvitations)
 adminRouter.post('/invitations', validate(CreateInvitationSchema), createInvitation)
 adminRouter.get('/invitations', validateRequest({ query: PaginationQuerySchema }), listInvitations)
+adminRouter.get('/invitations/batches', requireRole('admin'), listInviteBatches)
 adminRouter.delete('/invitations/:invitationId', requireRole('admin'), deleteInvitation)
 
 adminRouter.get('/university/domains', requireRole('admin'), getAllowedDomains)

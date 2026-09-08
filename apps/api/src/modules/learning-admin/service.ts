@@ -1,7 +1,15 @@
 import { db } from '../../config/db'
-import { notFound } from '../../utils/errors'
+import { badRequest, notFound } from '../../utils/errors'
 import { aiContentQueue } from '../../queues/ai-content.queue'
-import type { LearningAdminConfigInput } from './schema'
+import type {
+  LearningAdminConfigInput,
+  AdminListPathsQuery,
+  CreateLearningPathBody,
+  UpdateLearningPathBody,
+  CreatePathUnitBody,
+  UpdatePathUnitBody,
+} from './schema'
+import type { AdminLearningPath, AdminLearningPathUnit } from '@uniconnect/shared'
 
 interface LearningTopic {
   category: string
@@ -171,9 +179,13 @@ export class LearningAdminService {
     if (count === 0) throw notFound()
   }
 
-  async triggerGenerateNow(universityId: string): Promise<void> {
-    await aiContentQueue.add({ task: 'learning-gen', universityId })
-    await aiContentQueue.add({ task: 'quiz-gen', universityId })
+  async triggerGenerateNow(universityId: string, task: 'learning' | 'quiz' | 'both' = 'both'): Promise<void> {
+    if (task === 'learning' || task === 'both') {
+      await aiContentQueue.add({ task: 'learning-gen', universityId })
+    }
+    if (task === 'quiz' || task === 'both') {
+      await aiContentQueue.add({ task: 'quiz-gen', universityId })
+    }
   }
 
   /**
@@ -217,6 +229,108 @@ export class LearningAdminService {
         queuedBatches: Number(row.queuedBatches),
       })),
     }
+  }
+
+  /** Lists every learning path for a university (published and draft) with per-path enrollment/completion aggregates. */
+  async listAdminPaths(universityId: string, query: AdminListPathsQuery): Promise<AdminLearningPath[]> {
+    let base = db('skill_paths as p')
+      .where('p.university_id', universityId)
+      .leftJoin('skill_path_units as u', 'u.path_id', 'p.id')
+      .leftJoin('skill_path_enrollments as e', 'e.path_id', 'p.id')
+      .leftJoin('unit_completions as c', 'c.path_id', 'p.id')
+
+    if (query.status === 'published') base = base.where('p.is_published', true)
+    if (query.status === 'draft') base = base.where('p.is_published', false)
+    if (query.category) base = base.where('p.category', query.category)
+
+    const rows = await base
+      .groupBy('p.id')
+      .orderBy('p.updated_at', 'desc')
+      .select<
+        {
+          id: string
+          title: string
+          description: string | null
+          department: string | null
+          category: string
+          difficulty: 'beginner' | 'intermediate' | 'advanced'
+          estimated_days: number
+          is_published: boolean
+          source: 'manual' | 'ai'
+          updated_at: string
+          unitCount: string
+          enrolledCount: string
+          completedCount: string
+        }[]
+      >(
+        'p.id', 'p.title', 'p.description', 'p.department', 'p.category', 'p.difficulty',
+        'p.estimated_days', 'p.is_published', 'p.source', 'p.updated_at',
+        db.raw('count(distinct u.id) as "unitCount"'),
+        db.raw("count(distinct e.id) filter (where e.status in ('active','completed')) as \"enrolledCount\""),
+        db.raw('count(distinct c.id) as "completedCount"'),
+      )
+
+    return rows.map((row) => {
+      const unitCount = Number(row.unitCount)
+      const enrolledCount = Number(row.enrolledCount)
+      const completedCount = Number(row.completedCount)
+      // Avg completion = share of (enrollment × unit) pairs actually completed —
+      // matches the mockup's "NN% avg completion" per path.
+      const possible = unitCount * enrolledCount
+      return {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        department: row.department,
+        category: row.category,
+        difficulty: row.difficulty,
+        estimatedDays: row.estimated_days,
+        isPublished: row.is_published,
+        source: row.source,
+        unitCount,
+        enrolledCount,
+        completedCount,
+        completionRate: possible > 0 ? completedCount / possible : 0,
+        updatedAt: row.updated_at,
+      }
+    })
+  }
+
+  /** Transactionally inserts a manual, unpublished path plus its ordered units. */
+  async createPath(universityId: string, input: CreateLearningPathBody): Promise<AdminLearningPath> {
+    const pathId = await db.transaction(async (trx) => {
+      const [path] = await trx('skill_paths')
+        .insert({
+          university_id: universityId,
+          title: input.title,
+          description: input.description ?? null,
+          department: input.department ?? null,
+          category: input.category,
+          difficulty: input.difficulty,
+          estimated_days: input.estimatedDays,
+          is_published: false,
+          source: 'manual',
+        })
+        .returning<{ id: string }[]>('id')
+
+      await trx('skill_path_units').insert(
+        input.units.map((u, i) => ({
+          path_id: path.id,
+          display_order: i + 1,
+          title: u.title,
+          type: u.type,
+          content: JSON.stringify(u.content),
+          completion_rule: JSON.stringify(u.completionRule ?? {}),
+        })),
+      )
+
+      return path.id
+    })
+
+    const rows = await this.listAdminPaths(universityId, { status: 'all' })
+    const created = rows.find((r) => r.id === pathId)
+    if (!created) throw notFound()
+    return created
   }
 
   /** Participation + outcome analytics for learning paths and daily quizzes, last `days`. */
@@ -272,6 +386,134 @@ export class LearningAdminService {
         passRate: Number(row.attemptCount) > 0 ? Number(row.passCount) / Number(row.attemptCount) : 0,
       })),
     }
+  }
+
+  private async findOwnedPath(universityId: string, pathId: string): Promise<void> {
+    const path = await db('skill_paths').where({ id: pathId, university_id: universityId }).first('id')
+    if (!path) throw notFound('Learning path not found')
+  }
+
+  async updatePath(universityId: string, pathId: string, patch: UpdateLearningPathBody): Promise<AdminLearningPath> {
+    await this.findOwnedPath(universityId, pathId)
+    const columnPatch: Record<string, unknown> = { updated_at: db.fn.now() }
+    if (patch.title !== undefined) columnPatch.title = patch.title
+    if (patch.description !== undefined) columnPatch.description = patch.description
+    if (patch.department !== undefined) columnPatch.department = patch.department
+    if (patch.category !== undefined) columnPatch.category = patch.category
+    if (patch.difficulty !== undefined) columnPatch.difficulty = patch.difficulty
+    if (patch.estimatedDays !== undefined) columnPatch.estimated_days = patch.estimatedDays
+
+    await db('skill_paths').where({ id: pathId }).update(columnPatch)
+    const [updated] = await this.listAdminPaths(universityId, { status: 'all' }).then((rows) =>
+      rows.filter((r) => r.id === pathId),
+    )
+    return updated
+  }
+
+  async setPathPublished(universityId: string, pathId: string, isPublished: boolean): Promise<AdminLearningPath> {
+    await this.findOwnedPath(universityId, pathId)
+    await db('skill_paths').where({ id: pathId }).update({ is_published: isPublished, updated_at: db.fn.now() })
+    const [updated] = await this.listAdminPaths(universityId, { status: 'all' }).then((rows) =>
+      rows.filter((r) => r.id === pathId),
+    )
+    return updated
+  }
+
+  /** Full path + ordered units, for the Manage page's initial load (Task 10). */
+  async getPathDetail(universityId: string, pathId: string): Promise<AdminLearningPath & { units: AdminLearningPathUnit[] }> {
+    const [path] = await this.listAdminPaths(universityId, { status: 'all' }).then((rows) =>
+      rows.filter((r) => r.id === pathId),
+    )
+    if (!path) throw notFound('Learning path not found')
+
+    const units = await db('skill_path_units')
+      .where({ path_id: pathId })
+      .orderBy('display_order', 'asc')
+      .select<{ id: string; display_order: number; title: string; type: AdminLearningPathUnit['type']; content: unknown; completion_rule: unknown }[]>(
+        'id', 'display_order', 'title', 'type', 'content', 'completion_rule',
+      )
+
+    return {
+      ...path,
+      units: units.map((u) => ({
+        id: u.id,
+        displayOrder: u.display_order,
+        title: u.title,
+        type: u.type,
+        content: u.content as AdminLearningPathUnit['content'],
+        completionRule: u.completion_rule as AdminLearningPathUnit['completionRule'],
+      })),
+    }
+  }
+
+  async createUnit(universityId: string, pathId: string, input: CreatePathUnitBody): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+    const [{ maxOrder }] = await db('skill_path_units')
+      .where({ path_id: pathId })
+      .max('display_order as maxOrder')
+    await db('skill_path_units').insert({
+      path_id: pathId,
+      display_order: Number(maxOrder ?? 0) + 1,
+      title: input.title,
+      type: input.type,
+      content: JSON.stringify(input.content),
+      completion_rule: JSON.stringify(input.completionRule ?? {}),
+    })
+    await db('skill_paths').where({ id: pathId }).update({ updated_at: db.fn.now() })
+  }
+
+  async updateUnit(universityId: string, pathId: string, unitId: string, patch: UpdatePathUnitBody): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+    const columnPatch: Record<string, unknown> = {}
+    if (patch.title !== undefined) columnPatch.title = patch.title
+    if (patch.type !== undefined) columnPatch.type = patch.type
+    if (patch.content !== undefined) columnPatch.content = JSON.stringify(patch.content)
+    if (patch.completionRule !== undefined) columnPatch.completion_rule = JSON.stringify(patch.completionRule)
+
+    const updated = await db('skill_path_units').where({ id: unitId, path_id: pathId }).update(columnPatch)
+    if (updated === 0) throw notFound('Unit not found')
+    await db('skill_paths').where({ id: pathId }).update({ updated_at: db.fn.now() })
+  }
+
+  async deleteUnit(universityId: string, pathId: string, unitId: string): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+    const deleted = await db('skill_path_units').where({ id: unitId, path_id: pathId }).delete()
+    if (deleted === 0) throw notFound('Unit not found')
+    await db('skill_paths').where({ id: pathId }).update({ updated_at: db.fn.now() })
+  }
+
+  async reorderUnits(universityId: string, pathId: string, unitIds: string[]): Promise<void> {
+    await this.findOwnedPath(universityId, pathId)
+
+    // The two-phase staged update below is only collision-safe for a complete reorder:
+    // a partial submission (omitting a unit) can still collide with an untouched unit's
+    // display_order in phase 2, violating the (path_id, display_order) unique constraint.
+    const existingUnits = await db('skill_path_units').where({ path_id: pathId }).select<{ id: string }[]>('id')
+    const existingIds = new Set(existingUnits.map((u) => u.id))
+    const submittedIds = new Set(unitIds)
+    const sameSet =
+      existingIds.size === submittedIds.size && [...existingIds].every((id) => submittedIds.has(id))
+    if (!sameSet) {
+      throw badRequest('unitIds must include every unit in the path exactly once')
+    }
+
+    await db.transaction(async (trx) => {
+      // Two-phase update: `skill_path_units` has a unique (path_id, display_order)
+      // constraint, so writing final positions in a single pass can collide mid-loop
+      // (e.g. moving unit B into slot 1 while unit A still occupies it). Stage every
+      // row onto a negative, collision-free offset first, then assign final positions.
+      for (let i = 0; i < unitIds.length; i++) {
+        const staged = await trx('skill_path_units')
+          .where({ id: unitIds[i], path_id: pathId })
+          .update({ display_order: -(i + 1) })
+        if (staged === 0) throw notFound('Unit not found')
+      }
+      for (let i = 0; i < unitIds.length; i++) {
+        await trx('skill_path_units')
+          .where({ id: unitIds[i], path_id: pathId })
+          .update({ display_order: i + 1 })
+      }
+    })
   }
 
   /** Ensures a university_settings row exists; returns the AI-learning columns. */

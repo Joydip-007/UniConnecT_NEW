@@ -35,7 +35,14 @@ interface Stats {
   reports: number
   activeUsers: number
   usersByRole: { role: string; count: number }[]
+  verificationsByRole: { role: string; count: number }[]
   postsByDay: { date: string; count: number }[]
+  escalatedReports: number
+  verificationRequests: number
+  deletionRequests: number
+  resolvedPct7d: number
+  pendingInviteBatches: number
+  moderationHealth: { reportsOpen: number; resolvedPct7d: number; medianResponseHours: number; repeatOffenders: number }
 }
 
 interface AdminUser {
@@ -49,19 +56,6 @@ interface AdminUser {
   profile: { fullName: string; avatarUrl: string | null; department: string | null; batchYear: string | null }
 }
 
-interface Report {
-  id: string
-  reporterId: string
-  reporterName: string | null
-  targetId: string
-  targetType: string
-  reason: string
-  description: string | null
-  status: string
-  createdAt: string
-  resolvedAt: string | null
-}
-
 interface Invitation {
   id: string
   email: string
@@ -69,6 +63,16 @@ interface Invitation {
   token: string
   isUsed: boolean
   expiresAt: string
+  createdAt: string
+}
+
+interface InviteBatch {
+  id: string
+  label: string
+  role: string
+  total: number
+  accepted: number
+  expiresAt: string | null
   createdAt: string
 }
 
@@ -85,68 +89,13 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function daysLeft(iso: string | null): number | null {
+  if (!iso) return null
+  const ms = new Date(iso).getTime() - Date.now()
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
+}
+
 // ── Stat cards ────────────────────────────────────────────────────────────────
-
-function UsersStatCard({ total, active }: { total: number; active: number }) {
-  const pct = total > 0 ? Math.round((active / total) * 100) : 0
-  return (
-    <div style={{
-      background: 'var(--surface-card)',
-      border: '0.5px solid var(--border-default)',
-      borderRadius: 'var(--r-lg)',
-      padding: '20px 24px',
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 10 }}>
-        Total users
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-        <span style={{ fontSize: 40, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
-          {total.toLocaleString()}
-        </span>
-        <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-          {active.toLocaleString()} active
-        </span>
-      </div>
-      <div style={{ marginTop: 14, height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: '100%',
-          background: 'var(--uc-indigo)',
-          borderRadius: 'var(--r-pill)',
-          transform: `scaleX(${pct / 100})`,
-          transformOrigin: 'left center',
-          transition: 'transform 0.6s var(--ease-out-strong)',
-        }} />
-      </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-        {pct}% active in 30 days
-      </div>
-    </div>
-  )
-}
-
-function ReportsStatCard({ count }: { count: number }) {
-  const hot = count > 0
-  return (
-    <div style={{
-      background: hot ? 'var(--uc-orange-bg)' : 'var(--surface-card)',
-      border: `0.5px solid ${hot ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
-      borderRadius: 'var(--r-lg)',
-      padding: '20px 24px',
-      transition: 'background 0.3s, border-color 0.3s',
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 10 }}>
-        Open reports
-      </div>
-      <div style={{ fontSize: 40, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>
-        {count.toLocaleString()}
-      </div>
-      <div style={{ marginTop: 8, fontSize: 12, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)', opacity: hot ? 0.85 : 1 }}>
-        {hot ? 'Needs review' : 'All clear'}
-      </div>
-    </div>
-  )
-}
 
 function ContentMetricsStrip({ stats }: { stats: Stats }) {
   const metrics: { label: string; value: number }[] = [
@@ -420,7 +369,55 @@ function AllowedDomainsPanel() {
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
 
-function InsightsTab() {
+function MetricTile({ label, value, hint, hot }: { label: string; value: string; hint: string; hot?: boolean }) {
+  return (
+    <div style={{
+      background: hot ? 'var(--uc-orange-bg)' : 'var(--surface-card)',
+      border: `0.5px solid ${hot ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
+      borderRadius: 'var(--r-lg)',
+      padding: '16px 20px',
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div style={{ marginTop: 6, fontSize: 12, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)' }}>{hint}</div>
+    </div>
+  )
+}
+
+function NeedsAttentionList({ stats, onNavigate }: { stats: Stats; onNavigate: (tab: Tab) => void }) {
+  const rows = [
+    { label: 'Escalated reports', value: stats.escalatedReports, tab: 'moderation' as Tab },
+    { label: 'Verification requests', value: stats.verificationRequests, tab: 'members' as Tab },
+    { label: 'Invite batches expiring', value: stats.pendingInviteBatches, tab: 'members' as Tab },
+  ]
+  return (
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Needs attention</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {rows.map((r) => (
+          <button
+            key={r.label}
+            type="button"
+            onClick={() => onNavigate(r.tab)}
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '9px 10px', borderRadius: 'var(--r-md)', border: 'none',
+              background: 'transparent', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)',
+              transition: 'background 150ms',
+            }}
+          >
+            <span>{r.label}</span>
+            <Badge variant={r.value > 0 ? 'neutral' : 'alumni'}>{r.value}</Badge>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InsightsTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
   const { data } = useQuery<Stats>({
     queryKey: ['admin', 'stats'],
     queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
@@ -430,14 +427,32 @@ function InsightsTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <UsersStatCard total={data.users} active={data.activeUsers} />
-        <ReportsStatCard count={data.reports} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <MetricTile label="Active members" value={data.activeUsers.toLocaleString()} hint={`of ${data.users.toLocaleString()} total`} />
+        <MetricTile label="Posts today" value={String(data.postsByDay[data.postsByDay.length - 1]?.count ?? 0)} hint="vs. last 7-day avg" />
+        <MetricTile label="Reports resolved" value={`${data.resolvedPct7d}%`} hint="last 7 days" />
+        <MetricTile
+          label="Pending invites"
+          value={`${data.pendingInviteBatches} batch${data.pendingInviteBatches === 1 ? '' : 'es'}`}
+          hint="expiring soon"
+          hot={data.pendingInviteBatches > 0}
+        />
       </div>
-      <ContentMetricsStrip stats={data} />
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
         <ActivityChart postsByDay={data.postsByDay} />
         <RoleBreakdown usersByRole={data.usersByRole} total={data.users} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Content mix</span>
+            <GhostBtn onClick={() => onNavigate('moderation')} style={{ fontSize: 12, padding: '4px 10px' }}>
+              Review all
+            </GhostBtn>
+          </div>
+          <ContentMetricsStrip stats={data} />
+        </div>
+        <NeedsAttentionList stats={data} onNavigate={onNavigate} />
       </div>
       <AllowedDomainsPanel />
     </div>
@@ -770,6 +785,19 @@ function UsersTab() {
     },
   })
 
+  const { data: stats } = useQuery<Stats>({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
+  })
+
+  const verifyMutation = useMutation({
+    mutationFn: (userId: string) => api.patch(`/admin/users/${userId}/verify`, {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
+  })
+
   function handleConfirm() {
     if (!modal) return
     if (modal.variant === 'delete') {
@@ -800,6 +828,36 @@ function UsersTab() {
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
           {data.total.toLocaleString()} users total
         </p>
+
+        {stats && stats.verificationsByRole.length > 0 && (
+          <div style={{
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-lg)',
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Verification queue</span>
+              <Badge variant="pinned">
+                {stats.verificationsByRole.reduce((sum, r) => sum + r.count, 0)} waiting
+              </Badge>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {stats.verificationsByRole.map((r) => (
+                <span key={r.role} style={{
+                  fontSize: 12, color: 'var(--text-secondary)',
+                  background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)',
+                  borderRadius: 'var(--r-pill)', padding: '4px 10px',
+                }}>
+                  {ROLE_LABELS[r.role] ?? r.role}: {r.count}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {data.items.map((u) => {
@@ -882,6 +940,28 @@ function UsersTab() {
 
                   {!isSelf && (
                     <>
+                      {!u.isVerified && (
+                        <button
+                          type="button"
+                          title="Mark verified"
+                          onClick={() => verifyMutation.mutate(u.id)}
+                          disabled={verifyMutation.isPending}
+                          style={{
+                            background: 'var(--uc-mint-bg)',
+                            border: '0.5px solid var(--uc-mint-bdr)',
+                            borderRadius: 'var(--r-sm)',
+                            cursor: verifyMutation.isPending ? 'not-allowed' : 'pointer',
+                            padding: '5px 6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--uc-mint)',
+                          }}
+                        >
+                          <ShieldCheckIcon size={15} />
+                        </button>
+                      )}
+
                       {/* Ban / Unban */}
                       <button
                         type="button"
@@ -1060,6 +1140,7 @@ function InvitationsTab() {
   const [bulkText, setBulkText] = useState('')
   const [bulkRole, setBulkRole] = useState<UserRole>('student')
   const [bulkDays, setBulkDays] = useState(7)
+  const [bulkLabel, setBulkLabel] = useState('')
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const limit = 20
 
@@ -1068,6 +1149,11 @@ function InvitationsTab() {
     queryFn: () =>
       api.get<{ data: Paginated<Invitation> }>(`/admin/invitations?page=${page}&limit=${limit}`)
         .then((r) => r.data.data),
+  })
+
+  const { data: batches } = useQuery<InviteBatch[]>({
+    queryKey: ['admin', 'invite-batches'],
+    queryFn: () => api.get<{ data: InviteBatch[] }>('/admin/invitations/batches').then((r) => r.data.data),
   })
 
   const singleMutation = useMutation({
@@ -1085,10 +1171,12 @@ function InvitationsTab() {
 
   const bulkMutation = useMutation({
     mutationFn: (emails: string[]) =>
-      api.post('/admin/invitations/bulk', { emails, role: bulkRole, expires_in_days: bulkDays }),
+      api.post('/admin/invitations/bulk', { emails, role: bulkRole, expires_in_days: bulkDays, batch_label: bulkLabel.trim() }),
     onSuccess: (_data, emails) => {
       void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'invite-batches'] })
       setBulkText('')
+      setBulkLabel('')
       flash(`${emails.length} invitation${emails.length === 1 ? '' : 's'} sent`)
     },
   })
@@ -1246,6 +1334,13 @@ function InvitationsTab() {
                 ))}
               </select>
             </div>
+            <input
+              type="text"
+              placeholder="Batch name, e.g. CSE Fall 2026 intake"
+              value={bulkLabel}
+              onChange={(e) => setBulkLabel(e.target.value)}
+              style={inputStyle}
+            />
             <textarea
               value={bulkText}
               onChange={(e) => setBulkText(e.target.value)}
@@ -1265,7 +1360,7 @@ function InvitationsTab() {
             )}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <PrimaryBtn
-                disabled={parsedEmails.length === 0 || parsedEmails.length > 50 || bulkMutation.isPending}
+                disabled={parsedEmails.length === 0 || parsedEmails.length > 50 || !bulkLabel.trim() || bulkMutation.isPending}
                 onClick={() => bulkMutation.mutate(parsedEmails)}
               >
                 {bulkMutation.isPending
@@ -1305,6 +1400,45 @@ function InvitationsTab() {
           </div>
         )}
       </div>
+
+      {/* ── Invite batches ── */}
+      {batches !== undefined && batches.length > 0 && (
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: '20px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Invite batches</span>
+          {batches.map((b) => {
+            const pct = b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0
+            const left = daysLeft(b.expiresAt)
+            return (
+              <div key={b.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{b.label}</span>
+                  <Badge variant="neutral">{b.role}</Badge>
+                </div>
+                <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 'var(--r-pill)', background: 'var(--uc-mint)',
+                    transform: `scaleX(${pct / 100})`, transformOrigin: 'left center',
+                  }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                  <span>{b.accepted} of {b.total} accepted · {pct}%</span>
+                  <span style={{ color: left !== null && left <= 3 ? 'var(--uc-orange-l)' : 'var(--text-tertiary)' }}>
+                    {left === null ? 'all resolved' : `${left} day${left === 1 ? '' : 's'} left`}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Past invitations ── */}
       {isLoading || !data ? (
@@ -1370,122 +1504,155 @@ function InvitationsTab() {
   )
 }
 
-// ── Reports tab ───────────────────────────────────────────────────────────────
+// ── Moderation tab (grouped reported content + health panel + per-kind content review) ──
 
-function ReportsTab() {
+interface ReportGroup {
+  targetId: string
+  targetType: string
+  title: string
+  severity: 'high' | 'medium' | 'low'
+  reason: string
+  reportCount: number
+  lastReportedAt: string
+  removable: boolean
+}
+
+const SEVERITY_STYLE: Record<ReportGroup['severity'], { bg: string; bdr: string; text: string; label: string }> = {
+  high: { bg: 'var(--uc-red-bg)', bdr: 'var(--uc-red-bdr)', text: 'var(--uc-red)', label: 'High' },
+  medium: { bg: 'var(--uc-amber-bg)', bdr: 'var(--uc-amber-bdr)', text: 'var(--uc-amber-l)', label: 'Medium' },
+  low: { bg: 'var(--surface-raised)', bdr: 'var(--border-default)', text: 'var(--text-tertiary)', label: 'Low' },
+}
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.round(diffMs / 60000)
+  if (mins < 60) return `${mins} min ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.round(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
+function ReportedContentTab() {
   const qc = useQueryClient()
-  const [page, setPage] = useState(1)
-  const limit = 20
 
-  const { data, isLoading } = useQuery<Paginated<Report>>({
-    queryKey: ['admin', 'reports', page],
-    queryFn: () =>
-      api.get<{ data: Paginated<Report> }>(`/admin/reports?page=${page}&limit=${limit}`)
-        .then((r) => r.data.data),
+  const { data, isLoading } = useQuery<{ items: ReportGroup[]; total: number }>({
+    queryKey: ['admin', 'reports', 'grouped'],
+    queryFn: () => api.get<{ data: { items: ReportGroup[]; total: number } }>('/admin/reports/grouped?limit=50').then((r) => r.data.data),
   })
 
-  const resolveMutation = useMutation({
-    mutationFn: ({ reportId, status }: { reportId: string; status: string }) =>
-      api.patch(`/admin/reports/${reportId}`, { status }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'reports'] }) },
+  const actionMutation = useMutation({
+    mutationFn: ({ targetType, targetId, action }: { targetType: string; targetId: string; action: 'remove' | 'dismiss' }) =>
+      api.patch(`/admin/reports/target/${targetType}/${targetId}`, { action }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['admin', 'reports', 'grouped'] })
+      void qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
   })
 
-  if (isLoading || !data) return <Spinner />
-
-  const totalPages = Math.ceil(data.total / limit)
+  const items = data?.items ?? []
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-        {data.total.toLocaleString()} reports
-      </p>
-
-      {data.items.length === 0 && (
-        <div style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '48px 0',
-          textAlign: 'center',
-          fontSize: 14,
-          color: 'var(--text-tertiary)',
-        }}>
-          No reports yet
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {data.items.map((r) => (
-          <div key={r.id} style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-md)',
-            padding: '16px 18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.reason}</span>
-                  <Badge variant="neutral">{r.targetType}</Badge>
-                  <Badge variant={r.status === 'pending' ? 'dept' : r.status === 'resolved' ? 'alumni' : 'neutral'}>
-                    {r.status}
-                  </Badge>
-                </div>
-                {r.description && (
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-                    {r.description}
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 4 }}>
+      <h2 style={{ margin: 0, padding: '14px 16px 8px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Reported content</h2>
+      {isLoading ? (
+        <Spinner />
+      ) : items.length === 0 ? (
+        <div style={{ padding: '32px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>Nothing reported right now</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {items.map((item) => {
+            const sev = SEVERITY_STYLE[item.severity]
+            return (
+              <div
+                key={`${item.targetType}:${item.targetId}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: '0.5px solid var(--border-default)' }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.title}
                   </p>
-                )}
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  Reported by {r.reporterName ?? 'unknown'} · {fmtDate(r.createdAt)}
-                </span>
-              </div>
-
-              {r.status === 'pending' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    <span style={{ background: sev.bg, border: `0.5px solid ${sev.bdr}`, color: sev.text, borderRadius: 'var(--r-pill)', padding: '1px 8px', fontWeight: 500 }}>
+                      {sev.label}
+                    </span>
+                    <span>{item.reason}</span>
+                    <span>·</span>
+                    <span>{item.reportCount} report{item.reportCount === 1 ? '' : 's'}</span>
+                    <span>·</span>
+                    <span>{relativeTime(item.lastReportedAt)}</span>
+                  </div>
+                </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  {item.removable && (
+                    <GhostBtn
+                      onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'remove' })}
+                      disabled={actionMutation.isPending}
+                      style={{ fontSize: 12, padding: '4px 10px', color: 'var(--uc-red)' }}
+                    >
+                      Remove
+                    </GhostBtn>
+                  )}
                   <GhostBtn
-                    onClick={() => resolveMutation.mutate({ reportId: r.id, status: 'resolved' })}
-                    disabled={resolveMutation.isPending}
-                    style={{ fontSize: 12, padding: '4px 10px' }}
-                  >
-                    Resolve
-                  </GhostBtn>
-                  <GhostBtn
-                    onClick={() => resolveMutation.mutate({ reportId: r.id, status: 'dismissed' })}
-                    disabled={resolveMutation.isPending}
+                    onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'dismiss' })}
+                    disabled={actionMutation.isPending}
                     style={{ fontSize: 12, padding: '4px 10px' }}
                   >
                     Dismiss
                   </GhostBtn>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
-          <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
-            {page} / {totalPages}
-          </span>
-          <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
 
-// ── Moderation tab (reports + per-kind content review, merged) ────────────────
+function ModerationHealthTile({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
+      <div style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)' }}>{value}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{hint}</div>
+    </div>
+  )
+}
+
+function ModerationHealthPanel({ health }: { health: Stats['moderationHealth'] }) {
+  return (
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Moderation health</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <ModerationHealthTile label="Reports open" value={String(health.reportsOpen)} hint="awaiting action" />
+        <ModerationHealthTile label="Resolved" value={`${health.resolvedPct7d}%`} hint="last 7 days" />
+        <ModerationHealthTile label="Median response" value={`${health.medianResponseHours}h`} hint="target 6h" />
+        <ModerationHealthTile label="Repeat offenders" value={String(health.repeatOffenders)} hint="flagged twice+" />
+      </div>
+    </div>
+  )
+}
 
 function ModerationTab() {
+  const { data: stats } = useQuery<Stats>({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
+  })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <ReportsTab />
+      {stats && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <MetricTile label="Escalated reports" value={String(stats.escalatedReports)} hint="high severity, open" hot={stats.escalatedReports > 0} />
+          <MetricTile label="Verification requests" value={String(stats.verificationRequests)} hint="unverified accounts" />
+          <MetricTile label="Deletion requests" value={String(stats.deletionRequests)} hint="awaiting review" />
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12, alignItems: 'start' }}>
+        <ReportedContentTab />
+        {stats && <ModerationHealthPanel health={stats.moderationHealth} />}
+      </div>
       <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
         <ContentTab />
       </div>
@@ -1753,7 +1920,7 @@ export default function AdminPage() {
         })}
       </nav>
 
-      {activeTab === 'insights' && <InsightsTab />}
+      {activeTab === 'insights' && <InsightsTab onNavigate={setActiveTab} />}
       {activeTab === 'moderation' && <ModerationTab />}
       {activeTab === 'groups' && <GroupsTab />}
       {activeTab === 'members' && <MembersTab />}

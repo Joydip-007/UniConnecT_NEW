@@ -7,12 +7,14 @@ import { emailQueue } from '../../queues/email.queue'
 import { env } from '../../config/env'
 import { getIo } from '../../socket'
 import { systemGroupsService } from '../groups/system-groups.service'
+import { severityCaseSql, severityFromRank } from './severity'
 import type {
   AdminFulfillRedemptionInput,
   AdminRedemptionListQuery,
   CreateBulkInvitationsInput,
   CreateDriverInput,
   CreateInvitationInput,
+  ListUsersQuery,
   PaginationQuery,
   ResolveReportInput,
   UpdateUserRoleInput,
@@ -40,6 +42,17 @@ interface RedemptionListRow {
 interface CountRow {
   count: string | number
 }
+
+interface ReportGroupRow {
+  target_id: string
+  target_type: string
+  report_count: string | number
+  severity_rank: number
+  latest_reason: string
+  last_reported_at: Date
+}
+
+const REMOVABLE_TARGET_TABLES: Record<string, string> = { post: 'posts', job: 'jobs', event: 'events' }
 
 interface FeedbackEntry {
   id: string
@@ -88,6 +101,14 @@ interface AdminGroupRow {
   member_count: number
   created_at: Date
   pending_request_count: string | number
+  pending_requesters: { userId: string; fullName: string; avatarUrl: string | null }[] | null
+}
+
+interface GroupsSummaryRow {
+  total_groups: string | number
+  private_groups: string | number
+  total_members: string | number
+  created_this_week: string | number
 }
 
 interface InvitationRow {
@@ -120,19 +141,40 @@ export class AdminService {
     ])
 
     const activeUsers = await countActive(universityId)
-    const [usersByRole, postsByDay] = await Promise.all([
+    const [usersByRole, postsByDay, verificationsByRole] = await Promise.all([
       countUsersByRole(universityId),
       countPostsByDay(universityId),
+      countUnverifiedByRole(universityId),
     ])
 
-    return { users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay }
+    const [escalatedReports, verificationRequests, deletionRequests, resolvedPct7d, moderationHealth, pendingInviteBatches] =
+      await Promise.all([
+        countEscalatedReports(universityId),
+        countWhere('users', { university_id: universityId, is_deleted: false, is_verified: false }),
+        db('account_deletion_requests')
+          .where({ university_id: universityId, status: 'pending' })
+          .count<CountRow[]>({ count: '*' })
+          .first()
+          .then((r) => Number(r?.count ?? 0)),
+        resolvedPercentLast7Days(universityId),
+        getModerationHealth(universityId),
+        countPendingInviteBatches(universityId),
+      ])
+
+    return {
+      users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay, verificationsByRole,
+      escalatedReports, verificationRequests, deletionRequests, resolvedPct7d, pendingInviteBatches, moderationHealth,
+    }
   }
 
-  async listUsers(universityId: string, query: PaginationQuery) {
+  async listUsers(universityId: string, query: ListUsersQuery) {
     const baseQuery = db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where('users.university_id', universityId)
       .where('users.is_deleted', false)
+      .modify((builder) => {
+        if (query.verified === 'unverified') builder.where('users.is_verified', false)
+      })
       .select<AdminUserRow[]>(
         'users.id',
         'users.university_id',
@@ -148,9 +190,12 @@ export class AdminService {
         'profiles.batch_year',
       )
 
-    const [{ count }] = await db('users')
+    const countQuery = db('users')
       .where({ university_id: universityId, is_deleted: false })
-      .count<CountRow[]>({ count: '*' })
+      .modify((builder) => {
+        if (query.verified === 'unverified') builder.where('is_verified', false)
+      })
+    const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
 
     const rows = await baseQuery
       .orderBy('users.created_at', 'desc')
@@ -186,6 +231,26 @@ export class AdminService {
         'jr.group_id',
         'groups.id',
       )
+      .leftJoin(
+        db.raw(`(
+          SELECT group_id, json_agg(json_build_object(
+            'userId', user_id,
+            'fullName', full_name,
+            'avatarUrl', avatar_url
+          ) ORDER BY created_at DESC) AS requesters
+          FROM (
+            SELECT gjr.group_id, gjr.user_id, gjr.created_at, p.full_name, p.avatar_url,
+                   row_number() OVER (PARTITION BY gjr.group_id ORDER BY gjr.created_at DESC) AS rn
+            FROM group_join_requests gjr
+            JOIN profiles p ON p.user_id = gjr.user_id
+            WHERE gjr.status = 'pending'
+          ) ranked
+          WHERE rn <= 3
+          GROUP BY group_id
+        ) as jrt`),
+        'jrt.group_id',
+        'groups.id',
+      )
       .select<AdminGroupRow[]>(
         'groups.id',
         'groups.name',
@@ -195,10 +260,25 @@ export class AdminService {
         'groups.member_count',
         'groups.created_at',
         db.raw('COALESCE(jr.count, 0) as pending_request_count'),
+        db.raw(`COALESCE(jrt.requesters, '[]'::json) as pending_requesters`),
       )
       .orderBy('groups.created_at', 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)
+
+    const summaryRow = await db('groups')
+      .where('university_id', universityId)
+      .select<GroupsSummaryRow[]>(
+        db.raw('COUNT(*)::int as total_groups'),
+        db.raw('COUNT(*) FILTER (WHERE is_private)::int as private_groups'),
+        db.raw('COALESCE(SUM(member_count), 0)::int as total_members'),
+        db.raw(`COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')::int as created_this_week`),
+      )
+      .first()
+
+    const [{ count: pendingTotal }] = await db('group_join_requests')
+      .where({ university_id: universityId, status: 'pending' })
+      .count<CountRow[]>({ count: '*' })
 
     return {
       items: rows.map((r) => ({
@@ -209,11 +289,19 @@ export class AdminService {
         isPrivate: r.is_private,
         memberCount: r.member_count,
         pendingRequestCount: Number(r.pending_request_count),
+        pendingRequesters: r.pending_requesters ?? [],
         createdAt: r.created_at,
       })),
       total: Number(count),
       page: query.page,
       limit: query.limit,
+      summary: {
+        totalGroups: Number(summaryRow?.total_groups ?? 0),
+        privateGroups: Number(summaryRow?.private_groups ?? 0),
+        totalMembers: Number(summaryRow?.total_members ?? 0),
+        pendingRequests: Number(pendingTotal ?? 0),
+        createdThisWeek: Number(summaryRow?.created_this_week ?? 0),
+      },
     }
   }
 
@@ -352,6 +440,26 @@ export class AdminService {
     return { userId, isActive: input.is_active }
   }
 
+  async verifyUser(universityId: string, actorId: string, userId: string) {
+    const user = await db('users')
+      .where({ id: userId, university_id: universityId, is_deleted: false })
+      .first<{ is_verified: boolean }>('is_verified')
+
+    if (!user) throw notFound('User not found')
+    if (user.is_verified) throw badRequest('User is already verified', 'ALREADY_VERIFIED')
+
+    await db('users').where({ id: userId, university_id: universityId }).update({ is_verified: true })
+
+    await db('university_audit_logs').insert({
+      university_id: universityId,
+      actor_id: actorId,
+      action: 'user.verified',
+      payload: JSON.stringify({ userId }),
+    })
+
+    return { userId, isVerified: true as const }
+  }
+
   async listReports(universityId: string, query: PaginationQuery) {
     const subQuery = db('users')
       .where('university_id', universityId)
@@ -404,6 +512,81 @@ export class AdminService {
 
     if (updated === 0) throw notFound('Report not found')
     return { reportId, status: input.status }
+  }
+
+  async listReportedContentGroups(universityId: string, query: PaginationQuery) {
+    const universityUserIds = db('users').where('university_id', universityId).select('id')
+
+    const groupedBase = () =>
+      db('reports')
+        .whereIn('reporter_id', universityUserIds)
+        .whereIn('status', ['pending', 'reviewed'])
+        .groupBy('target_id', 'target_type')
+
+    const totalRow = await db
+      .from(groupedBase().select('target_id', 'target_type').as('groups'))
+      .count<CountRow[]>({ count: '*' })
+      .first()
+
+    const rows = await groupedBase()
+      .select<ReportGroupRow[]>(
+        'target_id',
+        'target_type',
+        db.raw('COUNT(*)::int as report_count'),
+        db.raw(`MAX(${severityCaseSql('reason')}) as severity_rank`),
+        db.raw('(ARRAY_AGG(reason ORDER BY created_at DESC))[1] as latest_reason'),
+        db.raw('MAX(created_at) as last_reported_at'),
+      )
+      .orderBy('last_reported_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+
+    const titleMap = await hydrateTargetTitles(rows.map((r) => ({ targetId: r.target_id, targetType: r.target_type })))
+
+    return {
+      items: rows.map((r) => ({
+        targetId: r.target_id,
+        targetType: r.target_type,
+        title: titleMap.get(`${r.target_type}:${r.target_id}`) ?? `Reported ${r.target_type}`,
+        severity: severityFromRank(Number(r.severity_rank)),
+        reason: r.latest_reason,
+        reportCount: Number(r.report_count),
+        lastReportedAt: r.last_reported_at,
+        removable: r.target_type in REMOVABLE_TARGET_TABLES,
+      })),
+      total: Number(totalRow?.count ?? 0),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  async resolveReportGroup(universityId: string, resolvedById: string, targetType: string, targetId: string, action: 'remove' | 'dismiss') {
+    const universityUserIds = db('users').where('university_id', universityId).select('id')
+    const status = action === 'remove' ? 'resolved' : 'dismissed'
+
+    const updated = await db('reports')
+      .where({ target_id: targetId, target_type: targetType })
+      .whereIn('reporter_id', universityUserIds)
+      .whereIn('status', ['pending', 'reviewed'])
+      .update({ status, resolved_by: resolvedById, resolved_at: db.fn.now() })
+
+    if (updated === 0) throw notFound('No open reports for this target')
+
+    if (action === 'remove') {
+      const table = REMOVABLE_TARGET_TABLES[targetType]
+      if (table) {
+        await db(table).where({ id: targetId, university_id: universityId }).delete()
+      }
+    }
+
+    await db('university_audit_logs').insert({
+      university_id: universityId,
+      actor_id: resolvedById,
+      action: `report_group.${action}`,
+      payload: JSON.stringify({ targetType, targetId }),
+    })
+
+    return { targetId, targetType, status }
   }
 
   async listDeletionRequests(universityId: string, query: PaginationQuery) {
@@ -576,6 +759,8 @@ export class AdminService {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + input.expires_in_days)
 
+    const batchId = crypto.randomUUID()
+
     const rows = unique.map((email) => ({
       university_id: universityId,
       invited_by: invitedById,
@@ -583,6 +768,8 @@ export class AdminService {
       role: input.role,
       token: crypto.randomBytes(32).toString('hex'),
       expires_at: expiresAt,
+      batch_id: batchId,
+      batch_label: input.batch_label,
     }))
 
     await db.transaction(async (trx) => {
@@ -605,16 +792,53 @@ export class AdminService {
       })
     }
 
-    return { created: rows.length, emails: rows.map((r) => r.email) }
+    return { created: rows.length, emails: rows.map((r) => r.email), batchId }
+  }
+
+  async listInviteBatches(universityId: string) {
+    const rows = await db('invitations')
+      .where({ university_id: universityId })
+      .whereNotNull('batch_id')
+      .select(
+        'batch_id',
+        'batch_label',
+        'role',
+        db.raw('COUNT(*)::int as total'),
+        db.raw('COUNT(*) FILTER (WHERE is_used = true)::int as accepted'),
+        db.raw('MIN(expires_at) FILTER (WHERE is_used = false) as soonest_expiry'),
+        db.raw('MIN(created_at) as created_at'),
+      )
+      .groupBy('batch_id', 'batch_label', 'role')
+      .orderBy('created_at', 'desc')
+
+    return (
+      rows as {
+        batch_id: string
+        batch_label: string
+        role: string
+        total: number
+        accepted: number
+        soonest_expiry: Date | null
+        created_at: Date
+      }[]
+    ).map((r) => ({
+      id: r.batch_id,
+      label: r.batch_label,
+      role: r.role,
+      total: r.total,
+      accepted: r.accepted,
+      expiresAt: r.soonest_expiry,
+      createdAt: r.created_at,
+    }))
   }
 
   async listInvitations(universityId: string, query: PaginationQuery) {
-    const [{ count }] = await db('invitations')
-      .where({ university_id: universityId })
-      .count<CountRow[]>({ count: '*' })
+    const base = db('invitations').where({ university_id: universityId }).whereNull('batch_id')
 
-    const rows = await db('invitations')
-      .where({ university_id: universityId })
+    const [{ count }] = await base.clone().count<CountRow[]>({ count: '*' })
+
+    const rows = await base
+      .clone()
       .select<InvitationRow[]>('*')
       .orderBy('created_at', 'desc')
       .limit(query.limit)
@@ -943,6 +1167,15 @@ async function countUsersByRole(universityId: string): Promise<{ role: string; c
   return rows.map((r) => ({ role: r.role, count: Number(r.count) }))
 }
 
+async function countUnverifiedByRole(universityId: string): Promise<{ role: string; count: number }[]> {
+  const rows = await db('users')
+    .where({ university_id: universityId, is_deleted: false, is_verified: false })
+    .select('role')
+    .count<{ role: string; count: string }[]>({ count: '*' })
+    .groupBy('role')
+  return rows.map((r) => ({ role: r.role, count: Number(r.count) }))
+}
+
 /** Last 7 calendar days (oldest first), including days with zero posts. */
 async function countPostsByDay(universityId: string): Promise<{ date: string; count: number }[]> {
   const since = new Date()
@@ -965,6 +1198,92 @@ async function countPostsByDay(universityId: string): Promise<{ date: string; co
     days.push({ date: key, count: byDay.get(key) ?? 0 })
   }
   return days
+}
+
+async function countEscalatedReports(universityId: string): Promise<number> {
+  const universityUserIds = db('users').where('university_id', universityId).select('id')
+  const row = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .where('status', 'pending')
+    .whereRaw(`${severityCaseSql('reason')} = 3`)
+    .count<CountRow[]>({ count: '*' })
+    .first()
+  return Number(row?.count ?? 0)
+}
+
+async function resolvedPercentLast7Days(universityId: string): Promise<number> {
+  const universityUserIds = db('users').where('university_id', universityId).select('id')
+  const since = new Date()
+  since.setUTCDate(since.getUTCDate() - 7)
+
+  const row = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .where('created_at', '>=', since)
+    .select(
+      db.raw("COUNT(*) FILTER (WHERE status IN ('resolved', 'dismissed'))::int as closed"),
+      db.raw('COUNT(*)::int as total'),
+    )
+    .first<{ closed: number; total: number }>()
+
+  if (!row || row.total === 0) return 100
+  return Math.round((row.closed / row.total) * 100)
+}
+
+async function getModerationHealth(universityId: string) {
+  const universityUserIds = db('users').where('university_id', universityId).select('id')
+
+  const reportsOpen = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .whereIn('status', ['pending', 'reviewed'])
+    .count<CountRow[]>({ count: '*' })
+    .first()
+    .then((r) => Number(r?.count ?? 0))
+
+  const resolvedPct7d = await resolvedPercentLast7Days(universityId)
+
+  const since = new Date()
+  since.setUTCDate(since.getUTCDate() - 7)
+  const medianRow = await db('reports')
+    .whereIn('reporter_id', universityUserIds)
+    .where('status', 'resolved')
+    .andWhere('resolved_at', '>=', since)
+    .select(
+      db.raw(
+        "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600.0) as median_hours",
+      ),
+    )
+    .first<{ median_hours: string | null }>()
+  const medianResponseHours = medianRow?.median_hours ? Math.round(Number(medianRow.median_hours) * 10) / 10 : 0
+
+  const repeatOffendersRow = await db
+    .from(
+      db('reports')
+        .whereIn('reporter_id', universityUserIds)
+        .whereIn('status', ['pending', 'reviewed'])
+        .groupBy('target_id', 'target_type')
+        .having(db.raw('COUNT(*)'), '>=', 2)
+        .select('target_id')
+        .as('repeats'),
+    )
+    .count<CountRow[]>({ count: '*' })
+    .first()
+  const repeatOffenders = Number(repeatOffendersRow?.count ?? 0)
+
+  return { reportsOpen, resolvedPct7d, medianResponseHours, repeatOffenders }
+}
+
+/** Depends on `invitations.batch_id` from the admin-members-invite-batches-and-verification plan. Returns 0 until that column exists. */
+async function countPendingInviteBatches(universityId: string): Promise<number> {
+  const hasColumn = await db.schema.hasColumn('invitations', 'batch_id')
+  if (!hasColumn) return 0
+
+  const row = await db('invitations')
+    .where({ university_id: universityId, is_used: false })
+    .andWhere('expires_at', '>', db.fn.now())
+    .whereNotNull('batch_id')
+    .countDistinct<CountRow[]>({ count: 'batch_id' })
+    .first()
+  return Number(row?.count ?? 0)
 }
 
 async function countActive(universityId: string): Promise<number> {
@@ -1010,6 +1329,28 @@ function toReport(row: ReportRow) {
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
   }
+}
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
+}
+
+async function hydrateTargetTitles(targets: { targetId: string; targetType: string }[]): Promise<Map<string, string>> {
+  const postIds = targets.filter((t) => t.targetType === 'post').map((t) => t.targetId)
+  const jobIds = targets.filter((t) => t.targetType === 'job').map((t) => t.targetId)
+  const eventIds = targets.filter((t) => t.targetType === 'event').map((t) => t.targetId)
+
+  const [posts, jobs, events] = await Promise.all([
+    postIds.length ? db('posts').whereIn('id', postIds).select<{ id: string; content: string }[]>('id', 'content') : [],
+    jobIds.length ? db('jobs').whereIn('id', jobIds).select<{ id: string; title: string }[]>('id', 'title') : [],
+    eventIds.length ? db('events').whereIn('id', eventIds).select<{ id: string; title: string }[]>('id', 'title') : [],
+  ])
+
+  const map = new Map<string, string>()
+  posts.forEach((p) => map.set(`post:${p.id}`, truncate(p.content, 60)))
+  jobs.forEach((j) => map.set(`job:${j.id}`, j.title))
+  events.forEach((e) => map.set(`event:${e.id}`, e.title))
+  return map
 }
 
 function toAdminRedemption(row: RedemptionListRow) {
