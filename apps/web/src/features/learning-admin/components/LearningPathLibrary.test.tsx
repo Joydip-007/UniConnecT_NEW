@@ -24,13 +24,17 @@ describe('LearningPathLibrary', () => {
       http.get('*/admin/learning/pending-paths', () => HttpResponse.json({ data: [] })),
     )
     const onManagePath = vi.fn()
-    renderWithClient(<LearningPathLibrary onCreatePath={() => {}} onEditPath={() => {}} onManagePath={onManagePath} />)
+    const onEditPath = vi.fn()
+    renderWithClient(<LearningPathLibrary onCreatePath={() => {}} onEditPath={onEditPath} onManagePath={onManagePath} />)
 
     expect(await screen.findByText('Algorithms, properly')).toBeInTheDocument()
     expect(screen.getByText(/214 enrolled/)).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /manage/i }))
     expect(onManagePath).toHaveBeenCalledWith('p1')
+
+    await userEvent.click(screen.getByRole('button', { name: /^edit$/i }))
+    expect(onEditPath).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1' }))
   })
 
   it('filters to drafts when the Drafts chip is clicked', async () => {

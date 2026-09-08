@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Sparkles, Wand2, Plus, BookOpen } from 'lucide-react'
+import type { AdminLearningPath } from '@uniconnect/shared'
 import { PrimaryBtn, GhostBtn } from '@/components/Button'
 import { usePendingPaths } from '../hooks/useLearningAdmin'
 import { useAdminLearningPaths, useSetPathPublished, useTriggerLearningGenerate } from '../hooks/useLearningAdmin'
@@ -19,7 +20,7 @@ type StatusFilter = 'all' | 'published' | 'draft'
 
 interface Props {
   onCreatePath: () => void
-  onEditPath: (pathId: string) => void
+  onEditPath: (path: AdminLearningPath) => void
   onManagePath: (pathId: string) => void
 }
 
@@ -160,7 +161,7 @@ export function LearningPathLibrary({ onCreatePath, onEditPath, onManagePath }: 
                   Updated {formatDistanceToNow(new Date(p.updatedAt), { addSuffix: true })}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <GhostBtn onClick={() => onEditPath(p.id)} style={{ fontSize: 12, padding: '4px 12px' }}>Edit</GhostBtn>
+                  <GhostBtn onClick={() => onEditPath(p)} style={{ fontSize: 12, padding: '4px 12px' }}>Edit</GhostBtn>
                   <PrimaryBtn onClick={() => onManagePath(p.id)} style={{ fontSize: 12, padding: '4px 12px' }}>Manage</PrimaryBtn>
                 </div>
               </div>

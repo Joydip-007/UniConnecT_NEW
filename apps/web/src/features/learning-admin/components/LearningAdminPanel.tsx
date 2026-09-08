@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
 import { Check, AlertTriangle, Play } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
-import type { LearningTopic } from '@uniconnect/shared'
+import { PATHS } from '@/router/paths'
+import type { AdminLearningPath, LearningTopic } from '@uniconnect/shared'
 import {
   useLearningAdminConfig,
   useUpdateLearningAdminConfig,
@@ -18,6 +20,8 @@ import {
 } from '../hooks/useLearningAdmin'
 import { PendingPathPreviewModal } from './PendingPathPreviewModal'
 import { PendingQuizPreviewModal } from './PendingQuizPreviewModal'
+import { LearningPathLibrary } from './LearningPathLibrary'
+import { LearningPathFormModal } from './LearningPathFormModal'
 import { formatDistanceToNow } from 'date-fns'
 
 const card: React.CSSProperties = {
@@ -43,10 +47,14 @@ const inputStyle: React.CSSProperties = {
 }
 
 export function LearningAdminPanel() {
+  const [activeTab, setActiveTab] = useState<'library' | 'settings'>('library')
+  const [formState, setFormState] = useState<{ mode: 'create' | 'edit'; path: AdminLearningPath | null } | null>(null)
+  const navigate = useNavigate()
+
   const { data: config, isLoading } = useLearningAdminConfig()
   const updateConfig = useUpdateLearningAdminConfig()
   const triggerGenerate = useTriggerLearningGenerate()
-  
+
   const { data: pendingPaths } = usePendingPaths()
   const approvePath = useApprovePath()
   const discardPath = useDiscardPath()
@@ -154,7 +162,7 @@ export function LearningAdminPanel() {
       setError(extractError(e, 'Could not save settings.'))
       return
     }
-    triggerGenerate.mutate(undefined, {
+    triggerGenerate.mutate('both', {
       onError: (e) => setError(extractError(e, 'Could not start generation.')),
     })
   }
@@ -166,6 +174,67 @@ export function LearningAdminPanel() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 4,
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-pill)',
+          padding: 3,
+          alignSelf: 'flex-start',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('library')}
+          style={{
+            padding: '6px 16px',
+            fontSize: 13,
+            borderRadius: 'var(--r-pill)',
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'library' ? 'var(--uc-indigo-bg)' : 'transparent',
+            color: activeTab === 'library' ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'library' ? 500 : 400,
+          }}
+        >
+          Content library
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('settings')}
+          style={{
+            padding: '6px 16px',
+            fontSize: 13,
+            borderRadius: 'var(--r-pill)',
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'settings' ? 'var(--uc-indigo-bg)' : 'transparent',
+            color: activeTab === 'settings' ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'settings' ? 500 : 400,
+          }}
+        >
+          AI settings
+        </button>
+      </div>
+
+      {activeTab === 'library' ? (
+        <>
+          <LearningPathLibrary
+            onCreatePath={() => setFormState({ mode: 'create', path: null })}
+            onEditPath={(path) => setFormState({ mode: 'edit', path })}
+            onManagePath={(pathId) => navigate(PATHS.ADMIN_LEARNING_PATH(pathId))}
+          />
+          <LearningPathFormModal
+            mode={formState?.mode ?? 'create'}
+            path={formState?.path ?? null}
+            open={formState !== null}
+            onClose={() => setFormState(null)}
+          />
+        </>
+      ) : (
+        <>
       {config?.lastAiError && (
         <div
           style={{
@@ -745,6 +814,8 @@ export function LearningAdminPanel() {
         open={previewQuizBatchId !== null}
         onClose={() => setPreviewQuizBatchId(null)}
       />
+        </>
+      )}
     </div>
   )
 }
