@@ -97,9 +97,11 @@ describe('RAILS', () => {
     })
   })
 
-  it('no role has more than 5 fixed rows', () => {
+  // Admin is the one role allowed a sixth row: it has no Feed row at all, so every
+  // fixed row is an admin surface and the cap buys nothing by pushing one into tools.
+  it('no role has more than 5 fixed rows (admin: 6)', () => {
     ROLES.forEach((role) => {
-      expect(RAILS[role].fixed.length).toBeLessThanOrEqual(5)
+      expect(RAILS[role].fixed.length).toBeLessThanOrEqual(role === 'admin' ? 6 : 5)
     })
   })
 

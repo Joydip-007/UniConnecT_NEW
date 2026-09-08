@@ -166,8 +166,9 @@ describe('LeftSidebar', () => {
   it('marks exactly one row active, even when several share a base path', () => {
     mockRole = 'admin'
     renderSidebar(false, vi.fn(), '/admin')
-    // Moderation, Members & invites and Insights all live at /admin behind a tab param.
-    expect(activeRowNames()).toEqual(['Moderation'])
+    // Insights, Moderation, Members & invites and Content all live at /admin behind a tab param.
+    // Bare /admin renders Insights, which is also the first row.
+    expect(activeRowNames()).toEqual(['Insights'])
   })
 
   it('resolves the active admin row from the tab query param', () => {

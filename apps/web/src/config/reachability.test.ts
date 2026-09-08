@@ -109,7 +109,11 @@ describe('shell reachability', () => {
     'offers the %s role every member feature',
     (role) => {
       const reachable = shellDestinations(role)
-      const missing = MEMBER_FEATURES.filter((p) => !reachable.has(p))
+      // Admin's rail is six admin surfaces with no Feed row by design — an admin works
+      // the moderation queues, not the member timeline. Every other member feature is
+      // still reachable from its secondary list.
+      const required = role === 'admin' ? MEMBER_FEATURES.filter((p) => p !== PATHS.FEED) : MEMBER_FEATURES
+      const missing = required.filter((p) => !reachable.has(p))
       expect({ role, missing }).toEqual({ role, missing: [] })
     },
   )

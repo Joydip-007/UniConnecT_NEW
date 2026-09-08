@@ -13,10 +13,11 @@ import {
   FileText,
   Map,
   RefreshCw,
-  Trash2,
   MessageSquare,
   GraduationCap,
   Compass,
+  UsersRound,
+  LayoutGrid,
   Bell,
   Bookmark,
   Flag,
@@ -153,7 +154,6 @@ const MENTORSHIP_ROW: RailRow = { key: 'mentorship', label: 'Mentorship', icon: 
 const GROUPS_ROW: RailRow = { key: 'groups', label: 'Groups & people', icon: Users, to: PATHS.GROUPS }
 // Platform-wide group oversight (private groups included, unlike the browse view above) —
 // AdminPage's own `?tab=groups` screen, distinct from GROUPS_ROW's member-facing /groups.
-const ADMIN_GROUPS_ROW: RailRow = { key: 'admin-groups', label: 'Manage groups', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=groups` }
 const EVENTS_ROW: RailRow = { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS }
 // Every other role reaches the rider map through its "Shuttle" tool tile. Admin's tile
 // points at the ops tab instead, so the map it shares with everyone else lands here.
@@ -406,27 +406,25 @@ export const RAILS: Record<UserRole, RoleRail> = {
     tools: [],
   },
   admin: {
+    // Six fixed rows, mirroring the admin prototype exactly. There is deliberately no
+    // Feed row: an admin's home is /admin and every row here is an admin surface. The
+    // member feed stays reachable from every other role's rail.
     fixed: [
-      // Named "Feed", not "Home": admin's home is /admin, so a row called Home that led
-      // somewhere else is the one place the shell's own vocabulary contradicted itself.
-      { key: 'home', label: 'Feed', icon: Home, to: PATHS.FEED },
-      // Tab values now match AdminPage's own `Tab` union (renamed to mirror the mockup
-      // wording directly, so rail label and query param never drift again).
+      // Tab values match AdminPage's own `Tab` union (adminTabs.test.ts parses it).
+      { key: 'insights', label: 'Insights', icon: BarChart2, to: `${PATHS.ADMIN}?tab=insights` },
       { key: 'moderation', label: 'Moderation', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=moderation` },
+      { key: 'admin-groups', label: 'Groups', icon: UsersRound, to: `${PATHS.ADMIN}?tab=groups` },
       { key: 'members', label: 'Members & invites', icon: Users, to: `${PATHS.ADMIN}?tab=members` },
       { key: 'announcements', label: 'Announcements', icon: Newspaper, to: `${PATHS.ADMIN}?tab=announcements` },
-      { key: 'insights', label: 'Insights', icon: BarChart2, to: `${PATHS.ADMIN}?tab=insights` },
+      { key: 'content', label: 'Content', icon: LayoutGrid, to: `${PATHS.ADMIN}?tab=content` },
     ],
     contextual: [escalatedReportRule, verificationsRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
-    secondary: [...MEMBER_SECONDARY, GROUPS_ROW, ADMIN_GROUPS_ROW, NEWS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW, SHUTTLE_ROW],
-    // The five fixed rows spend themselves on moderation, so the tools carry the admin
-    // tabs nothing else reaches. Both former tiles ("Audit log", "Broadcast") pointed at
-    // a bare /admin for a screen that does not exist — `university_audit_log` is written
-    // by the API but never rendered, and there is no broadcast surface at all — so each
-    // one silently dumped you on Insights. These three are tabs AdminPage really defines.
+    secondary: [...MEMBER_SECONDARY, GROUPS_ROW, NEWS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW, SHUTTLE_ROW],
+    // Deletion requests is no longer a tile: it now lives inside the Moderation tab
+    // beside reports, which is where an admin already goes to action a queue.
     tools: [
+      { key: 'learning', label: 'Learning', icon: GraduationCap, iconColor: 'var(--uc-orange-l)', iconBg: 'var(--uc-orange-bg)', to: `${PATHS.ADMIN}?tab=learning` },
       { key: 'content-sync', label: 'Content sync', icon: RefreshCw, iconColor: 'var(--uc-indigo-l)', iconBg: 'var(--uc-indigo-bg)', to: `${PATHS.ADMIN}?tab=content-sync` },
-      { key: 'deletion-requests', label: 'Deletion requests', icon: Trash2, iconColor: 'var(--uc-amber-l)', iconBg: 'var(--uc-amber-bg)', to: `${PATHS.ADMIN}?tab=deletion` },
       // The rider map, not the ops screen, is what /shuttle renders — the routes and
       // schedules an admin manages live on the admin tab.
       { key: 'shuttle-ops', label: 'Shuttle ops', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: `${PATHS.ADMIN}?tab=shuttle` },

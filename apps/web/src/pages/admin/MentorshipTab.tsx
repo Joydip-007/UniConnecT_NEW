@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn } from '@/components/Button'
+import { RewardRequestsPanel } from '@/pages/admin/RewardRequestsPanel'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -442,7 +443,9 @@ function LegendPopover() {
   )
 }
 
-export function MentorshipTab() {
+type MentorshipView = 'mentors' | 'rewards'
+
+function MentorsPanel() {
   const [page, setPage] = useState(1)
   const { data, isLoading } = useAdminMentors(page)
   const LIMIT = 20
@@ -500,6 +503,42 @@ export function MentorshipTab() {
           <GhostBtn disabled={page === totalPages} onClick={() => setPage((p) => p + 1)}>Next</GhostBtn>
         </div>
       )}
+    </div>
+  )
+}
+
+export function MentorshipTab() {
+  const [view, setView] = useState<MentorshipView>('mentors')
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {(['mentors', 'rewards'] as MentorshipView[]).map((v) => {
+          const active = v === view
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              style={{
+                padding: '5px 14px',
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                borderRadius: 'var(--r-pill)',
+                border: 'none',
+                cursor: 'pointer',
+                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                transition: 'background 150ms, color 150ms',
+              }}
+            >
+              {v === 'mentors' ? 'Mentors' : 'Reward requests'}
+            </button>
+          )
+        })}
+      </div>
+
+      {view === 'mentors' ? <MentorsPanel /> : <RewardRequestsPanel />}
     </div>
   )
 }
