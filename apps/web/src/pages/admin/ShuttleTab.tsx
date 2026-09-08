@@ -815,6 +815,13 @@ interface ShuttleStats {
   routes: { routeId: string; isLive: boolean }[]
 }
 
+interface ShuttleOpsSettings {
+  liveGpsEnabled: boolean
+  riderEtaEnabled: boolean
+  autoAssignEnabled: boolean
+  serviceAlertsEnabled: boolean
+}
+
 export function ShuttleTab() {
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
 
@@ -831,6 +838,18 @@ export function ShuttleTab() {
   })
 
   const liveRouteIds = new Set((stats?.routes ?? []).filter((r) => r.isLive).map((r) => r.routeId))
+
+  const qc = useQueryClient()
+
+  const { data: settings } = useQuery<ShuttleOpsSettings>({
+    queryKey: ['admin', 'shuttle', 'settings'],
+    queryFn: () => api.get<{ data: ShuttleOpsSettings }>('/admin/shuttle/settings').then((r) => r.data.data),
+  })
+
+  const settingsMutation = useMutation({
+    mutationFn: (patch: Partial<ShuttleOpsSettings>) => api.patch('/admin/shuttle/settings', patch),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'shuttle', 'settings'] }) },
+  })
 
   function selectRoute(id: string) {
     setSelectedId(id)
@@ -1033,6 +1052,105 @@ export function ShuttleTab() {
         )}
       </div>
       </div>
+
+      <div style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: '20px 24px',
+      }}>
+        <p style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>Ops settings</p>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <OpsSettingToggle
+            label="Live GPS broadcast"
+            description="Drivers share location while on duty"
+            checked={settings?.liveGpsEnabled ?? true}
+            onChange={(v) => settingsMutation.mutate({ liveGpsEnabled: v })}
+          />
+          <OpsSettingToggle
+            label="Show rider ETA"
+            description="Estimate arrival times on the rider map"
+            checked={settings?.riderEtaEnabled ?? true}
+            onChange={(v) => settingsMutation.mutate({ riderEtaEnabled: v })}
+          />
+          {/* Auto-assign drivers: persisted preference only — there is no driver-to-route
+              assignment feature in the schema today. Flipping this has no runtime effect. */}
+          <OpsSettingToggle
+            label="Auto-assign drivers"
+            description="Match on-duty drivers to open routes"
+            checked={settings?.autoAssignEnabled ?? false}
+            onChange={(v) => settingsMutation.mutate({ autoAssignEnabled: v })}
+          />
+          {/* Service alerts: persisted preference only — there is no delay/route-change
+              notification pipeline in the codebase today. Flipping this has no runtime effect. */}
+          <OpsSettingToggle
+            label="Service alerts"
+            description="Notify riders of delays and route changes"
+            checked={settings?.serviceAlertsEnabled ?? true}
+            onChange={(v) => settingsMutation.mutate({ serviceAlertsEnabled: v })}
+            last
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function OpsSettingToggle({
+  label,
+  description,
+  checked,
+  onChange,
+  last,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (value: boolean) => void
+  last?: boolean
+}) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 16,
+      padding: '14px 0',
+      borderBottom: last ? 'none' : '0.5px solid var(--border-default)',
+    }}>
+      <div>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{label}</p>
+        <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={() => onChange(!checked)}
+        style={{
+          flexShrink: 0,
+          width: 36,
+          height: 20,
+          borderRadius: 'var(--r-pill)',
+          border: 'none',
+          cursor: 'pointer',
+          position: 'relative',
+          background: checked ? 'var(--uc-indigo)' : 'var(--surface-raised)',
+          transition: 'background 150ms',
+        }}
+      >
+        <span style={{
+          position: 'absolute',
+          top: 2,
+          left: checked ? 18 : 2,
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: 'var(--on-accent)',
+          transition: 'left 150ms',
+        }} />
+      </button>
     </div>
   )
 }
