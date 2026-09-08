@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/
 import { Megaphone, Pin, PinOff, Trash2, AlertTriangle } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { announcementStatus, type AnnouncementStatus } from './announcementStatus'
 
 interface AuthorMeta {
   id: string
@@ -21,14 +22,6 @@ interface AnnouncementItem {
   commentCount: number
   createdAt: string
   author: AuthorMeta
-}
-
-export type AnnouncementStatus = 'published' | 'scheduled' | 'draft'
-
-export function announcementStatus(item: Pick<AnnouncementItem, 'isPublished' | 'publishAt'>): AnnouncementStatus {
-  if (item.isPublished) return 'published'
-  if (item.publishAt && new Date(item.publishAt).getTime() > Date.now()) return 'scheduled'
-  return 'draft'
 }
 
 const STATUS_META: Record<AnnouncementStatus, { label: string; color: string; bg: string; bdr: string }> = {

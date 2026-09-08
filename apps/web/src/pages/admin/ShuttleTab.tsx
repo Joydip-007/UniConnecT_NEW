@@ -880,7 +880,7 @@ export function ShuttleTab() {
         <ShuttleStatTile
           label="On-time rate"
           value={stats ? (stats.onTimeRatePct === null ? '—' : `${stats.onTimeRatePct}%`) : '—'}
-          sub={stats?.onTimeRatePct === null ? 'Not enough data yet' : 'last 7 days'}
+          sub={stats?.onTimeRatePct === null ? 'Not enough data yet' : 'today so far'}
         />
       </div>
 

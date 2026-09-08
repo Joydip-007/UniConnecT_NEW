@@ -73,6 +73,11 @@ describe('PATCH /api/v1/admin/reports/target/:targetType/:targetId', () => {
 
     const post = await db('posts').where({ id: postId }).first()
     expect(post).toBeDefined()
+
+    const auditRow = await db('university_audit_logs')
+      .where({ university_id: TEST_UNIVERSITY_ID, action: 'report_group.dismiss' })
+      .first()
+    expect(auditRow).toBeDefined()
   })
 
   it('returns 404 when the target has no open reports', async () => {

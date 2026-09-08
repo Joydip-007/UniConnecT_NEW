@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { announcementStatus } from './AnnouncementsTab'
+import { announcementStatus } from './announcementStatus'
 
 describe('announcementStatus', () => {
   it('returns published when isPublished is true', () => {

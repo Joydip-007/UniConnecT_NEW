@@ -579,6 +579,13 @@ export class AdminService {
       }
     }
 
+    await db('university_audit_logs').insert({
+      university_id: universityId,
+      actor_id: resolvedById,
+      action: `report_group.${action}`,
+      payload: JSON.stringify({ targetType, targetId }),
+    })
+
     return { targetId, targetType, status }
   }
 

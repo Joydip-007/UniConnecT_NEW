@@ -57,7 +57,7 @@ export class AdminShuttleService {
 
   private async computeOnTimeRatePct(universityId: string, routes: RouteRow[]) {
     const now = new Date()
-    const todayStr = now.toISOString().slice(0, 10)
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 
     let scheduled = 0
     let onTime = 0
