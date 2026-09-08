@@ -146,6 +146,9 @@ export function LearningPathFormModal({ mode, path, open, onClose }: Props) {
         )}
 
         {message && <span style={{ fontSize: 13, color: 'var(--uc-mint)' }}>{message}</span>}
+        {(createPath.isError || updatePath.isError) && (
+          <span style={{ fontSize: 13, color: 'var(--uc-red)' }}>Something went wrong. Try again.</span>
+        )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <GhostBtn onClick={onClose}>Cancel</GhostBtn>

@@ -57,4 +57,20 @@ describe('LearningPathFormModal', () => {
     await screen.findByText(/saved/i)
     expect(patched).toMatchObject({ title: 'Updated title' })
   })
+
+  it('shows an error message when create fails', async () => {
+    server.use(
+      http.post('*/admin/learning/paths', () =>
+        HttpResponse.json({ error: 'Internal error', code: 'INTERNAL_ERROR' }, { status: 500 }),
+      ),
+    )
+    const onClose = vi.fn()
+    renderWithClient(<LearningPathFormModal mode="create" path={null} open onClose={onClose} />)
+
+    await userEvent.type(screen.getByLabelText(/^title$/i), 'New path title')
+    await userEvent.type(screen.getByLabelText(/first unit title/i), 'Intro unit')
+    await userEvent.click(screen.getByRole('button', { name: /create path/i }))
+
+    await screen.findByText(/something went wrong/i)
+  })
 })
