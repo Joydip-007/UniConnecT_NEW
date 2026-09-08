@@ -52,6 +52,15 @@ const badgeStyle: React.CSSProperties = {
   border: '2px solid var(--surface-card)',
 }
 
+/**
+ * The chip is painted over the input's own box, so the input needs right padding wide
+ * enough to clear it or a long placeholder runs underneath. Widths are the rendered
+ * chip (12px label + 5px side padding + 0.5px border) plus its 10px offset and a 12px gap.
+ */
+const IS_MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform ?? '')
+const SHORTCUT_LABEL = IS_MAC ? '\u2318K' : 'Ctrl K'
+const SEARCH_PADDING_RIGHT = IS_MAC ? 54 : 78
+
 const menuItemStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -308,7 +317,7 @@ export function TopNav() {
               background: 'var(--surface-raised)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--r-pill)',
-              padding: compactSearch ? '0 14px 0 34px' : '0 44px 0 34px',
+              padding: compactSearch ? '0 14px 0 34px' : `0 ${SEARCH_PADDING_RIGHT}px 0 34px`,
               fontSize: 13,
               color: 'var(--text-primary)',
               outline: 'none',
@@ -332,7 +341,7 @@ export function TopNav() {
                 pointerEvents: 'none',
               }}
             >
-              {navigator.platform?.includes('Mac') ? '⌘K' : 'Ctrl K'}
+              {SHORTCUT_LABEL}
             </kbd>
           )}
           <AnimatePresence>
@@ -440,7 +449,7 @@ export function TopNav() {
                 position: 'absolute',
                 top: 'calc(100% + 8px)',
                 right: 0,
-                minWidth: 188,
+                minWidth: 216,
                 background: 'var(--surface-raised)',
                 border: '0.5px solid var(--border-hover)',
                 borderRadius: 'var(--r-md)',

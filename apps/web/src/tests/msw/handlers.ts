@@ -14,6 +14,8 @@ export const learningFixtures = {
       unitCount: 3,
       enrolledCount: 12,
       myEnrollmentStatus: null,
+      completedUnitCount: 0,
+      nextUnitTitle: null,
     },
   ],
   pathDetail: {

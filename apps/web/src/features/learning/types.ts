@@ -10,6 +10,10 @@ export interface LearningPath {
   unitCount: number
   enrolledCount: number
   myEnrollmentStatus: 'active' | 'completed' | 'abandoned' | null
+  /** Units the caller has finished in this path. 0 when they are not enrolled. */
+  completedUnitCount: number
+  /** Title of the unit the caller resumes at, or null when enrolled and finished. */
+  nextUnitTitle: string | null
 }
 
 export interface QuizQuestion {
@@ -30,7 +34,10 @@ export interface LearningUnit {
   completion_rule?: { passScore?: number }
 }
 
-export interface PathDetail extends Omit<LearningPath, 'myEnrollmentStatus'> {
+// The detail payload carries `units` in full, so per-caller progress is derivable from it
+// and the endpoint does not repeat the list's `completedUnitCount` / `nextUnitTitle`.
+export interface PathDetail
+  extends Omit<LearningPath, 'myEnrollmentStatus' | 'completedUnitCount' | 'nextUnitTitle'> {
   units: LearningUnit[]
   enrollment: { status: 'active' | 'completed' | 'abandoned' } | null
 }

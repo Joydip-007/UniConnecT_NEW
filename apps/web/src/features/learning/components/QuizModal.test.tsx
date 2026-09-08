@@ -84,7 +84,7 @@ describe('QuizModal', () => {
     await vi.waitFor(() => {
       expect(postedBody).toEqual({ score: 100 })
     })
-    expect(await screen.findByText('Score: 100% — passed')).toBeInTheDocument()
+    expect(await screen.findByText('All correct. Checkpoint cleared.')).toBeInTheDocument()
 
     await vi.waitFor(() => {
       const toasts = useToastStore.getState().toasts
@@ -122,12 +122,63 @@ describe('QuizModal', () => {
     await user.click(screen.getByRole('radio', { name: 'git track' }))
     await user.click(screen.getByRole('button', { name: 'Submit' }))
 
-    expect(await screen.findByText('Score: 50% — you need 70%')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Score 50%, you need 70%. 1 of 2 to fix, the rest stay locked in.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Correct, locked')).toBeInTheDocument()
+    expect(screen.getByText('Retry this one')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    await user.click(screen.getByRole('button', { name: 'Retry 1 question' }))
 
+    // The question already answered correctly keeps its answer and stays locked; only the
+    // missed one is blanked, so submit waits on that single re-answer.
+    expect(screen.getByRole('radio', { name: 'git init' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'git track' })).not.toBeChecked()
     expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
-    expect(screen.getByRole('radio', { name: 'git init' })).not.toBeChecked()
+
+    await user.click(screen.getByRole('radio', { name: 'git add' }))
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled()
+  })
+
+  it('does not reveal the correct option for a question still to retry', async () => {
+    server.use(
+      http.post('*/learning/units/:unitId/complete', () =>
+        HttpResponse.json({ error: 'Score below pass mark', code: 'BAD_REQUEST' }, { status: 400 })),
+    )
+    const user = userEvent.setup()
+    renderModal()
+
+    await user.click(screen.getByRole('radio', { name: 'git init' }))
+    await user.click(screen.getByRole('radio', { name: 'git track' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    await screen.findByText('Retry this one')
+
+    // Q2's answer is "git add". Marking it mint here would make the retry a formality, so
+    // only the option the user actually picked is marked.
+    const missed = screen.getByRole('radio', { name: 'git add' }).closest('label')
+    expect(missed?.getAttribute('style')).toContain('var(--border-default)')
+    const picked = screen.getByRole('radio', { name: 'git track' }).closest('label')
+    expect(picked?.getAttribute('style')).toContain('var(--uc-red-bdr)')
+  })
+
+  it('locks the correct options in place once the attempt has passed', async () => {
+    server.use(
+      http.post('*/learning/units/:unitId/complete', () =>
+        HttpResponse.json({ data: { completed: true, pathCompleted: false, streak: { currentStreak: 2, longestStreak: 5 } } })),
+    )
+    const user = userEvent.setup()
+    const { onClose } = renderModal()
+
+    await user.click(screen.getByRole('radio', { name: 'git init' }))
+    await user.click(screen.getByRole('radio', { name: 'git add' }))
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+    const done = await screen.findByRole('button', { name: 'Done' })
+    expect(screen.getByRole('radio', { name: 'git init' })).toBeDisabled()
+
+    await user.click(done)
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('toasts the error message instead of the fake score-fail state on a non-quiz-failure 400 (e.g. unit locked)', async () => {

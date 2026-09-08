@@ -53,6 +53,30 @@ const TYPE_ICON: Record<string, typeof Building2> = {
   other: Users,
 }
 
+/**
+ * One tone pair per group type, so a grid of six cards reads as six things rather than
+ * one block. Always a pair — the glyph colour and its tile background are designed
+ * against each other, and picking them apart is how text lands on a ground it was
+ * never checked against.
+ */
+const TYPE_TONE: Record<string, { color: string; bg: string }> = {
+  department: { color: 'var(--uc-indigo-l)', bg: 'var(--uc-indigo-bg)' },
+  club: { color: 'var(--uc-cyan)', bg: 'var(--uc-cyan-bg)' },
+  batch: { color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)' },
+  research: { color: 'var(--uc-mint)', bg: 'var(--uc-mint-bg)' },
+  interest: { color: 'var(--uc-orange-l)', bg: 'var(--uc-orange-bg)' },
+  other: { color: 'var(--text-secondary)', bg: 'var(--surface-raised)' },
+}
+
+/**
+ * What a member sees when they try to join. `is_private` is the only column that
+ * exists, so Approval and Closed are one state today — the label says Approval, which
+ * is what a private group actually does when someone asks to join.
+ */
+function privacyLabel(isPrivate: boolean): string {
+  return isPrivate ? 'Approval' : 'Open'
+}
+
 export function GroupsTab() {
   const [page, setPage] = useState(1)
 
@@ -197,6 +221,7 @@ function PendingRequesterStack({ requesters, total }: { requesters: PendingReque
 
 function GroupCard({ group }: { group: AdminGroupItem }) {
   const Icon = TYPE_ICON[group.type] ?? Users
+  const tone = TYPE_TONE[group.type] ?? TYPE_TONE.other
   return (
     <article style={{
       background: 'var(--surface-card)', border: '0.5px solid var(--border-default)',
@@ -205,7 +230,7 @@ function GroupCard({ group }: { group: AdminGroupItem }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <span style={{
           width: 44, height: 44, borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', flexShrink: 0, background: 'var(--uc-indigo-bg)', color: 'var(--uc-indigo-l)',
+          justifyContent: 'center', flexShrink: 0, background: tone.bg, color: tone.color,
         }}>
           <Icon size={20} />
         </span>
@@ -215,7 +240,7 @@ function GroupCard({ group }: { group: AdminGroupItem }) {
             {group.isPrivate && <Lock size={13} style={{ color: 'var(--text-tertiary)' }} />}
           </div>
           <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-            {group.type} · {group.memberCount.toLocaleString()} members
+            {group.memberCount.toLocaleString()} members · {privacyLabel(group.isPrivate)}
           </p>
         </div>
       </div>
@@ -240,7 +265,7 @@ function GroupCard({ group }: { group: AdminGroupItem }) {
           style={{
             padding: '6px 14px', fontSize: 12, fontWeight: 500, borderRadius: 'var(--r-pill)',
             border: '0.5px solid var(--uc-indigo-bdr)', background: 'var(--uc-indigo-bg)',
-            color: 'var(--uc-indigo-l)', textDecoration: 'none', flexShrink: 0,
+            color: 'var(--uc-indigo-xl)', textDecoration: 'none', flexShrink: 0,
           }}
         >
           Manage

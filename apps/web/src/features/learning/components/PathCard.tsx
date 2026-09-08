@@ -78,6 +78,31 @@ export function PathCard({ path, onOpen }: PathCardProps) {
         {path.unitCount} units · ~{path.estimated_days} days · {path.difficulty}
       </p>
 
+      {status === 'active' && path.unitCount > 0 && (
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div
+            style={{
+              height: 4,
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--border-default)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                width: `${Math.round((100 * path.completedUnitCount) / path.unitCount)}%`,
+                height: '100%',
+                background: 'var(--uc-indigo)',
+              }}
+            />
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+            {path.completedUnitCount} of {path.unitCount} units
+            {path.nextUnitTitle ? ` · next: ${path.nextUnitTitle}` : ''}
+          </span>
+        </div>
+      )}
+
       {path.badge_name && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 400, color: 'var(--uc-amber-l)' }}>
           <Award size={13} aria-hidden="true" />

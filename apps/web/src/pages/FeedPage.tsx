@@ -38,13 +38,18 @@ interface FeedTab {
   empty?: string
 }
 
+/**
+ * Four, not six. Jobs and Events were tabs here as well as rows in the left rail, so
+ * each was a second name for a page that already exists — and the tab was the weaker
+ * of the two, showing only the *posts* promoting a job or event rather than the job
+ * board or the calendar itself. Posts of those types still appear under All; the rail
+ * owns the destination.
+ */
 const FEED_TABS: FeedTab[] = [
   { key: 'all', label: 'All', filter: 'all' },
   { key: 'groups', label: 'My groups', filter: 'all', scope: 'my_groups', empty: 'No posts in your groups yet. Join a group to see its posts here.' },
   { key: 'news', label: 'Campus news', filter: 'news', empty: 'No campus news has been published yet.' },
-  { key: 'jobs', label: 'Jobs', filter: 'job_promo', empty: 'No job opportunities have been shared yet.' },
   { key: 'announcement', label: 'Announcements', filter: 'announcement', empty: 'No announcements right now.' },
-  { key: 'event_promo', label: 'Events', filter: 'event_promo', empty: 'No event posts yet.' },
 ]
 
 // ── FeedPage ──────────────────────────────────────────────────────────────────

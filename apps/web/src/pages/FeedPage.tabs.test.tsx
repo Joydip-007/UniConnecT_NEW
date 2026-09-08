@@ -115,15 +115,19 @@ describe('FeedPage filter tabs', () => {
     expect(screen.getByTestId('search').textContent).toContain('tab=groups')
   })
 
-  it('requests the job post type for the Jobs tab', async () => {
-    const user = userEvent.setup()
+  /**
+   * Jobs and Events were dropped: both are left-rail rows, and the tab showed only the
+   * posts promoting one rather than the board or the calendar. Pinned so a future edit
+   * has to justify putting a rail destination back in the tab bar.
+   */
+  it('offers four tabs, and none that duplicates a left-rail destination', () => {
     renderFeed()
-
-    await user.click(screen.getByRole('tab', { name: 'Jobs' }))
-
-    const last = requestedCalls[requestedCalls.length - 1]
-    expect(last.filter).toBe('job_promo')
-    expect(last.scope).toBeUndefined()
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
+      'All',
+      'My groups',
+      'Campus news',
+      'Announcements',
+    ])
   })
 
   it('sends no scope on tabs that filter purely by type', () => {

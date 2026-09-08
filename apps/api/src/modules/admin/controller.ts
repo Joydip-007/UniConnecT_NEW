@@ -180,6 +180,12 @@ export const listInviteBatches = asyncHandler(async (req: Request, res: Response
   sendSuccess(res, await adminService.listInviteBatches(universityId))
 })
 
+export const listBatchInvitations = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const batchId = req.params.batchId as string
+  sendSuccess(res, await adminService.listBatchInvitations(universityId, batchId))
+})
+
 export const deleteInvitation = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
   const invitationId = req.params.invitationId as string

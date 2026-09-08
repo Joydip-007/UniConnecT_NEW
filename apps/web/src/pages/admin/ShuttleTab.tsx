@@ -3,9 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import { Plus, Trash2, X, Bus, MapPin } from 'lucide-react'
+import { Plus, Trash2, X, MapPin } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { Modal } from '@/components/Modal'
 import { useRouteGeometry } from '@/features/shuttle/hooks/useRouteGeometry'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -380,6 +381,26 @@ interface RouteEditorProps {
   onCancel: () => void
 }
 
+/**
+ * The editor is four separate jobs — identity, timetable, geography, and a check of the
+ * result — that used to run together as one undivided stack of fields. A heading and a
+ * rule per group is the whole fix: nothing moves, but the eye gets somewhere to rest.
+ */
+function EditorSection({ title, first, children }: { title: string; first?: boolean; children: React.ReactNode }) {
+  return (
+    <section style={{
+      paddingTop: first ? 0 : 16,
+      borderTop: first ? undefined : '0.5px solid var(--border-default)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+    }}>
+      <h3 style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</h3>
+      {children}
+    </section>
+  )
+}
+
 function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
   const qc = useQueryClient()
   const [e, setE] = useState<EditorState>(initial)
@@ -442,7 +463,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-      {/* Name + color + active */}
+      <EditorSection title="Route" first>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ flex: '3 1 200px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <div style={labelSt}>Route name</div>
@@ -507,7 +528,9 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
         </div>
       </div>
 
-      {/* Schedule */}
+      </EditorSection>
+
+      <EditorSection title="Schedule">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -586,10 +609,11 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
         )}
       </div>
 
-      {/* Stops */}
+      </EditorSection>
+
+      <EditorSection title={`Stops (${e.stops.length})`}>
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div style={labelSt}>Stops ({e.stops.length})</div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
           <button
             type="button"
             onClick={addStop}
@@ -626,33 +650,36 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {/* Header row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px 32px', gap: 6, padding: '0 4px' }}>
-              <div style={{ ...labelSt, marginBottom: 0 }}>#</div>
-              <div style={{ ...labelSt, marginBottom: 0 }}>Stop name</div>
-              <div style={{ ...labelSt, marginBottom: 0 }}>Latitude</div>
-              <div style={{ ...labelSt, marginBottom: 0 }}>Longitude</div>
-              <div />
-              <div />
+            {/* Hidden on narrow screens, where the row stacks and each field is
+                identifiable by its own placeholder instead. */}
+            <div className="shuttle-stop-row shuttle-stop-head" style={{ padding: '0 4px' }}>
+              <div style={{ ...labelSt, marginBottom: 0, gridArea: 'num' }}>#</div>
+              <div style={{ ...labelSt, marginBottom: 0, gridArea: 'name' }}>Stop name</div>
+              <div style={{ ...labelSt, marginBottom: 0, gridArea: 'lat' }}>Latitude</div>
+              <div style={{ ...labelSt, marginBottom: 0, gridArea: 'lng' }}>Longitude</div>
             </div>
 
             {e.stops.map((stop, idx) => (
-              <div key={stop.id} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 120px 120px 32px 32px', gap: 6, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>{idx + 1}</span>
+              <div key={stop.id} className="shuttle-stop-row">
+                <span style={{ gridArea: 'num', fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>{idx + 1}</span>
                 <input
-                  style={inputSt}
+                  style={{ ...inputSt, gridArea: 'name' }}
                   placeholder="Stop name"
+                  aria-label={`Stop ${idx + 1} name`}
                   value={stop.name}
                   onChange={(ev) => updateStop(idx, 'name', ev.target.value)}
                 />
                 <input
-                  style={{ ...inputSt, fontFamily: 'monospace' }}
-                  placeholder="23.8128"
+                  style={{ ...inputSt, gridArea: 'lat', fontFamily: 'monospace' }}
+                  placeholder="Latitude"
+                  aria-label={`Stop ${idx + 1} latitude`}
                   value={stop.lat}
                   onChange={(ev) => updateStop(idx, 'lat', ev.target.value)}
                 />
                 <input
-                  style={{ ...inputSt, fontFamily: 'monospace' }}
-                  placeholder="90.4501"
+                  style={{ ...inputSt, gridArea: 'lng', fontFamily: 'monospace' }}
+                  placeholder="Longitude"
+                  aria-label={`Stop ${idx + 1} longitude`}
                   value={stop.lng}
                   onChange={(ev) => updateStop(idx, 'lng', ev.target.value)}
                 />
@@ -662,6 +689,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
                   aria-label="Pick on map"
                   onClick={() => setPickingStopIdx(idx)}
                   style={{
+                    gridArea: 'pin',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
@@ -678,6 +706,7 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
                   onClick={() => removeStop(idx)}
                   aria-label="Remove stop"
                   style={{
+                    gridArea: 'del',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
@@ -700,17 +729,17 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
           </p>
         )}
       </div>
+      </EditorSection>
 
-      {/* Map preview */}
       {mapStops(e.stops).length >= 1 && (
-        <div>
-          <div style={{ ...labelSt, marginBottom: 6 }}>Route preview</div>
+        <EditorSection title="Route preview">
           <RouteMapPreview stops={e.stops} color={e.color} />
-        </div>
+        </EditorSection>
       )}
 
-      {/* Footer actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Footer actions — pinned below the last section's rule so Save is always the
+          last thing read, whether or not the preview rendered. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 16, borderTop: '0.5px solid var(--border-default)' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <PrimaryBtn
             disabled={!valid || saveMutation.isPending}
@@ -884,10 +913,14 @@ export function ShuttleTab() {
         />
       </div>
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-      {/* ── Route list ── */}
+      {/* The editor is a dialog, not a neighbour. Beside a 268px list it had roughly
+          330px to render a two-column timetable, a four-column stop table and a map —
+          the stop-name field collapsed to about 20px, narrower than the word it held.
+          Given the full width of a dialog every group fits at its intended size, and
+          the list underneath stays readable as a list. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{
-        width: 268,
+        width: '100%',
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
@@ -961,16 +994,28 @@ export function ShuttleTab() {
                   flexShrink: 0,
                   opacity: r.isActive ? 1 : 0.4,
                 }} />
-                <span style={{
-                  flex: 1,
-                  fontSize: 13,
-                  fontWeight: active ? 500 : 400,
-                  color: active ? 'var(--uc-indigo-xl)' : r.isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>
-                  {r.name}
+                <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: active ? 500 : 400,
+                    color: active ? 'var(--uc-indigo-xl)' : r.isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {r.name}
+                  </span>
+                  {/* Full width gives the row room for what it is, not just what it is
+                      called — the cramped 268px column could only ever hold the name. */}
+                  <span style={{
+                    fontSize: 12,
+                    color: 'var(--text-tertiary)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {routeSummary(r)}
+                  </span>
                 </span>
                 {!r.isActive && (
                   <span style={{
@@ -1008,50 +1053,30 @@ export function ShuttleTab() {
         )}
       </div>
 
-      {/* ── Editor panel ── */}
-      <div style={{
-        flex: 1,
-        minWidth: 0,
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '24px',
-      }}>
-        {editorInitial ? (
-          <Fragment>
-            <div style={{ marginBottom: 18 }}>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {selectedId === 'new' ? 'New route' : editorInitial.name || 'Edit route'}
-              </p>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                {selectedId === 'new'
-                  ? 'Fill in the details and add at least 2 stops to create the route.'
-                  : 'Edit the route details, stops, and schedule below.'}
-              </p>
-            </div>
+      </div>
+
+      <Modal
+        isOpen={editorInitial !== null}
+        onClose={closeEditor}
+        title={selectedId === 'new' ? 'New route' : editorInitial?.name || 'Edit route'}
+        maxWidth={720}
+      >
+        {editorInitial && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {selectedId === 'new'
+                ? 'Fill in the details and add at least 2 stops to create the route.'
+                : 'Edit the route details, stops, and schedule below.'}
+            </p>
             <RouteEditor
               key={selectedId}
               initial={editorInitial}
               onSaved={closeEditor}
               onCancel={closeEditor}
             />
-          </Fragment>
-        ) : (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '64px 0',
-            gap: 12,
-            color: 'var(--text-tertiary)',
-          }}>
-            <Bus size={32} strokeWidth={1.2} />
-            <p style={{ margin: 0, fontSize: 13 }}>Select a route to edit, or create a new one.</p>
           </div>
         )}
-      </div>
-      </div>
+      </Modal>
 
       <div style={{
         background: 'var(--surface-card)',
@@ -1173,6 +1198,28 @@ function ShuttleStatTile({ label, value, sub }: { label: string; value: string; 
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
+
+/**
+ * The one-line summary under a route's name. Every part is optional because the shape
+ * genuinely varies — a continuous route has a cycle rather than a run time, and a route
+ * mid-setup may have neither — so the line is assembled from what exists rather than
+ * printing a dash for what does not. Stop count always lands, since a route without
+ * stops cannot be saved.
+ */
+function routeSummary(r: ShuttleRoute): string {
+  const parts: string[] = []
+  if (r.schedule?.type === 'continuous' && r.cycleMinutes) parts.push(`Every ${r.cycleMinutes} min`)
+  else if (r.estDurationMin) parts.push(`${r.estDurationMin} min run`)
+
+  const hours = r.schedule?.operatingHours
+  if (hours?.start && hours.end) parts.push(`${hours.start}–${hours.end}`)
+
+  const departures = (r.schedule?.departures?.outbound?.length ?? 0) + (r.schedule?.departures?.inbound?.length ?? 0)
+  if (departures > 0) parts.push(`${departures} departures`)
+
+  parts.push(`${r.stops.length} stop${r.stops.length === 1 ? '' : 's'}`)
+  return parts.join(' · ')
+}
 
 function RouteListSkeleton() {
   return (

@@ -832,6 +832,26 @@ export class AdminService {
     }))
   }
 
+  /**
+   * The invitations inside one batch. `listInvitations` deliberately excludes batched
+   * rows (`whereNull('batch_id')`) so the singles list stays readable, which left the
+   * members of a batch with no way to be read at all — only summed. This is that read,
+   * kept separate rather than folded in as a flag so neither list has to explain which
+   * mode it is in.
+   *
+   * Unpaginated on purpose: `CreateBulkInvitationsSchema` caps a batch at 50.
+   */
+  async listBatchInvitations(universityId: string, batchId: string) {
+    const rows = await db('invitations')
+      .where({ university_id: universityId, batch_id: batchId })
+      .select<InvitationRow[]>('*')
+      .orderBy('email', 'asc')
+
+    if (rows.length === 0) throw notFound('Invite batch not found')
+
+    return rows.map(toInvitation)
+  }
+
   async listInvitations(universityId: string, query: PaginationQuery) {
     const base = db('invitations').where({ university_id: universityId }).whereNull('batch_id')
 

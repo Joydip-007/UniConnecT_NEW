@@ -91,7 +91,7 @@ describe('TodayCard', () => {
 
   it('renders the done-for-today state without a button when completedToday is true', () => {
     renderWithClient(<TodayCard entry={{ ...baseEntry, completedToday: true }} pathTitle="Git basics" />)
-    expect(screen.getByText('Done for today — come back tomorrow')).toBeInTheDocument()
+    expect(screen.getByText('Done for today. Come back tomorrow')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Mark complete' })).not.toBeInTheDocument()
   })
 

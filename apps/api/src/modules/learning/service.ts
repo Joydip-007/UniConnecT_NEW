@@ -55,11 +55,40 @@ export async function listPaths(universityId: string, userId: string) {
     .select('path_id', 'status')
   const myEnrollmentByPath = new Map(myEnrollments.map((r) => [r.path_id, r.status]))
 
+  // The card shows how far into a path you are without opening the detail modal, so the
+  // list needs the caller's own completion count and the title of the unit they resume at.
+  // Both are scoped to `userId` — this is per-caller progress, never anyone else's.
+  const enrolledPathIds = myEnrollments.map((r) => r.path_id)
+  const completedByPath = new Map<string, number>()
+  const nextUnitByPath = new Map<string, string>()
+
+  if (enrolledPathIds.length > 0) {
+    const myCompletions = await db('unit_completions')
+      .whereIn('path_id', enrolledPathIds)
+      .andWhere('user_id', userId)
+      .select('path_id', 'unit_id')
+    const completedUnitIds = new Set(myCompletions.map((c) => c.unit_id))
+    for (const row of myCompletions) {
+      completedByPath.set(row.path_id, (completedByPath.get(row.path_id) ?? 0) + 1)
+    }
+
+    const enrolledUnits = await db('skill_path_units')
+      .whereIn('path_id', enrolledPathIds)
+      .orderBy('display_order', 'asc')
+      .select('path_id', 'id', 'title')
+    for (const unit of enrolledUnits) {
+      if (completedUnitIds.has(unit.id) || nextUnitByPath.has(unit.path_id)) continue
+      nextUnitByPath.set(unit.path_id, unit.title)
+    }
+  }
+
   return paths.map((p) => ({
     ...p,
     unitCount: unitCountByPath.get(p.id) ?? 0,
     enrolledCount: enrolledCountByPath.get(p.id) ?? 0,
     myEnrollmentStatus: myEnrollmentByPath.get(p.id) ?? null,
+    completedUnitCount: completedByPath.get(p.id) ?? 0,
+    nextUnitTitle: nextUnitByPath.get(p.id) ?? null,
   }))
 }
 
@@ -108,8 +137,17 @@ export async function getPath(pathId: string, userId: string, universityId: stri
     }
   })
 
+  // The detail payload shares the card's shape, so it owes the same counts. Without
+  // `unitCount` the modal's meta line renders as " units · ~5 days · beginner".
+  const [{ count: enrolledCount }] = await db('skill_path_enrollments')
+    .where('path_id', pathId)
+    .whereIn('status', ['active', 'completed'])
+    .count('* as count')
+
   return {
     ...path,
+    unitCount: units.length,
+    enrolledCount: Number(enrolledCount),
     units: outUnits,
     enrollment: enrollment ?? null,
   }

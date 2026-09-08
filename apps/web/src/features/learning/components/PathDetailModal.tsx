@@ -175,7 +175,7 @@ export function PathDetailModal({ pathId, open, onClose }: PathDetailModalProps)
             style={{
               alignSelf: 'flex-start',
               background: 'var(--uc-orange)',
-              color: 'var(--uc-orange-l)',
+              color: 'var(--on-accent)',
               border: 'none',
               borderRadius: 'var(--r-pill)',
               padding: '8px 16px',

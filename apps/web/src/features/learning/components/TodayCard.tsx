@@ -23,10 +23,18 @@ export function TodayCard({
   entry,
   pathTitle,
   onQuizStart,
+  isLead = false,
 }: {
   entry: TodayEntry
   pathTitle?: string
   onQuizStart?: (unit: LearningUnit) => void
+  /**
+   * Today can stack several cards and the daily quiz below them. Exactly one of those
+   * carries the filled accent — the first thing still to do — so the screen has a single
+   * obvious target instead of four competing buttons. Everything else waits its turn as a
+   * quiet outline button.
+   */
+  isLead?: boolean
 }) {
   const { unit, completedToday } = entry
   const [expanded, setExpanded] = useState(false)
@@ -34,6 +42,8 @@ export function TodayCard({
   const show = useToastStore((s) => s.show)
 
   const Icon = TYPE_ICON[unit.type]
+  const isQuiz = unit.type === 'quiz'
+  const body = unit.content?.body ?? unit.content?.text ?? ''
 
   function handleComplete() {
     mutation.mutate(
@@ -84,74 +94,71 @@ export function TodayCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
           <Check size={18} color="var(--uc-mint)" aria-hidden="true" />
           <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-            Done for today — come back tomorrow
+            Done for today. Come back tomorrow
           </p>
         </div>
-      ) : unit.type === 'quiz' ? (
-        <div style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            className="press-feedback"
-            onClick={() => onQuizStart?.(unit)}
-            style={buttonStyle}
-          >
-            Start quiz
-          </button>
-        </div>
       ) : (
-        <div style={{ marginTop: 12 }}>
-          {unit.content?.body || unit.content?.text ? (
-            <button
-              type="button"
-              onClick={() => setExpanded((e) => !e)}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                marginBottom: 8,
-                fontSize: 13,
-                fontWeight: 400,
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-            >
-              {expanded ? 'Hide content' : 'Show content'}
-            </button>
-          ) : null}
-          {expanded && (unit.content?.body || unit.content?.text) ? (
-            <div style={{ marginBottom: 12 }}>
-              {(unit.content.body ?? unit.content.text ?? '').split('\n').filter(Boolean).map((para) => (
+        <>
+          {expanded && body ? (
+            <div style={{ marginTop: 12 }}>
+              {body.split('\n').filter(Boolean).map((para) => (
                 <p
                   key={para}
-                  style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 400, color: 'var(--text-primary)' }}
+                  style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 400, color: 'var(--text-primary)', lineHeight: 1.6 }}
                 >
                   {para}
                 </p>
               ))}
             </div>
           ) : null}
-          <button
-            type="button"
-            className="press-feedback"
-            onClick={handleComplete}
-            disabled={mutation.isPending}
-            style={{ ...buttonStyle, opacity: mutation.isPending ? 0.6 : 1 }}
-          >
-            Mark complete
-          </button>
-        </div>
+
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              type="button"
+              className="press-feedback"
+              onClick={isQuiz ? () => onQuizStart?.(unit) : handleComplete}
+              disabled={!isQuiz && mutation.isPending}
+              style={{
+                ...primaryStyle(isLead),
+                opacity: !isQuiz && mutation.isPending ? 0.6 : 1,
+              }}
+            >
+              {isQuiz ? 'Start quiz' : 'Mark complete'}
+            </button>
+
+            {body ? (
+              <button
+                type="button"
+                onClick={() => setExpanded((e) => !e)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontSize: 13,
+                  fontWeight: 400,
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                {expanded ? 'Hide content' : 'Show content'}
+              </button>
+            ) : null}
+          </div>
+        </>
       )}
     </div>
   )
 }
 
-const buttonStyle: React.CSSProperties = {
-  background: 'var(--uc-orange)',
-  color: 'var(--uc-orange-l)',
-  border: 'none',
-  borderRadius: 'var(--r-pill)',
-  padding: '8px 16px',
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: 'pointer',
+function primaryStyle(isLead: boolean): React.CSSProperties {
+  return {
+    background: isLead ? 'var(--uc-orange)' : 'transparent',
+    color: isLead ? 'var(--on-accent)' : 'var(--text-secondary)',
+    border: isLead ? 'none' : '0.5px solid var(--border-default)',
+    borderRadius: 'var(--r-pill)',
+    padding: '8px 16px',
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+  }
 }

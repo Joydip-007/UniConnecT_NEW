@@ -260,9 +260,16 @@ function AnnouncementRow({ item, queryKey, activeUsers }: { item: AnnouncementIt
         <Megaphone size={18} />
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.4 }}>{item.content}</div>
+        {/* The pill states what this announcement *is* — published, scheduled, draft —
+            so it belongs on the title line, level with it, not buried in the meta run
+            where it reads as one more comma-separated fact. */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+            {item.content}
+          </div>
+          <span style={{ flexShrink: 0 }}><StatusPill status={status} /></span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-          <StatusPill status={status} />
           <span>{item.author.fullName ?? 'Unknown'}</span>
           <span>· {relativeTime(item.createdAt)}</span>
           {status === 'published' ? (

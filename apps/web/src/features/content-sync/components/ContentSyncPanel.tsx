@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { formatDistanceToNow } from 'date-fns'
-import { RefreshCw, Check, AlertTriangle } from 'lucide-react'
+import { RefreshCw, Check, AlertTriangle, Newspaper, Megaphone, Calendar } from 'lucide-react'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import {
   useBackfillAttachments,
@@ -39,10 +39,48 @@ const inputStyle: React.CSSProperties = {
 }
 
 const SOURCES = [
-  { key: 'newsUrl', label: 'News page URL', placeholder: 'https://www.uiu.ac.bd/news/' },
-  { key: 'noticeUrl', label: 'Notice page URL', placeholder: 'https://www.uiu.ac.bd/notice/' },
-  { key: 'eventUrl', label: 'Event page URL', placeholder: 'https://www.uiu.ac.bd/event/' },
+  { key: 'newsUrl', label: 'News page URL', placeholder: 'https://www.uiu.ac.bd/news/', icon: Newspaper, tone: { color: 'var(--uc-indigo-l)', bg: 'var(--uc-indigo-bg)' } },
+  { key: 'noticeUrl', label: 'Notice page URL', placeholder: 'https://www.uiu.ac.bd/notice/', icon: Megaphone, tone: { color: 'var(--uc-orange-l)', bg: 'var(--uc-orange-bg)' } },
+  { key: 'eventUrl', label: 'Event page URL', placeholder: 'https://www.uiu.ac.bd/event/', icon: Calendar, tone: { color: 'var(--uc-cyan)', bg: 'var(--uc-cyan-bg)' } },
 ] as const
+
+/**
+ * Four numbers that answer "is this working?" before any field is read. They sit above
+ * the form rather than inside it: the form is what you change, this is what changed.
+ */
+function SyncStat({ label: text, value, sub, tone }: { label: string; value: string; sub: string; tone?: string }) {
+  return (
+    <div style={{
+      background: 'var(--surface-card)',
+      border: '0.5px solid var(--border-default)',
+      borderRadius: 'var(--r-lg)',
+      padding: '16px 20px',
+      flex: '1 1 0',
+      minWidth: 130,
+    }}>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{text}</div>
+      <div style={{ fontSize: 26, fontWeight: 500, color: 'var(--text-primary)', marginTop: 6, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: tone ?? 'var(--text-tertiary)', marginTop: 6 }}>{sub}</div>
+    </div>
+  )
+}
+
+/** Whether a source is set at all — the one thing a URL field cannot say about itself. */
+function ConfiguredPill({ set }: { set: boolean }) {
+  return (
+    <span style={{
+      fontSize: 11,
+      fontWeight: 500,
+      borderRadius: 'var(--r-pill)',
+      padding: '1px 8px',
+      color: set ? 'var(--uc-mint)' : 'var(--text-tertiary)',
+      background: set ? 'var(--uc-mint-bg)' : 'var(--surface-raised)',
+      border: `0.5px solid ${set ? 'var(--uc-mint-bdr)' : 'var(--border-default)'}`,
+    }}>
+      {set ? 'Configured' : 'Not set'}
+    </span>
+  )
+}
 
 export function ContentSyncPanel() {
   const qc = useQueryClient()
@@ -128,8 +166,49 @@ export function ContentSyncPanel() {
 
   if (isLoading) return <p style={{ color: 'var(--text-secondary)' }}>Loading…</p>
 
+  const sourcesSet = SOURCES.filter((src) => !!draft[src.key]).length
+  const pendingCount = (pending?.news.length ?? 0) + (pending?.events.length ?? 0)
+  const lastRunStat = runs?.[0]
+  const importedAllTime = (runs ?? [])
+    .filter((r) => r.status === 'success')
+    .reduce((n, r) => n + (r.itemsNew ?? 0), 0)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <SyncStat
+          label="Sources configured"
+          value={`${sourcesSet}/3`}
+          sub={draft.enabled ? 'sync enabled' : 'sync paused'}
+          tone={draft.enabled ? 'var(--uc-mint)' : 'var(--uc-amber-l)'}
+        />
+        <SyncStat
+          label="Pending review"
+          value={String(pendingCount)}
+          sub="imported drafts"
+          tone={pendingCount > 0 ? 'var(--uc-amber-l)' : undefined}
+        />
+        <SyncStat
+          label="Last sync"
+          value={
+            !lastRunStat
+              ? '—'
+              : lastRunStat.status === 'success'
+                ? `${lastRunStat.itemsNew} new`
+                : lastRunStat.status === 'running'
+                  ? 'Running'
+                  : 'Failed'
+          }
+          sub={lastRunStat ? formatDistanceToNow(new Date(lastRunStat.startedAt), { addSuffix: true }) : 'no runs yet'}
+          tone={lastRunStat?.status === 'failed' ? 'var(--uc-red)' : undefined}
+        />
+        <SyncStat
+          label="Items imported"
+          value={String(importedAllTime)}
+          sub={`across ${(runs ?? []).length} run${(runs ?? []).length === 1 ? '' : 's'}`}
+        />
+      </div>
+
       <div style={card}>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 500, margin: 0 }}>Content sync sources</h3>
@@ -138,18 +217,51 @@ export function ContentSyncPanel() {
           </p>
         </div>
 
-        {SOURCES.map((source) => (
-          <div key={source.key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={label}>{source.label}</span>
-            <input
-              style={inputStyle}
-              type="url"
-              value={draft[source.key]}
-              placeholder={source.placeholder}
-              onChange={(e) => setDraft((d) => ({ ...d, [source.key]: e.target.value }))}
-            />
-          </div>
-        ))}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {SOURCES.map((source, i) => {
+            const SourceIcon = source.icon
+            return (
+              <div
+                key={source.key}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  padding: '14px 0',
+                  borderTop: i === 0 ? undefined : '0.5px solid var(--border-default)',
+                }}
+              >
+                <span style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 'var(--r-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: 20,
+                  background: source.tone.bg,
+                  color: source.tone.color,
+                }}>
+                  <SourceIcon size={16} strokeWidth={1.5} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={label}>{source.label}</span>
+                    <ConfiguredPill set={!!draft[source.key]} />
+                  </div>
+                  <input
+                    style={inputStyle}
+                    type="url"
+                    value={draft[source.key]}
+                    placeholder={source.placeholder}
+                    onChange={(e) => setDraft((d) => ({ ...d, [source.key]: e.target.value }))}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={label}>Entries per source</span>

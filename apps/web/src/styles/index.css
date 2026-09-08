@@ -361,35 +361,47 @@ select:focus-visible {
 }
 
 /* ── Feed 3-column layout ─────────────────────────────────── */
+/* `width: 100%` is load-bearing, not decoration. This grid is a flex item in the
+   column flex container `FeedLayout` renders, where `margin: 0 auto` cancels the
+   default `align-self: stretch` — leaving the grid to size to its own content. The
+   shell then narrowed page by page (a sparse admin tab measured 974px against a
+   feed's 1176px and a full table's 1280px), so the centre column changed width every
+   time you navigated. Filling the line first, then capping at 1280 and centring with
+   the auto margins, holds every route to one width.
+
+   The tracks are `minmax(0, …)` for the neighbouring reason: a bare `1fr` floors at
+   min-content, so one wide table or an unbroken URL would push the grid past its cap
+   instead of scrolling inside its own column. */
 .feed-layout-grid {
+  width: 100%;
   max-width: 1280px;
   margin: 0 auto;
   padding: 18px 20px 64px;
   display: grid;
-  grid-template-columns: 232px 1fr 272px;
+  grid-template-columns: 232px minmax(0, 1fr) 272px;
   gap: 18px;
 }
 
 .feed-layout-grid[data-left-sidebar='collapsed'] {
-  grid-template-columns: 68px 1fr 272px;
+  grid-template-columns: 68px minmax(0, 1fr) 272px;
 }
 
 /* Wide mode — same grid, right column dropped for surfaces that carry no right-rail
    payload (currently the admin panel, whose tables need the width). */
 .feed-layout-grid[data-wide] {
-  grid-template-columns: 232px 1fr;
+  grid-template-columns: 232px minmax(0, 1fr);
 }
 
 .feed-layout-grid[data-wide][data-left-sidebar='collapsed'] {
-  grid-template-columns: 68px 1fr;
+  grid-template-columns: 68px minmax(0, 1fr);
 }
 
 @media (max-width: 1100px) {
   .feed-layout-grid {
-    grid-template-columns: 232px 1fr;
+    grid-template-columns: 232px minmax(0, 1fr);
   }
   .feed-layout-grid[data-left-sidebar='collapsed'] {
-    grid-template-columns: 68px 1fr;
+    grid-template-columns: 68px minmax(0, 1fr);
   }
   .feed-layout-right {
     display: none;
@@ -401,7 +413,7 @@ select:focus-visible {
    left rail before the bottom nav exists, leaving no primary navigation. */
 @media (max-width: 767px) {
   .feed-layout-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 12px 12px 48px;
     gap: 12px;
   }
@@ -1083,6 +1095,35 @@ select:focus-visible {
 
 .right-rail > *:nth-child(n + 3) .right-rail-slot {
   border-top: 0.5px solid var(--border-default);
+}
+
+/* ── Shuttle route editor: stop rows ──────────────────────────────────
+   Six fixed tracks need about 360px. Inside the route dialog on a phone the
+   row has roughly 318px, which collapsed the stop-name field to under 20px —
+   narrower than the word it holds — and pushed the remove button off the edge.
+   Below 620px the row folds to two lines instead: name across the top with its
+   two buttons, coordinates beneath. The header row hides there, since each
+   field then identifies itself by placeholder. */
+.shuttle-stop-row {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+  grid-template-columns: 28px minmax(0, 1fr) 120px 120px 32px 32px;
+  grid-template-areas: 'num name lat lng pin del';
+}
+
+@media (max-width: 620px) {
+  .shuttle-stop-row {
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 28px 28px;
+    grid-template-areas:
+      'num name name pin del'
+      'num lat  lng  .   .';
+    row-gap: 6px;
+  }
+
+  .shuttle-stop-head {
+    display: none;
+  }
 }
 
 /* ── Group detail tab rail ─────────────────────────────────────────────

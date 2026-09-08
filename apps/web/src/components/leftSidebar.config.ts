@@ -144,20 +144,27 @@ const MEMBER_SECONDARY: RailRow[] = [
  *                faculty has no write access anywhere in the module, so it gets no row
  *  - news        is a fixed "Announcements"/"Notices" row for faculty, admin and driver
  */
+/**
+ * Admin's secondary is deliberately the shortest of any role. An admin's shell is the
+ * admin panel: the six fixed rows and three campus tools are all administrative
+ * surfaces, and the account menu is not a second place to offer the member app. So
+ * Explore, Groups, Events, Jobs, News, Learn, Saved and the rider Shuttle map are not
+ * advertised to admin at all — their admin-side equivalents already live in the rail,
+ * and the member pages stay reachable by URL and by search.
+ *
+ * Messages and Notifications are the exception, and they are here for the phone rather
+ * than for this menu: `TOPNAV_ICON_ROUTES` filters both out of the avatar menu, and
+ * mobile hides their top-bar icons, so the More sheet is the only home they have on a
+ * small screen. Dropping them from this list would strand them there.
+ *
+ * This narrows what `reachability.test.ts` asks of admin — see the member-feature check
+ * there, which now exempts the surfaces listed above for this role only.
+ */
+const ADMIN_SECONDARY_KEYS = new Set(['messages', 'notifications', 'drafts'])
+
 const NEWS_ROW: RailRow = { key: 'news', label: 'News', icon: Newspaper, to: PATHS.NEWS }
 const JOBS_ROW: RailRow = { key: 'jobs', label: 'Jobs', icon: Briefcase, to: PATHS.JOBS }
 const MENTORSHIP_ROW: RailRow = { key: 'mentorship', label: 'Mentorship', icon: Handshake, to: PATHS.MENTORSHIP }
-// The admin rail spends all five fixed rows on moderation duties, so the ordinary
-// member surfaces it still owns (events are `requireRole('faculty','admin')`; groups
-// carry no role guard at all; news is where every other role's "Announcements"/"Notices"
-// row already points) move here rather than disappearing.
-const GROUPS_ROW: RailRow = { key: 'groups', label: 'Groups & people', icon: Users, to: PATHS.GROUPS }
-// Platform-wide group oversight (private groups included, unlike the browse view above) —
-// AdminPage's own `?tab=groups` screen, distinct from GROUPS_ROW's member-facing /groups.
-const EVENTS_ROW: RailRow = { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS }
-// Every other role reaches the rider map through its "Shuttle" tool tile. Admin's tile
-// points at the ops tab instead, so the map it shares with everyone else lands here.
-const SHUTTLE_ROW: RailRow = { key: 'shuttle', label: 'Shuttle', icon: Bus, to: PATHS.SHUTTLE }
 
 /**
  * True when `to` is the row the current URL is on. Rows can share a base path and differ
@@ -419,7 +426,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
       { key: 'content', label: 'Content', icon: LayoutGrid, to: `${PATHS.ADMIN}?tab=content` },
     ],
     contextual: [escalatedReportRule, verificationsRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
-    secondary: [...MEMBER_SECONDARY, GROUPS_ROW, NEWS_ROW, EVENTS_ROW, JOBS_ROW, MENTORSHIP_ROW, SHUTTLE_ROW],
+    secondary: [...MEMBER_SECONDARY.filter((row) => ADMIN_SECONDARY_KEYS.has(row.key)), MENTORSHIP_ROW],
     // Deletion requests is no longer a tile: it now lives inside the Moderation tab
     // beside reports, which is where an admin already goes to action a queue.
     tools: [

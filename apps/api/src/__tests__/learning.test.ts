@@ -123,6 +123,14 @@ describe('unit completion & streaks', () => {
     expect(res.status).toBe(429)
   })
 
+  it('reports per-caller progress and the resume point on the paths list', async () => {
+    const res = await get('/api/v1/learning/paths')
+    expect(res.status).toBe(200)
+    const mine = res.body.data.find((p: { id: string }) => p.id === pathId)
+    expect(mine.completedUnitCount).toBe(1)
+    expect(mine.nextUnitTitle).toBe('Unit 2')
+  })
+
   it('surfaces the next unit in /me/today', async () => {
     const res = await get('/api/v1/learning/me/today')
     expect(res.status).toBe(200)

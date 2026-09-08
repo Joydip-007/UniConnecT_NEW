@@ -41,7 +41,13 @@ describe('AdminPage Insights tab', () => {
   it('shows the resolved-% and pending-invite-batches tiles', async () => {
     renderInsights()
     expect(await screen.findByText('94%')).toBeInTheDocument()
-    expect(screen.getByText('3 batches')).toBeInTheDocument()
+
+    // The figure and its noun are separate lines: carrying "batches" up into the 28px
+    // value wrapped the tile and broke the row's shared baseline. Assert them as one
+    // tile rather than as loose text — "3" alone matches several counters on this page.
+    const invitesTile = screen.getByText('Pending invites').parentElement
+    expect(invitesTile).toHaveTextContent('3')
+    expect(invitesTile).toHaveTextContent('batches expiring soon')
   })
 
   it('shows a needs-attention row for escalated reports and jumps to Moderation on click', async () => {

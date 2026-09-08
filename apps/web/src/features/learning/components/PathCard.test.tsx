@@ -16,6 +16,8 @@ const basePath: LearningPath = {
   unitCount: 3,
   enrolledCount: 12,
   myEnrollmentStatus: null,
+  completedUnitCount: 0,
+  nextUnitTitle: null,
 }
 
 describe('PathCard', () => {
@@ -41,6 +43,31 @@ describe('PathCard', () => {
   it('shows an "In progress" chip when actively enrolled', () => {
     render(<PathCard path={{ ...basePath, myEnrollmentStatus: 'active' }} onOpen={vi.fn()} />)
     expect(screen.getByText('In progress')).toBeInTheDocument()
+  })
+
+  it('shows progress and the resume point while actively enrolled', () => {
+    render(
+      <PathCard
+        path={{ ...basePath, myEnrollmentStatus: 'active', completedUnitCount: 1, nextUnitTitle: 'Branching' }}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('1 of 3 units · next: Branching')).toBeInTheDocument()
+  })
+
+  it('drops the "next" clause when an enrolled path has no unit left', () => {
+    render(
+      <PathCard
+        path={{ ...basePath, myEnrollmentStatus: 'active', completedUnitCount: 3, nextUnitTitle: null }}
+        onOpen={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('3 of 3 units')).toBeInTheDocument()
+  })
+
+  it('shows no progress bar when the path is not started', () => {
+    render(<PathCard path={basePath} onOpen={vi.fn()} />)
+    expect(screen.queryByText(/of 3 units/)).not.toBeInTheDocument()
   })
 
   it('shows a "Completed" chip when the path is completed', () => {

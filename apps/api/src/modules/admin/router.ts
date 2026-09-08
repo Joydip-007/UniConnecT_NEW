@@ -24,6 +24,7 @@ import {
   listGroups,
   listInvitations,
   listInviteBatches,
+  listBatchInvitations,
   listMentors,
   listReportedContentGroups,
   listReports,
@@ -107,6 +108,9 @@ adminRouter.post('/invitations/bulk', requireRole('admin'), validate(CreateBulkI
 adminRouter.post('/invitations', validate(CreateInvitationSchema), createInvitation)
 adminRouter.get('/invitations', validateRequest({ query: PaginationQuerySchema }), listInvitations)
 adminRouter.get('/invitations/batches', requireRole('admin'), listInviteBatches)
+// Declared after '/invitations/batches' so the literal segment still wins, and before
+// the DELETE param route for the same reason.
+adminRouter.get('/invitations/batches/:batchId', requireRole('admin'), listBatchInvitations)
 adminRouter.delete('/invitations/:invitationId', requireRole('admin'), deleteInvitation)
 
 adminRouter.get('/university/domains', requireRole('admin'), getAllowedDomains)

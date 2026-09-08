@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { isAxiosError } from 'axios'
 import {
-  Users, FileText, Flag, Trash2, X, Megaphone,
-  ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, RefreshCw, Bus, GraduationCap, LayoutGrid
+  Flag, Trash2, X,
+  ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, ChevronDown, ChevronUp,
+  UserPlus
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { AccountDeletionRequest } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
@@ -17,6 +18,7 @@ import { ContentTab } from '@/pages/admin/ContentTab'
 import { GroupsTab } from '@/pages/admin/GroupsTab'
 import { AnnouncementsTab } from '@/pages/admin/AnnouncementsTab'
 import { ShuttleTab } from '@/pages/admin/ShuttleTab'
+import { InvitePeopleDialog } from '@/pages/admin/InvitePeopleDialog'
 import { ContentSyncPanel } from '@/features/content-sync'
 import { LearningAdminPanel } from '@/features/learning-admin'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
@@ -138,26 +140,28 @@ function ContentMetricsStrip({ stats }: { stats: Stats }) {
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
 type Tab = 'insights' | 'moderation' | 'groups' | 'members' | 'announcements' | 'content' | 'content-sync' | 'learning' | 'shuttle'
-const TABS: { label: string; value: Tab; icon: React.ReactNode }[] = [
-  { label: 'Insights', value: 'insights', icon: <FileText size={14} /> },
-  { label: 'Moderation', value: 'moderation', icon: <Flag size={14} /> },
-  { label: 'Groups', value: 'groups', icon: <Users size={14} /> },
-  { label: 'Members', value: 'members', icon: <Users size={14} /> },
-  { label: 'Announcements', value: 'announcements', icon: <Megaphone size={14} /> },
-  { label: 'Content', value: 'content', icon: <LayoutGrid size={14} /> },
-  { label: 'Content sync', value: 'content-sync', icon: <RefreshCw size={14} /> },
-  { label: 'Learning', value: 'learning', icon: <GraduationCap size={14} /> },
-  { label: 'Shuttle', value: 'shuttle', icon: <Bus size={14} /> },
-]
+/**
+ * There is deliberately no tab bar on this page. Every value here is already a row in
+ * the admin left rail — six fixed rows and three campus tools — so a horizontal nav
+ * above the content was the same navigation twice on one screen, and the rail is the
+ * more capable of the two. What the page owes the reader instead is which screen they
+ * are on, which is what this copy is for: the heading becomes the route.
+ */
+const TAB_META: Record<Tab, { label: string; subtitle: string }> = {
+  insights: { label: 'Insights', subtitle: 'Activity and membership across the last seven days.' },
+  moderation: { label: 'Moderation', subtitle: 'Reports, verification and deletion requests from across campus.' },
+  groups: { label: 'Groups', subtitle: 'Every campus group, its privacy setting and pending join requests.' },
+  members: { label: 'Members & invites', subtitle: 'Manage members and roles, and track the invite batches you send.' },
+  announcements: { label: 'Announcements', subtitle: 'Published, scheduled and draft announcements in one place.' },
+  content: { label: 'Content moderation', subtitle: 'Review and manage every post, news item, event and job in the feed.' },
+  'content-sync': { label: 'Content sync', subtitle: 'Scrape news, notices and events from the university website and import them as drafts for review.' },
+  learning: { label: 'Learning', subtitle: 'Curate and publish learning units, grouped by department.' },
+  shuttle: { label: 'Shuttle ops', subtitle: 'Live routes, stops and vehicle status across campus.' },
+}
+
+const TAB_VALUES = Object.keys(TAB_META) as Tab[]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function getDomainError(err: unknown): string | null {
-  if (!isAxiosError(err)) return null
-  const code: string = err.response?.data?.code ?? ''
-  if (code === 'EMAIL_DOMAIN_NOT_ALLOWED') return err.response?.data?.error ?? 'Email domain not allowed.'
-  return null
-}
 
 // ── Allowed email domains panel ───────────────────────────────────────────────
 
@@ -369,6 +373,62 @@ function AllowedDomainsPanel() {
 
 // ── Overview tab ──────────────────────────────────────────────────────────────
 
+/**
+ * The admin counter: a 38px tone tile, then the number, then what it counts. Distinct
+ * from `MetricTile` — that one is an eyebrow over a large figure and reads as a report;
+ * this one reads as a queue you are about to open, which is what the moderation trio is.
+ */
+function CounterTile({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: string
+  icon: LucideIcon
+  tone: { color: string; bg: string }
+}) {
+  return (
+    <div style={{
+      background: 'var(--surface-card)',
+      border: '0.5px solid var(--border-default)',
+      borderRadius: 'var(--r-lg)',
+      padding: 14,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+    }}>
+      <span style={{
+        width: 38,
+        height: 38,
+        borderRadius: 'var(--r-md)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        background: tone.bg,
+        color: tone.color,
+      }}>
+        <Icon size={18} strokeWidth={1.5} />
+      </span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+        <div style={{
+          fontSize: 12,
+          color: 'var(--text-secondary)',
+          marginTop: 3,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {label}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MetricTile({ label, value, hint, hot }: { label: string; value: string; hint: string; hot?: boolean }) {
   return (
     <div style={{
@@ -380,7 +440,17 @@ function MetricTile({ label, value, hint, hot }: { label: string; value: string;
       <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
         {label}
       </div>
-      <div style={{ fontSize: 28, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div style={{
+        fontSize: 28,
+        fontWeight: 500,
+        color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)',
+        lineHeight: 1,
+        // A tile row is read across, so every figure has to sit on one baseline. A
+        // value that wraps takes its whole tile out of alignment with its neighbours.
+        whiteSpace: 'nowrap',
+      }}>
+        {value}
+      </div>
       <div style={{ marginTop: 6, fontSize: 12, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)' }}>{hint}</div>
     </div>
   )
@@ -431,10 +501,13 @@ function InsightsTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
         <MetricTile label="Active members" value={data.activeUsers.toLocaleString()} hint={`of ${data.users.toLocaleString()} total`} />
         <MetricTile label="Posts today" value={String(data.postsByDay[data.postsByDay.length - 1]?.count ?? 0)} hint="vs. last 7-day avg" />
         <MetricTile label="Reports resolved" value={`${data.resolvedPct7d}%`} hint="last 7 days" />
+        {/* The figure alone, like its three neighbours. Carrying the noun up into the
+            28px value wrapped it onto a second line and knocked this tile's baseline
+            out of line with the rest of the row. */}
         <MetricTile
           label="Pending invites"
-          value={`${data.pendingInviteBatches} batch${data.pendingInviteBatches === 1 ? '' : 'es'}`}
-          hint="expiring soon"
+          value={String(data.pendingInviteBatches)}
+          hint={`batch${data.pendingInviteBatches === 1 ? '' : 'es'} expiring soon`}
           hot={data.pendingInviteBatches > 0}
         />
       </div>
@@ -748,7 +821,13 @@ function ConfirmModal({ variant, user, isPending, onConfirm, onClose }: ConfirmM
 
 // ── Users tab ─────────────────────────────────────────────────────────────────
 
-function UsersTab() {
+function UsersTab({
+  onInvitePeople,
+  inviteButtonRef,
+}: {
+  onInvitePeople: () => void
+  inviteButtonRef?: React.RefObject<HTMLButtonElement>
+}) {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
   const limit = 20
@@ -859,19 +938,59 @@ function UsersTab() {
           </div>
         )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {data.items.map((u) => {
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '14px 16px',
+            borderBottom: '0.5px solid var(--border-default)',
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Members</span>
+            <button
+              ref={inviteButtonRef}
+              type="button"
+              className="press-feedback"
+              onClick={onInvitePeople}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--on-indigo)',
+                background: 'var(--uc-indigo)',
+                border: 'none',
+                borderRadius: 'var(--r-pill)',
+                padding: '6px 14px',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <UserPlus size={14} strokeWidth={1.5} />
+              Invite people
+            </button>
+          </div>
+          {data.items.map((u, rowIndex) => {
             const isSelf = u.id === currentUser?.id
             return (
               <div key={u.id} style={{
-                background: 'var(--surface-card)',
-                border: `0.5px solid ${!u.isActive ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
-                borderRadius: 'var(--r-md)',
-                padding: '14px 18px',
+                // A row, not a card: the list is one object now, so a deactivated
+                // account is marked by its own tinted ground rather than by a border
+                // that would double every divider it touches.
+                background: !u.isActive ? 'var(--uc-orange-bg)' : undefined,
+                borderTop: rowIndex === 0 ? undefined : '0.5px solid var(--border-default)',
+                padding: '12px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                transition: 'border-color 200ms',
+                transition: 'background 200ms',
               }}>
                 {/* Avatar */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -921,7 +1040,19 @@ function UsersTab() {
                       </span>
                     )}
                   </div>
-                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{u.email}</span>
+                  {/* Long addresses have to ellipsis rather than wrap: on a phone the
+                      row is already avatar + name + role select + two actions, and a
+                      second line pushes the whole list out of the card. */}
+                  <span style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: 'var(--text-tertiary)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {u.email}
+                  </span>
                 </div>
 
                 {/* Actions */}
@@ -1029,119 +1160,167 @@ function UsersTab() {
   )
 }
 
-// ── Add driver panel (staff: driver sub-type) ───────────────────────────────────
-// Drivers are transport staff who broadcast GPS. Unlike faculty (who self-register
-// via invite + OTP), admin creates driver accounts directly — no invitation, no
-// OTP, no allowed-domain check.
+/** One invitee inside a batch, derived from the invitation row rather than stored. */
+type BatchInviteStatus = 'Accepted' | 'Pending' | 'Expired'
 
-function AddDriverPanel() {
-  const qc = useQueryClient()
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [msg, setMsg] = useState<string | null>(null)
+const BATCH_STATUS_COLOR: Record<BatchInviteStatus, string> = {
+  Accepted: 'var(--uc-mint)',
+  Pending: 'var(--uc-amber-l)',
+  Expired: 'var(--uc-red)',
+}
 
-  const mutation = useMutation({
-    mutationFn: () => api.post('/admin/users/driver', { full_name: fullName, email, password }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['admin', 'users'] })
-      const who = email
-      setFullName('')
-      setEmail('')
-      setPassword('')
-      setMsg(`Driver account created for ${who}`)
-      setTimeout(() => setMsg(null), 5000)
-    },
+function batchInviteStatus(inv: Invitation): BatchInviteStatus {
+  if (inv.isUsed) return 'Accepted'
+  return new Date(inv.expiresAt).getTime() < Date.now() ? 'Expired' : 'Pending'
+}
+
+/**
+ * A batch summarises to one progress bar, which answers "how is it going" but never
+ * "who has not accepted yet" — the question an admin actually opens this card to ask.
+ * The row expands to the addresses, fetched only when opened: a page of batches would
+ * otherwise pull every invitation on the campus to render bars nobody has clicked.
+ */
+function InviteBatchRow({ batch, isLast }: { batch: InviteBatch; isLast: boolean }) {
+  const [expanded, setExpanded] = useState(false)
+  const pct = batch.total > 0 ? Math.round((batch.accepted / batch.total) * 100) : 0
+  const left = daysLeft(batch.expiresAt)
+
+  const { data: invites, isLoading } = useQuery<Invitation[]>({
+    queryKey: ['admin', 'invite-batches', batch.id, 'invitations'],
+    queryFn: () =>
+      api.get<{ data: Invitation[] }>(`/admin/invitations/batches/${batch.id}`).then((r) => r.data.data),
+    enabled: expanded,
+    staleTime: 60_000,
   })
 
-  const inputStyle: React.CSSProperties = {
-    fontSize: 13,
-    fontWeight: 400,
-    color: 'var(--text-primary)',
-    background: 'var(--surface-raised)',
-    border: '0.5px solid var(--border-default)',
-    borderRadius: 'var(--r-md)',
-    padding: '9px 12px',
-    width: '100%',
-  }
-
-  const valid = fullName.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 8
-
   return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-      }}
-    >
-      <div>
-        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Add driver</span>
-        <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-          Creates a transport driver account directly. They sign in with these credentials to broadcast their shuttle's
-          location — no app access.
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input style={inputStyle} placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        <input style={inputStyle} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <input
-          style={inputStyle}
-          placeholder="Temporary password (min 8 chars)"
-          type="text"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
-
-      {mutation.isError && (
-        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-red)' }}>
-          Could not create driver. The email may already be in use.
-        </span>
-      )}
-      {msg && <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-mint)' }}>{msg}</span>}
-
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      paddingBottom: isLast ? 0 : 12,
+      borderBottom: isLast ? undefined : '0.5px solid var(--border-default)',
+    }}>
       <button
         type="button"
-        disabled={!valid || mutation.isPending}
-        onClick={() => mutation.mutate()}
+        onClick={() => setExpanded((o) => !o)}
+        aria-expanded={expanded}
         style={{
-          alignSelf: 'flex-start',
-          padding: '9px 18px',
-          fontSize: 13,
-          fontWeight: 500,
-          color: 'var(--on-accent)',
-          background: valid ? 'var(--uc-orange)' : 'var(--surface-raised)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          background: 'none',
           border: 'none',
-          borderRadius: 'var(--r-pill)',
-          cursor: valid && !mutation.isPending ? 'pointer' : 'not-allowed',
+          padding: 0,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          textAlign: 'left',
         }}
       >
-        {mutation.isPending ? 'Creating…' : 'Create driver'}
+        <span style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: 'var(--text-primary)',
+          minWidth: 0,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {batch.label}
+        </span>
+        <span style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: 'var(--text-secondary)',
+            background: 'var(--surface-raised)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-pill)',
+            padding: '1px 8px',
+          }}>
+            {batch.role}
+          </span>
+          {expanded
+            ? <ChevronUp size={15} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />
+            : <ChevronDown size={15} strokeWidth={1.5} style={{ color: 'var(--text-tertiary)' }} />}
+        </span>
       </button>
+
+      <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
+        <div style={{
+          height: '100%',
+          borderRadius: 'var(--r-pill)',
+          background: 'var(--uc-mint)',
+          transform: `scaleX(${pct / 100})`,
+          transformOrigin: 'left center',
+        }} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+          {batch.accepted} of {batch.total} accepted · {pct}%
+        </span>
+        <span style={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: left !== null && left <= 3 ? 'var(--uc-amber-l)' : 'var(--text-tertiary)',
+        }}>
+          {left === null ? 'all resolved' : `${left} day${left === 1 ? '' : 's'} left`}
+        </span>
+      </div>
+
+      {expanded && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          marginTop: 4,
+          borderRadius: 'var(--r-md)',
+          overflow: 'hidden',
+          background: 'var(--surface-raised)',
+        }}>
+          {isLoading && (
+            <div style={{ padding: '7px 10px', fontSize: 12, color: 'var(--text-tertiary)' }}>Loading…</div>
+          )}
+          {invites?.map((inv) => {
+            const status = batchInviteStatus(inv)
+            return (
+              <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px' }}>
+                <span style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontSize: 12,
+                  color: 'var(--text-secondary)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {inv.email}
+                </span>
+                <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, color: BATCH_STATUS_COLOR[status] }}>
+                  {status}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Invitations tab ───────────────────────────────────────────────────────────
 
+/**
+ * A record of what has been sent, not a place to send from. Composing an invitation —
+ * for any role, one at a time or as a batch — lives in `InvitePeopleDialog`, behind the
+ * "Invite people" button at the top of the Members card. Three send forms stacked down
+ * this tab meant that button was the one control on the screen that could not invite.
+ */
 function InvitationsTab() {
   const qc = useQueryClient()
   const [page, setPage] = useState(1)
-  const [mode, setMode] = useState<'single' | 'multiple'>('single')
-  const [formEmail, setFormEmail] = useState('')
-  const [formRole, setFormRole] = useState<UserRole>('student')
-  const [formDays, setFormDays] = useState(7)
-  const [bulkText, setBulkText] = useState('')
-  const [bulkRole, setBulkRole] = useState<UserRole>('student')
-  const [bulkDays, setBulkDays] = useState(7)
-  const [bulkLabel, setBulkLabel] = useState('')
-  const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const limit = 20
 
   const { data, isLoading } = useQuery<Paginated<Invitation>>({
@@ -1156,287 +1335,31 @@ function InvitationsTab() {
     queryFn: () => api.get<{ data: InviteBatch[] }>('/admin/invitations/batches').then((r) => r.data.data),
   })
 
-  const singleMutation = useMutation({
-    mutationFn: () =>
-      api.post('/admin/invitations', { email: formEmail, role: formRole, expires_in_days: formDays }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] })
-      const sent = formEmail
-      setFormEmail('')
-      setFormRole('student')
-      setFormDays(7)
-      flash(`Invitation sent to ${sent}`)
-    },
-  })
-
-  const bulkMutation = useMutation({
-    mutationFn: (emails: string[]) =>
-      api.post('/admin/invitations/bulk', { emails, role: bulkRole, expires_in_days: bulkDays, batch_label: bulkLabel.trim() }),
-    onSuccess: (_data, emails) => {
-      void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] })
-      void qc.invalidateQueries({ queryKey: ['admin', 'invite-batches'] })
-      setBulkText('')
-      setBulkLabel('')
-      flash(`${emails.length} invitation${emails.length === 1 ? '' : 's'} sent`)
-    },
-  })
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/admin/invitations/${id}`),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['admin', 'invitations'] }) },
   })
 
-  function flash(msg: string) {
-    setSuccessMsg(msg)
-    setTimeout(() => setSuccessMsg(null), 5000)
-  }
-
-  function parseEmails(text: string): string[] {
-    return [
-      ...new Set(
-        text
-          .split(/[,\n]/)
-          .map((e) => e.trim().toLowerCase())
-          .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
-      ),
-    ]
-  }
-
-  const parsedEmails = parseEmails(bulkText)
-
-  function handleToggle(next: 'single' | 'multiple') {
-    setMode(next)
-    setSuccessMsg(null)
-    singleMutation.reset()
-    bulkMutation.reset()
-  }
-
   const totalPages = Math.ceil((data?.total ?? 0) / limit)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* ── Add driver (staff) ── */}
-      <AddDriverPanel />
-
-      {/* ── Send panel ── */}
-      <div style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Send invite
-          </span>
-          <div style={{
-            display: 'flex',
-            background: 'var(--surface-raised)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-pill)',
-            padding: '3px',
-          }}>
-            {(['single', 'multiple'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => handleToggle(m)}
-                style={{
-                  padding: '4px 14px',
-                  fontSize: 12,
-                  borderRadius: 'var(--r-pill)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: mode === m ? 'var(--uc-indigo-bg)' : 'transparent',
-                  color: mode === m ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                  fontWeight: mode === m ? 500 : 400,
-                  transition: 'background 150ms, color 150ms',
-                }}
-              >
-                {m === 'single' ? 'Single' : 'Multiple'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {mode === 'single' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <input
-                type="email"
-                placeholder="Email address"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') singleMutation.mutate() }}
-                style={{ ...inputStyle, flex: '2 1 200px' }}
-              />
-              <select
-                aria-label="Invitee role"
-                value={formRole}
-                onChange={(e) => setFormRole(e.target.value as UserRole)}
-                style={{ ...selectStyle, flex: '1 1 120px' }}
-              >
-                {(['student', 'alumni', 'faculty', 'admin'] as UserRole[]).map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-              <select
-                aria-label="Invitation expiry"
-                value={formDays}
-                onChange={(e) => setFormDays(Number(e.target.value))}
-                style={{ ...selectStyle, flex: '1 1 120px' }}
-              >
-                {[1, 3, 7, 14, 30].map((d) => (
-                  <option key={d} value={d}>Expires in {d}d</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <PrimaryBtn
-                disabled={!formEmail.trim() || singleMutation.isPending}
-                onClick={() => singleMutation.mutate()}
-              >
-                {singleMutation.isPending ? 'Sending…' : 'Send invite'}
-              </PrimaryBtn>
-              {singleMutation.isError && (
-                <span style={{ fontSize: 13, color: 'var(--uc-orange-l)' }}>
-                  {getDomainError(singleMutation.error) ?? 'Failed to send. Try again.'}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {mode === 'multiple' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <select
-                aria-label="Bulk invitee role"
-                value={bulkRole}
-                onChange={(e) => setBulkRole(e.target.value as UserRole)}
-                style={{ ...selectStyle, flex: '1 1 120px' }}
-              >
-                {(['student', 'alumni', 'faculty', 'admin'] as UserRole[]).map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-              <select
-                aria-label="Bulk invitation expiry"
-                value={bulkDays}
-                onChange={(e) => setBulkDays(Number(e.target.value))}
-                style={{ ...selectStyle, flex: '1 1 120px' }}
-              >
-                {[1, 3, 7, 14, 30].map((d) => (
-                  <option key={d} value={d}>Expires in {d}d</option>
-                ))}
-              </select>
-            </div>
-            <input
-              type="text"
-              placeholder="Batch name, e.g. CSE Fall 2026 intake"
-              value={bulkLabel}
-              onChange={(e) => setBulkLabel(e.target.value)}
-              style={inputStyle}
-            />
-            <textarea
-              value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
-              placeholder="Enter emails separated by commas or new lines, e.g.&#10;alice@uiu.ac.bd, bob@uiu.ac.bd, carol@uiu.ac.bd"
-              rows={5}
-              style={{
-                ...inputStyle,
-                resize: 'vertical',
-                minHeight: 110,
-                lineHeight: 1.6,
-              }}
-            />
-            {parsedEmails.length > 50 && (
-              <span style={{ fontSize: 12, color: 'var(--uc-orange-l)' }}>
-                Maximum 50 emails per send — {parsedEmails.length} detected. Remove some before sending.
-              </span>
-            )}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <PrimaryBtn
-                disabled={parsedEmails.length === 0 || parsedEmails.length > 50 || !bulkLabel.trim() || bulkMutation.isPending}
-                onClick={() => bulkMutation.mutate(parsedEmails)}
-              >
-                {bulkMutation.isPending
-                  ? 'Sending…'
-                  : parsedEmails.length === 0
-                    ? 'Send invites'
-                    : `Send ${parsedEmails.length} invite${parsedEmails.length === 1 ? '' : 's'}`}
-              </PrimaryBtn>
-              {bulkMutation.isError && (
-                <span style={{ fontSize: 13, color: 'var(--uc-orange-l)' }}>
-                  {getDomainError(bulkMutation.error) ?? 'Failed to send. Try again.'}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {successMsg !== null && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: 'var(--uc-mint-bg)',
-            border: '0.5px solid var(--uc-mint-bdr)',
-            borderRadius: 'var(--r-md)',
-            padding: '10px 14px',
-          }}>
-            <span style={{ fontSize: 13, color: 'var(--uc-mint)' }}>{successMsg}</span>
-            <button
-              type="button"
-              onClick={() => setSuccessMsg(null)}
-              aria-label="Dismiss message"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--uc-mint)' }}
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-      </div>
-
       {/* ── Invite batches ── */}
       {batches !== undefined && batches.length > 0 && (
         <div style={{
           background: 'var(--surface-card)',
           border: '0.5px solid var(--border-default)',
           borderRadius: 'var(--r-lg)',
-          padding: '20px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
+          padding: 16,
         }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Invite batches</span>
-          {batches.map((b) => {
-            const pct = b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0
-            const left = daysLeft(b.expiresAt)
-            return (
-              <div key={b.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{b.label}</span>
-                  <Badge variant="neutral">{b.role}</Badge>
-                </div>
-                <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', borderRadius: 'var(--r-pill)', background: 'var(--uc-mint)',
-                    transform: `scaleX(${pct / 100})`, transformOrigin: 'left center',
-                  }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  <span>{b.accepted} of {b.total} accepted · {pct}%</span>
-                  <span style={{ color: left !== null && left <= 3 ? 'var(--uc-orange-l)' : 'var(--text-tertiary)' }}>
-                    {left === null ? 'all resolved' : `${left} day${left === 1 ? '' : 's'} left`}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>
+            Invite batches
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {batches.map((b, i) => (
+              <InviteBatchRow key={b.id} batch={b} isLast={i === batches.length - 1} />
+            ))}
+          </div>
         </div>
       )}
 
@@ -1523,6 +1446,26 @@ const SEVERITY_STYLE: Record<ReportGroup['severity'], { bg: string; bdr: string;
   low: { bg: 'var(--surface-raised)', bdr: 'var(--border-default)', text: 'var(--text-tertiary)', label: 'Low' },
 }
 
+/**
+ * Report actions are tone-filled pills, not ghost buttons: Remove is destructive and
+ * has to look it from across the row, and Dismiss has to look like its equal weight
+ * rather than an afterthought beside it.
+ */
+function reportActionStyle(kind: 'remove' | 'dismiss'): React.CSSProperties {
+  const destructive = kind === 'remove'
+  return {
+    fontSize: 12,
+    fontWeight: 500,
+    color: destructive ? 'var(--uc-red)' : 'var(--text-secondary)',
+    background: destructive ? 'var(--uc-red-bg)' : 'var(--surface-raised)',
+    border: `0.5px solid ${destructive ? 'var(--uc-red-bdr)' : 'var(--border-default)'}`,
+    borderRadius: 'var(--r-pill)',
+    padding: '5px 12px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  }
+}
+
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime()
   const mins = Math.round(diffMs / 60000)
@@ -1566,8 +1509,23 @@ function ReportedContentTab() {
             return (
               <div
                 key={`${item.targetType}:${item.targetId}`}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: '0.5px solid var(--border-default)' }}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderTop: '0.5px solid var(--border-default)' }}
               >
+                {/* The glyph carries the severity, so the row reads as urgent before
+                    the pill is read at all. */}
+                <span style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  background: sev.bg,
+                  color: sev.text,
+                }}>
+                  <AlertTriangle size={15} strokeWidth={1.5} />
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.title}
@@ -1585,21 +1543,25 @@ function ReportedContentTab() {
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                   {item.removable && (
-                    <GhostBtn
+                    <button
+                      type="button"
+                      className="press-feedback"
                       onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'remove' })}
                       disabled={actionMutation.isPending}
-                      style={{ fontSize: 12, padding: '4px 10px', color: 'var(--uc-red)' }}
+                      style={reportActionStyle('remove')}
                     >
                       Remove
-                    </GhostBtn>
+                    </button>
                   )}
-                  <GhostBtn
+                  <button
+                    type="button"
+                    className="press-feedback"
                     onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'dismiss' })}
                     disabled={actionMutation.isPending}
-                    style={{ fontSize: 12, padding: '4px 10px' }}
+                    style={reportActionStyle('dismiss')}
                   >
                     Dismiss
-                  </GhostBtn>
+                  </button>
                 </div>
               </div>
             )
@@ -1643,10 +1605,10 @@ function ModerationTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          <MetricTile label="Escalated reports" value={String(stats.escalatedReports)} hint="high severity, open" hot={stats.escalatedReports > 0} />
-          <MetricTile label="Verification requests" value={String(stats.verificationRequests)} hint="unverified accounts" />
-          <MetricTile label="Deletion requests" value={String(stats.deletionRequests)} hint="awaiting review" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <CounterTile label="Escalated reports" value={String(stats.escalatedReports)} icon={Flag} tone={{ color: 'var(--uc-red)', bg: 'var(--uc-red-bg)' }} />
+          <CounterTile label="Verification requests" value={String(stats.verificationRequests)} icon={ShieldCheck} tone={{ color: 'var(--uc-red)', bg: 'var(--uc-red-bg)' }} />
+          <CounterTile label="Deletion requests" value={String(stats.deletionRequests)} icon={Trash2} tone={{ color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)' }} />
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12, alignItems: 'start' }}>
@@ -1663,12 +1625,16 @@ function ModerationTab() {
 // ── Members tab (users + invitations, merged) ──────────────────────────────
 
 function MembersTab() {
+  const [inviting, setInviting] = useState(false)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <UsersTab />
+      <UsersTab onInvitePeople={() => setInviting(true)} inviteButtonRef={triggerRef} />
       <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
         <InvitationsTab />
       </div>
+      <InvitePeopleDialog isOpen={inviting} onClose={() => setInviting(false)} triggerRef={triggerRef} />
     </div>
   )
 }
@@ -1804,7 +1770,7 @@ export default function AdminPage() {
   const user = useAuthStore((s) => s.user)
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const activeTab: Tab = TABS.some((t) => t.value === rawTab) ? (rawTab as Tab) : 'insights'
+  const activeTab: Tab = TAB_VALUES.includes(rawTab as Tab) ? (rawTab as Tab) : 'insights'
   const setActiveTab = (tab: Tab) => setSearchParams({ tab })
 
   // Normalise the bare /admin URL onto its default tab so the rail's tab-scoped rows
@@ -1846,79 +1812,17 @@ export default function AdminPage() {
         }
       `}</style>
 
-      {/* Page heading — the shell's top nav and rail supply the branding and the way
-          back, so this keeps only what identifies the panel itself. */}
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Admin panel
-          </h1>
-          <p style={{ margin: '5px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>
-            Manage users, invitations, and content for United International University
-          </p>
-        </div>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 7,
-          background: 'var(--uc-indigo-bg)',
-          border: '0.5px solid var(--uc-indigo-bdr)',
-          borderRadius: 'var(--r-pill)',
-          padding: '5px 12px',
-          flexShrink: 0,
-        }}>
-          <ShieldCheck size={13} color="var(--uc-indigo-l)" />
-          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--uc-indigo-xl)' }}>Admin panel</span>
-        </div>
+      {/* The heading is the route. The shell's rail says where you can go; this says
+          where you are, which is the one thing the rail cannot show once its own row
+          is already lit. */}
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: 'var(--text-primary)' }}>
+          {TAB_META[activeTab].label}
+        </h1>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          {TAB_META[activeTab].subtitle}
+        </p>
       </div>
-
-      {/* Tab nav — scrolls rather than squashing, since the shell column is narrower
-          than the old full-bleed page. */}
-      <nav
-        aria-label="Admin sections"
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '5px 6px',
-          display: 'flex',
-          gap: 3,
-          marginBottom: 20,
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {TABS.map(({ label, value, icon }) => {
-          const active = activeTab === value
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setActiveTab(value)}
-              aria-current={active ? 'page' : undefined}
-              style={{
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 7,
-                padding: '9px 14px',
-                fontSize: 13,
-                fontWeight: active ? 500 : 400,
-                borderRadius: 'var(--r-pill)',
-                border: 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                transition: 'background 150ms, color 150ms',
-              }}
-            >
-              {icon} {label}
-            </button>
-          )
-        })}
-      </nav>
 
       {activeTab === 'insights' && <InsightsTab onNavigate={setActiveTab} />}
       {activeTab === 'moderation' && <ModerationTab />}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
-import { Check } from 'lucide-react'
+import { Check, RotateCcw, X } from 'lucide-react'
 import { Modal } from '@/components/Modal'
 import { useCompleteUnit, streakToastMessage } from '../hooks/useLearning'
 import { useToastStore } from '@/stores/toastStore'
@@ -16,6 +16,7 @@ interface ResultState {
   score: number
   passed: boolean
   passScore: number
+  wrongCount: number
 }
 
 function extractErrorMessage(err: unknown, fallback: string): string {
@@ -56,6 +57,7 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
 
   const allAnswered = questions.length > 0 && answers.every((a) => a !== null)
   const passScore = currentUnit.completion_rule?.passScore ?? DEFAULT_PASS_SCORE
+  const graded = result !== null
 
   function handleSelect(qIndex: number, optionIndex: number) {
     setAnswers((prev) => prev.map((a, i) => (i === qIndex ? optionIndex : a)))
@@ -63,13 +65,14 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
 
   function handleSubmit() {
     const correct = questions.reduce((acc, q, i) => (answers[i] === q.answer ? acc + 1 : acc), 0)
+    const wrongCount = questions.length - correct
     const score = Math.round((100 * correct) / questions.length)
 
     mutation.mutate(
       { unitId: currentUnit.id, score },
       {
         onSuccess: (res) => {
-          setResult({ score, passed: true, passScore })
+          setResult({ score, passed: true, passScore, wrongCount })
           show({ message: streakToastMessage(res.streak.currentStreak), type: 'success' })
           if (res.pathCompleted) {
             show({ message: 'Path complete! Badge on its way', type: 'success' })
@@ -82,7 +85,7 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
             return
           }
           if (isQuizFailureError(err)) {
-            setResult({ score, passed: false, passScore })
+            setResult({ score, passed: false, passScore, wrongCount })
             return
           }
           show({ message: extractErrorMessage(err, 'Something went wrong. Please try again.'), type: 'error' })
@@ -91,41 +94,85 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
     )
   }
 
-  function handleTryAgain() {
-    setAnswers(questions.map(() => null))
+  /**
+   * Retrying blanks only the questions that were wrong. The ones already correct keep their
+   * answer and stay locked, so fixing two mistakes does not mean re-answering all five.
+   */
+  function handleRetry() {
+    setAnswers((prev) => prev.map((a, i) => (a === questions[i].answer ? a : null)))
     setResult(null)
   }
 
+  const resultTone = result?.passed
+    ? {
+        icon: Check,
+        color: 'var(--uc-mint)',
+        background: 'var(--uc-mint-bg)',
+        border: '0.5px solid var(--uc-mint-bdr)',
+        text:
+          result.wrongCount === 0
+            ? 'All correct. Checkpoint cleared.'
+            : `Score ${result.score}% · passed.`,
+      }
+    : result
+      ? {
+          icon: RotateCcw,
+          color: 'var(--uc-amber-l)',
+          background: 'var(--uc-amber-bg)',
+          border: '0.5px solid var(--uc-amber-bdr)',
+          text: `Score ${result.score}%, you need ${result.passScore}%. ${result.wrongCount} of ${questions.length} to fix, the rest stay locked in.`,
+        }
+      : null
+
+  const buttonLabel = !result
+    ? 'Submit'
+    : result.passed
+      ? 'Done'
+      : `Retry ${result.wrongCount} ${result.wrongCount === 1 ? 'question' : 'questions'}`
+
   return (
     <Modal isOpen={open} onClose={onClose} title={currentUnit.title}>
-      {result ? (
-        result.passed ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '12px 0' }}>
-            <Check size={28} color="var(--uc-orange)" aria-hidden="true" />
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-              Score: {result.score}% — passed
-            </p>
-            <button type="button" className="press-feedback" onClick={onClose} style={buttonStyle}>
-              Close
-            </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {resultTone ? (
+          <div
+            role="status"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 'var(--r-md)',
+              border: resultTone.border,
+              background: resultTone.background,
+              fontSize: 13,
+              fontWeight: 400,
+              color: 'var(--text-primary)',
+            }}
+          >
+            <resultTone.icon size={14} color={resultTone.color} aria-hidden="true" style={{ flexShrink: 0 }} />
+            {resultTone.text}
           </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '4px 0' }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: 'var(--text-primary)' }}>
-              Score: {result.score}% — you need {result.passScore}%
-            </p>
-            <button type="button" className="press-feedback" onClick={handleTryAgain} style={buttonStyle}>
-              Try again
-            </button>
-          </div>
-        )
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {questions.map((question, qIndex) => (
+        ) : null}
+
+        {questions.map((question, qIndex) => {
+          const right = answers[qIndex] === question.answer
+          // A question you got right is settled: it keeps its answer through a retry, and
+          // only then is it safe to point at the correct option. Questions still to fix mark
+          // the answer you picked, never the one you missed — otherwise the retry is a formality.
+          const locked = graded && right
+          const revealAnswer = graded && (right || result.passed)
+
+          return (
             <fieldset
               key={question.q}
               style={{
-                border: '0.5px solid var(--border-default)',
+                border: `0.5px solid ${
+                  !graded
+                    ? 'var(--border-default)'
+                    : right
+                      ? 'var(--uc-mint-bdr)'
+                      : 'var(--uc-red-bdr)'
+                }`,
                 borderRadius: 'var(--r-md)',
                 padding: 12,
                 margin: 0,
@@ -134,53 +181,124 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
               <legend style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', padding: '0 4px' }}>
                 {question.q}
               </legend>
+
+              {graded ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginTop: 2,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: right ? 'var(--uc-mint)' : 'var(--uc-red)',
+                  }}
+                >
+                  {right ? <Check size={13} aria-hidden="true" /> : <X size={13} aria-hidden="true" />}
+                  {right ? 'Correct, locked' : 'Retry this one'}
+                </div>
+              ) : null}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                {question.options.map((option, oIndex) => (
-                  <label
-                    key={option}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      fontSize: 13,
-                      fontWeight: 400,
-                      color: 'var(--text-primary)',
-                      border: `0.5px solid ${answers[qIndex] === oIndex ? 'var(--uc-orange)' : 'var(--border-default)'}`,
-                      borderRadius: 'var(--r-md)',
-                      padding: '8px 10px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name={`question-${qIndex}`}
-                      checked={answers[qIndex] === oIndex}
-                      onChange={() => handleSelect(qIndex, oIndex)}
-                    />
-                    {option}
-                  </label>
-                ))}
+                {question.options.map((option, oIndex) => {
+                  const picked = answers[qIndex] === oIndex
+                  const isAnswer = oIndex === question.answer
+
+                  let border = 'var(--border-default)'
+                  let dotBorder = '1.5px solid var(--border-strong)'
+                  let dotBackground = 'transparent'
+                  if (revealAnswer && isAnswer) {
+                    border = 'var(--uc-mint-bdr)'
+                    dotBorder = '4px solid var(--uc-mint)'
+                    dotBackground = 'var(--uc-mint-bg)'
+                  } else if (graded && picked) {
+                    border = 'var(--uc-red-bdr)'
+                    dotBorder = '4px solid var(--uc-red)'
+                  } else if (picked) {
+                    border = 'var(--uc-orange)'
+                    dotBorder = '4px solid var(--uc-orange)'
+                  }
+
+                  return (
+                    <label
+                      key={option}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: 13,
+                        fontWeight: 400,
+                        color: 'var(--text-primary)',
+                        border: `0.5px solid ${border}`,
+                        borderRadius: 'var(--r-md)',
+                        padding: '8px 10px',
+                        cursor: locked ? 'default' : 'pointer',
+                        opacity: locked && !isAnswer ? 0.5 : 1,
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name={`question-${qIndex}`}
+                        checked={picked}
+                        disabled={locked}
+                        onChange={() => handleSelect(qIndex, oIndex)}
+                        // Visually hidden, not removed: the styled dot beside it is the
+                        // only thing drawn, but the radio keeps the group keyboard- and
+                        // screen-reader-navigable.
+                        style={{
+                          position: 'absolute',
+                          width: 1,
+                          height: 1,
+                          padding: 0,
+                          margin: -1,
+                          overflow: 'hidden',
+                          clip: 'rect(0 0 0 0)',
+                          whiteSpace: 'nowrap',
+                          border: 0,
+                        }}
+                      />
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          border: dotBorder,
+                          background: dotBackground,
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                      {option}
+                    </label>
+                  )
+                })}
               </div>
             </fieldset>
-          ))}
-          <button
-            type="button"
-            className="press-feedback"
-            onClick={handleSubmit}
-            disabled={!allAnswered || mutation.isPending}
-            style={{ ...buttonStyle, opacity: !allAnswered || mutation.isPending ? 0.6 : 1 }}
-          >
-            Submit
-          </button>
-        </div>
-      )}
+          )
+        })}
+
+        <button
+          type="button"
+          className="press-feedback"
+          onClick={!result ? handleSubmit : result.passed ? onClose : handleRetry}
+          disabled={!result && (!allAnswered || mutation.isPending)}
+          style={{
+            ...buttonStyle,
+            opacity: !result && (!allAnswered || mutation.isPending) ? 0.6 : 1,
+          }}
+        >
+          {buttonLabel}
+        </button>
+      </div>
     </Modal>
   )
 }
 
 const buttonStyle: React.CSSProperties = {
+  alignSelf: 'flex-start',
   background: 'var(--uc-orange)',
-  color: 'var(--uc-orange-l)',
+  color: 'var(--on-accent)',
   border: 'none',
   borderRadius: 'var(--r-pill)',
   padding: '8px 16px',

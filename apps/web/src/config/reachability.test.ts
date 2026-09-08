@@ -105,16 +105,52 @@ describe('shell reachability', () => {
     PATHS.SHUTTLE,
   ]
 
+  /**
+   * What admin is exempt from, and why. An admin's shell is the admin panel: its six
+   * fixed rows and three tools are all administrative surfaces, and each of these has an
+   * admin-side equivalent already in that rail — `?tab=groups` for groups, `?tab=content`
+   * for news, events and jobs, `?tab=learning` for Learn, `?tab=shuttle` for the fleet.
+   * Advertising the member page beside its admin counterpart put the same feature in the
+   * shell twice, which is the redundancy the rest of this file exists to prevent.
+   *
+   * Kept for admin: Drafts, Messages, Notifications and Mentorship — none has an admin
+   * equivalent, and the first three are the only reason Messages and Notifications
+   * survive on a phone at all (mobile hides their top-bar icons).
+   */
+  const ADMIN_EXEMPT: string[] = [
+    PATHS.FEED,
+    PATHS.EXPLORE,
+    PATHS.GROUPS,
+    PATHS.EVENTS,
+    PATHS.JOBS,
+    PATHS.NEWS,
+    PATHS.LEARN,
+    PATHS.SHUTTLE,
+  ]
+
   it.each<UserRole>(['student', 'alumni', 'faculty', 'admin'])(
     'offers the %s role every member feature',
     (role) => {
       const reachable = shellDestinations(role)
-      // Admin's rail is six admin surfaces with no Feed row by design — an admin works
-      // the moderation queues, not the member timeline. Every other member feature is
-      // still reachable from its secondary list.
-      const required = role === 'admin' ? MEMBER_FEATURES.filter((p) => p !== PATHS.FEED) : MEMBER_FEATURES
+      const required =
+        role === 'admin' ? MEMBER_FEATURES.filter((p) => !ADMIN_EXEMPT.includes(p)) : MEMBER_FEATURES
       const missing = required.filter((p) => !reachable.has(p))
       expect({ role, missing }).toEqual({ role, missing: [] })
+    },
+  )
+
+  /**
+   * The other half of that exemption: every page admin gives up must still be reachable
+   * for a role that has no admin panel to reach it from, or the exemption has quietly
+   * orphaned it for the whole product.
+   */
+  it.each(ADMIN_EXEMPT.filter((p) => p !== PATHS.FEED))(
+    '%s stays reachable for a member role despite admin giving it up',
+    (path) => {
+      const roles = (['student', 'alumni', 'faculty'] as UserRole[]).filter((role) =>
+        shellDestinations(role).has(path),
+      )
+      expect({ path, roles: roles.length > 0 }).toEqual({ path, roles: true })
     },
   )
 
