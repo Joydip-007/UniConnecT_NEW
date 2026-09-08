@@ -83,6 +83,15 @@ export const AdminFulfillRedemptionSchema = z
     path: ['codeText'],
   })
 
+export const ShuttleOpsSettingsSchema = z.object({
+  liveGpsEnabled: z.boolean().optional(),
+  riderEtaEnabled: z.boolean().optional(),
+  autoAssignEnabled: z.boolean().optional(),
+  serviceAlertsEnabled: z.boolean().optional(),
+})
+
+export type ShuttleOpsSettingsInput = z.infer<typeof ShuttleOpsSettingsSchema>
+
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleSchema>
 export type UpdateUserStatusInput = z.infer<typeof UpdateUserStatusSchema>
