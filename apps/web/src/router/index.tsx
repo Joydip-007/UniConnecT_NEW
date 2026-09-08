@@ -112,6 +112,14 @@ export const router = createBrowserRouter([
             element: <AdminRoute />,
             children: [
               { path: PATHS.ADMIN, element: page(() => import('@/pages/AdminPage')) },
+              {
+                path: PATHS.ADMIN_LEARNING_PATH(':pathId'),
+                element: page(() =>
+                  import('@/features/learning-admin/components/LearningPathManagePage').then((mod) => ({
+                    default: mod.LearningPathManagePage,
+                  })),
+                ),
+              },
             ],
           },
         ],
