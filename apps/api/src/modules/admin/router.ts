@@ -14,6 +14,9 @@ import {
   getAllowedDomains,
   getMentorRequests,
   getStats,
+  getShuttleStats,
+  getShuttleSettings,
+  updateShuttleSettings,
   listAdminRedemptions,
   listContent,
   listDeletionRequests,
@@ -48,6 +51,7 @@ import {
   PaginationQuerySchema,
   ResolveReportGroupSchema,
   ResolveReportSchema,
+  ShuttleOpsSettingsSchema,
   ToggleActiveSchema,
   TogglePinSchema,
   TogglePublishSchema,
@@ -69,6 +73,10 @@ export const adminRouter = Router()
 adminRouter.use(requireAuth, resolveUniversity, requireRole('faculty', 'admin'))
 
 adminRouter.get('/stats', requireRole('admin'), getStats)
+
+adminRouter.get('/shuttle/stats', requireRole('admin'), getShuttleStats)
+adminRouter.get('/shuttle/settings', requireRole('admin'), getShuttleSettings)
+adminRouter.patch('/shuttle/settings', requireRole('admin'), validate(ShuttleOpsSettingsSchema), updateShuttleSettings)
 
 adminRouter.get('/users', validateRequest({ query: ListUsersQuerySchema }), listUsers)
 adminRouter.get('/groups', validateRequest({ query: PaginationQuerySchema }), listGroups)

@@ -5,6 +5,7 @@ import { sendPaginated, sendSuccess } from '../../utils/response'
 import { AppError } from '../../utils/errors'
 import { adminService } from './service'
 import { adminContentService } from './content.service'
+import { adminShuttleService } from './shuttle.service'
 import type {
   AdminFulfillRedemptionInput,
   AdminRedemptionListQuery,
@@ -17,6 +18,7 @@ import type {
   PaginationQuery,
   ResolveReportGroupInput,
   ResolveReportInput,
+  ShuttleOpsSettingsInput,
   ToggleActiveInput,
   TogglePinInput,
   TogglePublishInput,
@@ -28,6 +30,22 @@ import type {
 export const getStats = asyncHandler(async (req: Request, res: Response) => {
   const { universityId } = getAdminContext(req)
   sendSuccess(res, await adminService.getStats(universityId))
+})
+
+export const getShuttleStats = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await adminShuttleService.getStats(universityId))
+})
+
+export const getShuttleSettings = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await adminShuttleService.getSettings(universityId))
+})
+
+export const updateShuttleSettings = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const input = req.body as ShuttleOpsSettingsInput
+  sendSuccess(res, await adminShuttleService.updateSettings(universityId, input))
 })
 
 export const listUsers = asyncHandler(async (req: Request, res: Response) => {
