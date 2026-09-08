@@ -807,6 +807,14 @@ function RouteEditor({ initial, onSaved, onCancel }: RouteEditorProps) {
 
 // ── ShuttleTab ────────────────────────────────────────────────────────────────
 
+interface ShuttleStats {
+  busesLive: number
+  activeRoutes: number
+  onDutyDrivers: number
+  onTimeRatePct: number | null
+  routes: { routeId: string; isLive: boolean }[]
+}
+
 export function ShuttleTab() {
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
 
@@ -815,6 +823,14 @@ export function ShuttleTab() {
     queryFn: () =>
       api.get<{ data: ShuttleRoute[] }>('/shuttle/routes?includeInactive=true').then((r) => r.data.data),
   })
+
+  const { data: stats } = useQuery<ShuttleStats>({
+    queryKey: ['admin', 'shuttle', 'stats'],
+    queryFn: () => api.get<{ data: ShuttleStats }>('/admin/shuttle/stats').then((r) => r.data.data),
+    refetchInterval: 30_000,
+  })
+
+  const liveRouteIds = new Set((stats?.routes ?? []).filter((r) => r.isLive).map((r) => r.routeId))
 
   function selectRoute(id: string) {
     setSelectedId(id)
@@ -837,7 +853,19 @@ export function ShuttleTab() {
         : null
 
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <ShuttleStatTile label="Buses live" value={stats ? String(stats.busesLive) : '—'} sub="broadcasting now" />
+        <ShuttleStatTile label="Active routes" value={stats ? String(stats.activeRoutes) : '—'} sub="in service today" />
+        <ShuttleStatTile label="On-duty drivers" value={stats ? String(stats.onDutyDrivers) : '—'} sub="across all routes" />
+        <ShuttleStatTile
+          label="On-time rate"
+          value={stats ? (stats.onTimeRatePct === null ? '—' : `${stats.onTimeRatePct}%`) : '—'}
+          sub={stats?.onTimeRatePct === null ? 'Not enough data yet' : 'last 7 days'}
+        />
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
       {/* ── Route list ── */}
       <div style={{
         width: 268,
@@ -938,6 +966,23 @@ export function ShuttleTab() {
                     off
                   </span>
                 )}
+                {r.isActive && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    borderRadius: 'var(--r-pill)',
+                    padding: '2px 8px',
+                    flexShrink: 0,
+                    color: liveRouteIds.has(r.id) ? 'var(--uc-mint)' : 'var(--text-tertiary)',
+                    background: liveRouteIds.has(r.id) ? 'var(--uc-mint-bg)' : 'var(--surface-raised)',
+                    border: `0.5px solid ${liveRouteIds.has(r.id) ? 'var(--uc-mint-bdr)' : 'var(--border-default)'}`,
+                  }}>
+                    {liveRouteIds.has(r.id) ? 'Live' : 'Idle'}
+                  </span>
+                )}
               </button>
             )
           })
@@ -987,6 +1032,24 @@ export function ShuttleTab() {
           </div>
         )}
       </div>
+      </div>
+    </div>
+  )
+}
+
+function ShuttleStatTile({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div style={{
+      background: 'var(--surface-card)',
+      border: '0.5px solid var(--border-default)',
+      borderRadius: 'var(--r-lg)',
+      padding: '16px 18px',
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>{sub}</div>
     </div>
   )
 }
