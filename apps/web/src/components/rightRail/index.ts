@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react'
 import type { WidgetKey } from '@/config/roleShell'
+import { AdminQueueWidget } from './admin/AdminQueueWidget'
+import { AdminStatsWidget } from './admin/AdminStatsWidget'
 import { PeopleYouMayKnowWidget } from './PeopleYouMayKnowWidget'
 import { ProfileProgressWidget } from './ProfileProgressWidget'
 import { TrendingTagsWidget } from './TrendingTagsWidget'
@@ -15,4 +17,6 @@ export const RIGHT_RAIL_WIDGETS: Record<WidgetKey, ComponentType> = {
   'people-you-may-know': PeopleYouMayKnowWidget,
   'upcoming-events': UpcomingEventsWidget,
   'trending-tags': TrendingTagsWidget,
+  'admin-queue': AdminQueueWidget,
+  'admin-stats': AdminStatsWidget,
 }

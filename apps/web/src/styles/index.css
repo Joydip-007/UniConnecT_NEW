@@ -1128,6 +1128,11 @@ select:focus-visible {
   border-top: 0.5px solid var(--border-default);
 }
 
+/* Admin queue rows: a hover surface only on rows that actually go somewhere. */
+.admin-rail-row:not(:disabled):hover {
+  background: var(--surface-raised);
+}
+
 /* ── Shuttle route editor: stop rows ──────────────────────────────────
    Six fixed tracks need about 360px. Inside the route dialog on a phone the
    row has roughly 318px, which collapsed the stop-name field to under 20px —

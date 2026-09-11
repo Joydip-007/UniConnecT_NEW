@@ -17,6 +17,8 @@ vi.mock('@/components/rightRail', () => ({
     'people-you-may-know': () => <div>widget:people-you-may-know</div>,
     'upcoming-events': () => <div>widget:upcoming-events</div>,
     'trending-tags': () => <div>widget:trending-tags</div>,
+    'admin-queue': () => <div>widget:admin-queue</div>,
+    'admin-stats': () => <div>widget:admin-stats</div>,
   },
 }))
 
@@ -31,6 +33,8 @@ const ALL_KEYS: WidgetKey[] = [
   'people-you-may-know',
   'upcoming-events',
   'trending-tags',
+  'admin-queue',
+  'admin-stats',
 ]
 
 function renderFor(role: UserRole) {
@@ -79,14 +83,18 @@ describe('RightSidebar', () => {
   })
 
   it('carries only widgets addressing something the left rail cannot reach', () => {
-    // Every surviving widget opens a *specific* event, person or tag. The two that were
-    // dropped (mentee-requests, platform-today) had no destination that was not already
-    // a rail row, so they were the left rail rendered a second time on the right.
+    // Every surviving member widget opens a *specific* event, person or tag. The two
+    // that were dropped (mentee-requests, platform-today) had no destination that was
+    // not already a rail row, so they were the left rail rendered a second time on the
+    // right. The admin pair is different in kind: it is re-keyed by the tab you are on,
+    // so it shows *this screen's* backlog and numbers, which no rail row can.
     const itemLevel = new Set<WidgetKey>([
       'people-you-may-know',
       'upcoming-events',
       'trending-tags',
       'profile-progress',
+      'admin-queue',
+      'admin-stats',
     ])
     roles.forEach((role) => {
       ROLE_SHELL[role].rightRail.forEach((key) => {

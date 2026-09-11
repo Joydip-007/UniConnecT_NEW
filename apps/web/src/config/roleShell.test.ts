@@ -43,10 +43,13 @@ describe('ROLE_SHELL', () => {
   })
 
   it('keeps role-gated widgets to the roles whose API allows them', () => {
-    // Every surviving widget reads an endpoint open to any member role, so this map is
-    // empty today — it stays as the guard for the next role-gated widget added. A widget
-    // on a role that would 403 is the "row that leads to a 403" the shell rule forbids.
-    const gated: Record<string, UserRole[]> = {}
+    // The admin console widgets read `/admin/*` endpoints that 403 for every other role.
+    // A widget on a role that would 403 is the "row that leads to a 403" the shell rule
+    // forbids.
+    const gated: Record<string, UserRole[]> = {
+      'admin-queue': ['admin'],
+      'admin-stats': ['admin'],
+    }
     ROLES.forEach((role) => {
       ROLE_SHELL[role].rightRail.forEach((key: WidgetKey) => {
         const allowed = gated[key]
@@ -55,12 +58,19 @@ describe('ROLE_SHELL', () => {
     })
   })
 
-  it('gives every member role the same number of widgets', () => {
-    // The four member roles should not differ in rail *length* — only in payload.
+  it('gives every social role the same number of widgets', () => {
+    // The three social roles should not differ in rail *length* — only in payload.
     // profile-progress self-retires once a student's profile is complete, so the
     // steady state is four keys each, with each widget hiding itself when empty.
-    const counts = MEMBER_ROLES.map((role) => ROLE_SHELL[role].rightRail.length)
+    // Admin is excluded: its rail is the console pair, not the suggestion set.
+    const counts = MEMBER_ROLES.filter((r) => r !== 'admin').map((role) => ROLE_SHELL[role].rightRail.length)
     expect(new Set(counts).size, `member rails differ in length: ${counts.join(', ')}`).toBe(1)
+  })
+
+  it('gives admin exactly the console pair and no member widget', () => {
+    // An admin is walled out of the feed, so events, people and tags would be payload
+    // for a surface it cannot reach. The queue and the scoreboard are the whole rail.
+    expect(ROLE_SHELL.admin.rightRail).toEqual(['admin-queue', 'admin-stats'])
   })
 
   it('every home resolves to a route in PATHS', () => {

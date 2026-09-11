@@ -16,6 +16,8 @@ export type WidgetKey =
   | 'people-you-may-know'
   | 'upcoming-events'
   | 'trending-tags'
+  | 'admin-queue'
+  | 'admin-stats'
 
 /**
  * A key on the profile `stats` object. The role-scoped ones are computed server-side
@@ -147,12 +149,13 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
   },
   admin: {
     home: PATHS.ADMIN,
-    // No platform-today widget: all four of its counters resolved to `?tab=moderation`,
-    // `?tab=members` or /feed — every one a fixed row — its See all went to the Insights
-    // row, and its report count came from the same `['admin','stats']` query the
-    // contextual "Escalated report" row already reads. Events replace it: admin can
-    // create them (`requireRole('faculty','admin')`) and each card opens a specific one.
-    rightRail: ['upcoming-events', 'people-you-may-know', 'trending-tags', 'profile-progress'],
+    // The admin rail is a console, not a feed of suggestions: a queue of what is waiting
+    // and a scoreboard for the screen you are on, both re-keyed by the `?tab=` you are
+    // looking at (`rightRail/admin/useAdminRail.ts`). Every figure comes from the query
+    // the matching tab already holds, so the rail never adds a request of its own. The
+    // member widgets were dropped on purpose — an admin does not read the feed, so
+    // events, people and tags were payload for a surface it is walled out of.
+    rightRail: ['admin-queue', 'admin-stats'],
     stats: [
       { key: 'members', label: 'members' },
       { key: 'verifications', label: 'verifications' },
