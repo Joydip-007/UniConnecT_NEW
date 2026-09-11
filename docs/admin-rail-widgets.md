@@ -24,11 +24,11 @@ pill are always painted from the same set: `red · amber · indigo · cyan · mi
 
 ### `insights` — stats first
 - **Campus insights** (stats): Active members `activeUsers` / "of {users}" mint · Posts today `postsByDay[last].count` · Reports resolved `resolvedPct7d`% / "last 7 days" mint · Invite batches `pendingInviteBatches` / "still open" amber
-- **Needs attention** (queue, badge `{escalated+verification+deletion} open`, red): Escalated reports → `?tab=moderation` · Verification requests → `?tab=members` · Deletion requests → `?tab=moderation`. CTA "Open moderation".
+- **Needs attention** (queue, badge `{escalated+deletion} open`, red): Escalated reports → `?tab=moderation` · Deletion requests → `?tab=moderation`. CTA "Open moderation".
 - Data: `GET /admin/stats` — **complete, no new endpoint.**
 
 ### `moderation`
-- **Moderation queue** (queue, red): Escalated reports · Verification requests · Deletion requests. CTA "Open oldest report".
+- **Moderation queue** (queue, red): Escalated reports · Deletion requests. CTA "Open oldest report".
 - **Moderation health** (stats): Reports open red · Resolved `%` mint · Median response `h` / "target 6h" mint · Repeat offenders amber.
 - Data: `GET /admin/stats` → `moderationHealth`. **Complete.**
 - Note: this panel currently renders *in the main column* (`ModerationHealthPanel`). Moving it to the rail is part of this work, not a duplicate.
@@ -39,12 +39,12 @@ pill are always painted from the same set: `red · amber · indigo · cyan · mi
 - Data: `GET /admin/groups` already returns `summary { totalGroups, privateGroups, totalMembers, pendingRequests, createdThisWeek }` **and** per-group `pendingRequestCount`. **Complete — exact match, no new endpoint.**
 
 ### `members`
-- **Verification queue** (queue, `{verificationRequests} waiting`, red): Student IDs · Alumni proofs · Faculty accounts, from `verificationsByRole`. CTA "Open verifications".
+- **Members by role** (queue, `{users} total`, mint): Students · Alumni · Faculty · Admins, from `usersByRole`. There is deliberately no verification queue — sign-up is OTP-gated, so nothing waits on an admin.
 - **Membership** (stats): Active members mint · Activation `%` mint · Invite batches amber · Suspended red.
-- Data: `GET /admin/stats` covers members, active, batches, verifications by role.
+- Data: `GET /admin/stats` covers members, active, batches, users by role.
   **Gaps:** `activation %` (invites accepted ÷ sent) and `suspended` count.
   `// TODO(api): add acceptedInvites / sentInvites and suspendedUsers to GET /admin/stats.`
-  Until then substitute Members total and Verifications — both real.
+  Until then substitute Members total — real.
 
 ### `announcements`
 - **Scheduled** (queue, `{n} queued`, indigo): next scheduled announcements, meta = the time label; unscheduled drafts as neutral rows. CTA "New announcement" — opens the composer modal, does not navigate.

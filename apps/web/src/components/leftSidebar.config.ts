@@ -52,8 +52,6 @@ export interface RailContext {
   newApplicants: number
   /** Alumni: pending incoming mentorship requests. */
   menteeRequests: number
-  /** Admin: profiles awaiting verification. */
-  verifications: number
   /** Admin: days left on the soonest-to-lapse unused invite. */
   inviteExpiryDays: number | null
   /** Admin: unresolved content reports. */
@@ -296,16 +294,6 @@ const escalatedReportRule: CtxRule = {
   when: (ctx) => (ctx.pendingReports > 0 ? { meta: String(ctx.pendingReports), rank: TONE_RANK.action } : false),
 }
 
-/** Admin — profiles awaiting verification. */
-const verificationsRule: CtxRule = {
-  key: 'verifications',
-  label: 'Verification requests',
-  icon: ShieldCheck,
-  to: `${PATHS.ADMIN}?tab=members`,
-  tone: 'action',
-  when: (ctx) => (ctx.verifications > 0 ? { meta: String(ctx.verifications), rank: TONE_RANK.action } : false),
-}
-
 /** Admin — an unused invite is about to lapse. */
 const inviteExpiringRule: CtxRule = {
   key: 'invite-expiring',
@@ -424,7 +412,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
       { key: 'announcements', label: 'Announcements', icon: Newspaper, to: `${PATHS.ADMIN}?tab=announcements` },
       { key: 'content', label: 'Content', icon: LayoutGrid, to: `${PATHS.ADMIN}?tab=content` },
     ],
-    contextual: [escalatedReportRule, verificationsRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
+    contextual: [escalatedReportRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
     secondary: MEMBER_SECONDARY.filter((row) => ADMIN_SECONDARY_KEYS.has(row.key)),
     // Deletion requests is no longer a tile: it now lives inside the Moderation tab
     // beside reports, which is where an admin already goes to action a queue.

@@ -81,14 +81,9 @@ function minutesUntil(iso: string, now: number): number {
 }
 
 /**
- * Builds the signal bag the contextual rules read. `verifications` comes from the
- * profile query the rail already runs for its stat pair, so it costs no extra request.
+ * Builds the signal bag the contextual rules read.
  */
-export function useRailContext(
-  role: UserRole,
-  userId: string | undefined,
-  verifications: number | undefined,
-): RailContext {
+export function useRailContext(role: UserRole, userId: string | undefined): RailContext {
   const isStudent = role === 'student'
   const isAlumni = role === 'alumni'
   const isAdmin = role === 'admin'
@@ -229,7 +224,6 @@ export function useRailContext(
     eventStartsInMinutes,
     newApplicants,
     menteeRequests: incoming?.total ?? 0,
-    verifications: isAdmin ? (verifications ?? 0) : 0,
     inviteExpiryDays,
     pendingReports: adminStats?.reports ?? 0,
     onDuty,

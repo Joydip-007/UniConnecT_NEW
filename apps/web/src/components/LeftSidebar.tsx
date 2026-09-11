@@ -305,7 +305,7 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
 
   // Every contextual signal, gated per role so no request 403s for a role that
   // cannot see it. Verifications reuse the profile query already fetched above.
-  const ctx = useRailContext(role, user?.id, profileData?.stats.verifications)
+  const ctx = useRailContext(role, user?.id)
 
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const avatarBg = user ? avatarColor(user.id) : 'var(--uc-indigo)'

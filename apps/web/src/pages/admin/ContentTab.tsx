@@ -2,10 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
-import { formatDistanceToNow, parseISO } from 'date-fns'
+import { format, formatDistanceToNow, parseISO } from 'date-fns'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  AlertTriangle, Briefcase, Calendar, ChevronDown, ChevronUp, Eye, EyeOff, FileText, Flag,
+  AlertTriangle, Briefcase, Calendar, ChevronDown, ChevronUp, ExternalLink, Eye, EyeOff, FileText, Flag,
   Layers, MoreVertical, Newspaper, Pin, PinOff, Power, PowerOff, RotateCcw, Rss, Trash2, User,
   type LucideIcon,
 } from 'lucide-react'
@@ -22,13 +22,20 @@ import { PATHS } from '@/router/paths'
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 /**
- * Content moderation is a queue to check, not a feed to read. The tabs are the
- * feed's own post types — News, Events and Jobs here are the feed cards of those
- * kinds, so an expanded row is the real PostCard the members see — and every row
- * opens collapsed to a one-line summary; the admin expands only what they need to
- * read in full instead of scrolling full-height cards to find it.
+ * Content moderation is a queue to check, not a feed to read. The Posts tab is the
+ * feed queue: every row opens collapsed to a one-line summary and expands into the
+ * real PostCard the members see. News, Events and Jobs list their own tables — the
+ * notices, events and job postings themselves, not a member's feed share of one —
+ * as one-line rows whose Manage menu carries that kind's own actions.
  */
 type ContentType = AdminContentType
+
+/** The `/admin/content/:kind` table behind each non-post tab. */
+const TABLE_KIND: Record<Exclude<ContentType, 'post'>, 'news' | 'events' | 'jobs'> = {
+  news: 'news',
+  event_promo: 'events',
+  job_promo: 'jobs',
+}
 
 interface Paginated<T> {
   items: T[]
@@ -37,19 +44,65 @@ interface Paginated<T> {
   hasMore: boolean
 }
 
+interface AdminPerson {
+  id: string
+  fullName: string | null
+  avatarUrl: string | null
+}
+
+interface AdminNewsItem {
+  id: string
+  title: string
+  category: string
+  isPublished: boolean
+  isPinned: boolean
+  publishedAt: string | null
+  createdAt: string
+  author: AdminPerson
+}
+
+interface AdminEventItem {
+  id: string
+  title: string
+  location: string
+  startsAt: string
+  isPublished: boolean
+  createdAt: string
+  organizer: AdminPerson
+}
+
+interface AdminJobItem {
+  id: string
+  title: string
+  company: string
+  deadline: string
+  isActive: boolean
+  createdAt: string
+  poster: AdminPerson
+}
+
+type TableItem = AdminNewsItem | AdminEventItem | AdminJobItem
 
 const CONTENT_TYPES: { key: ContentType; label: string; icon: LucideIcon; empty: string }[] = [
   { key: 'post', label: 'Posts', icon: FileText, empty: 'No member posts match this filter right now.' },
-  { key: 'news', label: 'News', icon: Newspaper, empty: 'No campus news has been published yet.' },
-  { key: 'event_promo', label: 'Events', icon: Calendar, empty: 'No events posted to the feed yet.' },
-  { key: 'job_promo', label: 'Jobs', icon: Briefcase, empty: 'No job postings shared to the feed yet.' },
+  { key: 'news', label: 'News', icon: Newspaper, empty: 'No campus news or notices have been created yet.' },
+  { key: 'event_promo', label: 'Events', icon: Calendar, empty: 'No events have been created yet.' },
+  { key: 'job_promo', label: 'Jobs', icon: Briefcase, empty: 'No job postings have been created yet.' },
 ]
 
 const LIMIT = 20
 const REMOVED_KEY: QueryKey = ['admin', 'content', 'feed', { removed: true }]
 
 function listKey(type: ContentType, page: number): QueryKey {
-  return ['admin', 'content', 'feed', { type, page }]
+  return type === 'post'
+    ? ['admin', 'content', 'feed', { type, page }]
+    : ['admin', 'content', TABLE_KIND[type], { page }]
+}
+
+function fetchTable<T>(kind: 'news' | 'events' | 'jobs', page: number) {
+  return api
+    .get<{ data: Paginated<T> }>(`/admin/content/${kind}`, { params: { limit: LIMIT, page } })
+    .then((r) => r.data.data)
 }
 
 function fetchFeed(params: Record<string, string | number | boolean>) {
@@ -226,7 +279,25 @@ interface ContentListProps {
   onToggle: (id: string) => void
 }
 
-function ContentList({ type, page, onPageChange, expanded, onToggle }: ContentListProps) {
+function ContentList(props: ContentListProps) {
+  return props.type === 'post' ? <PostList {...props} /> : <TableList {...props} type={props.type} />
+}
+
+function Pager({ page, total, onPageChange }: { page: number; total: number; onPageChange: (page: number) => void }) {
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+  if (totalPages <= 1) return null
+  return (
+    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+      <GhostBtn disabled={page === 1} onClick={() => onPageChange(page - 1)}>Previous</GhostBtn>
+      <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
+        {page} / {totalPages}
+      </span>
+      <GhostBtn disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>Next</GhostBtn>
+    </div>
+  )
+}
+
+function PostList({ type, page, onPageChange, expanded, onToggle }: ContentListProps) {
   const queryKey = listKey(type, page)
   const { data, isLoading } = useQuery<Paginated<FeedPost>>({
     queryKey,
@@ -237,8 +308,6 @@ function ContentList({ type, page, onPageChange, expanded, onToggle }: ContentLi
   if (isLoading || !data) return <SkeletonList />
 
   const config = CONTENT_TYPES.find((t) => t.key === type)!
-  const totalPages = Math.max(1, Math.ceil(data.total / LIMIT))
-
   if (data.items.length === 0) return <EmptyState text={config.empty} />
 
   return (
@@ -254,17 +323,169 @@ function ContentList({ type, page, onPageChange, expanded, onToggle }: ContentLi
           />
         ))}
       </div>
-
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
-          <GhostBtn disabled={page === 1} onClick={() => onPageChange(page - 1)}>Previous</GhostBtn>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
-            {page} / {totalPages}
-          </span>
-          <GhostBtn disabled={page === totalPages} onClick={() => onPageChange(page + 1)}>Next</GhostBtn>
-        </div>
-      )}
+      <Pager page={page} total={data.total} onPageChange={onPageChange} />
     </>
+  )
+}
+
+// ── TableList: News / Events / Jobs straight from their own tables ────────────
+
+function TableList({ type, page, onPageChange }: ContentListProps & { type: Exclude<ContentType, 'post'> }) {
+  const kind = TABLE_KIND[type]
+  const queryKey = listKey(type, page)
+  const { data, isLoading } = useQuery<Paginated<TableItem>>({
+    queryKey,
+    queryFn: () => fetchTable<TableItem>(kind, page),
+    placeholderData: (prev) => prev,
+  })
+
+  if (isLoading || !data) return <SkeletonList />
+
+  const config = CONTENT_TYPES.find((t) => t.key === type)!
+  if (data.items.length === 0) return <EmptyState text={config.empty} />
+
+  return (
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {data.items.map((item) => (
+          <TableRow key={item.id} kind={kind} item={item} queryKey={queryKey} />
+        ))}
+      </div>
+      <Pager page={page} total={data.total} onPageChange={onPageChange} />
+    </>
+  )
+}
+
+/**
+ * Optimistic flip of one boolean on a cached table page — same shape as
+ * `useFieldFlip`, but the rows are plain table items rather than FeedPosts.
+ */
+function useTableFlip(queryKey: QueryKey, id: string, field: string, request: (next: boolean) => Promise<unknown>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: request,
+    onMutate: async (next: boolean) => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<Paginated<TableItem>>(queryKey)
+      if (previous) {
+        qc.setQueryData<Paginated<TableItem>>(queryKey, {
+          ...previous,
+          items: previous.items.map((it) => (it.id === id ? { ...it, [field]: next } : it)),
+        })
+      }
+      return { previous }
+    },
+    onError: (_err, _next, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidateContent(qc),
+  })
+}
+
+function personOf(kind: 'news' | 'events' | 'jobs', item: TableItem): AdminPerson {
+  if (kind === 'news') return (item as AdminNewsItem).author
+  if (kind === 'events') return (item as AdminEventItem).organizer
+  return (item as AdminJobItem).poster
+}
+
+function TableRow({ kind, item, queryKey }: { kind: 'news' | 'events' | 'jobs'; item: TableItem; queryKey: QueryKey }) {
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  const base = `/admin/content/${kind}/${item.id}`
+  const person = personOf(kind, item)
+
+  const pin = useTableFlip(queryKey, item.id, 'isPinned', (next) => api.patch(`${base}/pin`, { is_pinned: next }))
+  const publish = useTableFlip(queryKey, item.id, 'isPublished', (next) => api.patch(`${base}/publish`, { is_published: next }))
+  const active = useTableFlip(queryKey, item.id, 'isActive', (next) => api.patch(`${base}/active`, { is_active: next }))
+
+  const remove = useMutation({
+    mutationFn: () => api.delete(base),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey })
+      const previous = qc.getQueryData<Paginated<TableItem>>(queryKey)
+      if (previous) {
+        qc.setQueryData<Paginated<TableItem>>(queryKey, {
+          ...previous,
+          total: Math.max(0, previous.total - 1),
+          items: previous.items.filter((it) => it.id !== item.id),
+        })
+      }
+      return { previous }
+    },
+    onError: (_err, _next, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKey, ctx.previous)
+    },
+    onSettled: () => invalidateContent(qc),
+  })
+
+  // Per-kind: the secondary line, the status pills, the open route and the actions.
+  let meta = ''
+  let openPath = ''
+  let kindLabel = ''
+  const pills: React.ReactNode[] = []
+  const actions: MenuAction[] = []
+
+  if (kind === 'news') {
+    const n = item as AdminNewsItem
+    kindLabel = 'news'
+    meta = `${n.category} · ${relativeTime(n.publishedAt ?? n.createdAt)}`
+    openPath = PATHS.NEWS_DETAIL.replace(':id', n.id)
+    if (n.isPinned) pills.push(<HeaderPill key="pin" icon={Pin} color="var(--uc-indigo-xl)" bg="var(--uc-indigo-bg)" bdr="var(--uc-indigo-bdr)">Pinned</HeaderPill>)
+    if (!n.isPublished) pills.push(<HeaderPill key="hidden" icon={EyeOff} color="var(--text-secondary)" bg="var(--surface-raised)" bdr="var(--border-default)">Unpublished</HeaderPill>)
+    actions.push(
+      { label: n.isPinned ? 'Unpin' : 'Pin', icon: n.isPinned ? PinOff : Pin, onClick: () => pin.mutate(!n.isPinned) },
+      { label: n.isPublished ? 'Unpublish' : 'Publish', icon: n.isPublished ? EyeOff : Eye, onClick: () => publish.mutate(!n.isPublished) },
+    )
+  } else if (kind === 'events') {
+    const e = item as AdminEventItem
+    kindLabel = 'event'
+    meta = `${format(parseISO(e.startsAt), 'd MMM yyyy, h:mm a')} · ${e.location}`
+    openPath = PATHS.EVENT_DETAIL.replace(':id', e.id)
+    if (!e.isPublished) pills.push(<HeaderPill key="hidden" icon={EyeOff} color="var(--text-secondary)" bg="var(--surface-raised)" bdr="var(--border-default)">Unpublished</HeaderPill>)
+    actions.push({ label: e.isPublished ? 'Unpublish' : 'Publish', icon: e.isPublished ? EyeOff : Eye, onClick: () => publish.mutate(!e.isPublished) })
+  } else {
+    const j = item as AdminJobItem
+    kindLabel = 'job'
+    meta = `${j.company} · closes ${format(parseISO(j.deadline), 'd MMM yyyy')}`
+    openPath = PATHS.JOB_DETAIL.replace(':id', j.id)
+    if (!j.isActive) pills.push(<HeaderPill key="closed" icon={PowerOff} color="var(--uc-amber-l)" bg="var(--uc-amber-bg)" bdr="var(--uc-amber-bdr)">Closed</HeaderPill>)
+    actions.push({ label: j.isActive ? 'Close applications' : 'Reopen applications', icon: j.isActive ? PowerOff : Power, onClick: () => active.mutate(!j.isActive) })
+  }
+
+  actions.push(
+    { label: `Open ${kindLabel}`, icon: ExternalLink, divider: true, onClick: () => navigate(openPath) },
+    { label: 'Open author profile', icon: User, onClick: () => navigate(PATHS.PROFILE.replace(':id', person.id)) },
+  )
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: '10px 14px',
+      }}
+    >
+      <Avatar
+        src={person.avatarUrl}
+        initials={getInitials(person.fullName ?? '')}
+        color={avatarColor(person.id)}
+        size={30}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{item.title}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>{person.fullName}</span>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
+          {meta}
+        </div>
+      </div>
+      {pills}
+      <ManageMenu kind={kindLabel} actions={actions} onDelete={() => remove.mutate()} />
+    </div>
   )
 }
 

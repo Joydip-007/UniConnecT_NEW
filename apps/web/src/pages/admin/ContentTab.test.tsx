@@ -49,6 +49,17 @@ let posts: FeedPost[]
 let removedIds: Set<string>
 const patches: { url: string; body: unknown }[] = []
 
+interface AdminJobRow {
+  id: string
+  title: string
+  company: string
+  deadline: string
+  isActive: boolean
+  createdAt: string
+  poster: { id: string; fullName: string | null; avatarUrl: string | null }
+}
+let jobs: AdminJobRow[]
+
 function installHandlers() {
   server.use(
     http.get('*/admin/content/summary', () =>
@@ -67,6 +78,22 @@ function installHandlers() {
       const type = url.searchParams.get('type')
       const items = posts.filter((p) => (removed ? removedIds.has(p.id) : !removedIds.has(p.id) && (!type || p.type === type)))
       return HttpResponse.json({ data: { items, total: items.length, page: 1, hasMore: false } })
+    }),
+    // News / Events / Jobs list their own tables, not feed posts.
+    http.get('*/admin/content/jobs', () =>
+      HttpResponse.json({ data: { items: jobs, total: jobs.length, page: 1, hasMore: false } }),
+    ),
+    http.get('*/admin/content/events', () =>
+      HttpResponse.json({ data: { items: [], total: 0, page: 1, hasMore: false } }),
+    ),
+    http.get('*/admin/content/news', () =>
+      HttpResponse.json({ data: { items: [], total: 0, page: 1, hasMore: false } }),
+    ),
+    http.patch('*/admin/content/jobs/:id/active', async ({ request, params }) => {
+      const body = (await request.json()) as Record<string, boolean>
+      patches.push({ url: request.url, body })
+      jobs.find((j) => j.id === params.id)!.isActive = body.is_active
+      return HttpResponse.json({ data: { id: params.id } })
     }),
     http.patch('*/admin/content/posts/:id/:action', async ({ request, params }) => {
       const body = (await request.json()) as Record<string, boolean>
@@ -103,6 +130,17 @@ describe('ContentTab (admin content moderation)', () => {
       makePost({ id: 'p2', content: 'Line-following bots from the workshop.', author: { id: 'u2', fullName: 'Ishrat Binte Kabir', role: 'student', profile: { avatarUrl: null, headline: null, department: 'EEE', batchYear: '2027' } } }),
       makePost({ id: 'j1', type: 'job_promo', content: 'Two junior backend roles for the December intake.', author: { id: 'u3', fullName: 'Rafiul Karim', role: 'alumni', profile: { avatarUrl: null, headline: 'Backend engineer', department: 'CSE', batchYear: '2019' } } }),
     ]
+    jobs = [
+      {
+        id: 'job1',
+        title: 'Junior backend engineer',
+        company: 'Brain Station 23',
+        deadline: new Date(Date.now() + 14 * 86_400_000).toISOString(),
+        isActive: true,
+        createdAt: new Date(Date.now() - 86_400_000).toISOString(),
+        poster: { id: 'u3', fullName: 'Rafiul Karim', avatarUrl: null },
+      },
+    ]
     removedIds = new Set()
     patches.length = 0
     installHandlers()
@@ -124,13 +162,28 @@ describe('ContentTab (admin content moderation)', () => {
     expect(screen.queryByText('Collapse')).not.toBeInTheDocument()
   })
 
-  it('switches type tabs', async () => {
+  it('switches type tabs: Jobs lists the jobs table, not job_promo feed posts', async () => {
     const user = userEvent.setup()
     renderTab()
     await screen.findByText('Dr. Shamsul Alam')
     await user.click(screen.getByRole('button', { name: 'Jobs' }))
-    expect(await screen.findByText('Rafiul Karim')).toBeInTheDocument()
+    expect(await screen.findByText('Junior backend engineer')).toBeInTheDocument()
+    expect(screen.getByText('Rafiul Karim')).toBeInTheDocument()
     expect(screen.queryByText('Dr. Shamsul Alam')).not.toBeInTheDocument()
+    // The job_promo feed post is not what this tab is for.
+    expect(screen.queryByText(/Two junior backend roles/)).not.toBeInTheDocument()
+  })
+
+  it('a job row can be closed to applications from its Manage menu', async () => {
+    const user = userEvent.setup()
+    renderTab()
+    await screen.findByText('Dr. Shamsul Alam')
+    await user.click(screen.getByRole('button', { name: 'Jobs' }))
+    await screen.findByText('Junior backend engineer')
+    await user.click(screen.getByRole('button', { name: 'Manage job' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Close applications' }))
+    expect(await screen.findByText('Closed')).toBeInTheDocument()
+    expect(patches).toEqual([{ url: expect.stringContaining('/admin/content/jobs/job1/active'), body: { is_active: false } }])
   })
 
   it('expands a row into the review-only PostCard with the Manage menu, and collapses it again', async () => {
@@ -275,6 +328,6 @@ describe('ContentTab (admin content moderation)', () => {
     await screen.findByText('Dr. Shamsul Alam')
     await user.click(screen.getByRole('button', { name: 'Events' }))
     expect(await screen.findByText('Nothing here yet')).toBeInTheDocument()
-    expect(screen.getByText('No events posted to the feed yet.')).toBeInTheDocument()
+    expect(screen.getByText('No events have been created yet.')).toBeInTheDocument()
   })
 })

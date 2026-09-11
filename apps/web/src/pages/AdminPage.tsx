@@ -3,7 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Flag, Trash2, X,
-  ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, ChevronDown, ChevronUp, ChevronRight,
+  ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, ChevronDown, ChevronUp, ChevronRight,
   UserPlus, FileText, Newspaper, Calendar, Briefcase, Mail
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -40,10 +40,8 @@ interface Stats {
   reports: number
   activeUsers: number
   usersByRole: { role: string; count: number }[]
-  verificationsByRole: { role: string; count: number }[]
   postsByDay: { date: string; count: number }[]
   escalatedReports: number
-  verificationRequests: number
   deletionRequests: number
   resolvedPct7d: number
   pendingInviteBatches: number
@@ -437,9 +435,9 @@ const CONTENT_MIX: { key: AdminContentType; label: string; icon: LucideIcon; col
 ]
 
 /**
- * Counts come from the content queue's own summary, not `/admin/stats`: the stats
- * endpoint counts the `events`/`jobs`/`news` tables, while every row here jumps to a
- * feed-post type tab, so the number has to be what that tab will list.
+ * Counts come from the content queue's own summary so each row shows exactly what
+ * the Content tab it jumps to will list: feed posts for Posts, and the `news`,
+ * `events` and `jobs` tables for the other three.
  */
 function ContentMixCard({ onNavigate }: { onNavigate: (tab: Tab, contentType?: AdminContentType) => void }) {
   const { data: summary } = useContentSummary()
@@ -476,7 +474,6 @@ function ContentMixCard({ onNavigate }: { onNavigate: (tab: Tab, contentType?: A
 function NeedsAttentionCard({ stats, onNavigate }: { stats: Stats; onNavigate: (tab: Tab) => void }) {
   const rows: { label: string; count: number; icon: LucideIcon; color: string; bg: string; tab: Tab }[] = [
     { label: 'Escalated reports', count: stats.escalatedReports, icon: Flag, color: 'var(--uc-red)', bg: 'var(--uc-red-bg)', tab: 'moderation' },
-    { label: 'Verification requests', count: stats.verificationRequests, icon: ShieldCheck, color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)', tab: 'members' },
     { label: 'Invite batches expiring', count: stats.pendingInviteBatches, icon: Mail, color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)', tab: 'members' },
   ]
   return (
@@ -867,11 +864,6 @@ function UsersTab({
     },
   })
 
-  const { data: stats } = useQuery<Stats>({
-    queryKey: ['admin', 'stats'],
-    queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
-  })
-
   const verifyMutation = useMutation({
     mutationFn: (userId: string) => api.patch(`/admin/users/${userId}/verify`, {}),
     onSuccess: () => {
@@ -910,36 +902,6 @@ function UsersTab({
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
           {data.total.toLocaleString()} users total
         </p>
-
-        {stats && stats.verificationsByRole.length > 0 && (
-          <div style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-            padding: '16px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Verification queue</span>
-              <Badge variant="pinned">
-                {stats.verificationsByRole.reduce((sum, r) => sum + r.count, 0)} waiting
-              </Badge>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {stats.verificationsByRole.map((r) => (
-                <span key={r.role} style={{
-                  fontSize: 12, color: 'var(--text-secondary)',
-                  background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)',
-                  borderRadius: 'var(--r-pill)', padding: '4px 10px',
-                }}>
-                  {ROLE_LABELS[r.role] ?? r.role}: {r.count}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div style={{
           background: 'var(--surface-card)',

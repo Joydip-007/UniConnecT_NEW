@@ -164,16 +164,15 @@ export class AdminService {
     ])
 
     const activeUsers = await countActive(universityId)
-    const [usersByRole, postsByDay, verificationsByRole] = await Promise.all([
+    const [usersByRole, postsByDay] = await Promise.all([
       countUsersByRole(universityId),
       countPostsByDay(universityId),
-      countUnverifiedByRole(universityId),
     ])
 
-    const [escalatedReports, verificationRequests, deletionRequests, resolvedPct7d, moderationHealth, pendingInviteBatches] =
+    // No verification counters: registration is OTP-gated, so nothing waits on an admin.
+    const [escalatedReports, deletionRequests, resolvedPct7d, moderationHealth, pendingInviteBatches] =
       await Promise.all([
         countEscalatedReports(universityId),
-        countWhere('users', { university_id: universityId, is_deleted: false, is_verified: false }),
         db('account_deletion_requests')
           .where({ university_id: universityId, status: 'pending' })
           .count<CountRow[]>({ count: '*' })
@@ -185,8 +184,8 @@ export class AdminService {
       ])
 
     return {
-      users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay, verificationsByRole,
-      escalatedReports, verificationRequests, deletionRequests, resolvedPct7d, pendingInviteBatches, moderationHealth,
+      users, posts, jobs, events, groups, news, reports, activeUsers, usersByRole, postsByDay,
+      escalatedReports, deletionRequests, resolvedPct7d, pendingInviteBatches, moderationHealth,
     }
   }
 
@@ -1255,15 +1254,6 @@ async function countWhere(table: string, where: Record<string, unknown>): Promis
 async function countUsersByRole(universityId: string): Promise<{ role: string; count: number }[]> {
   const rows = await db('users')
     .where({ university_id: universityId, is_deleted: false })
-    .select('role')
-    .count<{ role: string; count: string }[]>({ count: '*' })
-    .groupBy('role')
-  return rows.map((r) => ({ role: r.role, count: Number(r.count) }))
-}
-
-async function countUnverifiedByRole(universityId: string): Promise<{ role: string; count: number }[]> {
-  const rows = await db('users')
-    .where({ university_id: universityId, is_deleted: false, is_verified: false })
     .select('role')
     .count<{ role: string; count: string }[]>({ count: '*' })
     .groupBy('role')

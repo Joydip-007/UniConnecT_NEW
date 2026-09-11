@@ -20,7 +20,6 @@ function emptyCtx(): RailContext {
     eventStartsInMinutes: null,
     newApplicants: 0,
     menteeRequests: 0,
-    verifications: 0,
     inviteExpiryDays: null,
     pendingReports: 0,
     onDuty: false,
@@ -190,7 +189,7 @@ describe('LeftSidebar profile stats pair', () => {
     student: ['connections', 'pending'],
     alumni: ['connections', 'mentees'],
     faculty: ['sections', 'students'],
-    admin: ['members', 'verifications'],
+    admin: ['members', 'groups'],
     driver: ['connections', 'posts'],
   }
 
@@ -235,7 +234,6 @@ describe('LeftSidebar contextual zone', () => {
     ['alumni', 'New applicants', { newApplicants: 5 }],
     ['alumni', 'Mentee requests', { menteeRequests: 1 }],
     ['admin', 'Escalated report', { pendingReports: 3 }],
-    ['admin', 'Verification requests', { verifications: 2 }],
     ['admin', 'Invite batch expiring', { inviteExpiryDays: 2 }],
     ['driver', 'On duty now', { onDuty: true }],
   ]
@@ -255,11 +253,11 @@ describe('LeftSidebar contextual zone', () => {
 
   it('caps the zone at two rows and counts the rest as overflow', () => {
     mockRole = 'admin'
-    mockCtx = { ...emptyCtx(), pendingReports: 1, verifications: 1, inviteExpiryDays: 1, draftCount: 4 }
+    mockCtx = { ...emptyCtx(), pendingReports: 1, inviteExpiryDays: 1, draftCount: 4 }
     renderSidebar(false)
-    // 4 rules true → 2 rendered + a "+2 more" row.
+    // 3 rules true → 2 rendered + a "+1 more" row.
     expect(zoneLabels().filter((l) => l.includes('more'))).toHaveLength(1)
-    expect(screen.getByText('+2 more')).toBeInTheDocument()
+    expect(screen.getByText('+1 more')).toBeInTheDocument()
   })
 
   it('sorts a live row above a deadline row', () => {
@@ -290,7 +288,6 @@ describe('LeftSidebar contextual zone', () => {
       eventStartsInMinutes: 5,
       newApplicants: 9,
       menteeRequests: 9,
-      verifications: 9,
       inviteExpiryDays: 0,
       pendingReports: 9,
       onDuty: true,
@@ -307,11 +304,11 @@ describe('LeftSidebar contextual zone', () => {
    * produce nothing.
    */
   const forbidden: Record<UserRole, Partial<RailContext>> = {
-    student: { newApplicants: 9, menteeRequests: 9, verifications: 9, inviteExpiryDays: 0, pendingReports: 9, onDuty: true },
-    alumni: { verifications: 9, inviteExpiryDays: 0, pendingReports: 9, onDuty: true, shuttleEtaMinutes: 2 },
-    faculty: { newApplicants: 9, menteeRequests: 9, verifications: 9, inviteExpiryDays: 0, pendingReports: 9, onDuty: true },
+    student: { newApplicants: 9, menteeRequests: 9, inviteExpiryDays: 0, pendingReports: 9, onDuty: true },
+    alumni: { inviteExpiryDays: 0, pendingReports: 9, onDuty: true, shuttleEtaMinutes: 2 },
+    faculty: { newApplicants: 9, menteeRequests: 9, inviteExpiryDays: 0, pendingReports: 9, onDuty: true },
     admin: { onDuty: true },
-    driver: { draftCount: 9, newApplicants: 9, menteeRequests: 9, verifications: 9, pendingReports: 9, applicationUpdates: 9 },
+    driver: { draftCount: 9, newApplicants: 9, menteeRequests: 9, pendingReports: 9, applicationUpdates: 9 },
   }
 
   it.each(Object.keys(forbidden) as UserRole[])(
