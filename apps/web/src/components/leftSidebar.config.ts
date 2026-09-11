@@ -160,11 +160,10 @@ const MEMBER_SECONDARY: RailRow[] = [
  * This narrows what `reachability.test.ts` asks of admin — see the member-feature check
  * there, which now exempts the surfaces listed above for this role only.
  */
-const ADMIN_SECONDARY_KEYS = new Set(['messages', 'notifications', 'drafts'])
+const ADMIN_SECONDARY_KEYS = new Set(['messages', 'notifications'])
 
 const NEWS_ROW: RailRow = { key: 'news', label: 'News', icon: Newspaper, to: PATHS.NEWS }
 const JOBS_ROW: RailRow = { key: 'jobs', label: 'Jobs', icon: Briefcase, to: PATHS.JOBS }
-const MENTORSHIP_ROW: RailRow = { key: 'mentorship', label: 'Mentorship', icon: Handshake, to: PATHS.MENTORSHIP }
 
 /**
  * True when `to` is the row the current URL is on. Rows can share a base path and differ
@@ -426,7 +425,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
       { key: 'content', label: 'Content', icon: LayoutGrid, to: `${PATHS.ADMIN}?tab=content` },
     ],
     contextual: [escalatedReportRule, verificationsRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
-    secondary: [...MEMBER_SECONDARY.filter((row) => ADMIN_SECONDARY_KEYS.has(row.key)), MENTORSHIP_ROW],
+    secondary: MEMBER_SECONDARY.filter((row) => ADMIN_SECONDARY_KEYS.has(row.key)),
     // Deletion requests is no longer a tile: it now lives inside the Moderation tab
     // beside reports, which is where an admin already goes to action a queue.
     tools: [
@@ -435,6 +434,9 @@ export const RAILS: Record<UserRole, RoleRail> = {
       // The rider map, not the ops screen, is what /shuttle renders — the routes and
       // schedules an admin manages live on the admin tab.
       { key: 'shuttle-ops', label: 'Shuttle ops', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: `${PATHS.ADMIN}?tab=shuttle` },
+      // Mentorship is a member surface no admin row offers, so it qualifies as a tool
+      // tile rather than a second name for a row.
+      { key: 'mentorship', label: 'Mentorship', icon: Handshake, iconColor: 'var(--uc-orange-l)', iconBg: 'var(--uc-orange-bg)', to: PATHS.MENTORSHIP },
     ],
   },
 }
