@@ -639,7 +639,7 @@ export function useAdminRail(): AdminRail {
       const today = new Date().toISOString().slice(0, 10)
       const postsToday = stats.postsByDay.find((d) => d.date === today)?.count ?? 0
       const weekTotal = stats.postsByDay.reduce((sum, d) => sum + d.count, 0)
-      const open = stats.escalatedReports + stats.verificationRequests + stats.deletionRequests + importedDrafts
+      const open = stats.escalatedReports + stats.deletionRequests + importedDrafts
       return {
         route,
         statsFirst: true,
@@ -657,7 +657,7 @@ export function useAdminRail(): AdminRail {
           badge: `${open} open`,
           badgeTone: open > 0 ? 'red' : 'mint',
           rows: [
-            ...modRows(stats).slice(0, 2),
+            ...modRows(stats).filter((r) => r.key === 'escalated'),
             { key: 'imported', label: 'Imported drafts', meta: String(importedDrafts), icon: FileText, tone: 'indigo', to: adminTab('content-sync') },
             { key: 'deletions', label: 'Deletion requests', meta: String(stats.deletionRequests), icon: Trash2, tone: 'amber', to: adminTab('moderation') },
           ],

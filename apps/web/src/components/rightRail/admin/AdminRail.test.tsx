@@ -66,6 +66,7 @@ describe('admin right rail', () => {
     expect(screen.getByText('Needs attention')).toBeInTheDocument()
     expect(screen.getByText('Escalated reports')).toBeInTheDocument()
     expect(screen.getByText('Imported drafts')).toBeInTheDocument()
+    expect(screen.queryByText('Verification requests')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open moderation' })).toBeInTheDocument()
 
     // Numbers lead on Insights: the manifest lists queue first, so the swap is flex order.
