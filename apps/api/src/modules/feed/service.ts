@@ -922,7 +922,11 @@ export class FeedService {
       .offset((query.page - 1) * query.limit)) as PostRow[]
 
     const postIds = rows.map((row) => row.id)
-    const items = await this.attachPolls(rows.map((r) => toPost(r, adminUserId)), postIds, adminUserId)
+    const [posts, attachmentsMap] = await Promise.all([
+      this.attachPolls(rows.map((r) => toPost(r, adminUserId)), postIds, adminUserId),
+      getAttachmentsForMany('post', postIds),
+    ])
+    const items = posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
     return { items, total, page: query.page, limit: query.limit }
   }
 
