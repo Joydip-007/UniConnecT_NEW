@@ -6,7 +6,11 @@ import { AppError } from '../../utils/errors'
 import { adminService } from './service'
 import { adminContentService } from './content.service'
 import { adminShuttleService } from './shuttle.service'
+import { feedService } from '../feed/service'
 import type {
+  AdminFeedListQuery,
+  ToggleCommentsInput,
+  ToggleRemovedInput,
   AdminFulfillRedemptionInput,
   AdminRedemptionListQuery,
   ContentKind,
@@ -106,6 +110,13 @@ export const listReportedContentGroups = asyncHandler(async (req: Request, res: 
   const { universityId } = getAdminContext(req)
   const result = await adminService.listReportedContentGroups(universityId, req.query as unknown as PaginationQuery)
   sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const getReportedTarget = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const targetType = req.params.targetType as string
+  const targetId = req.params.targetId as string
+  sendSuccess(res, await adminService.getReportedTarget(universityId, targetType, targetId))
 })
 
 export const resolveReportGroup = asyncHandler(async (req: Request, res: Response) => {
@@ -235,6 +246,32 @@ export const listContent = asyncHandler(async (req: Request, res: Response) => {
     await adminContentService.listNews(universityId, query)
 
   sendPaginated(res, result.items as unknown[], result.total, result.page, result.limit)
+})
+
+export const listAdminFeed = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  const query = req.query as unknown as AdminFeedListQuery
+  const result = await feedService.listPostsForAdmin(universityId, userId, query)
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const getContentSummary = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  sendSuccess(res, await feedService.getAdminContentSummary(universityId))
+})
+
+export const togglePostComments = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const id = req.params.id as string
+  const { comments_disabled } = req.body as ToggleCommentsInput
+  sendSuccess(res, await feedService.setCommentsDisabledByAdmin(universityId, id, comments_disabled))
+})
+
+export const togglePostRemoved = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  const id = req.params.id as string
+  const { is_removed } = req.body as ToggleRemovedInput
+  sendSuccess(res, await feedService.setRemovedByAdmin(universityId, userId, id, is_removed))
 })
 
 export const deleteContentItem = asyncHandler(async (req: Request, res: Response) => {

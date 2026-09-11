@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/authStore'
 
 const GROUPED_ITEM = {
   targetId: 'post-1', targetType: 'post', title: 'Spam links in an "Internship offer" post',
+  location: { label: 'Feed post', path: '/feed/post-1' },
   severity: 'high', reason: 'spam', reportCount: 3, lastReportedAt: new Date().toISOString(), removable: true,
 }
 
@@ -54,7 +55,17 @@ describe('AdminPage Moderation tab', () => {
     renderModeration()
     expect(await screen.findByText('Spam links in an "Internship offer" post')).toBeInTheDocument()
     expect(screen.getByText('High')).toBeInTheDocument()
-    expect(screen.getByText('3 reports')).toBeInTheDocument()
+    expect(screen.getByText('· 3 reports')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Feed post' })).toHaveAttribute('href', '/feed/post-1')
+    expect(screen.getByRole('button', { name: 'Review' })).toBeInTheDocument()
+  })
+
+  it('counts open, escalated and deletion requests — never verification, which OTP already gates', async () => {
+    renderModeration()
+    expect(await screen.findByText('Open reports')).toBeInTheDocument()
+    expect(screen.getByText('Escalated reports')).toBeInTheDocument()
+    expect(screen.getByText('Deletion requests')).toBeInTheDocument()
+    expect(screen.queryByText('Verification requests')).not.toBeInTheDocument()
   })
 
   it('dismisses a reported target', async () => {
@@ -62,11 +73,5 @@ describe('AdminPage Moderation tab', () => {
     await screen.findByText('Spam links in an "Internship offer" post')
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
     await waitFor(() => expect(screen.queryByText('Spam links in an "Internship offer" post')).not.toBeInTheDocument())
-  })
-
-  it('shows the moderation health panel', async () => {
-    renderModeration()
-    expect(await screen.findByText('Moderation health')).toBeInTheDocument()
-    expect(screen.getByText('3.2h')).toBeInTheDocument()
   })
 })

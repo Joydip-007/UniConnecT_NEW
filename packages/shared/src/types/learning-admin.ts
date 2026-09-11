@@ -133,3 +133,54 @@ export interface CreateLearningPathInput {
 export type UpdateLearningPathInput = Partial<
   Pick<CreateLearningPathInput, 'title' | 'description' | 'department' | 'category' | 'difficulty' | 'estimatedDays'>
 >
+
+/** One row of the admin Quizzes tab — a union over the three places a quiz lives. */
+export type AdminQuizKind = 'path_unit' | 'ai_batch' | 'daily_slot'
+export type AdminQuizStatus = 'published' | 'draft' | 'needs_review' | 'scheduled'
+
+export interface AdminQuiz {
+  id: string
+  kind: AdminQuizKind
+  title: string
+  /** Null for daily-quiz rows, which are not attached to a path. */
+  pathId: string | null
+  /** Path title, or the daily-quiz department label. */
+  pathTitle: string
+  questionCount: number
+  passMark: number
+  attempts: number
+  /** Null until the quiz has at least one attempt. */
+  avgScore: number | null
+  status: AdminQuizStatus
+  source: 'ai' | 'staff'
+  updatedAt: string
+}
+
+export interface DraftPathWithAiInput {
+  topic: string
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'
+  unitCount?: number
+  department?: string | null
+  includeCheckpointQuizzes?: boolean
+}
+
+/** An AI-drafted path that has NOT been persisted — the builder edits it, then creates it. */
+export interface AiPathDraft {
+  title: string
+  description: string
+  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  units: Array<{
+    title: string
+    type: 'read' | 'video' | 'exercise' | 'quiz'
+    content: Record<string, unknown>
+    estimatedMinutes: number
+    completionRule?: { passScore?: number }
+  }>
+}
+
+export interface GenerateQuizWithAiInput {
+  pathId: string
+  count?: number
+  style?: 'mcq' | 'true_false' | 'mixed'
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'
+}

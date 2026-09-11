@@ -192,15 +192,19 @@ function PinnedBar() {
 
 // ── PollBlock ─────────────────────────────────────────────────────────────────
 
-function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
+/**
+ * `readOnly` (admin review): every option shows its percentage, filled from the
+ * first paint, and nothing is clickable — the admin sees the result, never votes.
+ */
+function PollBlock({ poll, readOnly = false }: { poll: FeedPoll; postId: string; readOnly?: boolean }) {
   const [localVote, setLocalVote] = useState<string | null>(poll.myVote)
   const [counts, setCounts] = useState(() => poll.options.map((o) => o.voteCount))
-  const [animated, setAnimated] = useState(false)
+  const [animated, setAnimated] = useState(readOnly)
   const voteMutation = useMutation({
     mutationFn: (optionId: string) =>
       api.post(`/polls/${poll.id}/vote`, { optionId }).then((r) => r.data),
   })
-  const voted = localVote !== null
+  const voted = localVote !== null || readOnly
   const totalVotes = counts.reduce((a, b) => a + b, 0)
 
   function handleVote(optionId: string) {
@@ -237,6 +241,7 @@ function PollBlock({ poll }: { poll: FeedPoll; postId: string }) {
               key={option.id}
               type="button"
               disabled={voted || voteMutation.isPending}
+              aria-disabled={readOnly || undefined}
               onClick={() => handleVote(option.id)}
               style={{
                 width: '100%',
@@ -387,9 +392,18 @@ export interface PostCardProps {
   post: FeedPost
   onCommentClick: (postId: string) => void
   onEditPost: (post: FeedPost) => void
+  /**
+   * `admin` is the Content moderation card: the admin reviews, they do not
+   * participate, so the like/comment/share/save row is gone and the member ⋮
+   * menu gives way to `headerSlot` (status pills + the Manage menu). Everything
+   * above the fold — header, body, media, poll, embed, counts — is unchanged so
+   * the admin sees exactly what members see.
+   */
+  variant?: 'feed' | 'admin'
+  headerSlot?: React.ReactNode
 }
 
-export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
+export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', headerSlot }: PostCardProps) {
   const user = useAuthStore((s) => s.user)
   const viewTransitionNavigate = useViewTransitionNavigate()
   const [myReaction, setMyReaction] = useState<ReactionKey | null>(post.myReaction as ReactionKey | null)
@@ -503,18 +517,23 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
               {authorMeta.map((part) => (
                 <span key={part}>{part} · </span>
               ))}
-              <button
-                type="button"
-                onClick={() => viewTransitionNavigate(PATHS.POST_DETAIL.replace(':id', post.id))}
-                className="post-timestamp-link"
-                aria-label="View post"
-                style={timestampBtnStyle}
-              >
-                {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
-              </button>
+              {variant === 'admin' ? (
+                // The admin cannot open the member feed, so the timestamp is plain text here.
+                <span>{formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => viewTransitionNavigate(PATHS.POST_DETAIL.replace(':id', post.id))}
+                  className="post-timestamp-link"
+                  aria-label="View post"
+                  style={timestampBtnStyle}
+                >
+                  {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
+                </button>
+              )}
             </p>
           </div>
-          {user && (
+          {variant === 'admin' ? headerSlot : user && (
             <ThreeDotMenu
               canEdit={!!canEdit}
               onEdit={() => onEditPost(post)}
@@ -558,7 +577,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         <AttachmentList attachments={post.attachments} />
 
         {/* Poll */}
-        {post.poll && <PollBlock poll={post.poll} postId={post.id} />}
+        {post.poll && <PollBlock poll={post.poll} postId={post.id} readOnly={variant === 'admin'} />}
 
         {/* Embedded original post for share cards */}
         {post.originalPost && (
@@ -628,6 +647,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
         )}
 
         {/* Action row */}
+        {variant === 'feed' && (
         <div
           style={actionRowStyle}
         >
@@ -697,6 +717,7 @@ export function PostCard({ post, onCommentClick, onEditPost }: PostCardProps) {
             Save
           </ReactionBtn>
         </div>
+        )}
       </div>
 
       {lightboxIndex !== null && (

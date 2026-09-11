@@ -88,13 +88,23 @@ const DRIVER_ALLOWED: readonly string[] = [
   PATHS.PROFILE,
 ]
 
-/** True when `role` may render `pathname` at all. Only the driver role is restricted. */
+/**
+ * An admin reviews the feed from Content moderation; it does not read or post in it.
+ * `/feed` and `/feed/:id` (the post detail a card's timestamp used to open) bounce back
+ * to the admin home. Announcements still go out through the Announcements tab.
+ */
+const ADMIN_BLOCKED: readonly string[] = [PATHS.FEED]
+
+function matchesRoute(pattern: string, pathname: string): boolean {
+  const base = pattern.split(':')[0].replace(/\/$/, '')
+  return pathname === base || pathname.startsWith(base + '/')
+}
+
+/** True when `role` may render `pathname` at all. Drivers are allowlisted, admins are kept out of the feed. */
 export function isRouteAllowedForRole(role: UserRole, pathname: string): boolean {
-  if (role !== 'driver') return true
-  return DRIVER_ALLOWED.some((allowed) => {
-    const base = allowed.split(':')[0].replace(/\/$/, '')
-    return pathname === base || pathname.startsWith(base + '/')
-  })
+  if (role === 'driver') return DRIVER_ALLOWED.some((allowed) => matchesRoute(allowed, pathname))
+  if (role === 'admin') return !ADMIN_BLOCKED.some((blocked) => matchesRoute(blocked, pathname))
+  return true
 }
 
 export const ROLE_SHELL: Record<UserRole, RoleShell> = {

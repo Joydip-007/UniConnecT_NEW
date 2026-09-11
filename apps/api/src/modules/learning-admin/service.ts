@@ -8,8 +8,15 @@ import type {
   UpdateLearningPathBody,
   CreatePathUnitBody,
   UpdatePathUnitBody,
+  DraftPathWithAiBody,
+  GenerateQuizWithAiBody,
 } from './schema'
-import type { AdminLearningPath, AdminLearningPathUnit } from '@uniconnect/shared'
+import type { AdminLearningPath, AdminLearningPathUnit, AdminQuiz, AiPathDraft } from '@uniconnect/shared'
+import { generateQuizQuestions, generateSkillPath } from '../../services/ai.service'
+
+/** Pass threshold applied to every quiz the admin screen reports on — matches the
+ *  0.6 ratio `getAnalytics` uses for daily-quiz pass rate. */
+const QUIZ_PASS_MARK = 60
 
 interface LearningTopic {
   category: string
@@ -386,6 +393,201 @@ export class LearningAdminService {
         passRate: Number(row.attemptCount) > 0 ? Number(row.passCount) / Number(row.attemptCount) : 0,
       })),
     }
+  }
+
+  /**
+   * Synchronous AI draft for the path builder. Nothing is written — the admin reviews the
+   * units in the builder and saves/publishes from there, which is what turns it into a row.
+   */
+  async draftPathWithAi(input: DraftPathWithAiBody): Promise<AiPathDraft> {
+    const path = await generateSkillPath({
+      category: input.topic,
+      difficulty: input.difficulty,
+      unitCount: input.unitCount,
+      includeCheckpointQuizzes: input.includeCheckpointQuizzes,
+      customInstructions: input.department ? `The audience is the "${input.department}" department.` : undefined,
+    })
+    const difficulty = (['beginner', 'intermediate', 'advanced'] as const).includes(path.difficulty)
+      ? path.difficulty
+      : input.difficulty
+    return {
+      title: path.title,
+      description: path.description,
+      difficulty,
+      units: (path.units ?? []).map((u) => ({
+        title: u.title,
+        type: u.type === 'quiz' ? 'quiz' : u.type === 'video' ? 'video' : u.type === 'exercise' ? 'exercise' : 'read',
+        content: u.content ?? {},
+        estimatedMinutes: Number(u.estimatedMinutes) || 10,
+        ...(u.type === 'quiz' ? { completionRule: { passScore: QUIZ_PASS_MARK } } : {}),
+      })),
+    }
+  }
+
+  /** Generates a checkpoint quiz from a path's existing units and appends it as a quiz unit. */
+  async generateQuizWithAi(universityId: string, input: GenerateQuizWithAiBody): Promise<{ unitId: string }> {
+    const path = await db('skill_paths')
+      .where({ id: input.pathId, university_id: universityId })
+      .first<{ id: string; title: string; department: string | null; category: string }>('id', 'title', 'department', 'category')
+    if (!path) throw notFound('Learning path not found')
+
+    const units = await db('skill_path_units')
+      .where({ path_id: path.id })
+      .orderBy('display_order', 'asc')
+      .select<{ title: string; type: string; display_order: number }[]>('title', 'type', 'display_order')
+
+    const questions = await generateQuizQuestions({
+      department: path.department ?? path.category,
+      count: input.count,
+      style: input.style,
+      difficulty: input.difficulty,
+      topic: `${path.title}: ${units.filter((u) => u.type !== 'quiz').map((u) => u.title).join(', ')}`,
+    })
+    if (!Array.isArray(questions) || questions.length === 0) throw badRequest('AI returned no questions')
+
+    const nextOrder = units.reduce((max, u) => Math.max(max, u.display_order), 0) + 1
+    const [unit] = await db('skill_path_units')
+      .insert({
+        path_id: path.id,
+        display_order: nextOrder,
+        title: `${path.title} checkpoint`,
+        type: 'quiz',
+        content: JSON.stringify({ questions }),
+        completion_rule: JSON.stringify({ passScore: QUIZ_PASS_MARK }),
+      })
+      .returning<{ id: string }[]>('id')
+    await db('skill_paths').where({ id: path.id }).update({ updated_at: db.fn.now() })
+    return { unitId: unit.id }
+  }
+
+  /**
+   * The Quizzes tab is one list over three sources: quiz units inside learning paths
+   * (draft/published with the path), unconsumed AI batches in the daily-quiz pool
+   * (needs review / scheduled), and recent daily-quiz slots (published, with attempts).
+   */
+  async listAdminQuizzes(universityId: string): Promise<AdminQuiz[]> {
+    const [config, unitRows, poolRows, slotRows] = await Promise.all([
+      this.getConfig(universityId),
+      db('skill_path_units as u')
+        .join('skill_paths as p', 'p.id', 'u.path_id')
+        .leftJoin('unit_completions as c', 'c.unit_id', 'u.id')
+        .where('p.university_id', universityId)
+        .where('u.type', 'quiz')
+        .groupBy('u.id', 'p.id')
+        .orderBy('u.updated_at', 'desc')
+        .select<
+          {
+            id: string; title: string; pathId: string; pathTitle: string; isPublished: boolean
+            source: 'manual' | 'ai'; updatedAt: string; questionCount: string; passMark: string | null
+            attempts: string; avgScore: string | null
+          }[]
+        >(
+          'u.id',
+          'u.title',
+          'p.id as pathId',
+          'p.title as pathTitle',
+          'p.is_published as isPublished',
+          'p.source',
+          'u.updated_at as updatedAt',
+          db.raw(`jsonb_array_length(coalesce(u.content->'questions', '[]'::jsonb)) as "questionCount"`),
+          db.raw(`u.completion_rule->>'passScore' as "passMark"`),
+          db.raw('count(c.id) as "attempts"'),
+          db.raw('avg(c.score) as "avgScore"'),
+        ),
+      db('ai_quiz_pool')
+        .where({ university_id: universityId })
+        .whereNull('consumed_at')
+        .where((qb) => qb.whereNull('is_approved').orWhere('is_approved', true))
+        .orderBy('generated_at', 'desc')
+        .select<{ id: string; department: string; generated_at: string; is_approved: boolean | null; questionCount: string }[]>(
+          'id',
+          'department',
+          'generated_at',
+          'is_approved',
+          db.raw('jsonb_array_length(questions) as "questionCount"'),
+        ),
+      db('daily_quiz_slots as s')
+        .leftJoin('daily_quiz_attempts as a', 'a.slot_id', 's.id')
+        .where('s.university_id', universityId)
+        .where('s.date', '>=', db.raw("CURRENT_DATE - interval '14 days'"))
+        .groupBy('s.id')
+        .orderBy('s.date', 'desc')
+        .select<{ id: string; department: string; date: string; created_at: string; questionCount: string; attempts: string; avgScore: string | null }[]>(
+          's.id',
+          's.department',
+          's.date',
+          's.created_at',
+          db.raw('jsonb_array_length(s.questions) as "questionCount"'),
+          db.raw('count(a.id) as "attempts"'),
+          db.raw('avg(a.score) as "avgScore"'),
+        ),
+    ])
+
+    const fromUnits: AdminQuiz[] = unitRows.map((r) => ({
+      id: r.id,
+      kind: 'path_unit',
+      title: r.title,
+      pathId: r.pathId,
+      pathTitle: r.pathTitle,
+      questionCount: Number(r.questionCount),
+      passMark: r.passMark !== null ? Number(r.passMark) : QUIZ_PASS_MARK,
+      attempts: Number(r.attempts),
+      avgScore: r.avgScore !== null ? Math.round(Number(r.avgScore)) : null,
+      status: r.isPublished ? 'published' : 'draft',
+      source: r.source === 'ai' ? 'ai' : 'staff',
+      updatedAt: r.updatedAt,
+    }))
+
+    const fromPool: AdminQuiz[] = poolRows.map((r) => ({
+      id: r.id,
+      kind: 'ai_batch',
+      title: `${r.department} question batch`,
+      pathId: null,
+      pathTitle: 'Daily quiz pool',
+      questionCount: Number(r.questionCount),
+      passMark: QUIZ_PASS_MARK,
+      attempts: 0,
+      avgScore: null,
+      // Without an approval gate a null batch is consumed as-is, so it is effectively scheduled.
+      status: r.is_approved === null && config.quizRequireApproval ? 'needs_review' : 'scheduled',
+      source: 'ai',
+      updatedAt: r.generated_at,
+    }))
+
+    const fromSlots: AdminQuiz[] = slotRows.map((r) => ({
+      id: r.id,
+      kind: 'daily_slot',
+      title: `${r.department} daily quiz`,
+      pathId: null,
+      pathTitle: `Daily quiz · ${r.date}`,
+      questionCount: Number(r.questionCount),
+      passMark: QUIZ_PASS_MARK,
+      attempts: Number(r.attempts),
+      avgScore: r.avgScore !== null ? Math.round(Number(r.avgScore)) : null,
+      status: 'published',
+      source: 'ai',
+      updatedAt: r.created_at,
+    }))
+
+    return [...fromUnits, ...fromPool, ...fromSlots].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    )
+  }
+
+  /** Questions behind one Quizzes-tab row, whichever table it came from. */
+  async getAdminQuizQuestions(universityId: string, kind: AdminQuiz['kind'], id: string): Promise<{ questions: unknown[] }> {
+    if (kind === 'path_unit') {
+      const row = await db('skill_path_units as u')
+        .join('skill_paths as p', 'p.id', 'u.path_id')
+        .where({ 'u.id': id, 'p.university_id': universityId, 'u.type': 'quiz' })
+        .first<{ content: { questions?: unknown[] } | null }>('u.content')
+      if (!row) throw notFound()
+      return { questions: row.content?.questions ?? [] }
+    }
+    const table = kind === 'ai_batch' ? 'ai_quiz_pool' : 'daily_quiz_slots'
+    const row = await db(table).where({ id, university_id: universityId }).first<{ questions: unknown[] }>('questions')
+    if (!row) throw notFound()
+    return { questions: row.questions ?? [] }
   }
 
   private async findOwnedPath(universityId: string, pathId: string): Promise<void> {

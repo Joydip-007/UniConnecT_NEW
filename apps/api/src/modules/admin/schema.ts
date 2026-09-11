@@ -52,6 +52,30 @@ export const ContentListQuerySchema = PaginationQuerySchema.extend({
   filter: z.enum(['all', 'pinned', 'published', 'unpublished', 'active', 'closed', 'announcement']).default('all'),
 })
 
+/**
+ * The Content moderation screen lists feed posts by `posts.type`, not by table:
+ * News, Events and Jobs there are the feed cards of those kinds, so the expanded
+ * row is the real PostCard. `removed=true` lists the admin-removed posts instead
+ * (the "Recently removed" tray).
+ */
+export const AdminFeedTypeSchema = z.enum(['post', 'news', 'event_promo', 'job_promo'])
+
+export const AdminFeedListQuerySchema = PaginationQuerySchema.extend({
+  type: AdminFeedTypeSchema.optional(),
+  removed: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
+})
+
+export const ToggleCommentsSchema = z.object({
+  comments_disabled: z.boolean(),
+})
+
+export const ToggleRemovedSchema = z.object({
+  is_removed: z.boolean(),
+})
+
 export const TogglePinSchema = z.object({
   is_pinned: z.boolean(),
 })
@@ -104,6 +128,9 @@ export type CreateBulkInvitationsInput = z.infer<typeof CreateBulkInvitationsSch
 export type ContentKind = z.infer<typeof ContentKindSchema>
 export type ContentListQuery = z.infer<typeof ContentListQuerySchema>
 export type TogglePinInput = z.infer<typeof TogglePinSchema>
+export type AdminFeedListQuery = z.infer<typeof AdminFeedListQuerySchema>
+export type ToggleCommentsInput = z.infer<typeof ToggleCommentsSchema>
+export type ToggleRemovedInput = z.infer<typeof ToggleRemovedSchema>
 export type TogglePublishInput = z.infer<typeof TogglePublishSchema>
 export type ToggleActiveInput = z.infer<typeof ToggleActiveSchema>
 export type AdminRedemptionListQuery = z.infer<typeof AdminRedemptionListSchema>

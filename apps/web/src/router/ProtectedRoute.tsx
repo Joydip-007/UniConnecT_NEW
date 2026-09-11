@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
-import { isRouteAllowedForRole } from '@/config/roleShell'
+import { ROLE_SHELL, isRouteAllowedForRole } from '@/config/roleShell'
 import { PATHS } from './paths'
 
 export default function ProtectedRoute() {
@@ -24,11 +24,11 @@ export default function ProtectedRoute() {
     )
   }
 
-  // Drivers are a service account, not a member. They keep the handful of routes their
-  // own rail offers (route, messages, notices, settings) and are sent to the duty board
-  // for everything else in the member shell.
+  // A role that may not render this route goes to its own home: the driver (a service
+  // account kept to the handful of routes its rail offers) lands on the duty board, the
+  // admin (kept out of the member feed) on the admin dashboard.
   if (user && !isRouteAllowedForRole(user.role, location.pathname)) {
-    return <Navigate to={PATHS.SHUTTLE_DRIVE} replace />
+    return <Navigate to={ROLE_SHELL[user.role].home} replace />
   }
 
   return <Outlet />

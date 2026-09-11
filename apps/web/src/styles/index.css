@@ -360,6 +360,37 @@ select:focus-visible {
   }
 }
 
+/* ── Admin → Learning ─────────────────────────────────────── */
+/* The design's 4-up stat row and 2-up card grid collapse below the tablet break;
+   the quiz row drops its meter and timestamp so the title and actions stay on one
+   line at phone width. `!important` overrides the inline grid-template the
+   components set from the design. */
+.learn-path-card:hover,
+.learn-quiz-row:hover,
+.learn-unit-row:hover {
+  border-color: var(--border-hover);
+}
+.learn-quiz-row:hover,
+.learn-unit-row:hover {
+  background: var(--surface-raised);
+}
+.learn-unit-remove:hover {
+  color: var(--uc-red) !important;
+}
+@media (max-width: 767px) {
+  .learn-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .learn-card-grid,
+  .learn-builder-two {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .learn-quiz-meter,
+  .learn-quiz-updated {
+    display: none !important;
+  }
+}
+
 /* ── Feed 3-column layout ─────────────────────────────────── */
 /* `width: 100%` is load-bearing, not decoration. This grid is a flex item in the
    column flex container `FeedLayout` renders, where `margin: 0 auto` cancels the

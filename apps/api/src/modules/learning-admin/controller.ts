@@ -13,6 +13,8 @@ import type {
   UpdatePathUnitBody,
   ReorderPathUnitsBody,
   TriggerGenerateBody,
+  DraftPathWithAiBody,
+  GenerateQuizWithAiBody,
 } from './schema'
 
 export const getConfig = asyncHandler(async (req: Request, res: Response) => {
@@ -149,3 +151,23 @@ function getContext(req: Request) {
     universityId: req.university?.id ?? req.user.universityId,
   }
 }
+
+export const draftPathWithAi = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await learningAdminService.draftPathWithAi(req.body as DraftPathWithAiBody))
+})
+
+export const listAdminQuizzes = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.listAdminQuizzes(universityId))
+})
+
+export const generateQuizWithAi = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  sendSuccess(res, await learningAdminService.generateQuizWithAi(universityId, req.body as GenerateQuizWithAiBody), 201)
+})
+
+export const getAdminQuizQuestions = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getContext(req)
+  const kind = req.params.kind as 'path_unit' | 'ai_batch' | 'daily_slot'
+  sendSuccess(res, await learningAdminService.getAdminQuizQuestions(universityId, kind, req.params.id as string))
+})

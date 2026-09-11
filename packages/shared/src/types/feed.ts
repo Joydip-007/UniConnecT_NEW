@@ -39,6 +39,8 @@ export interface FeedPost {
   isPublished: boolean
   publishAt: string | null
   archivedAt: string | null
+  /** Set when an admin removed the post from Content moderation; restorable from the admin tray. */
+  removedAt?: string | null
   expiresAt: string | null
   viewCount: number
   reactionCounts: { like: number; love: number; care: number; haha: number; wow: number; sad: number; angry: number }
@@ -82,4 +84,16 @@ export interface FeedComment {
   reactionCounts: { like: number; love: number; care: number; haha: number; wow: number; sad: number; angry: number }
   ownReaction: 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry' | null
   replies: FeedComment[]
+}
+
+/** The four post types the admin content queue tabs over (`GET /admin/content/feed?type=`). */
+export type AdminContentType = 'post' | 'news' | 'event_promo' | 'job_promo'
+
+/** `GET /admin/content/summary` — counts over non-removed feed posts. */
+export interface AdminContentSummary {
+  byType: Record<AdminContentType, number>
+  total: number
+  pinned: number
+  removed: number
+  reportsOpen: number
 }

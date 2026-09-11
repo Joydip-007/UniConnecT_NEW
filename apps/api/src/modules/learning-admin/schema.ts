@@ -86,3 +86,28 @@ export const TriggerGenerateSchema = z.object({
   task: z.enum(['learning', 'quiz', 'both']).optional().default('both'),
 })
 export type TriggerGenerateBody = z.infer<typeof TriggerGenerateSchema>
+
+// Synchronous "Draft with AI" for the path builder — the result is returned, not persisted.
+export const DraftPathWithAiSchema = z.object({
+  topic: z.string().min(3).max(500),
+  difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional().default('beginner'),
+  unitCount: z.number().int().min(2).max(30).optional().default(8),
+  department: z.string().max(100).nullable().optional(),
+  includeCheckpointQuizzes: z.boolean().optional().default(true),
+})
+export type DraftPathWithAiBody = z.infer<typeof DraftPathWithAiSchema>
+
+// "Generate with AI" on the Quizzes tab — draws questions from a path's units and
+// appends them to that path as a quiz unit.
+export const GenerateQuizWithAiSchema = z.object({
+  pathId: z.string().uuid(),
+  count: z.number().int().min(1).max(30).optional().default(10),
+  style: z.enum(['mcq', 'true_false', 'mixed']).optional().default('mcq'),
+  difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional().default('beginner'),
+})
+export type GenerateQuizWithAiBody = z.infer<typeof GenerateQuizWithAiSchema>
+
+export const AdminQuizParamSchema = z.object({
+  kind: z.enum(['path_unit', 'ai_batch', 'daily_slot']),
+  id: z.string().uuid(),
+})

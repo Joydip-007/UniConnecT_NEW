@@ -199,7 +199,66 @@ function resolveMockBody(url: string): unknown | null {
     }
   }
 
+  // Admin → Learning (`/admin?tab=learning&dev-role=admin`). Rows mirror the design's sample data.
+  if (url === '/admin/learning/paths') return { data: DEV_ADMIN_PATHS }
+  if (url === '/admin/learning/quizzes') return { data: DEV_ADMIN_QUIZZES }
+  if (/\/admin\/learning\/quizzes\/[^/]+\/[^/]+$/.test(url)) {
+    return { data: { questions: [{ q: 'Which sort is stable?', options: ['Quick sort', 'Merge sort', 'Heap sort', 'Selection sort'], answer: 1 }] } }
+  }
+  if (url === '/admin/learning/pending-paths' || url === '/admin/learning/pending-quiz') return { data: [] }
+  if (url === '/admin/learning/upcoming-quizzes') return { data: { today: [], queuedByDepartment: [] } }
+  if (url === '/admin/learning/config') {
+    return {
+      data: {
+        enabled: false, topics: [], difficulty: 'beginner', language: 'en', estimatedDays: 7, customInstructions: null,
+        genHour: 2, countPerRun: 1, quizEnabled: false, quizRequireApproval: false, quizDifficulty: 'beginner',
+        quizLanguage: 'en', quizCount: 5, quizCustomInstructions: null, lastAiError: null, lastAiErrorAt: null,
+      },
+    }
+  }
+  if (/\/admin\/learning\/analytics/.test(url)) return { data: { windowDays: 14, paths: [], quizzes: [] } }
+  if (url === '/admin/stats') return { data: DEV_ADMIN_STATS }
+
   return null
+}
+
+const ago = (days: number, hours = 0) => new Date(Date.now() - (days * 24 + hours) * 3600_000).toISOString()
+
+const adminPath = (
+  id: string, title: string, department: string, category: string, difficulty: 'beginner' | 'intermediate' | 'advanced',
+  unitCount: number, enrolledCount: number, completionRate: number, isPublished: boolean, updatedAt: string,
+) => ({
+  id, title, description: null, department, category, difficulty, estimatedDays: 7, isPublished, source: 'manual' as const,
+  unitCount, enrolledCount, completedCount: Math.round(unitCount * enrolledCount * completionRate), completionRate, updatedAt,
+})
+
+const DEV_ADMIN_PATHS = [
+  adminPath('a1', 'Algorithms, properly', 'CSE', 'career', 'intermediate', 11, 214, 0.46, true, ago(2)),
+  adminPath('a2', 'Interview readiness', 'Career services', 'career', 'beginner', 8, 342, 0.61, true, ago(5)),
+  adminPath('a3', 'Git for group projects', 'CSE', 'technical', 'beginner', 6, 188, 0.73, true, ago(7)),
+  adminPath('a4', 'Applied machine learning', 'CSE', 'technical', 'advanced', 14, 96, 0.12, false, ago(1)),
+  adminPath('a5', 'Technical writing', 'English', 'communication', 'beginner', 7, 54, 0, false, ago(3)),
+  adminPath('a6', 'Public speaking on campus', 'English', 'communication', 'beginner', 5, 121, 0.38, true, ago(4)),
+]
+
+const adminQuiz = (
+  id: string, title: string, pathId: string | null, pathTitle: string, questionCount: number, attempts: number,
+  avgScore: number | null, passMark: number, status: 'published' | 'draft' | 'needs_review' | 'scheduled',
+  source: 'ai' | 'staff', updatedAt: string,
+) => ({ id, kind: pathId ? ('path_unit' as const) : ('ai_batch' as const), title, pathId, pathTitle, questionCount, passMark, attempts, avgScore, status, source, updatedAt })
+
+const DEV_ADMIN_QUIZZES = [
+  adminQuiz('q1', 'Sorting and complexity checkpoint', 'a1', 'Algorithms, properly', 12, 186, 74, 60, 'published', 'ai', ago(2)),
+  adminQuiz('q2', 'Behavioural round self-check', 'a2', 'Interview readiness', 8, 241, 81, 50, 'published', 'staff', ago(4)),
+  adminQuiz('q3', 'Branching and merges', 'a3', 'Git for group projects', 10, 132, 68, 60, 'published', 'ai', ago(7)),
+  adminQuiz('q4', 'Gradient descent basics', 'a4', 'Applied machine learning', 14, 0, null, 65, 'draft', 'ai', ago(1)),
+  adminQuiz('q5', 'Citations and referencing', null, 'Daily quiz pool', 9, 0, null, 60, 'needs_review', 'ai', ago(3)),
+  adminQuiz('q6', 'Slide structure quiz', null, 'Daily quiz pool', 6, 0, null, 50, 'scheduled', 'ai', ago(0, 6)),
+]
+
+const DEV_ADMIN_STATS = {
+  totalUsers: 1240, activeUsers: 812, pendingReports: 3, totalPosts: 5210, totalJobs: 48, totalEvents: 22,
+  usersByRole: { student: 1100, alumni: 90, faculty: 40, admin: 10 }, moderationHealth: { openReports: 3, resolvedLast7d: 12, avgResolutionHours: 6 },
 }
 
 let installed = false
@@ -207,8 +266,6 @@ let installed = false
 export function installDevMocks(): void {
   if (installed) return
   installed = true
-
-  const realAdapter = axios.getAdapter(api.defaults.adapter ?? axios.defaults.adapter)
 
   api.defaults.adapter = async (config: InternalAxiosRequestConfig) => {
     const method = (config.method ?? 'get').toLowerCase()
@@ -225,6 +282,18 @@ export function installDevMocks(): void {
         } as AxiosResponse
       }
     }
-    return realAdapter(config)
+    // Never reach a real API from the design-verification flow: a live server would
+    // 401 the `dev-bypass-token`, the interceptor would fail its refresh, and the mock
+    // session would be cleared — the very login bounce the flag exists to avoid.
+    // Unmatched endpoints get a 404 so components render their empty/error states.
+    return Promise.reject(
+      new axios.AxiosError('Not mocked in dev-auth mode', '404', config, undefined, {
+        data: { error: 'Not mocked', code: 'NOT_FOUND' },
+        status: 404,
+        statusText: 'Not Found',
+        headers: {},
+        config,
+      } as AxiosResponse),
+    )
   }
 }

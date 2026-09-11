@@ -50,8 +50,8 @@ export interface AIFlashcard {
 
 export interface AISkillPathUnit {
   title: string
-  type: 'read' | 'video' | 'exercise'
-  content: { body: string }
+  type: 'read' | 'video' | 'exercise' | 'quiz'
+  content: { body?: string; questions?: AIQuizQuestion[] }
   estimatedMinutes: number
 }
 
@@ -157,17 +157,28 @@ export async function generateSkillPath(options: {
   difficulty?: string
   language?: 'en' | 'bn'
   estimatedDays?: number
+  unitCount?: number
+  includeCheckpointQuizzes?: boolean
   customInstructions?: string
 }): Promise<AISkillPath> {
+  // The admin "Draft with AI" flow asks for an exact unit count and optional checkpoint
+  // quizzes; the nightly cron passes neither, so the schema below stays backward compatible.
+  const quizSchema = options.includeCheckpointQuizzes
+    ? ' | { "title": string, "type": "quiz", "content": { "questions": [{ "q": string, "options": [string, string, string, string], "answer": number }] }, "estimatedMinutes": number }'
+    : ''
   const prompt = `Generate a self-paced learning path for the category "${options.category}". Difficulty: ${
     options.difficulty ?? 'intermediate'
   }. Language: ${options.language ?? 'en'}.${
     options.estimatedDays ? ` The path should be completable in about ${options.estimatedDays} days.` : ''
+  }${options.unitCount ? ` The path must contain exactly ${options.unitCount} units.` : ''}${
+    options.includeCheckpointQuizzes
+      ? ' After each section of reading/video/exercise units, add one "quiz" unit with 3-5 multiple-choice questions checking that section.'
+      : ''
   }
 ${options.customInstructions ?? ''}
 Return ONLY valid JSON. No markdown. No explanation. JSON schema:
 { "title": string, "description": string, "difficulty": "beginner"|"intermediate"|"advanced", "estimatedHours": number,
-  "units": [{ "title": string, "type": "read"|"video"|"exercise", "content": { "body": string }, "estimatedMinutes": number }] }`
+  "units": [{ "title": string, "type": "read"|"video"|"exercise", "content": { "body": string }, "estimatedMinutes": number }${quizSchema}] }`
 
   const parsed = await callGemini(prompt)
   return parsed as AISkillPath

@@ -62,7 +62,10 @@ export function AuthLoader({ children }: { children: ReactNode }) {
       // DEV ONLY: ?dev-auth=1 seeds a mock user and skips the real refresh/login flow.
       // Used for design verification screenshots without a running backend.
       if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev-auth') === '1') {
-        setAuth(DEV_MOCK_USER, 'dev-bypass-token')
+        // `dev-role` lets the harness capture role-gated shells (e.g. `/admin?tab=learning`).
+        const devRole = new URLSearchParams(window.location.search).get('dev-role')
+        const role = devRole === 'admin' || devRole === 'faculty' || devRole === 'alumni' ? devRole : DEV_MOCK_USER.role
+        setAuth({ ...DEV_MOCK_USER, role }, 'dev-bypass-token')
         return
       }
 

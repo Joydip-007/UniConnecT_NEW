@@ -43,6 +43,29 @@ interface CountRow {
   count: string | number
 }
 
+/** Where a reported thing lives in the app, so an admin can open it from the queue. */
+interface ReportTargetLocation {
+  label: string
+  path: string | null
+}
+
+interface ReportTargetInfo {
+  title: string
+  location: ReportTargetLocation
+}
+
+interface ReportedTargetReportRow {
+  id: string
+  reason: string
+  description: string | null
+  status: string
+  created_at: Date
+  reporter_id: string
+  reporter_role: UserRole
+  reporter_full_name: string
+  reporter_avatar_url: string | null
+}
+
 interface ReportGroupRow {
   target_id: string
   target_type: string
@@ -541,22 +564,73 @@ export class AdminService {
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)
 
-    const titleMap = await hydrateTargetTitles(rows.map((r) => ({ targetId: r.target_id, targetType: r.target_type })))
+    const infoMap = await hydrateTargets(rows.map((r) => ({ targetId: r.target_id, targetType: r.target_type })))
 
     return {
-      items: rows.map((r) => ({
-        targetId: r.target_id,
-        targetType: r.target_type,
-        title: titleMap.get(`${r.target_type}:${r.target_id}`) ?? `Reported ${r.target_type}`,
-        severity: severityFromRank(Number(r.severity_rank)),
-        reason: r.latest_reason,
-        reportCount: Number(r.report_count),
-        lastReportedAt: r.last_reported_at,
-        removable: r.target_type in REMOVABLE_TARGET_TABLES,
-      })),
+      items: rows.map((r) => {
+        const info = infoMap.get(`${r.target_type}:${r.target_id}`) ?? fallbackTargetInfo(r.target_type)
+        return {
+          targetId: r.target_id,
+          targetType: r.target_type,
+          title: info.title,
+          location: info.location,
+          severity: severityFromRank(Number(r.severity_rank)),
+          reason: r.latest_reason,
+          reportCount: Number(r.report_count),
+          lastReportedAt: r.last_reported_at,
+          removable: r.target_type in REMOVABLE_TARGET_TABLES,
+        }
+      }),
       total: Number(totalRow?.count ?? 0),
       page: query.page,
       limit: query.limit,
+    }
+  }
+
+  /**
+   * Every open report on one target, for the Review panel: who reported it, why
+   * (reason + their own words) and where the thing lives so the admin can open it.
+   */
+  async getReportedTarget(universityId: string, targetType: string, targetId: string) {
+    const universityUserIds = db('users').where('university_id', universityId).select('id')
+
+    const rows = await db('reports')
+      .join('users as reporter', 'reporter.id', 'reports.reporter_id')
+      .join('profiles as reporter_profile', 'reporter_profile.user_id', 'reports.reporter_id')
+      .where({ 'reports.target_id': targetId, 'reports.target_type': targetType })
+      .whereIn('reports.reporter_id', universityUserIds)
+      .whereIn('reports.status', ['pending', 'reviewed'])
+      .orderBy('reports.created_at', 'desc')
+      .select<ReportedTargetReportRow[]>(
+        'reports.id',
+        'reports.reason',
+        'reports.description',
+        'reports.status',
+        'reports.created_at',
+        'reporter.id as reporter_id',
+        'reporter.role as reporter_role',
+        'reporter_profile.full_name as reporter_full_name',
+        'reporter_profile.avatar_url as reporter_avatar_url',
+      )
+
+    if (rows.length === 0) throw notFound('No open reports for this target')
+
+    const info = (await hydrateTargets([{ targetId, targetType }])).get(`${targetType}:${targetId}`) ?? fallbackTargetInfo(targetType)
+
+    return {
+      targetId,
+      targetType,
+      title: info.title,
+      location: info.location,
+      removable: targetType in REMOVABLE_TARGET_TABLES,
+      reports: rows.map((r) => ({
+        id: r.id,
+        reason: r.reason,
+        description: r.description,
+        status: r.status,
+        createdAt: r.created_at,
+        reporter: { id: r.reporter_id, fullName: r.reporter_full_name, role: r.reporter_role, avatarUrl: r.reporter_avatar_url },
+      })),
     }
   }
 
@@ -1355,21 +1429,74 @@ function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
 }
 
-async function hydrateTargetTitles(targets: { targetId: string; targetType: string }[]): Promise<Map<string, string>> {
-  const postIds = targets.filter((t) => t.targetType === 'post').map((t) => t.targetId)
-  const jobIds = targets.filter((t) => t.targetType === 'job').map((t) => t.targetId)
-  const eventIds = targets.filter((t) => t.targetType === 'event').map((t) => t.targetId)
+function fallbackTargetInfo(targetType: string): ReportTargetInfo {
+  return { title: `Reported ${targetType}`, location: { label: `Removed ${targetType}`, path: null } }
+}
 
-  const [posts, jobs, events] = await Promise.all([
-    postIds.length ? db('posts').whereIn('id', postIds).select<{ id: string; content: string }[]>('id', 'content') : [],
+/**
+ * Title and location for each reported target. Location is the app route the admin
+ * opens to see the thing in context — a comment resolves to its post, a message to
+ * its conversation — with a label saying where that is ("Comment on a feed post").
+ * Targets whose row is gone fall back to `fallbackTargetInfo`.
+ */
+async function hydrateTargets(targets: { targetId: string; targetType: string }[]): Promise<Map<string, ReportTargetInfo>> {
+  const idsOf = (type: string) => targets.filter((t) => t.targetType === type).map((t) => t.targetId)
+  const postIds = idsOf('post')
+  const commentIds = idsOf('comment')
+  const jobIds = idsOf('job')
+  const eventIds = idsOf('event')
+  const groupIds = idsOf('group')
+  const userIds = idsOf('user')
+  const messageIds = idsOf('message')
+
+  const [posts, comments, jobs, events, groups, users, messages] = await Promise.all([
+    postIds.length
+      ? db('posts as p')
+          .leftJoin('groups as g', 'g.id', 'p.group_id')
+          .whereIn('p.id', postIds)
+          .select<{ id: string; content: string; group_id: string | null; group_name: string | null }[]>('p.id', 'p.content', 'p.group_id', 'g.name as group_name')
+      : [],
+    commentIds.length
+      ? db('comments as c')
+          .join('posts as p', 'p.id', 'c.post_id')
+          .whereIn('c.id', commentIds)
+          .select<{ id: string; content: string; post_id: string; post_content: string }[]>('c.id', 'c.content', 'c.post_id', 'p.content as post_content')
+      : [],
     jobIds.length ? db('jobs').whereIn('id', jobIds).select<{ id: string; title: string }[]>('id', 'title') : [],
     eventIds.length ? db('events').whereIn('id', eventIds).select<{ id: string; title: string }[]>('id', 'title') : [],
+    groupIds.length ? db('groups').whereIn('id', groupIds).select<{ id: string; name: string }[]>('id', 'name') : [],
+    userIds.length ? db('profiles').whereIn('user_id', userIds).select<{ user_id: string; full_name: string }[]>('user_id', 'full_name') : [],
+    messageIds.length
+      ? db('messages').whereIn('id', messageIds).select<{ id: string; content: string | null; conversation_id: string }[]>('id', 'content', 'conversation_id')
+      : [],
   ])
 
-  const map = new Map<string, string>()
-  posts.forEach((p) => map.set(`post:${p.id}`, truncate(p.content, 60)))
-  jobs.forEach((j) => map.set(`job:${j.id}`, j.title))
-  events.forEach((e) => map.set(`event:${e.id}`, e.title))
+  const map = new Map<string, ReportTargetInfo>()
+  posts.forEach((p) =>
+    map.set(`post:${p.id}`, {
+      title: truncate(p.content, 60),
+      location: {
+        label: p.group_id ? `Post in ${p.group_name ?? 'a group'}` : 'Feed post',
+        path: `/feed/${p.id}`,
+      },
+    }),
+  )
+  comments.forEach((c) =>
+    map.set(`comment:${c.id}`, {
+      title: truncate(c.content, 60),
+      location: { label: `Comment on “${truncate(c.post_content, 40)}”`, path: `/feed/${c.post_id}` },
+    }),
+  )
+  jobs.forEach((j) => map.set(`job:${j.id}`, { title: j.title, location: { label: 'Job posting', path: `/jobs/${j.id}` } }))
+  events.forEach((e) => map.set(`event:${e.id}`, { title: e.title, location: { label: 'Event', path: `/events/${e.id}` } }))
+  groups.forEach((g) => map.set(`group:${g.id}`, { title: g.name, location: { label: 'Group', path: `/groups/${g.id}` } }))
+  users.forEach((u) => map.set(`user:${u.user_id}`, { title: u.full_name, location: { label: 'Profile', path: `/profile/${u.user_id}` } }))
+  messages.forEach((m) =>
+    map.set(`message:${m.id}`, {
+      title: m.content ? truncate(m.content, 60) : 'Media message',
+      location: { label: 'Message in a conversation', path: `/messages/${m.conversation_id}` },
+    }),
+  )
   return map
 }
 

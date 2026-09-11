@@ -66,13 +66,15 @@ function escapeRegExp(value: string) {
 // ── CommentItem ───────────────────────────────────────────────────────────────
 
 interface CommentItemProps {
+  /** Review-only: no reacting or replying, but moderation (delete) stays. */
+  readOnly?: boolean
   comment: FeedComment
   postId: string
   isReply?: boolean
   onReply: (parentId: string, authorName: string, authorId: string) => void
 }
 
-function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemProps) {
+function CommentItem({ comment, postId, isReply = false, onReply, readOnly = false }: CommentItemProps) {
   const user = useAuthStore((s) => s.user)
   const deleteComment = useDeleteComment(postId)
   const reactionMutation = useUpsertCommentReaction(postId, comment.id)
@@ -173,6 +175,13 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
 
         {/* Action row */}
         <div style={{ display: 'flex', gap: 12, marginTop: 4, paddingLeft: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+          {readOnly ? (
+            Object.values(reactionCounts).some(Boolean) && (
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                {Object.values(reactionCounts).reduce((a, b) => a + b, 0)} reaction{Object.values(reactionCounts).reduce((a, b) => a + b, 0) !== 1 ? 's' : ''}
+              </span>
+            )
+          ) : (
           <PostReactionTrigger onSelect={handleReactionSelect}>
             <ActionBtn
               active={Boolean(myReaction)}
@@ -198,8 +207,9 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
                 : 'Like'}
             </ActionBtn>
           </PostReactionTrigger>
+          )}
 
-          {!isReply && (
+          {!isReply && !readOnly && (
             <ActionBtn onClick={() => onReply(comment.id, comment.author.fullName, comment.authorId)}>
               <CornerDownRight size={11} strokeWidth={1.5} />
               Reply
@@ -218,7 +228,7 @@ function CommentItem({ comment, postId, isReply = false, onReply }: CommentItemP
         {!isReply &&
           comment.replies.map((reply) => (
             <div key={reply.id} style={{ marginTop: 10 }}>
-              <CommentItem comment={reply} postId={postId} onReply={onReply} isReply />
+              <CommentItem comment={reply} postId={postId} onReply={onReply} isReply readOnly={readOnly} />
             </div>
           ))}
       </div>
@@ -263,9 +273,15 @@ function ActionBtn({ active, activeColor = 'var(--text-primary)', danger, onClic
 interface Props {
   post: FeedPost
   onClose: () => void
+  /**
+   * Admin Content moderation: the thread is readable and comments can be deleted,
+   * but there is no composer, no reacting and no replying — the admin reviews,
+   * they do not take part.
+   */
+  readOnly?: boolean
 }
 
-export function CommentDrawer({ post, onClose }: Props) {
+export function CommentDrawer({ post, onClose, readOnly = false }: Props) {
   const user = useAuthStore((s) => s.user)
   const [replyTo, setReplyTo] = useState<{ parentId: string; authorName: string; authorId: string } | null>(null)
   const [inputText, setInputText] = useState('')
@@ -554,6 +570,7 @@ export function CommentDrawer({ post, onClose }: Props) {
               comment={comment}
               postId={post.id}
               onReply={handleReply}
+              readOnly={readOnly}
             />
           ))}
 
@@ -579,8 +596,23 @@ export function CommentDrawer({ post, onClose }: Props) {
           )}
         </div>
 
+        {readOnly && (
+          <p
+            style={{
+              margin: 0,
+              padding: '12px 16px',
+              borderTop: '0.5px solid var(--border-default)',
+              fontSize: 12,
+              color: 'var(--text-tertiary)',
+              textAlign: 'center',
+            }}
+          >
+            Read-only — admins review comments but do not take part.
+          </p>
+        )}
+
         {/* Comment input */}
-        {user && (
+        {user && !readOnly && (
           <div
             style={{
               padding: '10px 16px',

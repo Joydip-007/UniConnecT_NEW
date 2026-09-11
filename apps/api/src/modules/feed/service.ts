@@ -5,6 +5,8 @@ import { getIo } from '../../socket'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
 import type { CreateCommentInput, CreatePostInput, PaginationQuery, PostListQuery, ReactionsQuery, SharePostInput, UpdatePostInput } from './schema'
+import type { AdminFeedListQuery } from '../admin/schema'
+import type { AdminContentSummary, AdminContentType } from '@uniconnect/shared'
 import { notificationsService } from '../notifications/service'
 import { moderationService } from '../moderation/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
@@ -46,6 +48,7 @@ interface PostRow {
   is_published: boolean
   publish_at: Date | null
   archived_at: Date | null
+  removed_at: Date | null
   expires_at: Date | null
   view_count: number
   created_at: Date
@@ -486,6 +489,8 @@ export class FeedService {
   async unarchivePost(context: AuthContext, postId: string) {
     const post = await assertPostInUniversity(postId, context.universityId)
     assertCanMutatePost(context, post.author_id)
+    // An admin removal archives the post too; only the admin tray may bring it back.
+    if (post.removed_at) throw forbidden('This post was removed by an admin', 'POST_REMOVED')
     await db('posts')
       .where({ id: postId, university_id: context.universityId })
       .update({ archived_at: null, updated_at: db.fn.now() })
@@ -502,12 +507,14 @@ export class FeedService {
     const [{ count }] = await db('posts')
       .where({ university_id: universityId, author_id: userId })
       .whereNotNull('archived_at')
+      .whereNull('removed_at')
       .count<CountRow[]>({ count: '*' })
     const total = Number(count)
 
     const rows = (await postSelectQuery(db, userId)
       .where({ 'posts.university_id': universityId, 'posts.author_id': userId })
       .whereNotNull('posts.archived_at')
+      .whereNull('posts.removed_at')
       .orderBy('posts.archived_at', 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as PostRow[]
@@ -887,6 +894,108 @@ export class FeedService {
     return { saved: false }
   }
 
+  // ── Admin content moderation ────────────────────────────────────────────────
+
+  /**
+   * Every post in the university for the admin Content screen, in the same
+   * `FeedPost` shape the feed renders, so the expanded card is the real PostCard.
+   * Unlike the public feed this includes unpublished and archived posts; only
+   * admin-removed posts are split out behind `removed: true` (the restore tray).
+   */
+  async listPostsForAdmin(universityId: string, adminUserId: string, query: AdminFeedListQuery) {
+    const applyFilters = (builder: Knex.QueryBuilder) => {
+      builder.where('posts.university_id', universityId)
+      if (query.removed) builder.whereNotNull('posts.removed_at')
+      else builder.whereNull('posts.removed_at')
+      if (query.type) builder.andWhere('posts.type', query.type)
+    }
+
+    const [{ count }] = await db('posts').modify(applyFilters).count<CountRow[]>({ count: '*' })
+    const total = Number(count)
+
+    const rowsQuery = postSelectQuery(db, adminUserId, universityId).modify(applyFilters)
+    if (query.removed) rowsQuery.orderBy('posts.removed_at', 'desc')
+    else rowsQuery.orderBy('posts.is_pinned', 'desc')
+    const rows = (await rowsQuery
+      .orderBy('posts.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)) as PostRow[]
+
+    const postIds = rows.map((row) => row.id)
+    const items = await this.attachPolls(rows.map((r) => toPost(r, adminUserId)), postIds, adminUserId)
+    return { items, total, page: query.page, limit: query.limit }
+  }
+
+  async getAdminContentSummary(universityId: string): Promise<AdminContentSummary> {
+    const [total, pinned, removed, reportsOpen, byTypeRows] = await Promise.all([
+      db('posts').where({ university_id: universityId }).whereNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
+      db('posts').where({ university_id: universityId, is_pinned: true }).whereNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
+      db('posts').where({ university_id: universityId }).whereNotNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
+      db('reports')
+        .whereIn('reporter_id', db('users').where('university_id', universityId).select('id'))
+        .where('status', 'pending')
+        .count<CountRow[]>({ count: '*' })
+        .first(),
+      // Same filter as the type tabs of the content queue, so the Insights "Content mix"
+      // rows count exactly what clicking through to the queue will list.
+      db('posts')
+        .where({ university_id: universityId })
+        .whereNull('removed_at')
+        .groupBy('type')
+        .select('type')
+        .count({ count: '*' }) as Promise<{ type: string; count: string | number }[]>,
+    ])
+    const byType: Record<AdminContentType, number> = { post: 0, news: 0, event_promo: 0, job_promo: 0 }
+    for (const row of byTypeRows) {
+      if (row.type in byType) byType[row.type as AdminContentType] = Number(row.count)
+    }
+    return {
+      byType,
+      total: Number(total?.count ?? 0),
+      pinned: Number(pinned?.count ?? 0),
+      removed: Number(removed?.count ?? 0),
+      reportsOpen: Number(reportsOpen?.count ?? 0),
+    }
+  }
+
+  /** Admin publish/unpublish. Publishing a scheduled post cancels its pending publish job. */
+  async setPublishedByAdmin(universityId: string, postId: string, isPublished: boolean) {
+    await assertPostInUniversity(postId, universityId)
+    await db('posts')
+      .where({ id: postId, university_id: universityId })
+      .update(isPublished ? { is_published: true, publish_at: null, updated_at: db.fn.now() } : { is_published: false, updated_at: db.fn.now() })
+    if (isPublished) await cancelPostJob('publish', postId)
+    return { id: postId, isPublished }
+  }
+
+  async setCommentsDisabledByAdmin(universityId: string, postId: string, commentsDisabled: boolean) {
+    await assertPostInUniversity(postId, universityId)
+    await db('posts')
+      .where({ id: postId, university_id: universityId })
+      .update({ comments_disabled: commentsDisabled, updated_at: db.fn.now() })
+    return { id: postId, commentsDisabled }
+  }
+
+  /**
+   * Remove = archive (so every public list hides it through the existing
+   * `archived_at` filters) + stamp `removed_at`/`removed_by` so the admin tray can
+   * list and restore it and the author cannot unarchive it. Restore clears all three.
+   */
+  async setRemovedByAdmin(universityId: string, adminUserId: string, postId: string, isRemoved: boolean) {
+    const post = await assertPostInUniversity(postId, universityId)
+    if (isRemoved) {
+      if (!post.archived_at) await archivePostById(postId, universityId)
+      await db('posts')
+        .where({ id: postId, university_id: universityId })
+        .update({ removed_at: db.fn.now(), removed_by: adminUserId, updated_at: db.fn.now() })
+    } else {
+      await db('posts')
+        .where({ id: postId, university_id: universityId })
+        .update({ removed_at: null, removed_by: null, archived_at: null, updated_at: db.fn.now() })
+    }
+    return { id: postId, isRemoved }
+  }
+
   private async attachPolls<T extends { id: string }>(posts: T[], postIds: string[], userId: string) {
     if (postIds.length === 0) return posts.map((post) => ({ ...post, poll: null }))
 
@@ -1181,6 +1290,7 @@ function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
       'posts.is_published',
       'posts.publish_at',
       'posts.archived_at',
+      'posts.removed_at',
       'posts.expires_at',
       'posts.view_count',
       'posts.created_at',
@@ -1286,13 +1396,15 @@ function commentSelectQuery(knex: Knex, userId: string) {
 
 async function assertPostInUniversity(postId: string, universityId: string) {
   const post = await db('posts')
-    .select<{ id: string; author_id: string; university_id: string; is_published: boolean; comments_disabled: boolean; shares_disabled: boolean }[]>(
+    .select<{ id: string; author_id: string; university_id: string; is_published: boolean; comments_disabled: boolean; shares_disabled: boolean; archived_at: Date | null; removed_at: Date | null }[]>(
       'id',
       'author_id',
       'university_id',
       'is_published',
       'comments_disabled',
       'shares_disabled',
+      'archived_at',
+      'removed_at',
     )
     .where({ id: postId, university_id: universityId })
     .first()
@@ -1392,6 +1504,7 @@ function toPost(row: PostRow, viewerUserId?: string) {
     isPublished: row.is_published,
     publishAt: row.publish_at,
     archivedAt: row.archived_at,
+    removedAt: row.removed_at,
     expiresAt: row.expires_at,
     viewCount: row.view_count,
     createdAt: row.created_at,

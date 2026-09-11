@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   AdminLearningPath,
+  AdminQuiz,
+  AdminQuizKind,
+  AiPathDraft,
+  DraftPathWithAiInput,
+  GenerateQuizWithAiInput,
+  PendingQuizQuestion,
   CreateLearningPathInput,
   LearningAdminConfig,
   LearningAdminConfigInput,
@@ -112,6 +118,7 @@ export function useApproveQuizBatch() {
       api.post(`/admin/learning/pending-quiz/${id}/approve`).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin', 'pending-quiz-batches'] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'quizzes'] })
       void qc.invalidateQueries({ queryKey: ['quiz'] })
     },
   })
@@ -124,6 +131,7 @@ export function useDiscardQuizBatch() {
       api.post(`/admin/learning/pending-quiz/${id}/discard`).then((r) => r.data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['learning-admin', 'pending-quiz-batches'] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'quizzes'] })
     },
   })
 }
@@ -204,7 +212,10 @@ export function useSetPathPublished() {
   return useMutation({
     mutationFn: ({ pathId, isPublished }: { pathId: string; isPublished: boolean }) =>
       api.patch<{ data: AdminLearningPath }>(`/admin/learning/paths/${pathId}/publish`, { isPublished }).then((r) => r.data.data),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'paths'] }) },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'paths'] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'quizzes'] })
+    },
   })
 }
 
@@ -213,7 +224,11 @@ export function useCreatePathUnit(pathId: string) {
   return useMutation({
     mutationFn: (unit: { title: string; type: string; content: Record<string, unknown>; completionRule?: { passScore?: number } }) =>
       api.post(`/admin/learning/paths/${pathId}/units`, unit),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] }) },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'quizzes'] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'paths'] })
+    },
   })
 }
 
@@ -239,5 +254,42 @@ export function useReorderPathUnits(pathId: string) {
   return useMutation({
     mutationFn: (unitIds: string[]) => api.patch(`/admin/learning/paths/${pathId}/units/reorder`, { unitIds }),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] }) },
+  })
+}
+
+export function useAdminQuizzes() {
+  return useQuery<AdminQuiz[]>({
+    queryKey: ['learning-admin', 'quizzes'],
+    queryFn: () => api.get<{ data: AdminQuiz[] }>('/admin/learning/quizzes').then((r) => r.data.data),
+  })
+}
+
+export function useAdminQuizQuestions(kind: AdminQuizKind | null, id: string | null) {
+  return useQuery<{ questions: PendingQuizQuestion[] }>({
+    queryKey: ['learning-admin', 'quiz-questions', { kind, id }],
+    queryFn: () =>
+      api.get<{ data: { questions: PendingQuizQuestion[] } }>(`/admin/learning/quizzes/${kind}/${id}`).then((r) => r.data.data),
+    enabled: !!kind && !!id,
+  })
+}
+
+/** Synchronous AI draft — nothing is persisted until the builder saves it. */
+export function useDraftPathWithAi() {
+  return useMutation({
+    mutationFn: (input: DraftPathWithAiInput) =>
+      api.post<{ data: AiPathDraft }>('/admin/learning/paths/draft', input).then((r) => r.data.data),
+  })
+}
+
+export function useGenerateQuizWithAi() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: GenerateQuizWithAiInput) =>
+      api.post<{ data: { unitId: string } }>('/admin/learning/quizzes/generate', input).then((r) => r.data.data),
+    onSuccess: (_data, { pathId }) => {
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'quizzes'] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'paths'] })
+      void qc.invalidateQueries({ queryKey: ['learning-admin', 'path', pathId] })
+    },
   })
 }

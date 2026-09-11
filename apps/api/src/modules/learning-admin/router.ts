@@ -25,6 +25,10 @@ import {
   updateUnit,
   deleteUnit,
   reorderUnits,
+  draftPathWithAi,
+  listAdminQuizzes,
+  generateQuizWithAi,
+  getAdminQuizQuestions,
 } from './controller'
 import {
   LearningAdminConfigSchema,
@@ -38,6 +42,9 @@ import {
   UpdatePathUnitSchema,
   ReorderPathUnitsSchema,
   TriggerGenerateSchema,
+  DraftPathWithAiSchema,
+  GenerateQuizWithAiSchema,
+  AdminQuizParamSchema,
 } from './schema'
 
 export const learningAdminRouter = Router()
@@ -63,6 +70,12 @@ learningAdminRouter.post('/generate', validate(TriggerGenerateSchema), triggerGe
 learningAdminRouter.get('/upcoming-quizzes', getUpcomingQuizzes)
 learningAdminRouter.get('/analytics', getAnalytics)
 
+learningAdminRouter.get('/quizzes', listAdminQuizzes)
+learningAdminRouter.post('/quizzes/generate', validate(GenerateQuizWithAiSchema), generateQuizWithAi)
+learningAdminRouter.get('/quizzes/:kind/:id', validateRequest({ params: AdminQuizParamSchema }), getAdminQuizQuestions)
+
+// Literal '/paths/draft' is declared before any '/paths/:id' route so the param route never swallows it.
+learningAdminRouter.post('/paths/draft', validate(DraftPathWithAiSchema), draftPathWithAi)
 learningAdminRouter.get('/paths', validateRequest({ query: AdminListPathsQuerySchema }), listAdminPaths)
 learningAdminRouter.post('/paths', validate(CreateLearningPathSchema), createPath)
 learningAdminRouter.patch(

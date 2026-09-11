@@ -1,5 +1,6 @@
 import { db } from '../../config/db'
 import { notFound, AppError } from '../../utils/errors'
+import { feedService } from '../feed/service'
 import type { ContentKind, ContentListQuery } from './schema'
 
 interface CountRow {
@@ -77,7 +78,7 @@ interface NewsRow {
 }
 
 const PIN_KINDS = new Set<ContentKind>(['posts', 'news'])
-const PUBLISH_KINDS = new Set<ContentKind>(['events', 'news'])
+const PUBLISH_KINDS = new Set<ContentKind>(['posts', 'events', 'news'])
 const ACTIVE_KINDS = new Set<ContentKind>(['jobs'])
 
 export class AdminContentService {
@@ -286,6 +287,8 @@ export class AdminContentService {
     if (!PUBLISH_KINDS.has(kind)) {
       throw new AppError(`${humanKind(kind)} does not support publish toggle`, 400, 'UNSUPPORTED_ACTION')
     }
+    // Posts own a scheduled-publish job, so their toggle lives with the feed lifecycle.
+    if (kind === 'posts') return feedService.setPublishedByAdmin(universityId, id, isPublished)
     const table = tableFor(kind)
     const patch: Record<string, unknown> = { is_published: isPublished }
     if (kind === 'news' && isPublished) patch.published_at = db.fn.now()

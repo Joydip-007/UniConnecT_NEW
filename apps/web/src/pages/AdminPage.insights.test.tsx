@@ -34,6 +34,9 @@ beforeEach(() => {
   server.use(
     http.get('*/admin/stats', () => HttpResponse.json({ data: STATS })),
     http.get('*/admin/university/domains', () => HttpResponse.json({ data: { allowedEmailDomains: [] } })),
+    http.get('*/admin/content/summary', () => HttpResponse.json({
+      data: { byType: { post: 8, news: 4, event_promo: 2, job_promo: 1 }, total: 15, pinned: 1, removed: 0, reportsOpen: 0 },
+    })),
   )
 })
 
@@ -42,12 +45,12 @@ describe('AdminPage Insights tab', () => {
     renderInsights()
     expect(await screen.findByText('94%')).toBeInTheDocument()
 
-    // The figure and its noun are separate lines: carrying "batches" up into the 28px
-    // value wrapped the tile and broke the row's shared baseline. Assert them as one
-    // tile rather than as loose text — "3" alone matches several counters on this page.
+    // The design carries the noun in the 24px value ("3 batches") and keeps the delta line
+    // for the state ("expiring soon"). Assert them as one tile rather than as loose text —
+    // "3" alone matches several counters on this page.
     const invitesTile = screen.getByText('Pending invites').parentElement
-    expect(invitesTile).toHaveTextContent('3')
-    expect(invitesTile).toHaveTextContent('batches expiring soon')
+    expect(invitesTile).toHaveTextContent('3 batches')
+    expect(invitesTile).toHaveTextContent('expiring soon')
   })
 
   it('shows a needs-attention row for escalated reports and jumps to Moderation on click', async () => {

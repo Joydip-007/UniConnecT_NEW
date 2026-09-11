@@ -50,7 +50,13 @@ socket.on('connect_error', async (err) => {
   // Network / server-unreachable errors: let socket.io auto-reconnect
 })
 
+// The `?dev-auth=1` design-verification flow carries a fake bearer; a live API would
+// reject the handshake as Unauthorized and the handler above would log the mock user out.
+const isDevAuthBypass = () =>
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev-auth') === '1'
+
 export function connectSocket() {
+  if (isDevAuthBypass()) return
   if (!socket.connected) socket.connect()
 }
 

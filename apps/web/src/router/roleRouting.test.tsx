@@ -26,6 +26,7 @@ function renderAt(route: string) {
           <Route path={PATHS.FEED} element={<div>feed page</div>} />
         </Route>
         <Route path={PATHS.SHUTTLE_DRIVE} element={<div>duty board</div>} />
+        <Route path={PATHS.ADMIN} element={<div>admin dashboard</div>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -65,5 +66,30 @@ describe('driver route access', () => {
     mockUser = { id: 's1', role: 'student', isVerified: true }
     renderAt(PATHS.JOBS)
     expect(screen.getByText('jobs page')).toBeInTheDocument()
+  })
+})
+
+describe('admin route access', () => {
+  it('keeps an admin out of the member feed and its post detail', () => {
+    expect(isRouteAllowedForRole('admin', PATHS.FEED)).toBe(false)
+    expect(isRouteAllowedForRole('admin', '/feed/abc-123')).toBe(false)
+  })
+
+  it('still lets an admin reach every other member surface', () => {
+    ;[PATHS.MESSAGES, PATHS.NEWS, PATHS.JOBS, PATHS.PROFILE, PATHS.ADMIN].forEach((path) => {
+      expect(isRouteAllowedForRole('admin', path)).toBe(true)
+    })
+  })
+
+  it('sends an admin from the feed to the admin dashboard', () => {
+    mockUser = { id: 'a1', role: 'admin', isVerified: true }
+    renderAt(PATHS.FEED)
+    expect(screen.getByText('admin dashboard')).toBeInTheDocument()
+  })
+
+  it('a member still reaches the feed', () => {
+    mockUser = { id: 's1', role: 'student', isVerified: true }
+    renderAt(PATHS.FEED)
+    expect(screen.getByText('feed page')).toBeInTheDocument()
   })
 })

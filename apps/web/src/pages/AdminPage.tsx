@@ -3,8 +3,8 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Flag, Trash2, X,
-  ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, ChevronDown, ChevronUp,
-  UserPlus
+  ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, ChevronDown, ChevronUp, ChevronRight,
+  UserPlus, FileText, Newspaper, Calendar, Briefcase, Mail
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { AccountDeletionRequest } from '@uniconnect/shared'
@@ -14,10 +14,13 @@ import { Avatar } from '@/components/Avatar'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
+import type { AdminContentType } from '@uniconnect/shared'
 import { ContentTab } from '@/pages/admin/ContentTab'
+import { useContentSummary } from '@/pages/admin/useContentSummary'
 import { GroupsTab } from '@/pages/admin/GroupsTab'
 import { AnnouncementsTab } from '@/pages/admin/AnnouncementsTab'
 import { ShuttleTab } from '@/pages/admin/ShuttleTab'
+import { ReportedContentPanel } from '@/pages/admin/ReportedContentPanel'
 import { InvitePeopleDialog } from '@/pages/admin/InvitePeopleDialog'
 import { ContentSyncPanel } from '@/features/content-sync'
 import { LearningAdminPanel } from '@/features/learning-admin'
@@ -97,46 +100,6 @@ function daysLeft(iso: string | null): number | null {
   return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)))
 }
 
-// ── Stat cards ────────────────────────────────────────────────────────────────
-
-function ContentMetricsStrip({ stats }: { stats: Stats }) {
-  const metrics: { label: string; value: number }[] = [
-    { label: 'Posts',  value: stats.posts   },
-    { label: 'Jobs',   value: stats.jobs    },
-    { label: 'Events', value: stats.events  },
-    { label: 'Groups', value: stats.groups  },
-    { label: 'News',   value: stats.news    },
-  ]
-  return (
-    <div style={{
-      background: 'var(--surface-card)',
-      border: '0.5px solid var(--border-default)',
-      borderRadius: 'var(--r-lg)',
-      display: 'flex',
-      overflow: 'hidden',
-    }}>
-      {metrics.map(({ label, value }, i) => (
-        <div key={label} style={{
-          flex: '1 1 0',
-          minWidth: 80,
-          padding: '16px 20px',
-          borderLeft: i > 0 ? '0.5px solid var(--border-default)' : 'none',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-        }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-label)', letterSpacing: '0.04em' }}>
-            {label}
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
-            {value.toLocaleString()}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ── Tab nav type ──────────────────────────────────────────────────────────────
 
 type Tab = 'insights' | 'moderation' | 'groups' | 'members' | 'announcements' | 'content' | 'content-sync' | 'learning' | 'shuttle'
@@ -153,7 +116,7 @@ const TAB_META: Record<Tab, { label: string; subtitle: string }> = {
   groups: { label: 'Groups', subtitle: 'Every campus group, its privacy setting and pending join requests.' },
   members: { label: 'Members & invites', subtitle: 'Manage members and roles, and track the invite batches you send.' },
   announcements: { label: 'Announcements', subtitle: 'Published, scheduled and draft announcements in one place.' },
-  content: { label: 'Content moderation', subtitle: 'Review and manage every post, news item, event and job in the feed.' },
+  content: { label: 'Content moderation', subtitle: 'Review and manage every post, news item, event and job in the feed. Use the ⋮ menu on a card to pin or remove it.' },
   'content-sync': { label: 'Content sync', subtitle: 'Scrape news, notices and events from the university website and import them as drafts for review.' },
   learning: { label: 'Learning', subtitle: 'Curate and publish learning units, grouped by department.' },
   shuttle: { label: 'Shuttle ops', subtitle: 'Live routes, stops and vehicle status across campus.' },
@@ -371,12 +334,12 @@ function AllowedDomainsPanel() {
   )
 }
 
-// ── Overview tab ──────────────────────────────────────────────────────────────
+// ── Moderation counters ───────────────────────────────────────────────────────
 
 /**
  * The admin counter: a 38px tone tile, then the number, then what it counts. Distinct
- * from `MetricTile` — that one is an eyebrow over a large figure and reads as a report;
- * this one reads as a queue you are about to open, which is what the moderation trio is.
+ * from `InsightStat` — that one is a label over a figure and reads as a report; this one
+ * reads as a queue you are about to open, which is what the moderation trio is.
  */
 function CounterTile({
   label,
@@ -429,57 +392,80 @@ function CounterTile({
   )
 }
 
-function MetricTile({ label, value, hint, hot }: { label: string; value: string; hint: string; hot?: boolean }) {
+// ── Insights tab ──────────────────────────────────────────────────────────────
+
+const CARD: React.CSSProperties = {
+  background: 'var(--surface-card)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-lg)',
+  padding: 16,
+}
+
+/** Campus-wide counter: label, figure, then a delta line whose colour says which way it moved. */
+function InsightStat({ label, value, delta, up }: { label: string; value: string; delta: string; up: boolean }) {
   return (
-    <div style={{
-      background: hot ? 'var(--uc-orange-bg)' : 'var(--surface-card)',
-      border: `0.5px solid ${hot ? 'var(--uc-orange-bdr)' : 'var(--border-default)'}`,
-      borderRadius: 'var(--r-lg)',
-      padding: '16px 20px',
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 500, color: hot ? 'var(--uc-orange-l)' : 'var(--text-label)', letterSpacing: '0.04em', marginBottom: 8 }}>
+    <div style={{ ...CARD, padding: 14 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {label}
       </div>
-      <div style={{
-        fontSize: 28,
-        fontWeight: 500,
-        color: hot ? 'var(--uc-orange-l)' : 'var(--text-primary)',
-        lineHeight: 1,
-        // A tile row is read across, so every figure has to sit on one baseline. A
-        // value that wraps takes its whole tile out of alignment with its neighbours.
-        whiteSpace: 'nowrap',
-      }}>
+      <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--text-primary)', marginTop: 4, lineHeight: 1, whiteSpace: 'nowrap' }}>
         {value}
       </div>
-      <div style={{ marginTop: 6, fontSize: 12, color: hot ? 'var(--uc-orange-l)' : 'var(--text-tertiary)' }}>{hint}</div>
+      <div style={{ fontSize: 12, color: up ? 'var(--uc-mint)' : 'var(--text-secondary)', marginTop: 4 }}>{delta}</div>
     </div>
   )
 }
 
-function NeedsAttentionList({ stats, onNavigate }: { stats: Stats; onNavigate: (tab: Tab) => void }) {
-  const rows = [
-    { label: 'Escalated reports', value: stats.escalatedReports, tab: 'moderation' as Tab },
-    { label: 'Verification requests', value: stats.verificationRequests, tab: 'members' as Tab },
-    { label: 'Invite batches expiring', value: stats.pendingInviteBatches, tab: 'members' as Tab },
-  ]
+/** 26px tone tile used by the content-mix and needs-attention rows. */
+function ToneGlyph({ icon: Icon, color, bg }: { icon: LucideIcon; color: string; bg: string }) {
   return (
-    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Needs attention</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {rows.map((r) => (
+    <span style={{
+      width: 26, height: 26, borderRadius: 'var(--r-sm)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      background: bg, color,
+    }}>
+      <Icon size={13} strokeWidth={1.5} />
+    </span>
+  )
+}
+
+const CONTENT_MIX: { key: AdminContentType; label: string; icon: LucideIcon; color: string; bg: string }[] = [
+  { key: 'post', label: 'Posts', icon: FileText, color: 'var(--uc-indigo-l)', bg: 'var(--uc-indigo-bg)' },
+  { key: 'news', label: 'News', icon: Newspaper, color: 'var(--uc-orange-l)', bg: 'var(--uc-orange-bg)' },
+  { key: 'event_promo', label: 'Events', icon: Calendar, color: 'var(--uc-mint)', bg: 'var(--uc-mint-bg)' },
+  { key: 'job_promo', label: 'Jobs', icon: Briefcase, color: 'var(--uc-cyan)', bg: 'var(--uc-cyan-bg)' },
+]
+
+/**
+ * Counts come from the content queue's own summary, not `/admin/stats`: the stats
+ * endpoint counts the `events`/`jobs`/`news` tables, while every row here jumps to a
+ * feed-post type tab, so the number has to be what that tab will list.
+ */
+function ContentMixCard({ onNavigate }: { onNavigate: (tab: Tab, contentType?: AdminContentType) => void }) {
+  const { data: summary } = useContentSummary()
+  return (
+    <div style={CARD}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Content mix</span>
+        <button
+          type="button"
+          onClick={() => onNavigate('content')}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 12, fontWeight: 500, color: 'var(--uc-indigo-l)' }}
+        >
+          Review all
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {CONTENT_MIX.map((c) => (
           <button
-            key={r.label}
+            key={c.key}
             type="button"
-            onClick={() => onNavigate(r.tab)}
-            style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '9px 10px', borderRadius: 'var(--r-md)', border: 'none',
-              background: 'transparent', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)',
-              transition: 'background 150ms',
-            }}
+            onClick={() => onNavigate('content', c.key)}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%' }}
           >
-            <span>{r.label}</span>
-            <Badge variant={r.value > 0 ? 'neutral' : 'alumni'}>{r.value}</Badge>
+            <ToneGlyph icon={c.icon} color={c.color} bg={c.bg} />
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)' }}>{c.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{summary ? summary.byType[c.key].toLocaleString() : '—'}</span>
           </button>
         ))}
       </div>
@@ -487,7 +473,39 @@ function NeedsAttentionList({ stats, onNavigate }: { stats: Stats; onNavigate: (
   )
 }
 
-function InsightsTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
+function NeedsAttentionCard({ stats, onNavigate }: { stats: Stats; onNavigate: (tab: Tab) => void }) {
+  const rows: { label: string; count: number; icon: LucideIcon; color: string; bg: string; tab: Tab }[] = [
+    { label: 'Escalated reports', count: stats.escalatedReports, icon: Flag, color: 'var(--uc-red)', bg: 'var(--uc-red-bg)', tab: 'moderation' },
+    { label: 'Verification requests', count: stats.verificationRequests, icon: ShieldCheck, color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)', tab: 'members' },
+    { label: 'Invite batches expiring', count: stats.pendingInviteBatches, icon: Mail, color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)', tab: 'members' },
+  ]
+  return (
+    <div style={CARD}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Needs attention</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {rows.map((r) => (
+          <button
+            key={r.label}
+            type="button"
+            onClick={() => onNavigate(r.tab)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+              background: 'none', border: 'none', borderTop: '0.5px solid var(--border-default)',
+              padding: '8px 0', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            }}
+          >
+            <ToneGlyph icon={r.icon} color={r.color} bg={r.bg} />
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--text-secondary)' }}>{r.label}</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: r.color }}>{r.count}</span>
+            <ChevronRight size={14} style={{ color: 'var(--text-tertiary)' }} />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InsightsTab({ onNavigate }: { onNavigate: (tab: Tab, contentType?: AdminContentType) => void }) {
   const { data } = useQuery<Stats>({
     queryKey: ['admin', 'stats'],
     queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
@@ -495,37 +513,28 @@ function InsightsTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
 
   if (!data) return <Spinner />
 
+  const days = data.postsByDay
+  const today = days[days.length - 1]?.count ?? 0
+  const prior = days.slice(0, -1)
+  const avg = prior.length > 0 ? prior.reduce((s, d) => s + d.count, 0) / prior.length : 0
+  const postsDelta = avg > 0 ? `${today >= avg ? '+' : ''}${Math.round(((today - avg) / avg) * 100)}% vs. avg` : 'no prior week'
+  const batches = data.pendingInviteBatches
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        <MetricTile label="Active members" value={data.activeUsers.toLocaleString()} hint={`of ${data.users.toLocaleString()} total`} />
-        <MetricTile label="Posts today" value={String(data.postsByDay[data.postsByDay.length - 1]?.count ?? 0)} hint="vs. last 7-day avg" />
-        <MetricTile label="Reports resolved" value={`${data.resolvedPct7d}%`} hint="last 7 days" />
-        {/* The figure alone, like its three neighbours. Carrying the noun up into the
-            28px value wrapped it onto a second line and knocked this tile's baseline
-            out of line with the rest of the row. */}
-        <MetricTile
-          label="Pending invites"
-          value={String(data.pendingInviteBatches)}
-          hint={`batch${data.pendingInviteBatches === 1 ? '' : 'es'} expiring soon`}
-          hot={data.pendingInviteBatches > 0}
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+        <InsightStat label="Active members" value={data.activeUsers.toLocaleString()} delta={`of ${data.users.toLocaleString()} total`} up />
+        <InsightStat label="Posts today" value={today.toLocaleString()} delta={postsDelta} up={today >= avg} />
+        <InsightStat label="Reports resolved" value={`${data.resolvedPct7d}%`} delta="last 7 days" up />
+        <InsightStat label="Pending invites" value={`${batches} batch${batches === 1 ? '' : 'es'}`} delta={batches > 0 ? 'expiring soon' : 'none expiring'} up={batches === 0} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
-        <ActivityChart postsByDay={data.postsByDay} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10 }}>
+        <ActivityChart postsByDay={days} />
         <RoleBreakdown usersByRole={data.usersByRole} total={data.users} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Content mix</span>
-            <GhostBtn onClick={() => onNavigate('moderation')} style={{ fontSize: 12, padding: '4px 10px' }}>
-              Review all
-            </GhostBtn>
-          </div>
-          <ContentMetricsStrip stats={data} />
-        </div>
-        <NeedsAttentionList stats={data} onNavigate={onNavigate} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <ContentMixCard onNavigate={onNavigate} />
+        <NeedsAttentionCard stats={data} onNavigate={onNavigate} />
       </div>
       <AllowedDomainsPanel />
     </div>
@@ -535,12 +544,9 @@ function InsightsTab({ onNavigate }: { onNavigate: (tab: Tab) => void }) {
 function ActivityChart({ postsByDay }: { postsByDay: Stats['postsByDay'] }) {
   const max = Math.max(1, ...postsByDay.map((d) => d.count))
   return (
-    <div style={{
-      background: 'var(--surface-card)', border: '0.5px solid var(--border-default)',
-      borderRadius: 'var(--r-lg)', padding: 16,
-    }}>
+    <div style={CARD}>
       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 16 }}>
-        Post activity this week
+        Activity this week
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, height: 140 }}>
         {postsByDay.map((d) => (
@@ -568,10 +574,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 function RoleBreakdown({ usersByRole, total }: { usersByRole: Stats['usersByRole']; total: number }) {
   return (
-    <div style={{
-      background: 'var(--surface-card)', border: '0.5px solid var(--border-default)',
-      borderRadius: 'var(--r-lg)', padding: 16,
-    }}>
+    <div style={CARD}>
       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 14 }}>
         Members by role
       </div>
@@ -584,11 +587,11 @@ function RoleBreakdown({ usersByRole, total }: { usersByRole: Stats['usersByRole
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ROLE_LABELS[r.role] ?? r.role}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.count.toLocaleString()} · {pct}%</span>
               </div>
-              <div style={{ height: 5, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
+              <div style={{ height: 6, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 'var(--r-pill)',
-                  background: `var(--role-${r.role}, var(--uc-indigo))`,
-                  transform: `scaleX(${pct / 100})`, transformOrigin: 'left center',
+                  background: `var(--role-${r.role}, var(--uc-mint))`,
+                  width: `${pct}%`,
                 }} />
               </div>
             </div>
@@ -1427,174 +1430,7 @@ function InvitationsTab() {
   )
 }
 
-// ── Moderation tab (grouped reported content + health panel + per-kind content review) ──
-
-interface ReportGroup {
-  targetId: string
-  targetType: string
-  title: string
-  severity: 'high' | 'medium' | 'low'
-  reason: string
-  reportCount: number
-  lastReportedAt: string
-  removable: boolean
-}
-
-const SEVERITY_STYLE: Record<ReportGroup['severity'], { bg: string; bdr: string; text: string; label: string }> = {
-  high: { bg: 'var(--uc-red-bg)', bdr: 'var(--uc-red-bdr)', text: 'var(--uc-red)', label: 'High' },
-  medium: { bg: 'var(--uc-amber-bg)', bdr: 'var(--uc-amber-bdr)', text: 'var(--uc-amber-l)', label: 'Medium' },
-  low: { bg: 'var(--surface-raised)', bdr: 'var(--border-default)', text: 'var(--text-tertiary)', label: 'Low' },
-}
-
-/**
- * Report actions are tone-filled pills, not ghost buttons: Remove is destructive and
- * has to look it from across the row, and Dismiss has to look like its equal weight
- * rather than an afterthought beside it.
- */
-function reportActionStyle(kind: 'remove' | 'dismiss'): React.CSSProperties {
-  const destructive = kind === 'remove'
-  return {
-    fontSize: 12,
-    fontWeight: 500,
-    color: destructive ? 'var(--uc-red)' : 'var(--text-secondary)',
-    background: destructive ? 'var(--uc-red-bg)' : 'var(--surface-raised)',
-    border: `0.5px solid ${destructive ? 'var(--uc-red-bdr)' : 'var(--border-default)'}`,
-    borderRadius: 'var(--r-pill)',
-    padding: '5px 12px',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  }
-}
-
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const mins = Math.round(diffMs / 60000)
-  if (mins < 60) return `${mins} min ago`
-  const hours = Math.round(mins / 60)
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
-  const days = Math.round(hours / 24)
-  return `${days} day${days === 1 ? '' : 's'} ago`
-}
-
-function ReportedContentTab() {
-  const qc = useQueryClient()
-
-  const { data, isLoading } = useQuery<{ items: ReportGroup[]; total: number }>({
-    queryKey: ['admin', 'reports', 'grouped'],
-    queryFn: () => api.get<{ data: { items: ReportGroup[]; total: number } }>('/admin/reports/grouped?limit=50').then((r) => r.data.data),
-  })
-
-  const actionMutation = useMutation({
-    mutationFn: ({ targetType, targetId, action }: { targetType: string; targetId: string; action: 'remove' | 'dismiss' }) =>
-      api.patch(`/admin/reports/target/${targetType}/${targetId}`, { action }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['admin', 'reports', 'grouped'] })
-      void qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
-    },
-  })
-
-  const items = data?.items ?? []
-
-  return (
-    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 4 }}>
-      <h2 style={{ margin: 0, padding: '14px 16px 8px', fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Reported content</h2>
-      {isLoading ? (
-        <Spinner />
-      ) : items.length === 0 ? (
-        <div style={{ padding: '32px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>Nothing reported right now</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {items.map((item) => {
-            const sev = SEVERITY_STYLE[item.severity]
-            return (
-              <div
-                key={`${item.targetType}:${item.targetId}`}
-                style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderTop: '0.5px solid var(--border-default)' }}
-              >
-                {/* The glyph carries the severity, so the row reads as urgent before
-                    the pill is read at all. */}
-                <span style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  background: sev.bg,
-                  color: sev.text,
-                }}>
-                  <AlertTriangle size={15} strokeWidth={1.5} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.title}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    <span style={{ background: sev.bg, border: `0.5px solid ${sev.bdr}`, color: sev.text, borderRadius: 'var(--r-pill)', padding: '1px 8px', fontWeight: 500 }}>
-                      {sev.label}
-                    </span>
-                    <span>{item.reason}</span>
-                    <span>·</span>
-                    <span>{item.reportCount} report{item.reportCount === 1 ? '' : 's'}</span>
-                    <span>·</span>
-                    <span>{relativeTime(item.lastReportedAt)}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  {item.removable && (
-                    <button
-                      type="button"
-                      className="press-feedback"
-                      onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'remove' })}
-                      disabled={actionMutation.isPending}
-                      style={reportActionStyle('remove')}
-                    >
-                      Remove
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="press-feedback"
-                    onClick={() => actionMutation.mutate({ targetType: item.targetType, targetId: item.targetId, action: 'dismiss' })}
-                    disabled={actionMutation.isPending}
-                    style={reportActionStyle('dismiss')}
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ModerationHealthTile({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-md)', padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, color: 'var(--text-label)', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text-primary)' }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{hint}</div>
-    </div>
-  )
-}
-
-function ModerationHealthPanel({ health }: { health: Stats['moderationHealth'] }) {
-  return (
-    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: 16 }}>
-      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 12 }}>Moderation health</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <ModerationHealthTile label="Reports open" value={String(health.reportsOpen)} hint="awaiting action" />
-        <ModerationHealthTile label="Resolved" value={`${health.resolvedPct7d}%`} hint="last 7 days" />
-        <ModerationHealthTile label="Median response" value={`${health.medianResponseHours}h`} hint="target 6h" />
-        <ModerationHealthTile label="Repeat offenders" value={String(health.repeatOffenders)} hint="flagged twice+" />
-      </div>
-    </div>
-  )
-}
+// ── Moderation tab (reported content queue + deletion requests; health lives in the right rail) ──
 
 function ModerationTab() {
   const { data: stats } = useQuery<Stats>({
@@ -1602,22 +1438,20 @@ function ModerationTab() {
     queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
   })
 
+  // Three counters, as in the design, minus verification: sign-up is gated by OTP, so
+  // there is nothing for an admin to verify here. Open reports takes its slot so the
+  // escalated figure reads against a whole.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          <CounterTile label="Open reports" value={String(stats.moderationHealth.reportsOpen)} icon={AlertTriangle} tone={{ color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)' }} />
           <CounterTile label="Escalated reports" value={String(stats.escalatedReports)} icon={Flag} tone={{ color: 'var(--uc-red)', bg: 'var(--uc-red-bg)' }} />
-          <CounterTile label="Verification requests" value={String(stats.verificationRequests)} icon={ShieldCheck} tone={{ color: 'var(--uc-red)', bg: 'var(--uc-red-bg)' }} />
           <CounterTile label="Deletion requests" value={String(stats.deletionRequests)} icon={Trash2} tone={{ color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)' }} />
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 12, alignItems: 'start' }}>
-        <ReportedContentTab />
-        {stats && <ModerationHealthPanel health={stats.moderationHealth} />}
-      </div>
-      <div style={{ borderTop: '0.5px solid var(--border-default)', paddingTop: 20 }}>
-        <DeletionRequestsTab />
-      </div>
+      <ReportedContentPanel />
+      <DeletionRequestsTab />
     </div>
   )
 }
@@ -1663,79 +1497,90 @@ function DeletionRequestsTab() {
 
   const totalPages = Math.ceil(data.total / limit)
 
+  // Same card grammar as the Reported content queue above it: a titled header strip,
+  // one divided row per request with a tone glyph, and tone-filled action pills.
+  const pill = (destructive: boolean): React.CSSProperties => ({
+    fontSize: 12,
+    fontWeight: 500,
+    color: destructive ? 'var(--uc-red)' : 'var(--text-secondary)',
+    background: destructive ? 'var(--uc-red-bg)' : 'var(--surface-raised)',
+    border: `0.5px solid ${destructive ? 'var(--uc-red-bdr)' : 'var(--border-default)'}`,
+    borderRadius: 'var(--r-pill)',
+    padding: '5px 12px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  })
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
-        {data.total.toLocaleString()} requests · approving deactivates the account and signs the user out
-        everywhere
-      </p>
-
-      {data.items.length === 0 && (
-        <div style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '48px 0',
-          textAlign: 'center',
-          fontSize: 14,
-          color: 'var(--text-tertiary)',
-        }}>
-          No deletion requests
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {data.items.map((r) => (
-          <div key={r.id} style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-md)',
-            padding: '16px 18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {r.requesterName ?? r.requesterEmail ?? 'Unknown user'}
-                  </span>
-                  <Badge variant={r.status === 'pending' ? 'dept' : r.status === 'approved' ? 'alumni' : 'neutral'}>
-                    {r.status}
-                  </Badge>
-                </div>
-                <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{r.reason}</p>
-                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-                  {r.requesterEmail} · {fmtDate(String(r.createdAt))}
-                </span>
-              </div>
-
-              {r.status === 'pending' && (
-                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                  <GhostBtn
-                    onClick={() => resolveMutation.mutate({ id: r.id, status: 'approved' })}
-                    disabled={resolveMutation.isPending}
-                    style={{ fontSize: 12, padding: '4px 10px', color: 'var(--uc-red)' }}
-                  >
-                    Approve
-                  </GhostBtn>
-                  <GhostBtn
-                    onClick={() => resolveMutation.mutate({ id: r.id, status: 'declined' })}
-                    disabled={resolveMutation.isPending}
-                    style={{ fontSize: 12, padding: '4px 10px' }}
-                  >
-                    Decline
-                  </GhostBtn>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+    <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, padding: '14px 16px', borderBottom: '0.5px solid var(--border-default)' }}>
+        <h2 style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Deletion requests</h2>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+          {data.total.toLocaleString()} request{data.total === 1 ? '' : 's'} · approving deactivates the account and signs the user out everywhere
+        </span>
       </div>
 
+      {data.items.length === 0 && (
+        <div style={{ padding: '32px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)' }}>No deletion requests</div>
+      )}
+
+      {data.items.map((r) => (
+        <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderBottom: '0.5px solid var(--border-default)' }}>
+          <span style={{
+            width: 34,
+            height: 34,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            background: r.status === 'pending' ? 'var(--uc-amber-bg)' : 'var(--surface-raised)',
+            color: r.status === 'pending' ? 'var(--uc-amber-l)' : 'var(--text-tertiary)',
+          }}>
+            <Trash2 size={15} strokeWidth={1.5} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, color: 'var(--text-primary)' }}>
+                {r.requesterName ?? r.requesterEmail ?? 'Unknown user'}
+              </span>
+              <Badge variant={r.status === 'pending' ? 'dept' : r.status === 'approved' ? 'alumni' : 'neutral'}>
+                {r.status}
+              </Badge>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{r.reason}</p>
+            <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
+              {r.requesterEmail} · {fmtDate(String(r.createdAt))}
+            </div>
+          </div>
+
+          {r.status === 'pending' && (
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <button
+                type="button"
+                className="press-feedback"
+                onClick={() => resolveMutation.mutate({ id: r.id, status: 'approved' })}
+                disabled={resolveMutation.isPending}
+                style={pill(true)}
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                className="press-feedback"
+                onClick={() => resolveMutation.mutate({ id: r.id, status: 'declined' })}
+                disabled={resolveMutation.isPending}
+                style={pill(false)}
+              >
+                Decline
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+
       {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', padding: '12px 16px' }}>
           <GhostBtn disabled={page === 1} onClick={() => setPage((p) => p - 1)}>Previous</GhostBtn>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)', alignSelf: 'center' }}>
             {page} / {totalPages}
@@ -1771,7 +1616,10 @@ export default function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab')
   const activeTab: Tab = TAB_VALUES.includes(rawTab as Tab) ? (rawTab as Tab) : 'insights'
-  const setActiveTab = (tab: Tab) => setSearchParams({ tab })
+  // Insights' content-mix rows deep-link into one type of the content queue; every
+  // other navigation drops the param so a stale type never leaks into the next tab.
+  const contentType = searchParams.get('type') as AdminContentType | null
+  const setActiveTab = (tab: Tab, type?: AdminContentType) => setSearchParams(type ? { tab, type } : { tab })
 
   // Normalise the bare /admin URL onto its default tab so the rail's tab-scoped rows
   // always have a param to match against, and a reload keeps the tab you were on.
@@ -1829,7 +1677,7 @@ export default function AdminPage() {
       {activeTab === 'groups' && <GroupsTab />}
       {activeTab === 'members' && <MembersTab />}
       {activeTab === 'announcements' && <AnnouncementsTab />}
-      {activeTab === 'content' && <ContentTab />}
+      {activeTab === 'content' && <ContentTab key={contentType ?? 'post'} initialType={contentType ?? undefined} />}
       {activeTab === 'content-sync' && <ContentSyncPanel />}
       {activeTab === 'learning' && <LearningAdminPanel />}
       {activeTab === 'shuttle' && <ShuttleTab />}

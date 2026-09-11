@@ -10,6 +10,10 @@ import {
   createInvitation,
   deleteContentItem,
   deleteInvitation,
+  getContentSummary,
+  listAdminFeed,
+  togglePostComments,
+  togglePostRemoved,
   deleteUser,
   getAllowedDomains,
   getMentorRequests,
@@ -31,6 +35,7 @@ import {
   listUsers,
   resolveReport,
   resolveReportGroup,
+  getReportedTarget,
   toggleActive,
   togglePin,
   togglePublish,
@@ -41,8 +46,11 @@ import {
   verifyUser,
 } from './controller'
 import {
+  AdminFeedListQuerySchema,
   AdminFulfillRedemptionSchema,
   AdminRedemptionListSchema,
+  ToggleCommentsSchema,
+  ToggleRemovedSchema,
   ContentKindSchema,
   ContentListQuerySchema,
   CreateBulkInvitationsSchema,
@@ -89,6 +97,7 @@ adminRouter.post('/users/driver', requireRole('admin'), validate(CreateDriverSch
 
 adminRouter.get('/reports', validateRequest({ query: PaginationQuerySchema }), listReports)
 adminRouter.get('/reports/grouped', validateRequest({ query: PaginationQuerySchema }), listReportedContentGroups)
+adminRouter.get('/reports/target/:targetType/:targetId', getReportedTarget)
 adminRouter.patch(
   '/reports/target/:targetType/:targetId',
   validate(ResolveReportGroupSchema),
@@ -115,6 +124,12 @@ adminRouter.delete('/invitations/:invitationId', requireRole('admin'), deleteInv
 
 adminRouter.get('/university/domains', requireRole('admin'), getAllowedDomains)
 adminRouter.patch('/university/domains', requireRole('admin'), validate(UpdateAllowedDomainsSchema), updateAllowedDomains)
+
+// Literal segments before '/content/:kind' so the param route cannot swallow them.
+adminRouter.get('/content/summary', getContentSummary)
+adminRouter.get('/content/feed', validateRequest({ query: AdminFeedListQuerySchema }), listAdminFeed)
+adminRouter.patch('/content/posts/:id/comments', validate(ToggleCommentsSchema), togglePostComments)
+adminRouter.patch('/content/posts/:id/removed', validate(ToggleRemovedSchema), togglePostRemoved)
 
 adminRouter.get(
   '/content/:kind',
