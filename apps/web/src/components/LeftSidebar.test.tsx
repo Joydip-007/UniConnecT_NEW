@@ -189,7 +189,7 @@ describe('LeftSidebar profile stats pair', () => {
     student: ['connections', 'pending'],
     alumni: ['connections', 'mentees'],
     faculty: ['sections', 'students'],
-    admin: ['members', 'verifications'],
+    admin: ['members', 'groups'],
     driver: ['connections', 'posts'],
   }
 

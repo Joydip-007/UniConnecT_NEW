@@ -40,10 +40,8 @@ interface Stats {
   reports: number
   activeUsers: number
   usersByRole: { role: string; count: number }[]
-  verificationsByRole: { role: string; count: number }[]
   postsByDay: { date: string; count: number }[]
   escalatedReports: number
-  verificationRequests: number
   deletionRequests: number
   resolvedPct7d: number
   pendingInviteBatches: number
@@ -866,11 +864,6 @@ function UsersTab({
     },
   })
 
-  const { data: stats } = useQuery<Stats>({
-    queryKey: ['admin', 'stats'],
-    queryFn: () => api.get<{ data: Stats }>('/admin/stats').then((r) => r.data.data),
-  })
-
   const verifyMutation = useMutation({
     mutationFn: (userId: string) => api.patch(`/admin/users/${userId}/verify`, {}),
     onSuccess: () => {
@@ -909,36 +902,6 @@ function UsersTab({
         <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>
           {data.total.toLocaleString()} users total
         </p>
-
-        {stats && stats.verificationsByRole.length > 0 && (
-          <div style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-            padding: '16px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Verification queue</span>
-              <Badge variant="pinned">
-                {stats.verificationsByRole.reduce((sum, r) => sum + r.count, 0)} waiting
-              </Badge>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {stats.verificationsByRole.map((r) => (
-                <span key={r.role} style={{
-                  fontSize: 12, color: 'var(--text-secondary)',
-                  background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)',
-                  borderRadius: 'var(--r-pill)', padding: '4px 10px',
-                }}>
-                  {ROLE_LABELS[r.role] ?? r.role}: {r.count}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div style={{
           background: 'var(--surface-card)',

@@ -1032,13 +1032,13 @@ async function countRoleStats(
   }
 
   if (role === 'admin') {
-    const [[members], [verifications]] = await Promise.all([
+    // Sign-up is OTP-gated, so there is no verification queue to count; the second
+    // admin figure is the groups the university runs.
+    const [[members], [groups]] = await Promise.all([
       db('users').where({ university_id: universityId, is_deleted: false }).count<CountRow[]>({ count: '*' }),
-      db('users')
-        .where({ university_id: universityId, is_deleted: false, is_verified: false })
-        .count<CountRow[]>({ count: '*' }),
+      db('groups').where({ university_id: universityId }).count<CountRow[]>({ count: '*' }),
     ])
-    return { members: Number(members.count), verifications: Number(verifications.count) }
+    return { members: Number(members.count), groups: Number(groups.count) }
   }
 
   return {}

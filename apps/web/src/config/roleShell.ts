@@ -32,7 +32,7 @@ export type StatSource =
   | 'sections'
   | 'students'
   | 'members'
-  | 'verifications'
+  | 'groups'
 
 export interface StatSpec {
   key: StatSource
@@ -158,7 +158,7 @@ export const ROLE_SHELL: Record<UserRole, RoleShell> = {
     rightRail: ['admin-queue', 'admin-stats'],
     stats: [
       { key: 'members', label: 'members' },
-      { key: 'verifications', label: 'verifications' },
+      { key: 'groups', label: 'groups' },
     ],
   },
   driver: {

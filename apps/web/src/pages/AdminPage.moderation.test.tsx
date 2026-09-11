@@ -24,7 +24,7 @@ beforeEach(() => {
       data: {
         users: 4821, posts: 132, jobs: 4, events: 6, groups: 12, news: 3, reports: 5, activeUsers: 3200,
         usersByRole: [], postsByDay: [],
-        escalatedReports: 5, verificationRequests: 17, deletionRequests: 3, resolvedPct7d: 94, pendingInviteBatches: 3,
+        escalatedReports: 5, deletionRequests: 3, resolvedPct7d: 94, pendingInviteBatches: 3,
         moderationHealth: { reportsOpen: 4, resolvedPct7d: 94, medianResponseHours: 3.2, repeatOffenders: 4 },
       },
     })),

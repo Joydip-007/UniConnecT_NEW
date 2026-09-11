@@ -169,7 +169,7 @@ describe('ROLE_SHELL stats pair', () => {
       sections: 'faculty',
       students: 'faculty',
       members: 'admin',
-      verifications: 'admin',
+      groups: 'admin',
     }
     ROLES.forEach((role) => {
       ROLE_SHELL[role].stats.forEach(({ key }) => {

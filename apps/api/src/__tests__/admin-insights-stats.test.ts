@@ -43,7 +43,7 @@ afterAll(async () => {
 })
 
 describe('GET /api/v1/admin/stats — extended moderation/insights fields', () => {
-  it('returns escalatedReports, verificationRequests, resolvedPct7d and moderationHealth', async () => {
+  it('returns escalatedReports, resolvedPct7d and moderationHealth', async () => {
     const res = await api
       .get('/api/v1/admin/stats')
       .set(UNI)
@@ -51,7 +51,6 @@ describe('GET /api/v1/admin/stats — extended moderation/insights fields', () =
 
     expect(res.status).toBe(200)
     expect(res.body.data).toHaveProperty('escalatedReports')
-    expect(res.body.data).toHaveProperty('verificationRequests')
     expect(res.body.data).toHaveProperty('resolvedPct7d')
     expect(res.body.data).toHaveProperty('pendingInviteBatches')
     expect(res.body.data.moderationHealth).toMatchObject({

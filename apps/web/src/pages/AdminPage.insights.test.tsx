@@ -13,7 +13,7 @@ const STATS = {
   reports: 5, activeUsers: 3200,
   usersByRole: [{ role: 'student', count: 3560 }],
   postsByDay: Array.from({ length: 7 }, (_, i) => ({ date: `2026-09-0${i + 1}`, count: i })),
-  escalatedReports: 4, verificationRequests: 17, deletionRequests: 3,
+  escalatedReports: 4, deletionRequests: 3,
   resolvedPct7d: 94, pendingInviteBatches: 3,
   moderationHealth: { reportsOpen: 4, resolvedPct7d: 94, medianResponseHours: 3.2, repeatOffenders: 4 },
 }

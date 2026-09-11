@@ -107,7 +107,7 @@ export const publicUserProfileSchema = z.object({
     sections: z.number().int().nonnegative().optional(),
     students: z.number().int().nonnegative().optional(),
     members: z.number().int().nonnegative().optional(),
-    verifications: z.number().int().nonnegative().optional(),
+    groups: z.number().int().nonnegative().optional(),
   }),
 })
 

@@ -132,9 +132,8 @@ interface AdminStats {
   users: number
   activeUsers: number
   postsByDay: { date: string; count: number }[]
-  verificationsByRole: { role: string; count: number }[]
+  usersByRole: { role: string; count: number }[]
   escalatedReports: number
-  verificationRequests: number
   deletionRequests: number
   resolvedPct7d: number
   pendingInviteBatches: number
@@ -204,10 +203,11 @@ interface Redemption {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  student: 'Student IDs',
-  alumni: 'Alumni proofs',
-  faculty: 'Faculty accounts',
-  admin: 'Admin accounts',
+  student: 'Students',
+  alumni: 'Alumni',
+  faculty: 'Faculty',
+  admin: 'Admins',
+  driver: 'Drivers',
 }
 
 const ROLE_ICONS: Record<string, LucideIcon> = {
@@ -435,24 +435,25 @@ export function useAdminRail(): AdminRail {
 
     case 'members': {
       if (!stats) return empty
-      const waiting = stats.verificationsByRole.reduce((sum, r) => sum + r.count, 0)
+      // No verification queue: sign-up is OTP-gated, so nothing waits on an admin here.
+      // The queue slot shows who the members are instead.
       return {
         route,
         statsFirst: false,
         queue: {
-          title: 'Verification queue',
-          badge: `${waiting} waiting`,
-          badgeTone: waiting > 0 ? 'red' : 'mint',
-          rows: stats.verificationsByRole
+          title: 'Members by role',
+          badge: `${stats.users.toLocaleString()} total`,
+          badgeTone: 'mint',
+          rows: stats.usersByRole
             .filter((r) => r.count > 0)
-            .map((r, i) => ({
+            .map((r) => ({
               key: r.role,
               label: ROLE_LABELS[r.role] ?? r.role,
-              meta: String(r.count),
+              meta: r.count.toLocaleString(),
               icon: ROLE_ICONS[r.role] ?? ShieldCheck,
-              tone: (i === 0 ? 'red' : 'amber') as Tone,
+              tone: 'indigo' as Tone,
             })),
-          emptyLabel: 'Every account is verified.',
+          emptyLabel: 'No members yet.',
         },
         stats: {
           title: 'Membership',
@@ -460,7 +461,6 @@ export function useAdminRail(): AdminRail {
             { label: 'Active members', value: stats.activeUsers.toLocaleString(), delta: 'last 30 days', tone: 'mint' },
             { label: 'All members', value: stats.users.toLocaleString(), delta: 'on the platform' },
             { label: 'Invite batches', value: String(stats.pendingInviteBatches), delta: 'still open', tone: stats.pendingInviteBatches > 0 ? 'amber' : undefined },
-            { label: 'Unverified', value: String(stats.verificationRequests), delta: 'awaiting review', tone: stats.verificationRequests > 0 ? 'red' : undefined },
           ],
         },
       }
