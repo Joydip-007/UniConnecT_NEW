@@ -108,7 +108,7 @@ describe('shell reachability', () => {
   /**
    * What admin is exempt from, and why. An admin's shell is the admin panel: its six
    * fixed rows and three tools are all administrative surfaces, and each of these has an
-   * admin-side equivalent already in that rail — `?tab=groups` for groups, `?tab=content`
+   * admin-side equivalent already in that rail — `?tab=content`
    * for news, events and jobs, `?tab=learning` for Learn, `?tab=shuttle` for the fleet.
    * Advertising the member page beside its admin counterpart put the same feature in the
    * shell twice, which is the redundancy the rest of this file exists to prevent.
