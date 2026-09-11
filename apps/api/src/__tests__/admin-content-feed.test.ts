@@ -29,6 +29,8 @@ describe('admin content moderation (feed posts)', () => {
   })
 
   afterAll(async () => {
+    const ids = db('posts').where({ university_id: TEST_UNIVERSITY_ID }).whereLike('content', `${PREFIX}%`).select('id')
+    await db('content_attachments').where({ entity_type: 'post' }).whereIn('entity_id', ids).delete()
     await db('posts').where({ university_id: TEST_UNIVERSITY_ID }).whereLike('content', `${PREFIX}%`).delete()
   })
 
@@ -46,6 +48,29 @@ describe('admin content moderation (feed posts)', () => {
     const item = items.find((i) => i.id === jobPromoId)!
     expect(item.author.role).toBe('admin')
     expect(item.reactionCounts).toBeDefined()
+  })
+
+  it('GET /admin/content/feed hydrates media and attachments like the member feed', async () => {
+    const withMedia = await createPost(student, {
+      type: 'post',
+      content: `${PREFIX} media`,
+      media_urls: ['https://cdn.example.com/photo.jpg'],
+      attachments: [
+        { fileUrl: 'https://cdn.example.com/notes.pdf', fileName: 'notes.pdf', mimeType: 'application/pdf', sizeBytes: 1024 },
+      ],
+    })
+    const res = await api
+      .get('/api/v1/admin/content/feed')
+      .set(UNI)
+      .set('Authorization', `Bearer ${admin.accessToken}`)
+      .query({ type: 'post', limit: 50 })
+    expect(res.status).toBe(200)
+    const items = res.body.data.items as { id: string; mediaUrls: string[]; attachments: { fileName: string }[] }[]
+    const item = items.find((i) => i.id === withMedia.id)!
+    expect(item).toBeDefined()
+    expect(item.mediaUrls).toEqual(['https://cdn.example.com/photo.jpg'])
+    expect(item.attachments).toHaveLength(1)
+    expect(item.attachments[0].fileName).toBe('notes.pdf')
   })
 
   it('rejects an unknown type with 422', async () => {
