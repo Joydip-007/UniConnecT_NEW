@@ -1,11 +1,13 @@
-import { useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import { publicUserProfileSchema } from '@uniconnect/shared'
 import type { PublicUserProfile, ProfileExperience, ProfileEducation } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
+import { ROLE_SHELL } from '@/config/roleShell'
+import { PATHS } from '@/router/paths'
 import { EditProfileModal, ProfileHeader } from '@/features/profile'
 import { ProfileAbout } from '@/features/profile/components/ProfileAbout'
 import { PostsPanel } from '@/features/profile/components/PostsPanel'
@@ -105,6 +107,16 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const authUser = useAuthStore((s) => s.user)
+  const navigate = useNavigate()
+  const location = useLocation()
+  // A profile is reached from wherever the author's name was clicked (a post, the
+  // admin content queue, a message), none of which is a rail row — so the page needs
+  // its own way back. `location.key === 'default'` means this is the first entry in
+  // the history stack (opened by URL), where -1 would leave the app.
+  const goBack = () => {
+    if (location.key !== 'default') navigate(-1)
+    else navigate(authUser ? ROLE_SHELL[authUser.role].home : PATHS.FEED)
+  }
   const qc = useQueryClient()
 
   // Tab navigation
@@ -156,6 +168,29 @@ export default function ProfilePage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <button
+        type="button"
+        onClick={goBack}
+        style={{
+          alignSelf: 'flex-start',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '4px 0',
+          fontSize: 13,
+          fontWeight: 400,
+          color: 'var(--text-secondary)',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+      >
+        <ArrowLeft size={14} strokeWidth={1.5} />
+        Back
+      </button>
+
       <ProfileHeader user={user} isOwnProfile={isOwnProfile} onEdit={() => setEditOpen(true)} />
 
       {/* Resume export — own profile only, tucked under the header */}

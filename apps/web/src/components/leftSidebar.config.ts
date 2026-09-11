@@ -16,7 +16,6 @@ import {
   MessageSquare,
   GraduationCap,
   Compass,
-  UsersRound,
   LayoutGrid,
   Bell,
   Bookmark,
@@ -400,17 +399,20 @@ export const RAILS: Record<UserRole, RoleRail> = {
     tools: [],
   },
   admin: {
-    // Six fixed rows, mirroring the admin prototype exactly. There is deliberately no
+    // Six fixed rows: five admin tabs plus Mentorship. There is deliberately no
     // Feed row: an admin's home is /admin and every row here is an admin surface. The
     // member feed stays reachable from every other role's rail.
     fixed: [
       // Tab values match AdminPage's own `Tab` union (adminTabs.test.ts parses it).
       { key: 'insights', label: 'Insights', icon: BarChart2, to: `${PATHS.ADMIN}?tab=insights` },
       { key: 'moderation', label: 'Moderation', icon: ShieldCheck, to: `${PATHS.ADMIN}?tab=moderation` },
-      { key: 'admin-groups', label: 'Groups', icon: UsersRound, to: `${PATHS.ADMIN}?tab=groups` },
       { key: 'members', label: 'Members & invites', icon: Users, to: `${PATHS.ADMIN}?tab=members` },
       { key: 'announcements', label: 'Announcements', icon: Newspaper, to: `${PATHS.ADMIN}?tab=announcements` },
       { key: 'content', label: 'Content', icon: LayoutGrid, to: `${PATHS.ADMIN}?tab=content` },
+      // Mentorship is a member surface with no admin tab, so it earns a fixed row rather
+      // than a tool tile. The Groups row it replaces was a second name for a tab an
+      // admin reaches from Members & invites and Content already.
+      { key: 'mentorship', label: 'Mentorship', icon: Handshake, to: PATHS.MENTORSHIP },
     ],
     contextual: [escalatedReportRule, inviteExpiringRule, draftsRule('Unsent broadcast draft')],
     secondary: MEMBER_SECONDARY.filter((row) => ADMIN_SECONDARY_KEYS.has(row.key)),
@@ -422,9 +424,6 @@ export const RAILS: Record<UserRole, RoleRail> = {
       // The rider map, not the ops screen, is what /shuttle renders — the routes and
       // schedules an admin manages live on the admin tab.
       { key: 'shuttle-ops', label: 'Shuttle ops', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: `${PATHS.ADMIN}?tab=shuttle` },
-      // Mentorship is a member surface no admin row offers, so it qualifies as a tool
-      // tile rather than a second name for a row.
-      { key: 'mentorship', label: 'Mentorship', icon: Handshake, iconColor: 'var(--uc-orange-l)', iconBg: 'var(--uc-orange-bg)', to: PATHS.MENTORSHIP },
     ],
   },
 }
