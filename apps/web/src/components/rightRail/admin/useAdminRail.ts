@@ -344,7 +344,6 @@ export function useAdminRail(): AdminRail {
 
   const modRows = (s: AdminStats): QueueRow[] => [
     { key: 'escalated', label: 'Escalated reports', meta: String(s.escalatedReports), icon: Flag, tone: 'red', to: adminTab('moderation') },
-    { key: 'verifications', label: 'Verification requests', meta: String(s.verificationRequests), icon: ShieldCheck, tone: 'red', to: adminTab('members') },
     { key: 'deletions', label: 'Deletion requests', meta: String(s.deletionRequests), icon: Trash2, tone: 'amber', to: adminTab('moderation') },
   ]
 

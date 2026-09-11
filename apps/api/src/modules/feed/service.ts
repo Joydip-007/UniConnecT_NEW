@@ -930,8 +930,16 @@ export class FeedService {
     return { items, total, page: query.page, limit: query.limit }
   }
 
+  /**
+   * Stat strip + Insights "Content mix". Posts are the feed queue (admin-removed rows
+   * excluded); News, Events and Jobs count their own tables, since that is what the
+   * matching Content tab lists — a `news`/`event_promo`/`job_promo` feed post is a
+   * member's share of one of those, not the item itself.
+   */
   async getAdminContentSummary(universityId: string): Promise<AdminContentSummary> {
-    const [total, pinned, removed, reportsOpen, byTypeRows] = await Promise.all([
+    const countTable = (table: string, extra: Record<string, unknown> = {}) =>
+      db(table).where({ university_id: universityId, ...extra }).count<CountRow[]>({ count: '*' }).first()
+    const [posts, pinnedPosts, removed, reportsOpen, news, pinnedNews, events, jobs] = await Promise.all([
       db('posts').where({ university_id: universityId }).whereNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
       db('posts').where({ university_id: universityId, is_pinned: true }).whereNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
       db('posts').where({ university_id: universityId }).whereNotNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
@@ -940,25 +948,24 @@ export class FeedService {
         .where('status', 'pending')
         .count<CountRow[]>({ count: '*' })
         .first(),
-      // Same filter as the type tabs of the content queue, so the Insights "Content mix"
-      // rows count exactly what clicking through to the queue will list.
-      db('posts')
-        .where({ university_id: universityId })
-        .whereNull('removed_at')
-        .groupBy('type')
-        .select('type')
-        .count({ count: '*' }) as Promise<{ type: string; count: string | number }[]>,
+      countTable('news'),
+      countTable('news', { is_pinned: true }),
+      countTable('events'),
+      countTable('jobs'),
     ])
-    const byType: Record<AdminContentType, number> = { post: 0, news: 0, event_promo: 0, job_promo: 0 }
-    for (const row of byTypeRows) {
-      if (row.type in byType) byType[row.type as AdminContentType] = Number(row.count)
+    const n = (row: CountRow | undefined) => Number(row?.count ?? 0)
+    const byType: Record<AdminContentType, number> = {
+      post: n(posts),
+      news: n(news),
+      event_promo: n(events),
+      job_promo: n(jobs),
     }
     return {
       byType,
-      total: Number(total?.count ?? 0),
-      pinned: Number(pinned?.count ?? 0),
-      removed: Number(removed?.count ?? 0),
-      reportsOpen: Number(reportsOpen?.count ?? 0),
+      total: byType.post + byType.news + byType.event_promo + byType.job_promo,
+      pinned: n(pinnedPosts) + n(pinnedNews),
+      removed: n(removed),
+      reportsOpen: n(reportsOpen),
     }
   }
 

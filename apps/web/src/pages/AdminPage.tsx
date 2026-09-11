@@ -3,7 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Flag, Trash2, X,
-  ShieldCheck, ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, ChevronDown, ChevronUp, ChevronRight,
+  ShieldOff, ShieldCheck as ShieldCheckIcon, AlertTriangle, ChevronDown, ChevronUp, ChevronRight,
   UserPlus, FileText, Newspaper, Calendar, Briefcase, Mail
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -437,9 +437,9 @@ const CONTENT_MIX: { key: AdminContentType; label: string; icon: LucideIcon; col
 ]
 
 /**
- * Counts come from the content queue's own summary, not `/admin/stats`: the stats
- * endpoint counts the `events`/`jobs`/`news` tables, while every row here jumps to a
- * feed-post type tab, so the number has to be what that tab will list.
+ * Counts come from the content queue's own summary so each row shows exactly what
+ * the Content tab it jumps to will list: feed posts for Posts, and the `news`,
+ * `events` and `jobs` tables for the other three.
  */
 function ContentMixCard({ onNavigate }: { onNavigate: (tab: Tab, contentType?: AdminContentType) => void }) {
   const { data: summary } = useContentSummary()
@@ -476,7 +476,6 @@ function ContentMixCard({ onNavigate }: { onNavigate: (tab: Tab, contentType?: A
 function NeedsAttentionCard({ stats, onNavigate }: { stats: Stats; onNavigate: (tab: Tab) => void }) {
   const rows: { label: string; count: number; icon: LucideIcon; color: string; bg: string; tab: Tab }[] = [
     { label: 'Escalated reports', count: stats.escalatedReports, icon: Flag, color: 'var(--uc-red)', bg: 'var(--uc-red-bg)', tab: 'moderation' },
-    { label: 'Verification requests', count: stats.verificationRequests, icon: ShieldCheck, color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)', tab: 'members' },
     { label: 'Invite batches expiring', count: stats.pendingInviteBatches, icon: Mail, color: 'var(--uc-amber-l)', bg: 'var(--uc-amber-bg)', tab: 'members' },
   ]
   return (
