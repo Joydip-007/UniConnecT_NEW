@@ -125,14 +125,6 @@
       "cardMode": "single",
       "viewport": "600x600"
     },
-    "PendingPathPreviewModal": {
-      "cardMode": "single",
-      "viewport": "600x600"
-    },
-    "PendingQuizPreviewModal": {
-      "cardMode": "single",
-      "viewport": "600x600"
-    },
     "PostItemModal": {
       "cardMode": "single",
       "viewport": "600x500"
@@ -285,6 +277,90 @@
     "ScrollProgressBar": {
       "cardMode": "single",
       "primaryStory": "Scrolled"
+    },
+    "DialogFrame": {
+      "cardMode": "single",
+      "viewport": "640x620"
+    },
+    "AiPathDialog": {
+      "cardMode": "single",
+      "viewport": "640x620"
+    },
+    "AiQuizDialog": {
+      "cardMode": "single",
+      "viewport": "640x620"
+    },
+    "NewQuizDialog": {
+      "cardMode": "single",
+      "viewport": "640x620"
+    },
+    "AdminQuizPreviewDialog": {
+      "cardMode": "single",
+      "viewport": "640x620"
+    },
+    "LearningPathFormModal": {
+      "cardMode": "single",
+      "viewport": "640x620"
+    },
+    "LearningPathBuilder": {
+      "cardMode": "column"
+    },
+    "LearningPathManagePage": {
+      "cardMode": "column"
+    },
+    "AdminQuizList": {
+      "cardMode": "column"
+    },
+    "PeopleDirectory": {
+      "cardMode": "column"
+    },
+    "LearningAiSettingsSection": {
+      "cardMode": "column"
+    },
+    "QuizAiSettingsSection": {
+      "cardMode": "column"
+    },
+    "MobileEventsStrip": {
+      "cardMode": "single",
+      "viewport": "390x520"
+    },
+    "AdminStatsWidget": {
+      "cardMode": "column"
+    },
+    "AdminQueueWidget": {
+      "cardMode": "column"
+    },
+    "AdminRailCard": {
+      "cardMode": "column"
+    },
+    "GroupTabRail": {
+      "cardMode": "single",
+      "primaryStory": "AdminWithPendingRequests",
+      "viewport": "960x320"
+    },
+    "StatGrid": {
+      "cardMode": "column"
+    },
+    "LearningPathLibrary": {
+      "cardMode": "column"
+    },
+    "Chip": {
+      "cardMode": "column"
+    },
+    "ChipRow": {
+      "cardMode": "column"
+    },
+    "DialogBtn": {
+      "cardMode": "column"
+    },
+    "Field": {
+      "cardMode": "column"
+    },
+    "IconTile": {
+      "cardMode": "column"
+    },
+    "StatusPill": {
+      "cardMode": "column"
     }
   },
   "extraEntries": [

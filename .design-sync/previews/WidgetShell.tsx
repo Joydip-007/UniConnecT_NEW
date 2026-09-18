@@ -1,14 +1,18 @@
-import { Widget, WidgetShell } from 'web';
+import { RailSlot, WidgetShell } from 'web';
 
 // The motion wrapper every right-rail widget enters on. It carries the rail's
 // shared `listItem` stagger variants and nothing else — visually it is a
 // pass-through, so a preview shows it doing its job around real widget chrome.
+//
+// RailSlot's chrome is positional and lives in `.right-rail-slot` CSS: the first
+// rendered slot inside `.right-rail` gets the card surface, later ones are flat
+// sections. So every story wraps in a real `.right-rail` parent.
 
 export function AroundAWidget() {
   return (
-    <div style={{ padding: 12, background: 'var(--surface-page)', width: 320 }}>
+    <div className="right-rail" style={{ padding: 12, background: 'var(--surface-page)', width: 320 }}>
       <WidgetShell>
-        <Widget>
+        <RailSlot>
           <div
             style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 8 }}
           >
@@ -17,7 +21,7 @@ export function AroundAWidget() {
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
             Two steps left before your profile is complete.
           </div>
-        </Widget>
+        </RailSlot>
       </WidgetShell>
     </div>
   );
@@ -26,20 +30,20 @@ export function AroundAWidget() {
 export function StackedRail() {
   return (
     <div
+      className="right-rail"
       style={{
         padding: 12,
         background: 'var(--surface-page)',
         width: 320,
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
       }}
     >
       {['Your progress', 'People you may know', 'Upcoming events'].map((title) => (
         <WidgetShell key={title}>
-          <Widget>
+          <RailSlot>
             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</div>
-          </Widget>
+          </RailSlot>
         </WidgetShell>
       ))}
     </div>

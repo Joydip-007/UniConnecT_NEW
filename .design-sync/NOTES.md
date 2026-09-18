@@ -16,7 +16,7 @@
 - Components use Tailwind utility classes with arbitrary `var(--token)` values (e.g. `rounded-[var(--r-pill)]`) — these only exist as real CSS after a Tailwind build, not from copying `tokens.css` alone.
 - `cssEntry` points at `apps/web/.ds-compiled/tailwind-compiled.css`, a copy of the hashed `dist/assets/index-*.css` Vite produces. **Before every design-sync build, regenerate it:**
   ```sh
-  cd apps/web && npx vite build && cp dist/assets/index-*.css .ds-compiled/tailwind-compiled.css
+  cd apps/web && npx vite build && cat dist/assets/*.css > .ds-compiled/tailwind-compiled.css   # ALL chunks — see 2026-09-19 entry
   ```
   The hash changes every build — always re-copy to the stable filename `cssEntry` points at. `apps/web/dist/` and `apps/web/.ds-compiled/` are gitignored (build artifacts).
 
@@ -158,6 +158,23 @@ The role-aware app shell work (commits `fa2dfba`…`d7c4982`) added `src/compone
 - `conventions.md` was validated against the fresh build and **two stale claims corrected**: it said Satoshi "loads via a remote `@import`" and `--font-mono` was a "system monospace fallback stack" — both false since the 2026-07-16 font work (Satoshi 400/500 woff2 and JetBrains Mono ship under `fonts/`; `grep -c "@import url("` is 0 across the bundle). Also added `--text-label` to the Text token row, since `EyebrowLabel` now encodes that rule as a component. Everything else in the header re-verified against `_ds_bundle.css` and the `components/` tree.
 - **Four `cardMode: "column"` overrides added this run**: `MyPostingsPanel` (560px panel), plus `DiscoverySection`, `AcademicOnlyNotice` and `ChatView`, which all tripped `[GRID_OVERFLOW]` on the first validate after authoring. Any preview wrapper wider than roughly 400px will trip it — either size the wrapper down or budget the override up front.
 
+## Re-sync (2026-09-19) — learning-admin CMS, admin right rail, 28 new components authored
+
+Diff on the anchor: **218 verified-by-upload, 0 changed, 28 added, 4 removed**. Every added component was authored and graded good (user chose "author all"); the four subagents dispatched for the fan-out all died on a session rate limit, so the authoring was finished inline — expect that and budget for it.
+
+- **The Tailwind CSS recipe silently under-captured.** Vite now code-splits CSS into three chunks (`index-*.css` ~37K, `useScrollReveal-*.css` ~29K, `useRouteGeometry-*.css` ~15K). The old `cp dist/assets/index-*.css` line would have shipped 37K of ~81K with no error anywhere — every lazy-route component unstyled. **The recipe is now `cat dist/assets/*.css > .ds-compiled/tailwind-compiled.css`** (the "Styling" section above is updated). Check `ls dist/assets/*.css` after every `vite build`; a new chunk means a new lazy route, not a problem, but it must be in the concat.
+- **`rightRail/primitives.tsx` was refactored: `Widget` and `Section` are gone, `RailSlot` replaces both.** The card/flat chrome moved into positional CSS (`.right-rail > *:first-child .right-rail-slot` is the card; `nth-child(n+3)` gets a hairline). Any RailSlot/WidgetShell preview MUST wrap in a real `<div className="right-rail">` with one child element per slot, or it renders as a bare padded div. `WidgetShell.tsx`'s preview imported the dead `Widget` and was the one `[RENDER] root empty` this run; `Widget.tsx`/`Section.tsx` previews were deleted.
+- **The capture page clock is frozen at `2024-05-15T12:00:00Z`** (`package-capture.mjs` line ~102). Any `formatDistanceToNow`/relative content must use dates shortly BEFORE that; 2026 dates render "in over 2 years". This is the same mechanism as the `MyPostingsPanel` deadline lesson, now with the exact value.
+- **Route-param components can be previewed** without changing the provider: mount them under `<Routes><Route path="/p/:pathId" …/><Route path="*" element={<Navigate to="/p/p1" replace/>}/></Routes>` from `react-router-dom` (a node_modules entry, so no module-identity trap) and seed the parameterised query for that id. `LearningPathManagePage.tsx` is the worked example.
+- **A closed disclosure with internal `useState(false)` CAN be opened on mount** when it is plain conditional render with no framer-motion gate — `LearningAiSettingsSection`/`QuizAiSettingsSection` click `button[aria-expanded="false"]` in a mount effect and capture open. The 0-for-3 rule above still holds for `motion.div initial={{opacity:0}}` overlays; it is the motion gate that breaks it, not the click.
+- **`GroupTabRail` needs a >900px viewport** (`cardMode: single, viewport: 960x320`). The default 900px capture viewport trips its `@media (max-width: 900px)` row mode, and there the component's inline `width: 100%` on each tab beats the stylesheet's `.group-tab-rail > button { width: auto }` — so the rail shows ONE tab at a time and scrolls. **That is a real app bug on phones, not a preview artefact**; reported to the user, app source untouched by the sync.
+- **`MobileEventsStrip` is `display:none` above 767px** — same treatment as `MobileBottomNav` (`single` + `390x520`) and the same benign `[RENDER_BLANK]` from validate's desktop viewport. Added to the known-warns table below.
+- **`LearningPathFormModal` is a native `<dialog>`**, not a portal: its `::backdrop` is the browser default (light grey on the white card page). The panel itself is on-token; graded good with that note.
+- The 10 generic-named primitives in `learningAdminUi.tsx` (`Chip`, `ChipRow`, `StatGrid`, `SmallBtn`, `StatusPill`, `IconTile`, `ProgressBar`, `Field`, `DialogFrame`, `DialogBtn`) ship as components at the user's choice. **They are collision bait** exactly like the rightRail names — any future file exporting one of them drops both from `window.UniConnecT`; resolve with `srcExcludeExports` (free).
+- `[GRID_OVERFLOW]` fired on six of those small primitives after authoring (Chip, ChipRow, DialogBtn, Field, IconTile, StatusPill) even with <=400px wrappers — resolved with `cardMode: "column"`. Budget the override up front for anything with a horizontal row of items.
+- Deleted `PendingPathPreviewModal`/`PendingQuizPreviewModal` (replaced by `LearningAiDialogs.tsx`'s `AiPathDialog`/`AiQuizDialog`/`NewQuizDialog` and `AdminQuizPreviewDialog`): removed from `overrides` and their preview files deleted; they landed in `deletePaths` with `Section`/`Widget`.
+- Chromium was already cached — on macOS the cache is `~/Library/Caches/ms-playwright`, NOT `~/.cache/ms-playwright`. Check there before asking to install.
+
 ## Seeding Zustand stores from a preview (resolves systemic issue #5)
 
 `CreatePost`, `CreateEventForm` and `EditProfileModal` are no longer blocked. All three are authored and graded `good`.
@@ -186,6 +203,7 @@ The earlier "Known render warns" sections were incomplete, so several long-stand
 |---|---|---|
 | `ErrorBoundary` | `[RENDER_ERRORS]` | The preview deliberately renders a throwing child so the fallback UI shows. The error IS the preview. |
 | `MobileBottomNav` | `[RENDER_BLANK]` | `display: none` above ~767px via a real media query. The `cardMode:"single" + 390x800` override renders it correctly; this warn is the validator's default desktop viewport. |
+| `MobileEventsStrip` | `[RENDER_BLANK]` | Same mechanism as `MobileBottomNav` (`.feed-events-strip` is `display:none` above 767px); `single` + `390x520` renders it. |
 | `RoleBadge` | `[RENDER_THIN]` | Icon-only, 14–28px glyph, no text. The heuristic false-positives on all small icon components. |
 | `PresenceLabel` | `[RENDER_THIN]` (variants identical) | Single-look component. |
 | `OnboardingChecklist` | `[RENDER_THIN]` (variants identical) | Single-look component. |
