@@ -37,6 +37,8 @@ const ROUTES = {
   'learn':       { path: '/learn',                    auth: true,  w: 1440, h: 900  },
   'groups':      { path: '/groups',                   auth: true,  w: 1440, h: 900  },
   'groups-people': { path: '/groups?section=people',  auth: true,  w: 1440, h: 900  },
+  'group-detail': { path: '/groups/dev-study-group',  auth: true,  w: 1440, h: 900  },
+  'group-share': { path: '/groups/dev-study-group?modal=share', auth: true, w: 1440, h: 900 },
   'saved':       { path: '/saved',                    auth: true,  w: 1440, h: 900  },
   // `role` seeds the dev-auth mock user with that role so role-gated shells can be captured.
   'admin-learning': { path: '/admin?tab=learning',    auth: true,  role: 'admin', w: 1440, h: 900 },
@@ -67,7 +69,7 @@ async function capture(name, route) {
   // join with & rather than always opening a second query string.
   const roleQuery = route.role ? `&dev-role=${route.role}` : '';
   const authQuery = route.auth ? `${route.path.includes('?') ? '&' : '?'}dev-auth=1${roleQuery}` : '';
-  const url = `http://localhost:5173${route.path}${authQuery}`;
+  const url = `${process.env.SCREENSHOT_BASE_URL ?? "http://localhost:5173"}${route.path}${authQuery}`;
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
   await page.addStyleTag({
     content: `

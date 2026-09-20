@@ -467,6 +467,8 @@ node scripts/screenshot.cjs all      # all pages
 | `learn` | `/learn` | yes |
 | `groups` | `/groups` | yes |
 | `groups-people` | `/groups?section=people` | yes |
+| `group-detail` | `/groups/dev-study-group` | yes |
+| `group-share` | `/groups/dev-study-group?modal=share` (share dialog open via URL) | yes |
 | `saved` | `/saved` | yes |
 | `admin-learning` | `/admin?tab=learning` (admin role via `dev-role=admin`) | yes |
 

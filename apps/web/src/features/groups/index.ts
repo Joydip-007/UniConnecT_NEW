@@ -3,6 +3,16 @@ export { TYPE_LOOK } from './groupTypeLook'
 export { GroupHeader } from './components/GroupHeader'
 export { CreateGroupModal } from './components/CreateGroupModal'
 export { InviteMemberModal } from './components/InviteMemberModal'
+export { ShareGroupModal } from './components/ShareGroupModal'
+export {
+  GROUP_MODALS,
+  GROUP_TABS,
+  DEFAULT_GROUP_TAB,
+  groupDetailPath,
+  resolveGroupModal,
+  resolveGroupTab,
+} from './groupDetailRoute'
+export type { GroupModal, GroupTab } from './groupDetailRoute'
 export { FeedTab } from './components/FeedTab'
 export { EventsTab } from './components/EventsTab'
 export { CollabTab } from './components/CollabTab'

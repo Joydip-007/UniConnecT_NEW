@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { api } from '@/lib/axios'
@@ -9,19 +9,18 @@ import {
   EventsTab, FeedTab, GroupHeader, MembersTab,
   GroupTabRail, PinnedBanner,
   ResourcesTab, StudyToolsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
-  AcademicLMSTab,
+  AcademicLMSTab, InviteMemberModal, ShareGroupModal,
   useJoinRequests,
-  type GroupTabDef,
+  resolveGroupModal, resolveGroupTab,
+  type GroupTabDef, type GroupModal, type GroupTab,
 } from '@/features/groups'
 import type { Group } from '@/features/groups'
-
-type ActiveTab = 'feed' | 'resources' | 'study-sessions' | 'members' | 'events' | 'about' | 'stats' | 'join-requests' | 'academic'
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const [activeTab, setActiveTab] = useState<ActiveTab>('feed')
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const { data: group, isLoading: groupLoading, isError } = useQuery<Group>({
     queryKey: ['groups', 'detail', id],
@@ -39,17 +38,52 @@ export default function GroupDetailPage() {
   const canEditRules = userRole === 'owner' || userRole === 'admin'
 
   // Build tab list based on role
-  const tabs: GroupTabDef[] = [
+  const tabs: (GroupTabDef & { value: GroupTab })[] = [
     { value: 'feed', label: 'Feed' },
     { value: 'resources', label: 'Resources' },
     { value: 'study-sessions', label: 'Study sessions' },
-    ...(group?.type === 'academic' ? [{ value: 'academic', label: 'Academic LMS' }] : []),
+    ...(group?.type === 'academic' ? [{ value: 'academic' as const, label: 'Academic LMS' }] : []),
     { value: 'members', label: 'Members' },
     { value: 'events', label: 'Events' },
     { value: 'about', label: 'About' },
-    ...(isModeratorOrAbove ? [{ value: 'stats', label: 'Stats' }] : []),
-    ...(isAdmin ? [{ value: 'join-requests', label: 'Join requests', badge: pendingCount }] : []),
+    ...(isModeratorOrAbove ? [{ value: 'stats' as const, label: 'Stats' }] : []),
+    ...(isAdmin ? [{ value: 'join-requests' as const, label: 'Join requests', badge: pendingCount }] : []),
   ]
+
+  // Section and overlay live in the URL (see groupDetailRoute.ts), read back
+  // defensively: a tab this role does not earn, or a modal it cannot use, resolves
+  // to the default rather than an empty panel.
+  const activeTab = resolveGroupTab(searchParams.get('tab'), tabs.map((t) => t.value))
+  const canInvite = isAdmin && !!group && !group.isSystem
+  const allowedModals: GroupModal[] = group ? (canInvite ? ['share', 'invite'] : ['share']) : []
+  const modal = resolveGroupModal(searchParams.get('modal'), allowedModals)
+
+  // Tabs replace the entry so Back still returns to the directory; opening a modal
+  // pushes so Back closes it, and closing replaces so the history is not left with
+  // a dead "?modal=" entry.
+  const setActiveTab = useCallback(
+    (next: GroupTab) => {
+      const params = new URLSearchParams(searchParams)
+      if (next === 'feed') params.delete('tab')
+      else params.set('tab', next)
+      params.delete('modal')
+      setSearchParams(params, { replace: true })
+    },
+    [searchParams, setSearchParams],
+  )
+  const openModal = useCallback(
+    (next: GroupModal) => {
+      const params = new URLSearchParams(searchParams)
+      params.set('modal', next)
+      setSearchParams(params)
+    },
+    [searchParams, setSearchParams],
+  )
+  const closeModal = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('modal')
+    setSearchParams(params, { replace: true })
+  }, [searchParams, setSearchParams])
 
   if (isError) {
     return (
@@ -87,7 +121,18 @@ export default function GroupDetailPage() {
         Groups
       </button>
 
-      {groupLoading ? <SkeletonHeader /> : group && <GroupHeader group={group} />}
+      {groupLoading ? (
+        <SkeletonHeader />
+      ) : (
+        group && (
+          <GroupHeader
+            group={group}
+            onOpenMembers={() => setActiveTab('members')}
+            onShare={() => openModal('share')}
+            onInvite={canInvite ? () => openModal('invite') : undefined}
+          />
+        )
+      )}
 
       {/* Pinned banner between header and tabs */}
       {group?.pinnedText && (
@@ -99,28 +144,35 @@ export default function GroupDetailPage() {
         />
       )}
 
-      {/* Tabs sit in their own column so every one a role earns stays visible */}
-      <div className="group-detail-body">
-        <GroupTabRail tabs={tabs} active={activeTab} onChange={(v) => setActiveTab(v as ActiveTab)} />
+      {/* Tabs sit in their own column so every one a role earns stays visible. The body
+          waits for the group: which tabs exist depends on the role it reports, so
+          rendering the feed first would flash the wrong section on a deep link. */}
+      {group && (
+        <div className="group-detail-body">
+          <GroupTabRail tabs={tabs} active={activeTab} onChange={(v) => setActiveTab(v as GroupTab)} />
 
-        <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {id && activeTab === 'feed' && <FeedTab groupId={id} />}
-          {id && activeTab === 'resources' && (
-            <ResourcesTab groupId={id} userRole={userRole} currentUserId={user?.id} />
-          )}
-          {id && activeTab === 'study-sessions' && (
-            <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} groupType={group?.type} />
-          )}
-          {id && group?.type === 'academic' && activeTab === 'academic' && (
-            <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
-          )}
-          {id && group && activeTab === 'members' && <MembersTab group={group} />}
-          {id && activeTab === 'events' && <EventsTab groupId={id} />}
-          {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}
-          {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}
-          {id && isAdmin && activeTab === 'join-requests' && <JoinRequestsTab groupId={id} />}
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {id && activeTab === 'feed' && <FeedTab groupId={id} />}
+            {id && activeTab === 'resources' && (
+              <ResourcesTab groupId={id} userRole={userRole} currentUserId={user?.id} />
+            )}
+            {id && activeTab === 'study-sessions' && (
+              <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} groupType={group?.type} />
+            )}
+            {id && group?.type === 'academic' && activeTab === 'academic' && (
+              <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
+            )}
+            {id && group && activeTab === 'members' && <MembersTab group={group} />}
+            {id && activeTab === 'events' && <EventsTab groupId={id} />}
+            {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}
+            {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}
+            {id && isAdmin && activeTab === 'join-requests' && <JoinRequestsTab groupId={id} />}
+          </div>
         </div>
-      </div>
+      )}
+
+      {group && modal === 'share' && <ShareGroupModal group={group} onClose={closeModal} />}
+      {group && modal === 'invite' && <InviteMemberModal group={group} onClose={closeModal} />}
     </div>
   )
 }

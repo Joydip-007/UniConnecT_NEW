@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Users } from 'lucide-react'
+import { Share2, UserPlus, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
@@ -8,8 +8,19 @@ import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { AllowedRoleBadge, OfficialBadge, TypeBadge } from './GroupBadges'
 import type { Group } from '../types'
 
-export function GroupHeader({ group }: { group: Group }) {
+export interface GroupHeaderProps {
+  group: Group
+  /** Opens the members section (`?tab=members`). */
+  onOpenMembers?: () => void
+  /** Opens the share dialog (`?modal=share`). */
+  onShare?: () => void
+  /** Opens the invite dialog (`?modal=invite`). Only passed when the viewer may invite. */
+  onInvite?: () => void
+}
+
+export function GroupHeader({ group, onOpenMembers, onShare, onInvite }: GroupHeaderProps) {
   const queryClient = useQueryClient()
+  const memberLabel = `${group.memberCount.toLocaleString()} ${group.memberCount === 1 ? 'member' : 'members'}`
 
   const toggleMutation = useMutation({
     mutationFn: () =>
@@ -77,19 +88,6 @@ export function GroupHeader({ group }: { group: Group }) {
               <TypeBadge type={group.type} />
               <OfficialBadge isSystem={group.isSystem} />
               <AllowedRoleBadge allowedRole={group.allowedRole} />
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                <Users size={12} strokeWidth={1.5} color="var(--text-tertiary)" />
-                {group.memberCount.toLocaleString()} {group.memberCount === 1 ? 'member' : 'members'}
-              </span>
             </div>
           </div>
 
@@ -143,6 +141,93 @@ export function GroupHeader({ group }: { group: Group }) {
             This is an official auto-managed group. Membership is updated automatically based on your role.
           </p>
         )}
+
+        {/* Members on the left, actions on the right — the design's footer row. Every
+            control here has a route: members is a tab, share and invite are modals. */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: '0.5px solid var(--border-default)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onOpenMembers}
+            disabled={!onOpenMembers}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: 0,
+              background: 'none',
+              border: 'none',
+              cursor: onOpenMembers ? 'pointer' : 'default',
+              fontSize: 12,
+              fontWeight: 400,
+              fontFamily: 'inherit',
+              color: 'var(--text-secondary)',
+              minWidth: 0,
+            }}
+          >
+            <Users size={13} strokeWidth={1.5} color="var(--text-tertiary)" />
+            {memberLabel}
+          </button>
+          <span style={{ flex: 1, minWidth: 4 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {onInvite && (
+              <button
+                type="button"
+                onClick={onInvite}
+                className="press-feedback"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  minHeight: 30,
+                  padding: '0 12px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontFamily: 'inherit',
+                  color: 'var(--uc-indigo-xl)',
+                  background: 'var(--uc-indigo-bg)',
+                  border: '0.5px solid var(--uc-indigo-bdr)',
+                  borderRadius: 'var(--r-pill)',
+                  cursor: 'pointer',
+                }}
+              >
+                <UserPlus size={13} strokeWidth={1.5} />
+                Invite
+              </button>
+            )}
+            {onShare && (
+              <button
+                type="button"
+                onClick={onShare}
+                aria-label="Share group"
+                title="Share group"
+                className="press-feedback"
+                style={{
+                  width: 30,
+                  height: 30,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  background: 'var(--surface-raised)',
+                  border: '0.5px solid var(--border-default)',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                <Share2 size={14} strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
