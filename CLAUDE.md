@@ -469,6 +469,7 @@ node scripts/screenshot.cjs all      # all pages
 | `groups-people` | `/groups?section=people` | yes |
 | `group-detail` | `/groups/dev-study-group` | yes |
 | `group-share` | `/groups/dev-study-group?modal=share` (share dialog open via URL) | yes |
+| `group-members` | `/groups/dev-study-group?modal=members` (members panel open via URL) | yes |
 | `saved` | `/saved` | yes |
 | `admin-learning` | `/admin?tab=learning` (admin role via `dev-role=admin`) | yes |
 

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, CheckCircle2, Search, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
 import { Modal } from '@/components/Modal'
-import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import type { Group } from '../types'
 
 interface UserHit {
@@ -31,11 +32,27 @@ interface ApiError {
   response?: { data?: { error?: string } }
 }
 
+const ROLE_LABEL: Record<UserHit['role'], string> = {
+  student: 'Student',
+  alumni: 'Alumni',
+  faculty: 'Faculty',
+  admin: 'Admin',
+}
+
+/**
+ * The invite panel, routed at `/groups/:id?modal=invite`.
+ *
+ * Search is by name only — that is what `GET /users?search=` matches — and every
+ * invite goes through `POST /groups/:id/invitations { userId }`, which has no role
+ * field, so the design's "Invite as" row is not offered. "Full directory" is the
+ * people section of the groups page, the only directory the app has.
+ */
 export function InviteMemberModal({ group, onClose }: { group: Group; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [debounced, setDebounced] = useState('')
   const [selected, setSelected] = useState<Map<string, UserHit>>(new Map())
+  const [sentText, setSentText] = useState<string | null>(null)
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim()), 300)
@@ -67,11 +84,13 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
     },
     onSuccess: ({ total, failed }) => {
       const sent = total - failed
-      if (sent > 0) toast.success(sent === 1 ? 'Invitation sent' : `${sent} invitations sent`)
+      if (sent > 0) {
+        setSentText(sent === 1 ? 'Invitation sent' : `${sent} invitations sent`)
+        setSelected(new Map())
+      }
       if (failed > 0) toast.error(`${failed} invitation${failed === 1 ? '' : 's'} failed`)
       queryClient.invalidateQueries({ queryKey: ['groups', 'members', group.id] })
       queryClient.invalidateQueries({ queryKey: ['groups', 'pending-invites', group.id] })
-      onClose()
     },
     onError: (error: ApiError) => {
       toast.error(error.response?.data?.error ?? 'Failed to send invitations')
@@ -81,6 +100,7 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
   const results = data?.items ?? []
 
   function toggleSelected(user: UserHit) {
+    setSentText(null)
     setSelected((prev) => {
       const next = new Map(prev)
       if (next.has(user.id)) next.delete(user.id)
@@ -89,155 +109,212 @@ export function InviteMemberModal({ group, onClose }: { group: Group; onClose: (
     })
   }
 
-  return (
-    <Modal isOpen onClose={onClose} title="Invite a member" maxWidth={440}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {selected.size > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {Array.from(selected.values()).map((user) => (
-                <span
-                  key={user.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '4px 8px 4px 4px',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: 'var(--uc-indigo-l)',
-                    background: 'var(--uc-indigo-bg)',
-                    border: '0.5px solid var(--uc-indigo-bdr)',
-                    borderRadius: 'var(--r-pill)',
-                  }}
-                >
-                  <Avatar
-                    src={user.profile.avatarUrl}
-                    initials={getInitials(user.profile.fullName)}
-                    color={seedColor(user.id)}
-                    size={18}
-                  />
-                  {user.profile.fullName}
-                  <button
-                    type="button"
-                    onClick={() => toggleSelected(user)}
-                    aria-label={`Remove ${user.profile.fullName}`}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, lineHeight: 0 }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-            }}
-            placeholder="Search by name…"
-            style={{
-              width: '100%',
-              padding: '9px 12px',
-              fontSize: 13,
-              fontWeight: 400,
-              color: 'var(--text-primary)',
-              background: 'var(--surface-raised)',
-              border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--r-md)',
-            }}
-          />
+  const count = selected.size
+  const canSend = count > 0 && !inviteMutation.isPending
+  const sendLabel = inviteMutation.isPending ? 'Sending…' : count > 1 ? `Send ${count} invites` : 'Send invite'
 
-          <div
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      variant="panel"
+      maxWidth={560}
+      icon={<UserPlus size={16} strokeWidth={1.5} />}
+      title="Invite people"
+      subtitle={`They get a notification and can accept from ${group.name}.`}
+      footer={
+        <>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>
+            {count === 0 ? 'No one selected yet' : `${count} selected`}
+          </span>
+          <Link
+            to="/groups?section=people"
+            style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          >
+            Full directory
+          </Link>
+          <button
+            type="button"
+            disabled={!canSend}
+            onClick={() => inviteMutation.mutate(Array.from(selected.values()))}
+            className={canSend ? 'press-feedback' : undefined}
             style={{
-              maxHeight: 280,
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              minHeight: 80,
+              minHeight: 34,
+              padding: '0 16px',
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: 'inherit',
+              borderRadius: 'var(--r-pill)',
+              border: 'none',
+              background: canSend ? 'var(--uc-indigo)' : 'var(--surface-raised)',
+              color: canSend ? 'var(--on-accent)' : 'var(--text-tertiary)',
+              cursor: canSend ? 'pointer' : 'default',
+              whiteSpace: 'nowrap',
             }}
           >
-            {debounced.length === 0 ? (
-              <p style={{ margin: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                Start typing to find a member.
-              </p>
-            ) : isLoading ? (
-              <p style={{ margin: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>Searching…</p>
-            ) : results.length === 0 ? (
-              <p style={{ margin: 'auto', fontSize: 12, color: 'var(--text-tertiary)' }}>No matches.</p>
-            ) : (
-              results.map((user) => {
-                const isSelected = selected.has(user.id)
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => toggleSelected(user)}
-                    aria-pressed={isSelected}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '8px 10px',
-                      border: `0.5px solid ${isSelected ? 'var(--uc-indigo-bdr)' : 'transparent'}`,
-                      borderRadius: 'var(--r-md)',
-                      background: isSelected ? 'var(--uc-indigo-bg)' : 'transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelected(user)}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ pointerEvents: 'none' }}
-                    />
-                    <Avatar
-                      src={user.profile.avatarUrl}
-                      initials={getInitials(user.profile.fullName)}
-                      color={seedColor(user.id)}
-                      size={32}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                        {user.profile.fullName}
-                      </p>
-                      <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                        {user.role}
-                        {user.profile.department ? ` · ${user.profile.department}` : ''}
-                      </p>
-                    </div>
-                  </button>
-                )
-              })
-            )}
-          </div>
-        </div>
-
-        <div
+            {sendLabel}
+          </button>
+        </>
+      }
+    >
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '0 12px',
+          minHeight: 38,
+          background: 'var(--surface-raised)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-pill)',
+        }}
+      >
+        <Search size={15} strokeWidth={1.5} color="var(--text-tertiary)" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search people by name"
+          aria-label="Search people"
           style={{
-            padding: '12px 18px',
+            flex: 1,
+            minWidth: 0,
+            background: 'none',
+            border: 'none',
+            outline: 'none',
+            fontSize: 13,
+            fontWeight: 400,
+            fontFamily: 'inherit',
+            color: 'var(--text-primary)',
+          }}
+        />
+      </label>
+
+      {sentText && (
+        <div
+          role="status"
+          style={{
             display: 'flex',
-            justifyContent: 'flex-end',
+            alignItems: 'center',
             gap: 8,
-            borderTop: '0.5px solid var(--border-default)',
+            padding: '9px 12px',
+            background: 'var(--uc-mint-bg)',
+            border: '0.5px solid var(--uc-mint-bdr)',
+            borderRadius: 'var(--r-md)',
           }}
         >
-          <GhostBtn onClick={onClose} disabled={inviteMutation.isPending}>
-            Cancel
-          </GhostBtn>
-          <PrimaryBtn
-            disabled={selected.size === 0 || inviteMutation.isPending}
-            onClick={() => inviteMutation.mutate(Array.from(selected.values()))}
-          >
-            {inviteMutation.isPending
-              ? 'Sending…'
-              : selected.size > 1
-                ? `Send ${selected.size} invites`
-                : 'Send invite'}
-          </PrimaryBtn>
+          <CheckCircle2 size={14} strokeWidth={1.5} color="var(--uc-mint)" />
+          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--uc-mint)' }}>{sentText}</span>
         </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Selections stay listed above the results so a new search never hides them. */}
+        {Array.from(selected.values())
+          .filter((u) => !results.some((r) => r.id === u.id))
+          .map((user, i) => (
+            <PersonRow key={user.id} user={user} selected onToggle={() => toggleSelected(user)} first={i === 0} />
+          ))}
+        {debounced.length === 0 && count === 0 ? (
+          <EmptyText>Type a name to find people to invite.</EmptyText>
+        ) : isLoading ? (
+          <EmptyText>Searching…</EmptyText>
+        ) : debounced.length > 0 && results.length === 0 ? (
+          <EmptyText>No one matches “{debounced}”.</EmptyText>
+        ) : (
+          results.map((user, i) => (
+            <PersonRow
+              key={user.id}
+              user={user}
+              selected={selected.has(user.id)}
+              onToggle={() => toggleSelected(user)}
+              first={i === 0 && count === 0}
+            />
+          ))
+        )}
+      </div>
     </Modal>
+  )
+}
+
+function PersonRow({
+  user,
+  selected,
+  onToggle,
+  first,
+}: {
+  user: UserHit
+  selected: boolean
+  onToggle: () => void
+  first: boolean
+}) {
+  const meta = [ROLE_LABEL[user.role], user.profile.department].filter(Boolean).join(' · ')
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      className="row-hover-bg"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 11,
+        width: '100%',
+        padding: '10px 8px',
+        textAlign: 'left',
+        background: selected ? 'var(--uc-indigo-bg)' : 'transparent',
+        border: 'none',
+        borderTop: first ? 'none' : '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-sm)',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+      }}
+    >
+      <Avatar src={user.profile.avatarUrl} initials={getInitials(user.profile.fullName)} color={seedColor(user.id)} size={36} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{user.profile.fullName}</p>
+        {meta && <p style={{ margin: '1px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>{meta}</p>}
+        {user.profile.headline && (
+          <p
+            style={{
+              margin: '1px 0 0',
+              fontSize: 12,
+              fontWeight: 400,
+              color: 'var(--text-tertiary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {user.profile.headline}
+          </p>
+        )}
+      </div>
+      <span
+        aria-hidden
+        style={{
+          width: 18,
+          height: 18,
+          flexShrink: 0,
+          borderRadius: 'var(--r-sm)',
+          border: `0.5px solid ${selected ? 'var(--uc-indigo)' : 'var(--border-hover)'}`,
+          background: selected ? 'var(--uc-indigo)' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--on-accent)',
+        }}
+      >
+        {selected && <Check size={12} strokeWidth={2} />}
+      </span>
+    </button>
+  )
+}
+
+function EmptyText({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ margin: 0, padding: '26px 12px', textAlign: 'center', fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+      {children}
+    </p>
   )
 }

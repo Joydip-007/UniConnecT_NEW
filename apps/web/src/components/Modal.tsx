@@ -11,11 +11,32 @@ interface ModalProps {
   children: React.ReactNode
   maxWidth?: number
   triggerRef?: React.RefObject<HTMLButtonElement | null>
+  /**
+   * `panel` is the design's dialog chrome for a task surface: a header row with an
+   * accent icon, title and one-line subtitle, a body that scrolls on its own, and an
+   * optional pinned footer. The default chrome pads the whole card and lets it scroll.
+   */
+  variant?: 'default' | 'panel'
+  icon?: React.ReactNode
+  subtitle?: string
+  footer?: React.ReactNode
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
-export function Modal({ isOpen, onClose, title, children, maxWidth = 440, triggerRef }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = 440,
+  triggerRef,
+  variant = 'default',
+  icon,
+  subtitle,
+  footer,
+}: ModalProps) {
+  const isPanel = variant === 'panel'
   const panelRef = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
 
@@ -102,37 +123,106 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
             style={{
               width: '100%',
               maxWidth,
-              maxHeight: 'calc(100dvh - 48px)',
-              overflowY: 'auto',
+              maxHeight: isPanel ? 'min(86vh, calc(100dvh - 48px))' : 'calc(100dvh - 48px)',
+              overflowY: isPanel ? 'hidden' : 'auto',
+              display: isPanel ? 'flex' : undefined,
+              flexDirection: isPanel ? 'column' : undefined,
               background: 'var(--surface-card)',
               border: '0.5px solid var(--border-hover)',
-              borderRadius: 'var(--r-xl)',
-              padding: 20,
+              borderRadius: isPanel ? 'var(--r-lg)' : 'var(--r-xl)',
+              padding: isPanel ? 0 : 20,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</h2>
-              <button
-                onClick={onClose}
-                aria-label="Close"
-                className="press-feedback"
+            {isPanel ? (
+              <div
                 style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: '50%',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
+                  flexShrink: 0,
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  padding: '16px 18px',
+                  borderBottom: '0.5px solid var(--border-default)',
                 }}
               >
-                <X size={16} />
-              </button>
-            </div>
-            {children}
+                {icon && (
+                  <span style={{ color: 'var(--uc-orange-l)', lineHeight: 0, marginTop: 3, flexShrink: 0 }}>{icon}</span>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</h2>
+                  {subtitle && (
+                    <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>{subtitle}</p>
+                  )}
+                </div>
+                <button
+                  onClick={onClose}
+                  aria-label="Close"
+                  className="press-feedback"
+                  style={{
+                    flexShrink: 0,
+                    width: 28,
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: 'var(--r-sm)',
+                    cursor: 'pointer',
+                    color: 'var(--text-tertiary)',
+                  }}
+                >
+                  <X size={15} strokeWidth={1.5} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</h2>
+                <button
+                  onClick={onClose}
+                  aria-label="Close"
+                  className="press-feedback"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+            {isPanel ? (
+              <div
+                className="rail-scroll"
+                style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}
+              >
+                {children}
+              </div>
+            ) : (
+              children
+            )}
+            {isPanel && footer && (
+              <div
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px 18px',
+                  borderTop: '0.5px solid var(--border-default)',
+                  background: 'var(--surface-card)',
+                }}
+              >
+                {footer}
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

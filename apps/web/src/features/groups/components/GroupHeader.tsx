@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Share2, UserPlus, Users } from 'lucide-react'
+import { Forward, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
@@ -10,7 +10,7 @@ import type { Group } from '../types'
 
 export interface GroupHeaderProps {
   group: Group
-  /** Opens the members section (`?tab=members`). */
+  /** Opens the members panel (`?modal=members`). */
   onOpenMembers?: () => void
   /** Opens the share dialog (`?modal=share`). */
   onShare?: () => void
@@ -20,6 +20,8 @@ export interface GroupHeaderProps {
 
 export function GroupHeader({ group, onOpenMembers, onShare, onInvite }: GroupHeaderProps) {
   const queryClient = useQueryClient()
+  const faces = group.previewMembers ?? []
+  const moreCount = Math.max(0, group.memberCount - faces.length)
   const memberLabel = `${group.memberCount.toLocaleString()} ${group.memberCount === 1 ? 'member' : 'members'}`
 
   const toggleMutation = useMutation({
@@ -142,8 +144,10 @@ export function GroupHeader({ group, onOpenMembers, onShare, onInvite }: GroupHe
           </p>
         )}
 
-        {/* Members on the left, actions on the right — the design's footer row. Every
-            control here has a route: members is a tab, share and invite are modals. */}
+        {/* The design's footer row: the member avatar stack on the left (the "+n" pill
+            opens the members panel), the actions on the right. Every control here has a
+            route — members, share and invite are all `?modal=` overlays. The group-chat
+            button is not built: no endpoint links a group to a conversation yet. */}
         <div
           style={{
             display: 'flex',
@@ -152,30 +156,58 @@ export function GroupHeader({ group, onOpenMembers, onShare, onInvite }: GroupHe
             marginTop: 12,
             paddingTop: 12,
             borderTop: '0.5px solid var(--border-default)',
+            flexWrap: 'nowrap',
           }}
         >
-          <button
-            type="button"
-            onClick={onOpenMembers}
-            disabled={!onOpenMembers}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: 0,
-              background: 'none',
-              border: 'none',
-              cursor: onOpenMembers ? 'pointer' : 'default',
-              fontSize: 12,
-              fontWeight: 400,
-              fontFamily: 'inherit',
-              color: 'var(--text-secondary)',
-              minWidth: 0,
-            }}
-          >
-            <Users size={13} strokeWidth={1.5} color="var(--text-tertiary)" />
-            {memberLabel}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, overflow: 'hidden' }} aria-label={memberLabel}>
+            {faces.map((f, i) => (
+              <span
+                key={f.id}
+                title={f.fullName}
+                style={{
+                  position: 'relative',
+                  zIndex: faces.length - i,
+                  flexShrink: 0,
+                  borderRadius: '50%',
+                  border: '1.5px solid var(--surface-card)',
+                  marginLeft: i === 0 ? 0 : -7,
+                  lineHeight: 0,
+                }}
+              >
+                <Avatar src={f.avatarUrl} initials={getInitials(f.fullName)} color={seedColor(f.id)} size={24} />
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={onOpenMembers}
+              disabled={!onOpenMembers}
+              aria-label={`${memberLabel} — open members`}
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                minWidth: 24,
+                height: 24,
+                flexShrink: 0,
+                padding: '0 8px',
+                boxSizing: 'border-box',
+                borderRadius: 'var(--r-pill)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 10,
+                fontWeight: 500,
+                fontFamily: 'inherit',
+                color: 'var(--text-secondary)',
+                background: 'var(--surface-raised)',
+                border: '1.5px solid var(--surface-card)',
+                marginLeft: faces.length ? -7 : 0,
+                cursor: onOpenMembers ? 'pointer' : 'default',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {faces.length && moreCount > 0 ? `+${moreCount.toLocaleString()}` : memberLabel}
+            </button>
+          </div>
           <span style={{ flex: 1, minWidth: 4 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             {onInvite && (
@@ -187,8 +219,7 @@ export function GroupHeader({ group, onOpenMembers, onShare, onInvite }: GroupHe
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 6,
-                  minHeight: 30,
-                  padding: '0 12px',
+                  padding: '5px 12px',
                   fontSize: 12,
                   fontWeight: 500,
                   fontFamily: 'inherit',
@@ -223,7 +254,7 @@ export function GroupHeader({ group, onOpenMembers, onShare, onInvite }: GroupHe
                   cursor: 'pointer',
                 }}
               >
-                <Share2 size={14} strokeWidth={1.5} />
+                <Forward size={15} strokeWidth={1.5} />
               </button>
             )}
           </div>

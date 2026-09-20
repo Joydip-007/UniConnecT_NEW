@@ -39,6 +39,7 @@ const ROUTES = {
   'groups-people': { path: '/groups?section=people',  auth: true,  w: 1440, h: 900  },
   'group-detail': { path: '/groups/dev-study-group',  auth: true,  w: 1440, h: 900  },
   'group-share': { path: '/groups/dev-study-group?modal=share', auth: true, w: 1440, h: 900 },
+  'group-members': { path: '/groups/dev-study-group?modal=members', auth: true, w: 1440, h: 900 },
   'saved':       { path: '/saved',                    auth: true,  w: 1440, h: 900  },
   // `role` seeds the dev-auth mock user with that role so role-gated shells can be captured.
   'admin-learning': { path: '/admin?tab=learning',    auth: true,  role: 'admin', w: 1440, h: 900 },

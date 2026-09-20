@@ -3,6 +3,7 @@ export { TYPE_LOOK } from './groupTypeLook'
 export { GroupHeader } from './components/GroupHeader'
 export { CreateGroupModal } from './components/CreateGroupModal'
 export { InviteMemberModal } from './components/InviteMemberModal'
+export { MembersPanel } from './components/MembersPanel'
 export { ShareGroupModal } from './components/ShareGroupModal'
 export {
   GROUP_MODALS,

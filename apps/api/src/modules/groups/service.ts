@@ -353,7 +353,15 @@ export class GroupsService {
 
     if (!row) throw notFound('Group not found', 'GROUP_NOT_FOUND')
     assertCanViewGroup(row)
-    return { ...toGroup(row), rulesMd: row.rules_md }
+
+    // The header's avatar stack and "+n" count are the same social proof the card shows.
+    const { previewByGroup, knownByGroup } = await loadGroupSocialProof([row.id], context.userId)
+    return {
+      ...toGroup(row),
+      rulesMd: row.rules_md,
+      previewMembers: previewByGroup.get(row.id) ?? [],
+      knownMemberCount: knownByGroup.get(row.id) ?? 0,
+    }
   }
 
   async updateGroup(context: AuthContext, groupId: string, input: UpdateGroupInput) {

@@ -6,6 +6,8 @@
  *   /groups/:id                      feed (the default stays out of the URL)
  *   /groups/:id?tab=members          a section
  *   /groups/:id?modal=share          an overlay, on top of whatever tab is set
+ *   /groups/:id?modal=members        the members panel (from the header's avatar stack)
+ *   /groups/:id?modal=invite         the invite panel — admins of non-system groups only
  *
  * Both params are read back defensively: a tab the viewer's role does not earn
  * (a student on `?tab=stats`) or a modal they cannot use (`?modal=invite` on a
@@ -29,7 +31,7 @@ export type GroupTab = (typeof GROUP_TABS)[number]
 export const DEFAULT_GROUP_TAB: GroupTab = 'feed'
 
 /** Overlays that have a route: each one is backed by an endpoint the app already calls. */
-export const GROUP_MODALS = ['share', 'invite'] as const
+export const GROUP_MODALS = ['share', 'members', 'invite'] as const
 export type GroupModal = (typeof GROUP_MODALS)[number]
 
 export function resolveGroupTab(raw: string | null, allowed: readonly string[]): GroupTab {

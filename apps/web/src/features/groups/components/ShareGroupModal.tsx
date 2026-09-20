@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronRight, Link2, Send, Share2 } from 'lucide-react'
+import { Check, ChevronRight, Copy, Link2, Send, Share2 } from 'lucide-react'
 import { Modal } from '@/components/Modal'
 import { useShareLink } from '@/features/share/hooks/useShareLink'
 import type { Group } from '../types'
@@ -23,8 +23,8 @@ export function ShareGroupModal({ group, onClose }: { group: Group; onClose: () 
   }
 
   return (
-    <Modal isOpen onClose={onClose} title="Share this group" maxWidth={420}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '0 -20px', padding: '2px 20px 16px', borderBottom: '0.5px solid var(--border-default)' }}>
+    <Modal isOpen onClose={onClose} variant="panel" title="Share this group" maxWidth={420}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--text-label)' }}>Group link</span>
         <div
           style={{
@@ -69,12 +69,12 @@ export function ShareGroupModal({ group, onClose }: { group: Group; onClose: () 
             transition: 'background 150ms, color 150ms, border-color 150ms',
           }}
         >
-          {copied ? <Check size={14} strokeWidth={1.5} /> : <Link2 size={14} strokeWidth={1.5} />}
+          {copied ? <Check size={14} strokeWidth={1.5} /> : <Copy size={14} strokeWidth={1.5} />}
           {copied ? 'Link copied' : 'Copy link'}
         </button>
       </div>
 
-      <div style={{ margin: '0 -20px -20px' }}>
+      <div style={{ margin: '2px -18px -16px', borderTop: '0.5px solid var(--border-default)' }}>
         {canNativeShare && (
           <TargetRow
             icon={<Share2 size={15} strokeWidth={1.5} />}
@@ -122,7 +122,7 @@ function TargetRow({
         gap: 12,
         width: '100%',
         textAlign: 'left',
-        padding: '12px 20px',
+        padding: '12px 18px',
         background: 'transparent',
         border: 'none',
         borderBottom: last ? 'none' : '0.5px solid var(--border-default)',

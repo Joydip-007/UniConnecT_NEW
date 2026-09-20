@@ -9,7 +9,7 @@ import {
   EventsTab, FeedTab, GroupHeader, MembersTab,
   GroupTabRail, PinnedBanner,
   ResourcesTab, StudyToolsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
-  AcademicLMSTab, InviteMemberModal, ShareGroupModal,
+  AcademicLMSTab, InviteMemberModal, MembersPanel, ShareGroupModal,
   useJoinRequests,
   resolveGroupModal, resolveGroupTab,
   type GroupTabDef, type GroupModal, type GroupTab,
@@ -55,7 +55,7 @@ export default function GroupDetailPage() {
   // to the default rather than an empty panel.
   const activeTab = resolveGroupTab(searchParams.get('tab'), tabs.map((t) => t.value))
   const canInvite = isAdmin && !!group && !group.isSystem
-  const allowedModals: GroupModal[] = group ? (canInvite ? ['share', 'invite'] : ['share']) : []
+  const allowedModals: GroupModal[] = group ? (canInvite ? ['share', 'members', 'invite'] : ['share', 'members']) : []
   const modal = resolveGroupModal(searchParams.get('modal'), allowedModals)
 
   // Tabs replace the entry so Back still returns to the directory; opening a modal
@@ -76,6 +76,16 @@ export default function GroupDetailPage() {
       const params = new URLSearchParams(searchParams)
       params.set('modal', next)
       setSearchParams(params)
+    },
+    [searchParams, setSearchParams],
+  )
+  // Members → Invite replaces rather than pushes, so Back still leaves the page's
+  // overlay entirely instead of stepping back through each dialog.
+  const swapModal = useCallback(
+    (next: GroupModal) => {
+      const params = new URLSearchParams(searchParams)
+      params.set('modal', next)
+      setSearchParams(params, { replace: true })
     },
     [searchParams, setSearchParams],
   )
@@ -127,7 +137,7 @@ export default function GroupDetailPage() {
         group && (
           <GroupHeader
             group={group}
-            onOpenMembers={() => setActiveTab('members')}
+            onOpenMembers={() => openModal('members')}
             onShare={() => openModal('share')}
             onInvite={canInvite ? () => openModal('invite') : undefined}
           />
@@ -172,6 +182,9 @@ export default function GroupDetailPage() {
       )}
 
       {group && modal === 'share' && <ShareGroupModal group={group} onClose={closeModal} />}
+      {group && modal === 'members' && (
+        <MembersPanel group={group} onClose={closeModal} onInvite={canInvite ? () => swapModal('invite') : undefined} />
+      )}
       {group && modal === 'invite' && <InviteMemberModal group={group} onClose={closeModal} />}
     </div>
   )

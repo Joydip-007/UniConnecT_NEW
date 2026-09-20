@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -117,15 +117,37 @@ describe('GroupDetailPage routes', () => {
 
   it('opens the invite dialog for an admin from ?modal=invite', async () => {
     renderAt('/groups/g1?modal=invite', makeGroup({ userRole: 'admin' }))
-    expect(await screen.findByRole('dialog', { name: /invite/i })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Invite people' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Invite' })).toBeInTheDocument()
   })
 
-  it('sends the member count to the members section', async () => {
-    renderAt('/groups/g1', makeGroup())
+  it('opens the members panel from the avatar stack and swaps it for invite', async () => {
+    server.use(
+      http.get('*/groups/g1/members', () =>
+        HttpResponse.json({
+          data: {
+            items: [{ id: 'u2', fullName: 'Nadia Karim', avatarUrl: null, role: 'owner', headline: 'CSE · 2022', department: null }],
+            hasMore: false,
+            page: 1,
+          },
+        }),
+      ),
+    )
+    renderAt('/groups/g1', makeGroup({ userRole: 'admin', previewMembers: [{ id: 'u2', fullName: 'Nadia Karim', avatarUrl: null }] }))
     await screen.findByText('feed-body')
     await userEvent.click(await screen.findByRole('button', { name: /12 members/ }))
-    expect(await screen.findByText('members-body')).toBeInTheDocument()
-    expect(screen.getByTestId('location')).toHaveTextContent('/groups/g1?tab=members')
+    const dialog = await screen.findByRole('dialog', { name: 'Members' })
+    expect(await screen.findByText('Nadia Karim')).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/groups/g1?modal=members')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Invite' }))
+    expect(await screen.findByRole('dialog', { name: 'Invite people' })).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/groups/g1?modal=invite')
+  })
+
+  it('offers no invite from the members panel to a plain member', async () => {
+    server.use(http.get('*/groups/g1/members', () => HttpResponse.json({ data: { items: [], hasMore: false, page: 1 } })))
+    renderAt('/groups/g1?modal=members', makeGroup())
+    const dialog = await screen.findByRole('dialog', { name: 'Members' })
+    expect(within(dialog).queryByRole('button', { name: 'Invite' })).not.toBeInTheDocument()
   })
 })

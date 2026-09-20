@@ -80,6 +80,21 @@ describe('Groups directory — social proof and mute', () => {
     expect(row!.previewMembers[0].id).toBe(adminId)
   })
 
+  // The detail header renders the same avatar stack as the card, so the detail
+  // endpoint carries the same social proof.
+  it('returns the preview members and known count on the detail endpoint too', async () => {
+    const group = await createGroup(adminId, [adminId, facultyId, alumniId, studentId])
+
+    const res = await api
+      .get(`/api/v1/groups/${group.id}`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${studentToken}`)
+    expect(res.status).toBe(200)
+    expect(res.body.data.previewMembers).toHaveLength(3)
+    expect(res.body.data.previewMembers[0].id).toBe(adminId)
+    expect(res.body.data.knownMemberCount).toBe(0)
+  })
+
   // The count is "people you know", so it must follow the viewer's accepted connections
   // — not the raw member count, and not pending requests.
   it('counts only accepted connections among the members', async () => {

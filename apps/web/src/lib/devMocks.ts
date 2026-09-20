@@ -73,6 +73,12 @@ const DEV_GROUP = {
   pinnedAt: null,
   pinnedBy: null,
   rulesMd: 'Keep decks accurate and cite course material when possible.',
+  previewMembers: [
+    { id: DEV_PROFILE.id, fullName: DEV_PROFILE.profile.fullName, avatarUrl: null },
+    { id: 'dev-member-2', fullName: 'Nadia Karim', avatarUrl: null },
+    { id: 'dev-member-3', fullName: 'Rafi Hossain', avatarUrl: null },
+  ],
+  knownMemberCount: 2,
 }
 
 const DEV_DECK = {
@@ -118,6 +124,19 @@ const DEV_NOTE = {
 function resolveMockBody(url: string): unknown | null {
   if (url === '/groups') return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
   if (url === `/groups/${DEV_GROUP.id}`) return { data: DEV_GROUP }
+  if (url === `/groups/${DEV_GROUP.id}/members`) {
+    return {
+      data: {
+        items: [
+          { id: DEV_PROFILE.id, fullName: DEV_PROFILE.profile.fullName, avatarUrl: null, role: 'owner', headline: 'CSE · 2022', department: 'CSE' },
+          { id: 'dev-member-2', fullName: 'Nadia Karim', avatarUrl: null, role: 'admin', headline: 'Teaching assistant', department: 'CSE' },
+          { id: 'dev-member-3', fullName: 'Rafi Hossain', avatarUrl: null, role: 'member', headline: null, department: 'CSE' },
+        ],
+        hasMore: false,
+        page: 1,
+      },
+    }
+  }
   if (url === `/groups/${DEV_GROUP.id}/join-requests`) {
     return { data: { items: [], total: 0, page: 1, hasMore: false } }
   }

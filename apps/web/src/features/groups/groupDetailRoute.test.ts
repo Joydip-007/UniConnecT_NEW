@@ -34,7 +34,11 @@ describe('resolveGroupModal', () => {
   })
 
   it('ignores invite when the viewer cannot invite', () => {
-    expect(resolveGroupModal('invite', ['share'])).toBeNull()
+    expect(resolveGroupModal('invite', ['share', 'members'])).toBeNull()
+  })
+
+  it('opens the members panel for anyone who can see the group', () => {
+    expect(resolveGroupModal('members', ['share', 'members'])).toBe('members')
   })
 
   it('ignores a modal that has no route', () => {
