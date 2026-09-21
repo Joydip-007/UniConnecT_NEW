@@ -44,6 +44,7 @@ import type {
 } from './schema'
 import { AISettingsSchema } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
+import { canModerate, type GroupRole } from './permissions'
 
 export interface ModLogWrite {
   universityId: string
@@ -84,7 +85,6 @@ function withAiSettingsDefaults(raw: unknown): Record<string, unknown> {
 }
 
 type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
-type GroupRole = 'owner' | 'admin' | 'moderator' | 'member'
 
 interface AuthContext {
   userId: string
@@ -2788,10 +2788,6 @@ function assertCanViewGroup(group: Pick<GroupRow, 'is_private' | 'user_role'>) {
 function assertCanAdminGroup(role: GroupRole | null) {
   if (role === 'owner' || role === 'admin') return
   throw forbidden('You do not have permission to manage this group', 'GROUP_ADMIN_REQUIRED')
-}
-
-function canModerate(role: GroupRole | null) {
-  return role === 'owner' || role === 'admin' || role === 'moderator'
 }
 
 function assertCanEditOwnedResource(access: GroupAccessRow, ownerId: string | null, userId: string) {

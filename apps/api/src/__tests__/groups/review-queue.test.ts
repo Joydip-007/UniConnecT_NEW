@@ -145,6 +145,7 @@ describe('group post & event approval queues', () => {
         starts_at: new Date(Date.now() + 86400000).toISOString(),
         type: 'general',
         group_id: groupId,
+        is_published: true,
       })
     expect(created.status).toBe(201)
     expect(created.body.data.groupReviewStatus).toBe('pending')
@@ -178,6 +179,32 @@ describe('group post & event approval queues', () => {
       .set('x-university-domain', DOMAIN)
       .set('Authorization', `Bearer ${faculty.accessToken}`)
     expect(afterApprove.body.data.items.some((e: { id?: string }) => e.id === eventId)).toBe(true)
+  })
+
+  it('an explicit draft in an approval-required group is not held for review', async () => {
+    const created = await request(app)
+      .post('/api/v1/posts')
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${student.accessToken}`)
+      .send({ type: 'post', content: 'still drafting this one', group_id: groupId, is_published: false })
+
+    expect(created.status).toBe(201)
+    expect(created.body.data.groupReviewStatus).toBeNull()
+    expect(created.body.data.isPublished).toBe(false)
+    const postId = created.body.data.id
+
+    const queue = await request(app)
+      .get(`/api/v1/groups/${groupId}/review/posts`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${faculty.accessToken}`)
+    expect(queue.body.data.items.some((p: { id: string }) => p.id === postId)).toBe(false)
+
+    const drafts = await request(app)
+      .get('/api/v1/me/drafts')
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${student.accessToken}`)
+    expect(drafts.status).toBe(200)
+    expect(drafts.body.data.items.some((d: { id: string }) => d.id === postId)).toBe(true)
   })
 
   it('non-moderators cannot see or act on the review queue', async () => {

@@ -12,6 +12,7 @@ import { moderationService } from '../moderation/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
 import { addUserAttachments, getAttachmentsFor, getAttachmentsForMany, removeAttachments } from '../content-sync/attachments'
 import { notifyGroupReviewers } from '../groups/review-notify'
+import { canModerate, loadGroupApprovalContext } from '../groups/permissions'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo' | 'job_promo'
 type ReactionType = 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry'
@@ -279,18 +280,14 @@ export class FeedService {
     const isPublished = isScheduled ? false : (input.is_published ?? true)
 
     // A group with `require_post_approval` on holds a non-moderator member's post for
-    // review — unless it's already a draft/scheduled, which has its own gate.
+    // review — but only when the post is actually being published now. A draft
+    // (is_published: false, not scheduled) has nothing to hold: it's not visible to
+    // anyone yet, and holding it would wrongly surface it in the moderator queue while
+    // hiding it from the author's own Drafts list.
     let reviewPending = false
-    if (input.group_id) {
-      const g = await db('groups')
-        .leftJoin('group_members as m', function joinMember() {
-          this.on('m.group_id', '=', 'groups.id').andOn('m.user_id', '=', db.raw('?', [context.userId]))
-        })
-        .select<{ require_post_approval: boolean; role: string | null }[]>('groups.require_post_approval', 'm.role')
-        .where('groups.id', input.group_id)
-        .first()
-      const moderator = g?.role === 'owner' || g?.role === 'admin' || g?.role === 'moderator'
-      reviewPending = !!g?.require_post_approval && !moderator && !isScheduled
+    if (input.group_id && isPublished) {
+      const g = await loadGroupApprovalContext(input.group_id, context.userId)
+      reviewPending = !!g?.require_post_approval && !canModerate(g?.role) && !isScheduled
     }
 
     const postId = await db.transaction(async (trx) => {

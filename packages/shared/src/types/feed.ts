@@ -41,6 +41,8 @@ export interface FeedPost {
   archivedAt: string | null
   /** Set when an admin removed the post from Content moderation; restorable from the admin tray. */
   removedAt?: string | null
+  /** Non-null while a group's `require_post_approval` hold is in play; null/absent once resolved or never applicable. */
+  groupReviewStatus?: 'pending' | 'approved' | 'declined' | null
   expiresAt: string | null
   viewCount: number
   reactionCounts: { like: number; love: number; care: number; haha: number; wow: number; sad: number; angry: number }

@@ -6,6 +6,7 @@ import { getIo } from '../../socket'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
 import { notifyGroupReviewers } from '../groups/review-notify'
+import { canModerate, loadGroupApprovalContext } from '../groups/permissions'
 import { logger } from '../../utils/logger'
 import type { AttendeesQuery, CreateEventInput, EventListQuery, PaginationQuery, UpdateEventInput } from './schema'
 
@@ -95,18 +96,13 @@ export class EventsService {
 
   async createEvent(context: AuthContext, input: CreateEventInput) {
     // A group with `require_event_approval` on holds a non-moderator member's event for
-    // review, same rule as posts.
+    // review, same rule as posts — but only when the organizer actually asked to
+    // publish it now. A draft event (is_published: false) has nothing to hold.
+    const willPublish = input.is_published ?? false
     let reviewPending = false
-    if (input.group_id) {
-      const g = await db('groups')
-        .leftJoin('group_members as m', function joinMember() {
-          this.on('m.group_id', '=', 'groups.id').andOn('m.user_id', '=', db.raw('?', [context.userId]))
-        })
-        .select<{ require_event_approval: boolean; role: string | null }[]>('groups.require_event_approval', 'm.role')
-        .where('groups.id', input.group_id)
-        .first()
-      const moderator = g?.role === 'owner' || g?.role === 'admin' || g?.role === 'moderator'
-      reviewPending = !!g?.require_event_approval && !moderator
+    if (input.group_id && willPublish) {
+      const g = await loadGroupApprovalContext(input.group_id, context.userId)
+      reviewPending = !!g?.require_event_approval && !canModerate(g?.role)
     }
 
     const eventId = await db.transaction(async (trx) => {
@@ -125,7 +121,7 @@ export class EventsService {
           ends_at: input.ends_at ? new Date(input.ends_at) : null,
           capacity: input.capacity ?? null,
           type: input.type,
-          is_published: reviewPending ? false : (input.is_published ?? false),
+          is_published: reviewPending ? false : willPublish,
           group_review_status: reviewPending ? 'pending' : null,
         })
         .returning<{ id: string }[]>('id')
