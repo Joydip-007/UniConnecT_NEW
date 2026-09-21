@@ -4,10 +4,13 @@ import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import { groupsService } from './service'
 import type {
+  BookSlotInput,
+  CreateAnnouncementInput,
   CreateFlashcardDeckInput,
   CreateFlashcardInput,
   CreateGroupInput,
   CreateSharedNoteInput,
+  CreateSlotInput,
   GroupListQuery,
   FlashcardReviewInput,
   InviteToGroupInput,
@@ -20,7 +23,9 @@ import type {
   PutSessionCreatorNotesInput,
   PutSessionPrivateNotesInput,
   ReviewActionInput,
+  ReviewBookingInput,
   SuggestionsQuery,
+  UpdateAnnouncementInput,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupAISettingsInput,
@@ -582,6 +587,110 @@ export const discardPendingAiContent = asyncHandler(async (req: Request, res: Re
 
 function getContentIdParam(req: Request) {
   const value = req.params.contentId
+  return Array.isArray(value) ? value[0] : value
+}
+
+// ── Announcements ──────────────────────────────────────────────
+
+export const listAnnouncements = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.listAnnouncements(context, getGroupIdParam(req)))
+})
+
+export const createAnnouncement = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createAnnouncement(context, getGroupIdParam(req), req.body as CreateAnnouncementInput),
+    201,
+  )
+})
+
+export const updateAnnouncement = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateAnnouncement(
+      context,
+      getGroupIdParam(req),
+      getAnnouncementIdParam(req),
+      req.body as UpdateAnnouncementInput,
+    ),
+  )
+})
+
+export const deleteAnnouncement = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.deleteAnnouncement(context, getGroupIdParam(req), getAnnouncementIdParam(req)),
+  )
+})
+
+function getAnnouncementIdParam(req: Request) {
+  const value = req.params.announcementId
+  return Array.isArray(value) ? value[0] : value
+}
+
+// ── Consultation slots + bookings ───────────────────────────────
+
+export const listConsultationSlots = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.listConsultationSlots(context, getGroupIdParam(req)))
+})
+
+export const createConsultationSlot = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createConsultationSlot(context, getGroupIdParam(req), req.body as CreateSlotInput),
+    201,
+  )
+})
+
+export const deleteConsultationSlot = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.deleteConsultationSlot(context, getGroupIdParam(req), getSlotIdParam(req)),
+  )
+})
+
+export const bookConsultationSlot = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.bookConsultationSlot(
+      context,
+      getGroupIdParam(req),
+      getSlotIdParam(req),
+      req.body as BookSlotInput,
+    ),
+    201,
+  )
+})
+
+export const reviewConsultationBooking = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.reviewConsultationBooking(
+      context,
+      getGroupIdParam(req),
+      getSlotIdParam(req),
+      getBookingIdParam(req),
+      req.body as ReviewBookingInput,
+    ),
+  )
+})
+
+function getSlotIdParam(req: Request) {
+  const value = req.params.slotId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getBookingIdParam(req: Request) {
+  const value = req.params.bookingId
   return Array.isArray(value) ? value[0] : value
 }
 

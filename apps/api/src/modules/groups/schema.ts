@@ -298,3 +298,39 @@ export const SuggestionsQuerySchema = z.object({
 })
 
 export type SuggestionsQuery = z.infer<typeof SuggestionsQuerySchema>
+
+// ── Announcements (academic groups) ──────────────────────────
+export const AnnouncementKindSchema = z.enum(['urgent', 'schedule', 'notice'])
+
+export const CreateAnnouncementSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  body: z.string().trim().min(1).max(5000),
+  kind: AnnouncementKindSchema.default('notice'),
+  notify_members: z.boolean().default(false),
+  attachments: z.array(AttachmentSchema).max(5).default([]),
+})
+
+export const UpdateAnnouncementSchema = CreateAnnouncementSchema.omit({ notify_members: true, attachments: true })
+  .partial()
+  .extend({ is_pinned: z.boolean().optional() })
+  .refine((v) => Object.keys(v).length > 0, { message: 'At least one field is required' })
+
+export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>
+export type UpdateAnnouncementInput = z.infer<typeof UpdateAnnouncementSchema>
+
+// ── Consultation slots + bookings ────────────────────────────
+export const CreateSlotSchema = z.object({
+  weekday: z.number().int().min(0).max(6),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/),
+  location: z.string().trim().min(1).max(255),
+  walk_in: z.boolean().default(false),
+})
+
+export const BookSlotSchema = z.object({ topic: z.string().trim().min(1).max(500) })
+
+export const ReviewBookingSchema = z.object({ status: z.enum(['confirmed', 'declined']) })
+
+export type CreateSlotInput = z.infer<typeof CreateSlotSchema>
+export type BookSlotInput = z.infer<typeof BookSlotSchema>
+export type ReviewBookingInput = z.infer<typeof ReviewBookingSchema>

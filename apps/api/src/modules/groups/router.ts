@@ -7,14 +7,19 @@ import {
   approvePendingAiContent,
   askTeacher,
   askTeacherQueue,
+  bookConsultationSlot,
   cancelInvite,
   cancelJoinRequest,
+  createAnnouncement,
+  createConsultationSlot,
   createFlashcard,
   createFlashcardDeck,
   createGroup,
   createResource,
   createSharedNote,
   createStudySession,
+  deleteAnnouncement,
+  deleteConsultationSlot,
   deleteFlashcard,
   deleteFlashcardDeck,
   deleteGroup,
@@ -36,6 +41,8 @@ import {
   joinOrRequestGroup,
   leaveGroup,
   updateMyMute,
+  listAnnouncements,
+  listConsultationSlots,
   listFlashcardDecks,
   listFlashcards,
   listGroupCollaborations,
@@ -58,6 +65,7 @@ import {
   putMySessionPrivateNotes,
   putSessionCreatorNotes,
   removeMember,
+  reviewConsultationBooking,
   reviewEvent,
   reviewFlashcard,
   reviewJoinRequest,
@@ -67,6 +75,7 @@ import {
   setPinned,
   setRules,
   trackResource,
+  updateAnnouncement,
   updateFlashcard,
   updateAiSettings,
   updateFlashcardDeck,
@@ -76,11 +85,14 @@ import {
   updateSharedNote,
 } from './controller'
 import {
+  BookSlotSchema,
+  CreateAnnouncementSchema,
   CreateFlashcardDeckSchema,
   CreateFlashcardSchema,
   CreateGroupSchema,
   CreateResourceSchema,
   CreateSharedNoteSchema,
+  CreateSlotSchema,
   CreateStudySessionSchema,
   FlashcardReviewSchema,
   GroupListQuerySchema,
@@ -96,10 +108,12 @@ import {
   PutSessionPrivateNotesSchema,
   ResourceListQuerySchema,
   ReviewActionSchema,
+  ReviewBookingSchema,
   RsvpStudySessionSchema,
   SetPinnedSchema,
   SetRulesSchema,
   SuggestionsQuerySchema,
+  UpdateAnnouncementSchema,
   UpdateFlashcardDeckSchema,
   UpdateFlashcardSchema,
   UpdateGroupAISettingsSchema,
@@ -256,3 +270,28 @@ groupsRouter.patch('/:groupId/ai-settings', validate(UpdateGroupAISettingsSchema
 groupsRouter.get('/:groupId/ai-settings/pending', listPendingAiContent)
 groupsRouter.post('/:groupId/ai-settings/pending/:contentId/approve', approvePendingAiContent)
 groupsRouter.delete('/:groupId/ai-settings/pending/:contentId', discardPendingAiContent)
+
+// Announcements (academic groups)
+groupsRouter.get('/:groupId/announcements', listAnnouncements)
+groupsRouter.post('/:groupId/announcements', validate(CreateAnnouncementSchema), createAnnouncement)
+groupsRouter.patch(
+  '/:groupId/announcements/:announcementId',
+  validate(UpdateAnnouncementSchema),
+  updateAnnouncement,
+)
+groupsRouter.delete('/:groupId/announcements/:announcementId', deleteAnnouncement)
+
+// Consultation slots + bookings
+groupsRouter.get('/:groupId/consultation-slots', listConsultationSlots)
+groupsRouter.post('/:groupId/consultation-slots', validate(CreateSlotSchema), createConsultationSlot)
+groupsRouter.delete('/:groupId/consultation-slots/:slotId', deleteConsultationSlot)
+groupsRouter.post(
+  '/:groupId/consultation-slots/:slotId/book',
+  validate(BookSlotSchema),
+  bookConsultationSlot,
+)
+groupsRouter.patch(
+  '/:groupId/consultation-slots/:slotId/bookings/:bookingId',
+  validate(ReviewBookingSchema),
+  reviewConsultationBooking,
+)

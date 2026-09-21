@@ -21,11 +21,14 @@ import {
 import type {
   AllowedRole,
   Attachment,
+  BookSlotInput,
+  CreateAnnouncementInput,
   CreateFlashcardDeckInput,
   CreateFlashcardInput,
   CreateGroupInput,
   CreateResourceInput,
   CreateSharedNoteInput,
+  CreateSlotInput,
   CreateStudySessionInput,
   FlashcardReviewInput,
   GroupListQuery,
@@ -36,8 +39,10 @@ import type {
   PutSessionCreatorNotesInput,
   PutSessionPrivateNotesInput,
   ResourceListQuery,
+  ReviewBookingInput,
   RsvpStudySessionInput,
   SuggestionsQuery,
+  UpdateAnnouncementInput,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupInput,
@@ -2799,6 +2804,361 @@ export class GroupsService {
 
     throw notFound('Pending content not found')
   }
+
+  // ── Announcements (academic groups) ──────────────────────────
+
+  async listAnnouncements(context: AuthContext, groupId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const rows = await db('group_announcements')
+      .leftJoin('profiles as p', 'p.user_id', 'group_announcements.author_id')
+      .select<AnnouncementRow[]>(
+        'group_announcements.id',
+        'group_announcements.title',
+        'group_announcements.body',
+        'group_announcements.kind',
+        'group_announcements.is_pinned',
+        'group_announcements.attachments',
+        'group_announcements.author_id',
+        'group_announcements.created_at',
+        'p.full_name as author_full_name',
+      )
+      .where({
+        'group_announcements.group_id': groupId,
+        'group_announcements.university_id': context.universityId,
+      })
+      .orderBy('group_announcements.is_pinned', 'desc')
+      .orderBy('group_announcements.created_at', 'desc')
+
+    return { items: rows.map(toAnnouncement) }
+  }
+
+  async createAnnouncement(context: AuthContext, groupId: string, input: CreateAnnouncementInput) {
+    await assertGroupAdminAccess(context, groupId)
+    await assertAcademicGroup(groupId, 'Announcements are for class groups')
+    assertAttachmentsAreOwnUploads(input.attachments)
+
+    const [row] = await db('group_announcements')
+      .insert({
+        university_id: context.universityId,
+        group_id: groupId,
+        author_id: context.userId,
+        title: input.title,
+        body: input.body,
+        kind: input.kind,
+        notify_members: input.notify_members,
+        attachments: JSON.stringify(input.attachments),
+      })
+      .returning<AnnouncementRow[]>([
+        'id',
+        'title',
+        'body',
+        'kind',
+        'is_pinned',
+        'attachments',
+        'author_id',
+        'created_at',
+      ])
+
+    if (input.notify_members) {
+      const memberIds = await db('group_members')
+        .where({ group_id: groupId })
+        .whereNot({ user_id: context.userId })
+        .pluck<string[]>('user_id')
+
+      for (const userId of memberIds) {
+        await notificationQueue.add({
+          universityId: context.universityId,
+          userId,
+          type: 'group_announcement',
+          actorId: context.userId,
+          referenceId: groupId,
+          referenceType: 'group',
+          content: `New announcement: ${input.title}`,
+          payload: {},
+        })
+      }
+    }
+
+    const authorFullName = await getMemberFullName(context.userId)
+    return toAnnouncement({ ...row, author_full_name: authorFullName })
+  }
+
+  async updateAnnouncement(
+    context: AuthContext,
+    groupId: string,
+    announcementId: string,
+    input: UpdateAnnouncementInput,
+  ) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const patch = pickDefined({
+      title: input.title,
+      body: input.body,
+      kind: input.kind,
+      is_pinned: input.is_pinned,
+    })
+
+    const [row] = await db('group_announcements')
+      .where({ id: announcementId, group_id: groupId, university_id: context.universityId })
+      .update({ ...patch, updated_at: new Date() })
+      .returning<AnnouncementRow[]>([
+        'id',
+        'title',
+        'body',
+        'kind',
+        'is_pinned',
+        'attachments',
+        'author_id',
+        'created_at',
+      ])
+
+    if (!row) throw notFound('Announcement not found', 'ANNOUNCEMENT_NOT_FOUND')
+
+    const authorFullName = await getMemberFullName(row.author_id)
+    return toAnnouncement({ ...row, author_full_name: authorFullName })
+  }
+
+  async deleteAnnouncement(context: AuthContext, groupId: string, announcementId: string) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const deleted = await db('group_announcements')
+      .where({ id: announcementId, group_id: groupId, university_id: context.universityId })
+      .delete()
+
+    if (deleted === 0) throw notFound('Announcement not found', 'ANNOUNCEMENT_NOT_FOUND')
+    return { deleted: true }
+  }
+
+  // ── Consultation slots + bookings ─────────────────────────────
+
+  async listConsultationSlots(context: AuthContext, groupId: string) {
+    const access = await assertMemberAccess(context, groupId)
+    const isAdmin = access.user_role === 'owner' || access.user_role === 'admin'
+
+    const slots = await db('group_consultation_slots')
+      .select<ConsultationSlotRow[]>(
+        'id',
+        'weekday',
+        'start_time',
+        'end_time',
+        'location',
+        'walk_in',
+        db.raw(
+          `(current_date + ((weekday - extract(dow from current_date)::int + 7) % 7))::date::text as next_occurrence`,
+        ),
+      )
+      .where({ group_id: groupId, university_id: context.universityId })
+      .orderBy('weekday', 'asc')
+      .orderBy('start_time', 'asc')
+
+    const myBookingRows = await db('group_consultation_bookings as b')
+      .join('group_consultation_slots as s', 's.id', 'b.slot_id')
+      .where('s.group_id', groupId)
+      .andWhere('b.student_id', context.userId)
+      .andWhereRaw(
+        `b.booked_for = (current_date + ((s.weekday - extract(dow from current_date)::int + 7) % 7))::date`,
+      )
+      .select<{ id: string; slot_id: string; status: string }[]>('b.id', 'b.slot_id', 'b.status')
+
+    const myBookingBySlot = new Map(myBookingRows.map((b) => [b.slot_id, b]))
+
+    const bookingsBySlot = new Map<string, BookingWithStudent[]>()
+    if (isAdmin) {
+      const bookingRows = await db('group_consultation_bookings as b')
+        .join('group_consultation_slots as s', 's.id', 'b.slot_id')
+        .leftJoin('profiles as p', 'p.user_id', 'b.student_id')
+        .where('s.group_id', groupId)
+        .select<
+          {
+            id: string
+            slot_id: string
+            student_id: string
+            booked_for: Date | string
+            topic: string
+            status: string
+            student_full_name: string | null
+          }[]
+        >(
+          'b.id',
+          'b.slot_id',
+          'b.student_id',
+          'b.booked_for',
+          'b.topic',
+          'b.status',
+          'p.full_name as student_full_name',
+        )
+        .orderBy('b.created_at', 'desc')
+
+      for (const row of bookingRows) {
+        const booking: BookingWithStudent = {
+          id: row.id,
+          slotId: row.slot_id,
+          bookedFor: toDateString(row.booked_for),
+          topic: row.topic,
+          status: row.status as 'requested' | 'confirmed' | 'declined',
+          student: { id: row.student_id, fullName: row.student_full_name ?? 'A member' },
+        }
+        const list = bookingsBySlot.get(row.slot_id) ?? []
+        list.push(booking)
+        bookingsBySlot.set(row.slot_id, list)
+      }
+    }
+
+    return {
+      items: slots.map((row) => {
+        const myBooking = myBookingBySlot.get(row.id)
+        return {
+          id: row.id,
+          weekday: row.weekday,
+          startTime: row.start_time,
+          endTime: row.end_time,
+          location: row.location,
+          walkIn: row.walk_in,
+          nextOccurrence: row.next_occurrence,
+          myBooking: myBooking ? { id: myBooking.id, status: myBooking.status } : null,
+          ...(isAdmin ? { bookings: bookingsBySlot.get(row.id) ?? [] } : {}),
+        }
+      }),
+    }
+  }
+
+  async createConsultationSlot(context: AuthContext, groupId: string, input: CreateSlotInput) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const [row] = await db('group_consultation_slots')
+      .insert({
+        university_id: context.universityId,
+        group_id: groupId,
+        teacher_id: context.userId,
+        weekday: input.weekday,
+        start_time: input.start_time,
+        end_time: input.end_time,
+        location: input.location,
+        walk_in: input.walk_in,
+      })
+      .returning<ConsultationSlotRow[]>(['id', 'weekday', 'start_time', 'end_time', 'location', 'walk_in'])
+
+    return {
+      id: row.id,
+      weekday: row.weekday,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      location: row.location,
+      walkIn: row.walk_in,
+    }
+  }
+
+  async deleteConsultationSlot(context: AuthContext, groupId: string, slotId: string) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const deleted = await db('group_consultation_slots')
+      .where({ id: slotId, group_id: groupId, university_id: context.universityId })
+      .delete()
+
+    if (deleted === 0) throw notFound('Consultation slot not found', 'SLOT_NOT_FOUND')
+    return { deleted: true }
+  }
+
+  async bookConsultationSlot(context: AuthContext, groupId: string, slotId: string, input: BookSlotInput) {
+    await assertMemberAccess(context, groupId)
+
+    const slot = await db('group_consultation_slots')
+      .select<{ id: string }[]>('id')
+      .where({ id: slotId, group_id: groupId, university_id: context.universityId })
+      .first()
+    if (!slot) throw notFound('Consultation slot not found', 'SLOT_NOT_FOUND')
+
+    try {
+      const [row] = await db('group_consultation_bookings')
+        .insert({
+          university_id: context.universityId,
+          slot_id: slotId,
+          student_id: context.userId,
+          booked_for: db.raw(
+            `(select (current_date + ((weekday - extract(dow from current_date)::int + 7) % 7))::date from group_consultation_slots where id = ?)`,
+            [slotId],
+          ),
+          topic: input.topic,
+          status: 'requested',
+        })
+        .returning<{ id: string; slot_id: string; booked_for: Date | string; topic: string; status: string }[]>([
+          'id',
+          'slot_id',
+          'booked_for',
+          'topic',
+          'status',
+        ])
+
+      return {
+        id: row.id,
+        slotId: row.slot_id,
+        bookedFor: toDateString(row.booked_for),
+        topic: row.topic,
+        status: row.status,
+      }
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw conflict('Already booked', 'SLOT_ALREADY_BOOKED')
+      }
+      throw error
+    }
+  }
+
+  async reviewConsultationBooking(
+    context: AuthContext,
+    groupId: string,
+    slotId: string,
+    bookingId: string,
+    input: ReviewBookingInput,
+  ) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const booking = await db('group_consultation_bookings as b')
+      .join('group_consultation_slots as s', 's.id', 'b.slot_id')
+      .where({
+        'b.id': bookingId,
+        'b.slot_id': slotId,
+        's.group_id': groupId,
+        'b.university_id': context.universityId,
+      })
+      .select<{ id: string; student_id: string }[]>('b.id', 'b.student_id')
+      .first()
+    if (!booking) throw notFound('Booking not found', 'BOOKING_NOT_FOUND')
+
+    const [row] = await db('group_consultation_bookings')
+      .where({ id: bookingId })
+      .update({ status: input.status })
+      .returning<{ id: string; slot_id: string; booked_for: Date | string; topic: string; status: string }[]>([
+        'id',
+        'slot_id',
+        'booked_for',
+        'topic',
+        'status',
+      ])
+
+    await notificationQueue.add({
+      universityId: context.universityId,
+      userId: booking.student_id,
+      type: 'consultation_booking',
+      actorId: context.userId,
+      referenceId: groupId,
+      referenceType: 'group',
+      content:
+        input.status === 'confirmed'
+          ? 'Your consultation booking was confirmed'
+          : 'Your consultation booking was declined',
+      payload: {},
+    })
+
+    return {
+      id: row.id,
+      slotId: row.slot_id,
+      bookedFor: toDateString(row.booked_for),
+      topic: row.topic,
+      status: row.status,
+    }
+  }
 }
 
 export const groupsService = new GroupsService()
@@ -3195,6 +3555,65 @@ function assertCanAdminGroup(role: GroupRole | null) {
 function assertCanEditOwnedResource(access: GroupAccessRow, ownerId: string | null, userId: string) {
   if (ownerId === userId || canModerate(access.user_role)) return
   throw forbidden('Only the creator or group moderators can edit this item', 'GROUP_ROLE_FORBIDDEN')
+}
+
+/** Announcements are an academic-LMS feature — gates create on `groups.type`, mirroring
+ * how `openGroupChat`/`askTeacher` gate their own academic-only actions. */
+async function assertAcademicGroup(groupId: string, message: string) {
+  const group = await db('groups').select<{ type: GroupType }[]>('type').where({ id: groupId }).first()
+  if (!group) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+  if (group.type !== 'academic') {
+    throw badRequest(message, 'GROUP_NOT_ACADEMIC')
+  }
+}
+
+interface AnnouncementRow {
+  id: string
+  title: string
+  body: string
+  kind: 'urgent' | 'schedule' | 'notice'
+  is_pinned: boolean
+  attachments: Attachment[]
+  author_id: string
+  created_at: Date
+  author_full_name?: string | null
+}
+
+function toAnnouncement(row: AnnouncementRow) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    kind: row.kind,
+    isPinned: row.is_pinned,
+    attachments: row.attachments,
+    author: { id: row.author_id, fullName: row.author_full_name ?? 'A member' },
+    createdAt: row.created_at,
+  }
+}
+
+interface ConsultationSlotRow {
+  id: string
+  weekday: number
+  start_time: string
+  end_time: string
+  location: string
+  walk_in: boolean
+  next_occurrence: string
+}
+
+interface BookingWithStudent {
+  id: string
+  slotId: string
+  bookedFor: string
+  topic: string
+  status: 'requested' | 'confirmed' | 'declined'
+  student: { id: string; fullName: string }
+}
+
+function toDateString(value: Date | string): string {
+  if (typeof value === 'string') return value.slice(0, 10)
+  return value.toISOString().slice(0, 10)
 }
 
 function assertCanEditCard(access: GroupAccessRow, card: FlashcardOwnerRow, userId: string) {
