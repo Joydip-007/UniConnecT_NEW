@@ -38,11 +38,14 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry: () 
   )
 }
 
-export function AcademicOnlyNotice({ message, icon }: { message: string; icon: string }) {
+export function AcademicOnlyNotice({ message, subtitle, icon }: { message: string; subtitle?: string; icon: string }) {
   return (
-    <div style={{ minHeight: 130, padding: 16, borderTop: '0.5px solid var(--border-default)', display: 'grid', placeItems: 'center', gap: 10, textAlign: 'center' }}>
+    <div style={{ minHeight: 130, padding: 16, display: 'grid', placeItems: 'center', gap: 6, textAlign: 'center' }}>
       <span style={{ fontSize: 32 }}>{icon}</span>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{message}</p>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{message}</p>
+      {subtitle && (
+        <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', textWrap: 'pretty' }}>{subtitle}</p>
+      )}
     </div>
   )
 }

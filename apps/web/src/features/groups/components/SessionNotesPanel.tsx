@@ -60,7 +60,7 @@ export function SessionNotesPanel({ groupId, sessionId, isCreator }: SessionNote
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <h4 style={{ margin: 0, display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
             <NotebookPen size={15} strokeWidth={1.7} />
-            Session notes
+            {creatorNotes ? 'Creator notes' : 'Creator notes · empty'}
           </h4>
           {isCreator && !editingCreator && (
             <button type="button" onClick={startEditingCreator} style={{ ...controlButton, minHeight: 32, padding: '4px 10px', fontSize: 12 }}>
@@ -113,7 +113,7 @@ export function SessionNotesPanel({ groupId, sessionId, isCreator }: SessionNote
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{creatorNotes.body}</p>
           </div>
         ) : (
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>No session notes posted yet</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>No shared notes for this session yet.</p>
         )}
       </section>
 

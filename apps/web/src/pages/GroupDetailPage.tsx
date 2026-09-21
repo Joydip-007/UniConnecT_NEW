@@ -117,7 +117,7 @@ export default function GroupDetailPage() {
           <ResourcesTab groupId={id} userRole={userRole} currentUserId={user?.id} />
         )}
         {id && activeTab === 'study-sessions' && (
-          <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} groupType={group?.type} />
+          <StudyToolsTab groupId={id} currentUserId={user?.id} userRole={userRole} />
         )}
         {id && group?.type === 'academic' && activeTab === 'academic' && (
           <AcademicLMSTab groupId={id} isAdmin={isAdmin} />

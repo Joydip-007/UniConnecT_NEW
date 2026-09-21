@@ -29,7 +29,8 @@ describe('SessionNotesPanel', () => {
 
   it('shows a placeholder when the creator has not posted notes yet', () => {
     render(<SessionNotesPanel groupId="g1" sessionId="s1" isCreator={false} />)
-    expect(screen.getByText(/No session notes posted yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/No shared notes for this session yet\./i)).toBeInTheDocument()
+    expect(screen.getByText('Creator notes · empty')).toBeInTheDocument()
   })
 
   it('does not show an edit control for non-creators', () => {
