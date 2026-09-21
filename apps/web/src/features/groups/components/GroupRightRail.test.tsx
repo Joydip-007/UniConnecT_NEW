@@ -125,6 +125,18 @@ describe('GroupRightRail', () => {
     expect(navigate).toHaveBeenCalledWith({ search: 'tab=join-requests' })
   })
 
+  it('admin: clearing the About description disables Save and shows a hint', async () => {
+    renderRail(makeGroup({ userRole: 'admin' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const textarea = screen.getByRole('textbox', { name: 'Group description' })
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(screen.queryByText("Description can't be empty")).not.toBeInTheDocument()
+
+    await userEvent.clear(textarea)
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(screen.getByText("Description can't be empty")).toBeInTheDocument()
+  })
+
   it('member view: suggestions and trending, no manage card', async () => {
     renderRail(makeGroup({ userRole: 'member' }))
 

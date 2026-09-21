@@ -367,6 +367,7 @@ function AboutCard({ group, canEdit, editSignal }: { group: Group; canEdit: bool
   const updateDescription = useUpdateGroupDescription(group.id)
   const setRulesMutation = useSetRules(group.id)
   const saving = updateDescription.isPending || setRulesMutation.isPending
+  const descriptionEmpty = description.trim() === ''
 
   useEffect(() => {
     if (editSignal > 0 && canEdit) {
@@ -418,8 +419,14 @@ function AboutCard({ group, canEdit, editSignal }: { group: Group; canEdit: bool
             rows={4}
             aria-label="Group description"
             placeholder="What is this group for?"
+            aria-invalid={descriptionEmpty}
             style={textareaStyle}
           />
+          {descriptionEmpty && (
+            <p style={{ margin: '-6px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+              Description can't be empty
+            </p>
+          )}
           <Eyebrow>Group rules</Eyebrow>
           <textarea
             value={rules}
@@ -436,9 +443,9 @@ function AboutCard({ group, canEdit, editSignal }: { group: Group; canEdit: bool
             </button>
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || descriptionEmpty}
               onClick={save}
-              style={{ ...ghostPill, border: 'none', background: 'var(--uc-indigo)', color: 'var(--on-accent)', fontWeight: 500, opacity: saving ? 0.7 : 1 }}
+              style={{ ...ghostPill, border: 'none', background: 'var(--uc-indigo)', color: 'var(--on-accent)', fontWeight: 500, opacity: saving || descriptionEmpty ? 0.7 : 1, cursor: saving || descriptionEmpty ? 'not-allowed' : 'pointer' }}
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
