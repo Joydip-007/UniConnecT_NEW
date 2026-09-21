@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ALLOWED_UPLOAD_CONTENT_TYPES } from '../../services/upload.service'
+import { CourseOutlineDraftSchema } from '../academic/schema'
 
 export const GroupTypeSchema = z.enum(['department', 'club', 'batch', 'research', 'interest', 'other', 'academic'])
 export const GroupRoleSchema = z.enum(['owner', 'admin', 'moderator', 'member'])
@@ -58,6 +59,34 @@ export const InviteToGroupSchema = z.object({
   userId: z.string().uuid(),
 })
 
+// ── Course-outline import + bulk invites ──────────────────────
+export const CourseOutlineDraftRequestSchema = z.object({
+  file_url: z.string().url(),
+  roster_url: z.string().url().optional(),
+})
+
+export const CreateGroupFromOutlineSchema = z.object({
+  name: z.string().trim().min(1).max(255),
+  section: z.string().trim().max(50).optional(),
+  draft: CourseOutlineDraftSchema,
+  is_private: z.boolean().default(false),
+})
+
+export const BulkInviteSchema = z
+  .object({
+    department: z.string().trim().min(1).max(100).optional(),
+    batch_year: z.coerce.number().int().optional(),
+    emails: z.array(z.string().trim().toLowerCase().email()).optional(),
+  })
+  .refine((v) => Boolean(v.department) || v.batch_year != null || (v.emails && v.emails.length > 0), {
+    message: 'Provide at least one of department, batch_year, or emails',
+  })
+
+export const InviteMatchQuerySchema = z.object({
+  department: z.string().trim().min(1).max(100).optional(),
+  batch_year: z.coerce.number().int().optional(),
+})
+
 export type GroupListQuery = z.infer<typeof GroupListQuerySchema>
 export type UpdateMyMuteInput = z.infer<typeof UpdateMyMuteSchema>
 export type MembersQuery = z.infer<typeof MembersQuerySchema>
@@ -67,6 +96,10 @@ export type UpdateGroupInput = z.infer<typeof UpdateGroupSchema>
 export type UpdateMemberInput = z.infer<typeof UpdateMemberSchema>
 export type InviteToGroupInput = z.infer<typeof InviteToGroupSchema>
 export type AllowedRole = z.infer<typeof AllowedRoleSchema>
+export type CourseOutlineDraftRequestInput = z.infer<typeof CourseOutlineDraftRequestSchema>
+export type CreateGroupFromOutlineInput = z.infer<typeof CreateGroupFromOutlineSchema>
+export type BulkInviteInput = z.infer<typeof BulkInviteSchema>
+export type InviteMatchQuery = z.infer<typeof InviteMatchQuerySchema>
 
 // ── Join requests ─────────────────────────────────────────────
 export const JoinGroupSchema = z.object({

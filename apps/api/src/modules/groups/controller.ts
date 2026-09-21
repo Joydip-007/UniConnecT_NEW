@@ -2,17 +2,22 @@ import type { Request, Response } from 'express'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
+import { buildCourseOutlineDraft } from '../academic/outline-import.service'
 import { groupsService } from './service'
 import type {
   BookSlotInput,
+  BulkInviteInput,
+  CourseOutlineDraftRequestInput,
   CreateAnnouncementInput,
   CreateFlashcardDeckInput,
   CreateFlashcardInput,
+  CreateGroupFromOutlineInput,
   CreateGroupInput,
   CreateSharedNoteInput,
   CreateSlotInput,
   GroupListQuery,
   FlashcardReviewInput,
+  InviteMatchQuery,
   InviteToGroupInput,
   JoinRequestActionInput,
   JoinRequestsQuery,
@@ -46,6 +51,30 @@ export const listGroups = asyncHandler(async (req: Request, res: Response) => {
 export const createGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.createGroup(context, req.body as CreateGroupInput), 201)
+})
+
+export const draftCourseOutline = asyncHandler(async (req: Request, res: Response) => {
+  const input = req.body as CourseOutlineDraftRequestInput
+  const result = await buildCourseOutlineDraft(input.file_url, input.roster_url)
+  sendSuccess(res, result)
+})
+
+export const createGroupFromOutline = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.createGroupFromOutline(context, req.body as CreateGroupFromOutlineInput)
+  sendSuccess(res, result, 201)
+})
+
+export const bulkInviteToGroup = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.bulkInviteToGroup(context, getGroupIdParam(req), req.body as BulkInviteInput)
+  sendSuccess(res, result)
+})
+
+export const getInviteMatchCount = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.countInviteMatches(context, req.query as unknown as InviteMatchQuery)
+  sendSuccess(res, result)
 })
 
 export const listMyGroups = asyncHandler(async (req: Request, res: Response) => {

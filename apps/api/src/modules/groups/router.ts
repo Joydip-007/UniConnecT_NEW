@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth } from '../../middleware/auth'
+import { requireAuth, requireRole } from '../../middleware/auth'
 import { requireAcademicGroup } from '../../middleware/requireAcademicGroup'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
@@ -8,6 +8,7 @@ import {
   askTeacher,
   askTeacherQueue,
   bookConsultationSlot,
+  bulkInviteToGroup,
   cancelInvite,
   cancelJoinRequest,
   createAnnouncement,
@@ -15,10 +16,12 @@ import {
   createFlashcard,
   createFlashcardDeck,
   createGroup,
+  createGroupFromOutline,
   createResource,
   createSharedNote,
   createStudySession,
   deleteAnnouncement,
+  draftCourseOutline,
   deleteConsultationSlot,
   deleteFlashcard,
   deleteFlashcardDeck,
@@ -32,6 +35,7 @@ import {
   getFlashcardReviewQueue,
   getGroup,
   getGroupStats,
+  getInviteMatchCount,
   getMySessionPrivateNotes,
   getSessionCreatorNotes,
   getSessionCreatorNotesUploadUrl,
@@ -86,9 +90,12 @@ import {
 } from './controller'
 import {
   BookSlotSchema,
+  BulkInviteSchema,
+  CourseOutlineDraftRequestSchema,
   CreateAnnouncementSchema,
   CreateFlashcardDeckSchema,
   CreateFlashcardSchema,
+  CreateGroupFromOutlineSchema,
   CreateGroupSchema,
   CreateResourceSchema,
   CreateSharedNoteSchema,
@@ -96,6 +103,7 @@ import {
   CreateStudySessionSchema,
   FlashcardReviewSchema,
   GroupListQuerySchema,
+  InviteMatchQuerySchema,
   InviteToGroupSchema,
   JoinGroupSchema,
   JoinRequestActionSchema,
@@ -133,6 +141,28 @@ groupsRouter.get('/', validateRequest({ query: GroupListQuerySchema }), listGrou
 groupsRouter.post('/', validate(CreateGroupSchema), createGroup)
 groupsRouter.get('/my', validateRequest({ query: PaginationQuerySchema }), listMyGroups)
 groupsRouter.get('/suggestions', validateRequest({ query: SuggestionsQuerySchema }), listSuggestions)
+
+// Course-outline import (declared before `/:groupId` — literal paths would otherwise be
+// swallowed by the param route)
+groupsRouter.post(
+  '/course-outline/draft',
+  requireRole('faculty', 'admin'),
+  validate(CourseOutlineDraftRequestSchema),
+  draftCourseOutline,
+)
+groupsRouter.post(
+  '/from-outline',
+  requireRole('faculty', 'admin'),
+  validate(CreateGroupFromOutlineSchema),
+  createGroupFromOutline,
+)
+groupsRouter.get(
+  '/invite-match',
+  requireRole('faculty', 'admin'),
+  validateRequest({ query: InviteMatchQuerySchema }),
+  getInviteMatchCount,
+)
+
 groupsRouter.get('/:groupId', getGroup)
 groupsRouter.patch('/:groupId', validate(UpdateGroupSchema), updateGroup)
 groupsRouter.patch('/:groupId/settings', validate(UpdateGroupSettingsSchema), updateSettings)
@@ -162,6 +192,12 @@ groupsRouter.get(
   listGroupCollaborations,
 )
 groupsRouter.post('/:groupId/invitations', validate(InviteToGroupSchema), inviteToGroup)
+groupsRouter.post(
+  '/:groupId/invitations/bulk',
+  requireRole('admin'),
+  validate(BulkInviteSchema),
+  bulkInviteToGroup,
+)
 groupsRouter.get('/:groupId/invitations', validateRequest({ query: PaginationQuerySchema }), listPendingInvites)
 groupsRouter.delete('/:groupId/invitations/:invitationId', cancelInvite)
 

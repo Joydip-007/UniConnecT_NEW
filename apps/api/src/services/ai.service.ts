@@ -1,8 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import type { GoogleGenerativeAI as GoogleGenerativeAIClass } from '@google/generative-ai'
+import { z } from 'zod'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
-
-const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
 
 /**
  * Tried in order. A quota error abandons the current model immediately; any other error
@@ -12,10 +11,25 @@ const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
  */
 export const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
 
-const modelCache = new Map<string, ReturnType<typeof genAI.getGenerativeModel>>()
-function getModel(name: string) {
+// Imported lazily (rather than as a static top-level `import`) so that merely loading this
+// module — which happens transitively through several routers at app startup/test setup —
+// does not resolve `@google/generative-ai` before a test's `vi.mock('@google/generative-ai', ...)`
+// has a chance to register. A static import would bind to whichever copy (real or mocked) was
+// already cached under that specifier by the time this module first evaluated.
+let genAIInstance: GoogleGenerativeAIClass | null = null
+async function getGenAIInstance(): Promise<GoogleGenerativeAIClass> {
+  if (!genAIInstance) {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    genAIInstance = new GoogleGenerativeAI(env.GEMINI_API_KEY)
+  }
+  return genAIInstance
+}
+
+const modelCache = new Map<string, ReturnType<GoogleGenerativeAIClass['getGenerativeModel']>>()
+async function getModel(name: string) {
   let model = modelCache.get(name)
   if (!model) {
+    const genAI = await getGenAIInstance()
     model = genAI.getGenerativeModel({ model: name, generationConfig: { temperature: 0.4 } })
     modelCache.set(name, model)
   }
@@ -87,7 +101,7 @@ async function callGemini(prompt: string): Promise<unknown> {
   let sawQuotaError = false
 
   for (const modelName of MODEL_FALLBACK_CHAIN) {
-    const model = getModel(modelName)
+    const model = await getModel(modelName)
     for (const delay of RETRY_DELAYS_MS) {
       if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
       try {
@@ -182,4 +196,52 @@ Return ONLY valid JSON. No markdown. No explanation. JSON schema:
 
   const parsed = await callGemini(prompt)
   return parsed as AISkillPath
+}
+
+const CourseOutlineExtractionSchema = z.object({
+  courseCode: z.string(),
+  courseTitle: z.string(),
+  section: z.string().optional(),
+  topics: z.array(
+    z.object({
+      weekNumber: z.number(),
+      title: z.string(),
+      dateRange: z.string().optional(),
+    }),
+  ),
+  assessments: z.array(
+    z.object({
+      categoryName: z.string(),
+      weightPercent: z.number(),
+      fullMarks: z.number(),
+      totalGiven: z.number(),
+    }),
+  ),
+  assignments: z.array(
+    z.object({
+      title: z.string(),
+      dueDate: z.string().nullable(),
+      topic: z.string().nullable(),
+      kind: z.enum(['assignment', 'class_test']),
+    }),
+  ),
+})
+
+export type CourseOutlineExtraction = z.infer<typeof CourseOutlineExtractionSchema>
+
+/**
+ * Sends raw syllabus/course-outline text (extracted from an uploaded PDF/DOCX) to Gemini
+ * and validates the strict-JSON reply against `CourseOutlineExtractionSchema`. Used by
+ * `POST /groups/course-outline/draft` to turn an uploaded file into a reviewable draft
+ * before the faculty member creates the academic group from it.
+ */
+export async function extractCourseOutline(text: string): Promise<CourseOutlineExtraction> {
+  const prompt = `Extract a structured course outline from the following text. Return ONLY valid JSON. No markdown. No explanation. JSON schema:
+{ "courseCode": string, "courseTitle": string, "section": string (optional), "topics": [{ "weekNumber": number, "title": string, "dateRange": string (optional) }], "assessments": [{ "categoryName": string, "weightPercent": number, "fullMarks": number, "totalGiven": number }], "assignments": [{ "title": string, "dueDate": string|null (ISO date, e.g. "2026-06-20"), "topic": string|null, "kind": "assignment"|"class_test" }] }
+
+Text:
+${text}`
+
+  const parsed = await callGemini(prompt)
+  return CourseOutlineExtractionSchema.parse(parsed)
 }

@@ -6,9 +6,12 @@ import { feedService } from '../feed/service'
 import { eventsService } from '../events/service'
 import { notificationsService } from '../notifications/service'
 import { badgeQueue } from '../../queues/badge.queue'
+import { emailQueue } from '../../queues/email.queue'
 import { notificationQueue } from '../../queues/notification.queue'
+import { env } from '../../config/env'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { gradebookService } from '../academic/gradebook.service'
+import { insertOutlineRows } from '../academic/course-outline.service'
 import { contentSyncService } from '../content-sync/service'
 import { messagesService } from '../messages/service'
 import { logger } from '../../utils/logger'
@@ -22,9 +25,11 @@ import type {
   AllowedRole,
   Attachment,
   BookSlotInput,
+  BulkInviteInput,
   CreateAnnouncementInput,
   CreateFlashcardDeckInput,
   CreateFlashcardInput,
+  CreateGroupFromOutlineInput,
   CreateGroupInput,
   CreateResourceInput,
   CreateSharedNoteInput,
@@ -32,6 +37,7 @@ import type {
   CreateStudySessionInput,
   FlashcardReviewInput,
   GroupListQuery,
+  InviteMatchQuery,
   JoinRequestsQuery,
   MembersQuery,
   ModLogQuery,
@@ -3158,6 +3164,195 @@ export class GroupsService {
       topic: row.topic,
       status: row.status,
     }
+  }
+
+  /**
+   * Creates an academic group and saves the imported course outline (+ unpublished
+   * assignments) in one transaction — the group's `owner` membership row is inserted
+   * here too, so `insertOutlineRows` (which needs no membership to already exist) is used
+   * instead of `courseOutlineService.createOutline` (which asserts one).
+   */
+  async createGroupFromOutline(context: AuthContext, input: CreateGroupFromOutlineInput) {
+    if (context.role !== 'faculty' && context.role !== 'admin') {
+      throw forbidden('Only faculty or admin can import a course outline', 'ACADEMIC_GROUP_FACULTY_ONLY')
+    }
+    const draft = input.draft
+
+    const groupId = await db.transaction(async (trx) => {
+      const [group] = await trx('groups')
+        .insert({
+          university_id: context.universityId,
+          created_by: context.userId,
+          name: input.name,
+          description: draft.description ?? draft.courseTitle,
+          type: 'academic',
+          is_private: input.is_private,
+          allowed_role: 'student',
+          is_system: false,
+          department: null,
+          member_count: 1,
+        })
+        .returning<{ id: string }[]>('id')
+
+      if (!group) throw badRequest('Group could not be created', 'GROUP_CREATE_FAILED')
+
+      await trx('group_members').insert({ group_id: group.id, user_id: context.userId, role: 'owner' })
+
+      await insertOutlineRows(
+        trx,
+        { groupId: group.id, universityId: context.universityId, createdBy: context.userId },
+        {
+          courseCode: draft.courseCode,
+          courseTitle: draft.courseTitle,
+          creditHours: draft.creditHours,
+          trimester: draft.trimester,
+          description: draft.description,
+          gradingScale: draft.gradingScale,
+          customScaleJson: draft.customScaleJson,
+          assessments: draft.assessments,
+          topics: draft.topics,
+        },
+      )
+
+      if (draft.assignments.length > 0) {
+        await trx('academic_assignments').insert(
+          draft.assignments.map((a) => ({
+            group_id: group.id,
+            university_id: context.universityId,
+            created_by: context.userId,
+            title: a.title,
+            description: a.topic ?? null,
+            file_urls: JSON.stringify([]),
+            deadline: a.dueDate ? new Date(a.dueDate) : null,
+            max_score: 100,
+            is_published: false,
+          })),
+        )
+      }
+
+      return group.id
+    })
+
+    return this.getGroup(context, groupId)
+  }
+
+  /**
+   * Matches `profiles` on department/batch within the caller's university (plus any
+   * explicit emails), skips existing members and users with an already-pending invite,
+   * and invites the rest via the same in-app notification path as `inviteToGroup`.
+   * Emails that don't match an existing account get a queued email with the group link
+   * instead — they have nothing to notify in-app.
+   */
+  async bulkInviteToGroup(context: AuthContext, groupId: string, input: BulkInviteInput) {
+    const group = await assertGroupAdminAccess(context, groupId)
+    if (group.is_system) {
+      throw forbidden('System groups cannot be invited to', 'GROUP_SYSTEM_INVITE_FORBIDDEN')
+    }
+
+    const groupRow = await db('groups').where({ id: groupId }).select<{ name: string }[]>('name').first()
+    const groupName = groupRow?.name ?? 'a group'
+    const inviterName = await notificationsService.getActorName(context.userId)
+
+    const matchesById = new Map<string, { id: string; email: string; role: UserRole }>()
+
+    if (input.department || input.batch_year != null) {
+      const rows = await db('users')
+        .join('profiles', 'profiles.user_id', 'users.id')
+        .where('users.university_id', context.universityId)
+        .modify((qb) => {
+          if (input.department) qb.andWhere('profiles.department', input.department)
+          if (input.batch_year != null) qb.andWhere('profiles.batch_year', String(input.batch_year))
+        })
+        .select<{ id: string; email: string; role: UserRole }[]>('users.id', 'users.email', 'users.role')
+      for (const row of rows) matchesById.set(row.id, row)
+    }
+
+    const requestedEmails = new Set((input.emails ?? []).map((e) => e.toLowerCase()))
+    const matchedEmails = new Set<string>()
+    if (requestedEmails.size > 0) {
+      const rows = await db('users')
+        .where('university_id', context.universityId)
+        .whereIn('email', [...requestedEmails])
+        .select<{ id: string; email: string; role: UserRole }[]>('id', 'email', 'role')
+      for (const row of rows) {
+        matchesById.set(row.id, row)
+        matchedEmails.add(row.email.toLowerCase())
+      }
+    }
+
+    let invited = 0
+    let skipped = 0
+    let mailed = 0
+
+    for (const target of matchesById.values()) {
+      if (group.allowed_role && target.role !== group.allowed_role) {
+        skipped++
+        continue
+      }
+      const existingMembership = await db('group_members')
+        .where({ group_id: groupId, user_id: target.id })
+        .first()
+      if (existingMembership) {
+        skipped++
+        continue
+      }
+      const pendingInvite = await db('notifications')
+        .where({
+          user_id: target.id,
+          type: 'group_invite',
+          reference_id: groupId,
+          reference_type: 'group',
+          is_read: false,
+        })
+        .first()
+      if (pendingInvite) {
+        skipped++
+        continue
+      }
+
+      await notificationsService.createNotification({
+        userId: target.id,
+        type: 'group_invite',
+        actorId: context.userId,
+        referenceId: groupId,
+        referenceType: 'group',
+        content: `${inviterName} invited you to join "${groupName}"`,
+        data: { role: group.allowed_role },
+      })
+      invited++
+    }
+
+    const unknownEmails = [...requestedEmails].filter((email) => !matchedEmails.has(email))
+    for (const email of unknownEmails) {
+      void emailQueue.add({
+        to: email,
+        subject: `You're invited to join "${groupName}"`,
+        text: JSON.stringify({
+          template: 'group-invite',
+          groupName,
+          link: `${env.WEB_URL}/groups/${groupId}`,
+        }),
+      })
+      mailed++
+    }
+
+    return { invited, skipped, mailed }
+  }
+
+  /** Backs the "N students match" line on the bulk-invite composer. */
+  async countInviteMatches(context: AuthContext, query: InviteMatchQuery) {
+    if (!query.department && query.batch_year == null) return { count: 0 }
+
+    const [{ count }] = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where('users.university_id', context.universityId)
+      .modify((qb) => {
+        if (query.department) qb.andWhere('profiles.department', query.department)
+        if (query.batch_year != null) qb.andWhere('profiles.batch_year', String(query.batch_year))
+      })
+      .count<{ count: string }[]>({ count: '*' })
+
+    return { count: Number(count) }
   }
 }
 

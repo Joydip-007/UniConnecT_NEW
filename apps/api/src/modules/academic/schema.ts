@@ -87,6 +87,45 @@ export const UpsertGradebookEntriesSchema = z.object({
   ),
 })
 
+export const CourseOutlineAssignmentDraftSchema = z.object({
+  title: z.string().min(1).max(255),
+  dueDate: z.string().nullable(),
+  topic: z.string().nullable(),
+  kind: z.enum(['assignment', 'class_test']),
+})
+
+/**
+ * Shape of the reviewable draft returned by `POST /groups/course-outline/draft` and
+ * accepted back by `POST /groups/from-outline`. Mirrors `CreateCourseOutlineSchema` plus
+ * the extracted `section` (informational only — the outline table has no section column)
+ * and `assignments`, which become unpublished `academic_assignments` rows on create.
+ */
+export const CourseOutlineDraftSchema = z
+  .object({
+    courseCode: z.string().max(50).optional(),
+    courseTitle: z.string().min(1).max(255),
+    section: z.string().max(50).optional(),
+    creditHours: z.number().optional(),
+    trimester: z.string().max(100).optional(),
+    description: z.string().optional(),
+    gradingScale: GradingScaleTypeSchema,
+    customScaleJson: z.array(GradingScaleEntrySchema).optional(),
+    assessments: z.array(CreateAssessmentSchema).min(1),
+    topics: z.array(CreateTopicSchema).optional().default([]),
+    assignments: z.array(CourseOutlineAssignmentDraftSchema).optional().default([]),
+  })
+  .refine((input) => isWeightSumValid(input.assessments), {
+    message: 'Sum of weightPercent across all assessments must equal 100',
+    path: ['assessments'],
+  })
+  .refine((input) => areWeekNumbersUnique(input.topics), {
+    message: 'Week numbers in topics must be unique',
+    path: ['topics'],
+  })
+
+export type CourseOutlineDraftInput = z.infer<typeof CourseOutlineDraftSchema>
+export type CourseOutlineAssignmentDraftInput = z.infer<typeof CourseOutlineAssignmentDraftSchema>
+
 export type CreateCourseOutlineInput = z.infer<typeof CreateCourseOutlineSchema>
 export type UpdateAssessmentsInput = z.infer<typeof UpdateAssessmentsSchema>
 export type UpdateTopicsInput = z.infer<typeof UpdateTopicsSchema>

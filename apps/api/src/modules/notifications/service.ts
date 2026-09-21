@@ -26,6 +26,7 @@ interface CreateNotificationInput {
   referenceId?: string | null
   referenceType?: string | null
   content: string
+  data?: Record<string, unknown> | null
 }
 
 interface NotificationRow {
@@ -38,6 +39,7 @@ interface NotificationRow {
   content: string
   is_read: boolean
   created_at: Date
+  data: Record<string, unknown> | null
   actor_full_name: string | null
   actor_avatar_url: string | null
   actor_headline: string | null
@@ -98,6 +100,7 @@ export class NotificationsService {
         reference_id: input.referenceId ?? null,
         reference_type: input.referenceType ?? null,
         content: input.content,
+        data: input.data ? JSON.stringify(input.data) : null,
       })
       .returning<{ id: string }[]>('id')
 
@@ -280,6 +283,7 @@ function notificationSelectQuery() {
       'notifications.content',
       'notifications.is_read',
       'notifications.created_at',
+      'notifications.data',
       'actor_profile.full_name as actor_full_name',
       'actor_profile.avatar_url as actor_avatar_url',
       'actor_profile.headline as actor_headline',
@@ -312,6 +316,7 @@ function toNotification(row: NotificationRow) {
     content: row.content,
     isRead: row.is_read,
     createdAt: row.created_at,
+    data: row.data ?? null,
     refUrl,
     actor: row.actor_id
       ? {
