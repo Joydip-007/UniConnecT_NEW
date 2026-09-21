@@ -1,12 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
-import { Calendar, MapPin } from 'lucide-react'
+import { Calendar, MapPin, Plus } from 'lucide-react'
+import { GROUP_EVENTS } from '@uniconnect/shared'
+import { socket } from '@/lib/socket'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
-import type { GroupEventEntry } from '../types'
+import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { CreateEventForm } from '@/features/events/components/CreateEventForm'
+import type { GroupEventEntry, MemberRole } from '../types'
+import { pendingEventsKey, usePendingEvents, useReviewEvent, type PendingGroupEvent } from '../hooks/useGroupExtended'
 
 interface EventsPage {
   items: GroupEventEntry[]
@@ -14,9 +19,28 @@ interface EventsPage {
   page: number
 }
 
-export function EventsTab({ groupId }: { groupId: string }) {
+export function EventsTab({ groupId, userRole = null }: { groupId: string; userRole?: MemberRole | null }) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [showCreate, setShowCreate] = useState(false)
+
+  const isModeratorOrAbove = userRole === 'owner' || userRole === 'admin' || userRole === 'moderator'
+  const isAdmin = userRole === 'owner' || userRole === 'admin'
+  const { data: pendingEvents } = usePendingEvents(groupId, isModeratorOrAbove)
+  const reviewEvent = useReviewEvent(groupId)
+  const pending = pendingEvents ?? []
+
+  useEffect(() => {
+    function onQueueChanged(payload: { groupId?: string } | undefined) {
+      if (payload?.groupId && payload.groupId !== groupId) return
+      queryClient.invalidateQueries({ queryKey: pendingEventsKey(groupId) })
+    }
+    socket.on(GROUP_EVENTS.REVIEW_QUEUE_CHANGED, onQueueChanged)
+    return () => {
+      socket.off(GROUP_EVENTS.REVIEW_QUEUE_CHANGED, onQueueChanged)
+    }
+  }, [groupId, queryClient])
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<EventsPage>({
     queryKey: ['groups', 'events', groupId],
@@ -45,33 +69,65 @@ export function EventsTab({ groupId }: { groupId: string }) {
 
   const items = data?.pages.flatMap((p) => p.items) ?? []
 
+  const createEntry = isAdmin && (
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <GhostBtn type="button" onClick={() => setShowCreate(true)}>
+        <Plus size={13} strokeWidth={1.5} />
+        Create event
+      </GhostBtn>
+    </div>
+  )
+
+  const pendingQueue = isModeratorOrAbove && pending.length > 0 && (
+    <PendingEventQueue
+      events={pending}
+      onApprove={(eventId) => reviewEvent.mutate({ eventId, action: 'approve' })}
+      onDecline={(eventId) => reviewEvent.mutate({ eventId, action: 'decline' })}
+      isPending={reviewEvent.isPending}
+    />
+  )
+
   if (isLoading) {
-    return <SkeletonList />
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {createEntry}
+        {pendingQueue}
+        <SkeletonList />
+        {showCreate && <CreateEventForm groupId={groupId} onClose={() => setShowCreate(false)} />}
+      </div>
+    )
   }
 
   if (items.length === 0) {
     return (
-      <div
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '48px 24px',
-          textAlign: 'center',
-        }}
-      >
-        <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-          No events yet
-        </p>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-          Group events and event posts will appear here.
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {createEntry}
+        {pendingQueue}
+        <div
+          style={{
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-lg)',
+            padding: '48px 24px',
+            textAlign: 'center',
+          }}
+        >
+          <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
+            No events yet
+          </p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
+            Group events and event posts will appear here.
+          </p>
+        </div>
+        {showCreate && <CreateEventForm groupId={groupId} onClose={() => setShowCreate(false)} />}
       </div>
     )
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {createEntry}
+      {pendingQueue}
       {items.map((entry) =>
         entry.kind === 'event' ? (
           <EventRow key={`event-${entry.id}`} entry={entry} onClick={() => navigate(`/events/${entry.id}`)} />
@@ -81,6 +137,132 @@ export function EventsTab({ groupId }: { groupId: string }) {
       )}
       <div ref={sentinelRef} style={{ height: 1 }} />
       {isFetchingNextPage && <SkeletonList />}
+      {showCreate && <CreateEventForm groupId={groupId} onClose={() => setShowCreate(false)} />}
+    </div>
+  )
+}
+
+// ── Pending event approval queue ─────────────────────────────────────────────
+
+function PendingEventQueue({
+  events,
+  onApprove,
+  onDecline,
+  isPending,
+}: {
+  events: PendingGroupEvent[]
+  onApprove: (eventId: string) => void
+  onDecline: (eventId: string) => void
+  isPending: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 500,
+          letterSpacing: '0.04em',
+          color: 'var(--uc-orange-l)',
+        }}
+      >
+        {events.length} event{events.length !== 1 ? 's' : ''} awaiting approval
+      </span>
+      {events.map((event) => (
+        <PendingEventCard
+          key={event.id}
+          event={event}
+          isPending={isPending}
+          onApprove={() => onApprove(event.id)}
+          onDecline={() => onDecline(event.id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function PendingEventCard({
+  event,
+  onApprove,
+  onDecline,
+  isPending,
+}: {
+  event: PendingGroupEvent
+  onApprove: () => void
+  onDecline: () => void
+  isPending: boolean
+}) {
+  const day = format(parseISO(event.startDate), 'd')
+  const month = format(parseISO(event.startDate), 'MMM').toUpperCase()
+  const time = format(parseISO(event.startDate), 'h:mm a')
+
+  return (
+    <div
+      style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--uc-orange-bdr)',
+        borderRadius: 'var(--r-lg)',
+        padding: '14px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div
+          style={{
+            width: 50,
+            flexShrink: 0,
+            textAlign: 'center',
+            padding: '8px 0',
+            borderRadius: 'var(--r-md)',
+            background: 'var(--uc-orange-bg)',
+            border: '0.5px solid var(--uc-orange-bdr)',
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--uc-orange-l)', lineHeight: 1 }}>{day}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, letterSpacing: '0.05em' }}>
+            {month}
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{event.title}</h3>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 4,
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <Calendar size={11} strokeWidth={1.5} />
+            <span>{time}</span>
+            <MapPin size={11} strokeWidth={1.5} />
+            <span
+              style={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                maxWidth: 200,
+              }}
+            >
+              {event.location}
+            </span>
+          </div>
+          <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+            Submitted by {event.organizer.fullName}
+          </p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <PrimaryBtn type="button" disabled={isPending} onClick={onApprove}>
+          Approve
+        </PrimaryBtn>
+        <GhostBtn type="button" disabled={isPending} onClick={onDecline}>
+          Decline
+        </GhostBtn>
+      </div>
     </div>
   )
 }

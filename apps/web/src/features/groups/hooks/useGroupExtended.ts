@@ -91,6 +91,14 @@ export interface ReviewSummary {
   reportsOpen: number
 }
 
+export interface PendingGroupEvent {
+  id: string
+  title: string
+  startDate: string
+  location: string
+  organizer: { id: string; fullName: string }
+}
+
 export interface GroupAnalytics {
   members: number
   membersDelta7d: number
@@ -370,6 +378,35 @@ export function useReviewPost(groupId: string) {
       queryClient.invalidateQueries({ queryKey: pendingPostsKey(groupId) })
       queryClient.invalidateQueries({ queryKey: reviewSummaryKey(groupId) })
       queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'posts'] })
+    },
+  })
+}
+
+// ── Event review queue (Events tab) ──────────────────────────────────────────
+
+export const pendingEventsKey = (groupId: string) => ['groups', 'pending-events', { groupId }] as const
+
+/** Moderator+ only — gate with `enabled` so a member never 403s on the group's own events tab. */
+export function usePendingEvents(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: pendingEventsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: PendingGroupEvent[] } }>(`/groups/${groupId}/review/events`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId && enabled,
+  })
+}
+
+export function useReviewEvent(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ eventId, action }: { eventId: string; action: 'approve' | 'decline' }) =>
+      api.patch(`/groups/${groupId}/review/events/${eventId}`, { action }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pendingEventsKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: reviewSummaryKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'events', groupId] })
     },
   })
 }

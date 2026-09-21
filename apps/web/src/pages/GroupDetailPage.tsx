@@ -122,7 +122,7 @@ export default function GroupDetailPage() {
         {id && group?.type === 'academic' && activeTab === 'academic' && (
           <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
         )}
-        {id && activeTab === 'events' && <EventsTab groupId={id} />}
+        {id && activeTab === 'events' && <EventsTab groupId={id} userRole={userRole} />}
         {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}
         {id && isAdmin && activeTab === 'join-requests' && <JoinRequestsTab groupId={id} />}
       </div>
