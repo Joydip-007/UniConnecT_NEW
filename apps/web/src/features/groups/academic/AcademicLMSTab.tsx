@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { CourseOutlineForm } from './CourseOutlineForm'
+import { AnnouncementsPanel } from './AnnouncementsPanel'
 import { GradebookPanel } from './GradebookPanel'
 import { StudentGradeCard } from './StudentGradeCard'
 import { ModulesPanel } from './ModulesPanel'
 import { AssignmentsPanel } from './AssignmentsPanel'
+import { AskTeacherPanel } from './AskTeacherPanel'
 import { AISettingsPanel } from './AISettingsPanel'
 
 interface AcademicLMSTabProps {
@@ -11,50 +13,60 @@ interface AcademicLMSTabProps {
   isAdmin: boolean
 }
 
-type LMSSubTab = 'outline' | 'gradebook' | 'modules' | 'assignments' | 'ai-settings'
+type LMSSubTab = 'outline' | 'announcements' | 'gradebook' | 'modules' | 'assignments' | 'ask-teacher' | 'ai-settings'
 
-const subTabButtonStyle = {
-  borderColor: 'var(--border-default)',
-  background: 'var(--surface-card)',
-} as const
+/** Design order. Course outline is for everyone (read-only for students); AI settings admin only. */
+const SUB_TABS: { value: LMSSubTab; label: string; adminOnly?: boolean }[] = [
+  { value: 'outline', label: 'Course outline' },
+  { value: 'announcements', label: 'Announcements' },
+  { value: 'gradebook', label: 'Gradebook' },
+  { value: 'modules', label: 'Modules' },
+  { value: 'assignments', label: 'Assignments' },
+  { value: 'ask-teacher', label: 'Ask teacher' },
+  { value: 'ai-settings', label: 'AI settings', adminOnly: true },
+]
 
 export function AcademicLMSTab({ groupId, isAdmin }: AcademicLMSTabProps) {
-  const [subTab, setSubTab] = useState<LMSSubTab>('modules')
-
-  const subTabs: { value: LMSSubTab; label: string }[] = [
-    ...(isAdmin ? ([{ value: 'outline', label: 'Course outline' }] as const) : []),
-    { value: 'gradebook', label: 'Gradebook' },
-    { value: 'modules', label: 'Modules' },
-    { value: 'assignments', label: 'Assignments' },
-    ...(isAdmin ? ([{ value: 'ai-settings', label: 'AI settings' }] as const) : []),
-  ]
+  const [subTab, setSubTab] = useState<LMSSubTab>('outline')
+  const subTabs = SUB_TABS.filter((t) => !t.adminOnly || isAdmin)
 
   return (
     <div className="flex flex-col gap-4">
-      <nav role="tablist" className="flex gap-2">
-        {subTabs.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            role="tab"
-            aria-selected={subTab === tab.value}
-            onClick={() => setSubTab(tab.value)}
-            className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-2"
-            style={{
-              ...subTabButtonStyle,
-              color: subTab === tab.value ? 'var(--text-primary)' : 'var(--text-secondary)',
-              background: subTab === tab.value ? 'var(--surface-raised)' : 'var(--surface-card)',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <nav role="tablist" className="hide-bar" style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+        {subTabs.map((tab) => {
+          const active = subTab === tab.value
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setSubTab(tab.value)}
+              style={{
+                flexShrink: 0,
+                padding: '6px 12px',
+                fontSize: 13,
+                fontWeight: active ? 500 : 400,
+                borderRadius: 'var(--r-pill)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                border: `0.5px solid ${active ? 'var(--uc-indigo-bdr)' : 'var(--border-default)'}`,
+                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                color: active ? 'var(--uc-indigo-l)' : 'var(--text-secondary)',
+              }}
+            >
+              {tab.label}
+            </button>
+          )
+        })}
       </nav>
 
-      {subTab === 'outline' && isAdmin && <CourseOutlineForm groupId={groupId} />}
+      {subTab === 'outline' && <CourseOutlineForm groupId={groupId} readOnly={!isAdmin} />}
+      {subTab === 'announcements' && <AnnouncementsPanel groupId={groupId} isAdmin={isAdmin} />}
       {subTab === 'gradebook' && (isAdmin ? <GradebookPanel groupId={groupId} /> : <StudentGradeCard groupId={groupId} />)}
       {subTab === 'modules' && <ModulesPanel groupId={groupId} isAdmin={isAdmin} />}
       {subTab === 'assignments' && <AssignmentsPanel groupId={groupId} isAdmin={isAdmin} />}
+      {subTab === 'ask-teacher' && <AskTeacherPanel groupId={groupId} isAdmin={isAdmin} />}
       {subTab === 'ai-settings' && isAdmin && <AISettingsPanel groupId={groupId} />}
     </div>
   )

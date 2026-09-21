@@ -43,7 +43,7 @@ describe('AssignmentsPanel', () => {
     const user = userEvent.setup()
     expect(screen.getByText('HW1')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /submit/i }))
+    await user.click(screen.getByRole('button', { name: /submit work/i }))
     await user.type(screen.getByLabelText(/your answer/i), 'my answer')
     await user.click(screen.getByRole('button', { name: /confirm submit/i }))
 
@@ -63,7 +63,7 @@ describe('AssignmentsPanel', () => {
 
     expect(screen.queryByRole('button', { name: /^submit$/i })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /view submissions/i }))
+    await user.click(screen.getByRole('button', { name: /review .*submissions?/i }))
     expect(mockUseSubmissions).toHaveBeenCalled()
 
     await user.type(screen.getByLabelText(/assignment title/i), 'HW2')

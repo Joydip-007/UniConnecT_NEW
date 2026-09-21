@@ -1186,3 +1186,16 @@ select:focus-visible {
   border-style: dashed;
   border-color: var(--uc-indigo-bdr);
 }
+
+/* Horizontal chip strips: `.hide-bar` scrolls without a visible scrollbar,
+   `.show-bar` keeps a thin one (mobile tab strip). */
+.hide-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-bar::-webkit-scrollbar {
+  display: none;
+}
+.show-bar {
+  scrollbar-width: thin;
+}
