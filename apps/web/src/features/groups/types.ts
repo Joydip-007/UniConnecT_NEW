@@ -129,6 +129,7 @@ export interface FlashcardDeck {
   isArchived: boolean
   cardCount: number
   dueCount: number
+  masteredCount: number
   createdAt: string
   updatedAt: string
   creator: GroupUserSummary | null

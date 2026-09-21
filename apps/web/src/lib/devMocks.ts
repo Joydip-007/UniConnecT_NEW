@@ -84,6 +84,7 @@ const DEV_DECK = {
   isArchived: false,
   cardCount: 2,
   dueCount: 1,
+  masteredCount: 1,
   createdAt: '2026-07-01T08:00:00.000Z',
   updatedAt: '2026-07-05T08:00:00.000Z',
   creator: { id: DEV_PROFILE.id, fullName: DEV_PROFILE.profile.fullName, avatarUrl: null },

@@ -70,6 +70,7 @@ function deck(overrides = {}) {
     isArchived: false,
     cardCount: 12,
     dueCount: 3,
+    masteredCount: 5,
     createdAt: '2026-07-01T00:00:00.000Z',
     updatedAt: '2026-07-01T00:00:00.000Z',
     creator: null,

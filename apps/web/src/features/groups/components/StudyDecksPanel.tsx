@@ -129,8 +129,7 @@ function DeckSummary({ totalDecks, dueCards, totalCards }: { totalDecks: number;
 }
 
 function DeckRow({ deck, selected, onSelect }: { deck: FlashcardDeck; selected: boolean; onSelect: () => void }) {
-  // No mastery field on the API — cards not currently due stand in as "mastered" for now.
-  const masteredPct = deck.cardCount > 0 ? Math.round(((deck.cardCount - deck.dueCount) / deck.cardCount) * 100) : 0
+  const masteredPct = deck.cardCount ? Math.round((deck.masteredCount / deck.cardCount) * 100) : 0
 
   return (
     <article

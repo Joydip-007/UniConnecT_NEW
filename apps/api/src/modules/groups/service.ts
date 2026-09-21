@@ -243,6 +243,7 @@ interface FlashcardDeckRow {
   creator_full_name: string | null
   creator_avatar_url: string | null
   due_count: string | number
+  mastered_count: string | number
 }
 
 interface FlashcardRow {
@@ -3548,6 +3549,20 @@ function flashcardDeckSelectQuery(userId: string) {
         ) AS due_count`,
         [userId],
       ),
+      db.raw(
+        `(
+          SELECT COUNT(*)::int
+          FROM group_flashcards mastered_cards
+          JOIN group_flashcard_reviews mastered_reviews
+            ON mastered_reviews.card_id = mastered_cards.id
+           AND mastered_reviews.user_id = ?
+          WHERE mastered_cards.deck_id = group_flashcard_decks.id
+            -- SM-2 convention: a card is "mature"/mastered once its review interval
+            -- reaches 21 days.
+            AND mastered_reviews.interval_days >= 21
+        ) AS mastered_count`,
+        [userId],
+      ),
     )
 }
 
@@ -3922,6 +3937,7 @@ function toFlashcardDeck(row: FlashcardDeckRow) {
     isArchived: row.is_archived,
     cardCount: Number(row.card_count),
     dueCount: Number(row.due_count ?? 0),
+    masteredCount: Number(row.mastered_count ?? 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     creator: row.created_by
