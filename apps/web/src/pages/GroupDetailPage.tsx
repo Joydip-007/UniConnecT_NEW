@@ -13,11 +13,11 @@ import {
   AcademicLMSTab,
   useJoinRequests,
 } from '@/features/groups'
-import type { Group } from '@/features/groups'
+import type { Group, GroupTab } from '@/features/groups'
 
 // `members` and `about` are kept reachable via `?tab=` only so existing deep links
 // don't 404 while Tasks 9/10 turn them into an overlay and a right-rail panel.
-type ActiveTab = 'feed' | 'resources' | 'study-sessions' | 'members' | 'events' | 'about' | 'stats' | 'join-requests' | 'academic'
+type ActiveTab = GroupTab | 'members' | 'about'
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
