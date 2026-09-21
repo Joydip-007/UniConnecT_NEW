@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { GhostBtn } from '@/components/Button'
 import { usePageRails } from '@/stores/pageRailStore'
 import {
-  EventsTab, FeedTab, GroupHeader, MembersTab,
+  EventsTab, FeedTab, GroupHeader,
   GroupLeftRail, PinnedBanner, defaultTabFor,
   ResourcesTab, StudyToolsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
   AcademicLMSTab,
@@ -15,9 +15,9 @@ import {
 } from '@/features/groups'
 import type { Group, GroupTab } from '@/features/groups'
 
-// `members` and `about` are kept reachable via `?tab=` only so existing deep links
-// don't 404 while Tasks 9/10 turn them into an overlay and a right-rail panel.
-type ActiveTab = GroupTab | 'members' | 'about'
+// `about` is kept reachable via `?tab=` only so existing deep links don't 404 while
+// Task 10 turns it into a right-rail panel. Members now lives in the header overlay.
+type ActiveTab = GroupTab | 'about'
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -41,12 +41,11 @@ export default function GroupDetailPage() {
   const canEditRules = userRole === 'owner' || userRole === 'admin'
 
   const rawTab = searchParams.get('tab')
-  const knownTabs: ActiveTab[] = ['feed', 'resources', 'study-sessions', 'members', 'events', 'about', 'stats', 'join-requests', 'academic']
+  const knownTabs: ActiveTab[] = ['feed', 'resources', 'study-sessions', 'events', 'about', 'stats', 'join-requests', 'academic']
   const isAuthorised: Record<ActiveTab, boolean> = {
     feed: true,
     resources: true,
     'study-sessions': true,
-    members: true,
     events: true,
     about: true,
     academic: group?.type === 'academic',
@@ -127,7 +126,6 @@ export default function GroupDetailPage() {
         {id && group?.type === 'academic' && activeTab === 'academic' && (
           <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
         )}
-        {id && group && activeTab === 'members' && <MembersTab group={group} />}
         {id && activeTab === 'events' && <EventsTab groupId={id} />}
         {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}
         {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}

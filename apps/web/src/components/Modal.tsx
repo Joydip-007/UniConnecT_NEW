@@ -11,11 +11,19 @@ interface ModalProps {
   children: React.ReactNode
   maxWidth?: number
   triggerRef?: React.RefObject<HTMLButtonElement | null>
+  /**
+   * `frame="panel"` renders only the portal, backdrop, focus trap and dialog shell —
+   * no padding and no built-in title row — so a caller can compose its own
+   * header / scroll body / footer (see `features/groups/components/GroupPanel`).
+   * `title` still feeds `aria-label`.
+   */
+  frame?: 'default' | 'panel'
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
-export function Modal({ isOpen, onClose, title, children, maxWidth = 440, triggerRef }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = 440, triggerRef, frame = 'default' }: ModalProps) {
+  const isPanel = frame === 'panel'
   const panelRef = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
 
@@ -99,17 +107,31 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
             animate={modalIn.animate}
             exit={reduced ? undefined : modalIn.exit}
             transition={modalIn.transition}
-            style={{
-              width: '100%',
-              maxWidth,
-              maxHeight: 'calc(100dvh - 48px)',
-              overflowY: 'auto',
-              background: 'var(--surface-card)',
-              border: '0.5px solid var(--border-hover)',
-              borderRadius: 'var(--r-xl)',
-              padding: 20,
-            }}
+            style={
+              isPanel
+                ? {
+                    width: 'min(560px, 100%)',
+                    maxHeight: '80vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    background: 'var(--surface-card)',
+                    border: '0.5px solid var(--border-hover)',
+                    borderRadius: 'var(--r-xl)',
+                  }
+                : {
+                    width: '100%',
+                    maxWidth,
+                    maxHeight: 'calc(100dvh - 48px)',
+                    overflowY: 'auto',
+                    background: 'var(--surface-card)',
+                    border: '0.5px solid var(--border-hover)',
+                    borderRadius: 'var(--r-xl)',
+                    padding: 20,
+                  }
+            }
           >
+            {!isPanel && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</h2>
               <button
@@ -132,6 +154,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
                 <X size={16} />
               </button>
             </div>
+            )}
             {children}
           </motion.div>
         </motion.div>

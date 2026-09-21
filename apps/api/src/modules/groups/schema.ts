@@ -55,8 +55,12 @@ export const UpdateMemberSchema = z.object({
   role: GroupRoleSchema,
 })
 
+/** Role the invitee lands with on accept. Owner-only for `admin` (mirrors `assertCanAssignRole`). */
+export const InviteRoleSchema = z.enum(['member', 'moderator', 'admin'])
+
 export const InviteToGroupSchema = z.object({
   userId: z.string().uuid(),
+  role: InviteRoleSchema.optional(),
 })
 
 // ── Course-outline import + bulk invites ──────────────────────
@@ -95,6 +99,7 @@ export type CreateGroupInput = z.infer<typeof CreateGroupSchema>
 export type UpdateGroupInput = z.infer<typeof UpdateGroupSchema>
 export type UpdateMemberInput = z.infer<typeof UpdateMemberSchema>
 export type InviteToGroupInput = z.infer<typeof InviteToGroupSchema>
+export type InviteRole = z.infer<typeof InviteRoleSchema>
 export type AllowedRole = z.infer<typeof AllowedRoleSchema>
 export type CourseOutlineDraftRequestInput = z.infer<typeof CourseOutlineDraftRequestSchema>
 export type CreateGroupFromOutlineInput = z.infer<typeof CreateGroupFromOutlineSchema>

@@ -14,6 +14,8 @@ import type {
   Gradebook,
   GradebookEntryInput,
   Group,
+  GroupMember,
+  MemberRole,
   MyGradeCard,
   ReviewRating,
   SessionNotes,
@@ -880,5 +882,93 @@ export function useMyGroups() {
     queryFn: () =>
       api.get<{ data: PaginatedResponse<Group> }>('/groups/my?limit=20').then((r) => r.data.data),
     staleTime: 60_000,
+  })
+}
+
+// ── Members (header face stack + Members panel) ───────────────────────────────
+
+export interface MembersFilters {
+  search?: string
+  role?: MemberRole
+}
+
+const membersKey = (groupId: string, filters: MembersFilters, limit: number) =>
+  ['groups', 'members', { groupId, search: filters.search ?? '', role: filters.role ?? '', limit }] as const
+
+/**
+ * First page of a group's members. The header's face stack reads it with `limit: 5`;
+ * the Members panel reads it with the default page size and its own search/role.
+ */
+export function useGroupMembers(groupId: string, filters: MembersFilters = {}, limit = 20) {
+  return useQuery({
+    queryKey: membersKey(groupId, filters, limit),
+    queryFn: () =>
+      api
+        .get<{ data: PaginatedResponse<GroupMember> }>(`/groups/${groupId}/members`, {
+          params: {
+            page: 1,
+            limit,
+            ...(filters.search ? { search: filters.search } : {}),
+            ...(filters.role ? { role: filters.role } : {}),
+          },
+        })
+        .then((r) => r.data.data),
+    enabled: !!groupId,
+    staleTime: 60_000,
+  })
+}
+
+function invalidateMembers(queryClient: ReturnType<typeof useQueryClient>, groupId: string) {
+  // Matches every `['groups','members',{ groupId, … }]` key regardless of filters.
+  queryClient.invalidateQueries({
+    predicate: (q) => {
+      const [a, b, c] = q.queryKey as [unknown, unknown, { groupId?: string } | undefined]
+      return a === 'groups' && b === 'members' && c?.groupId === groupId
+    },
+  })
+  queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+}
+
+export function useUpdateMemberRole(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: Exclude<MemberRole, 'owner'> }) =>
+      api.patch(`/groups/${groupId}/members/${userId}`, { role }).then((r) => r.data.data),
+    onSuccess: () => invalidateMembers(queryClient, groupId),
+  })
+}
+
+export function useRemoveMember(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => api.delete(`/groups/${groupId}/members/${userId}`).then((r) => r.data.data),
+    onSuccess: () => invalidateMembers(queryClient, groupId),
+  })
+}
+
+/** `POST /groups/:id/chat` — creates or returns the academic group conversation. */
+export function useOpenGroupChat(groupId: string) {
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ data: { conversationId: string } }>(`/groups/${groupId}/chat`).then((r) => r.data.data),
+  })
+}
+
+export type InviteRole = Exclude<MemberRole, 'owner'>
+
+/** One `POST /groups/:id/invitations` per user; resolves with how many failed. */
+export function useInviteToGroup(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userIds, role }: { userIds: string[]; role: InviteRole }) => {
+      const results = await Promise.allSettled(
+        userIds.map((userId) => api.post(`/groups/${groupId}/invitations`, { userId, role })),
+      )
+      const failed = results.filter((r) => r.status === 'rejected').length
+      return { total: userIds.length, sent: userIds.length - failed, failed }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', 'pending-invites', groupId] })
+    },
   })
 }

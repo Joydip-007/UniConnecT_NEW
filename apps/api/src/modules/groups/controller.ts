@@ -259,11 +259,8 @@ export const listGroupCollaborations = asyncHandler(async (req: Request, res: Re
 
 export const inviteToGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  const result = await groupsService.inviteToGroup(
-    context,
-    getGroupIdParam(req),
-    (req.body as InviteToGroupInput).userId,
-  )
+  const body = req.body as InviteToGroupInput
+  const result = await groupsService.inviteToGroup(context, getGroupIdParam(req), body.userId, body.role)
   sendSuccess(res, result, 201)
 })
 

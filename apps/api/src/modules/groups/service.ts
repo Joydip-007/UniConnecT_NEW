@@ -38,6 +38,7 @@ import type {
   FlashcardReviewInput,
   GroupListQuery,
   InviteMatchQuery,
+  InviteRole,
   JoinRequestsQuery,
   MembersQuery,
   ModLogQuery,
@@ -55,7 +56,7 @@ import type {
   UpdateGroupSettingsInput,
   UpdateSharedNoteInput,
 } from './schema'
-import { AISettingsSchema } from './schema'
+import { AISettingsSchema, InviteRoleSchema } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
 import { canModerate, type GroupRole } from './permissions'
 
@@ -960,7 +961,14 @@ export class GroupsService {
     return { cancelled: true }
   }
 
-  async joinGroupViaInvite(context: AuthContext, groupId: string) {
+  /**
+   * `role` is the group role stored on the invite notification (`data.role`). Anything
+   * outside the invite-role enum (the bulk path stores the platform `allowed_role` there)
+   * falls back to `member`.
+   */
+  async joinGroupViaInvite(context: AuthContext, groupId: string, role?: unknown) {
+    const parsedRole = InviteRoleSchema.safeParse(role)
+    const memberRole: InviteRole = parsedRole.success ? parsedRole.data : 'member'
     const access = await assertGroupAccess(context, groupId)
     if (access.is_system) {
       throw forbidden('System groups cannot be joined via invite', 'GROUP_SYSTEM_JOIN_FORBIDDEN')
@@ -980,7 +988,7 @@ export class GroupsService {
         await trx('group_members').insert({
           group_id: groupId,
           user_id: context.userId,
-          role: 'member',
+          role: memberRole,
         })
         await trx('groups').where({ id: groupId, university_id: context.universityId }).increment('member_count', 1)
       })
@@ -1815,9 +1823,16 @@ export class GroupsService {
     return { clickCount: row?.click_count ?? 0 }
   }
 
-  async inviteToGroup(context: AuthContext, groupId: string, targetUserId: string) {
+  async inviteToGroup(
+    context: AuthContext,
+    groupId: string,
+    targetUserId: string,
+    role: InviteRole = 'member',
+  ) {
     const group = await assertGroupAccess(context, groupId)
     assertCanAdminGroup(group.user_role)
+    // Same tier cap as PATCH /members/:userId — an admin cannot mint another admin via invite.
+    assertCanAssignRole(group.user_role, 'member', role)
     if (group.is_system) {
       throw forbidden('System groups cannot be invited to', 'GROUP_SYSTEM_INVITE_FORBIDDEN')
     }
@@ -1872,6 +1887,7 @@ export class GroupsService {
       referenceId: groupId,
       referenceType: 'group',
       content: `${inviterName} invited you to join "${groupName}"`,
+      data: { role },
     })
 
     return { invited: true, notificationId: notification.id }

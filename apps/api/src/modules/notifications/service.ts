@@ -192,7 +192,11 @@ export class NotificationsService {
   ) {
     const notification = await db('notifications')
       .where({ id: notificationId, user_id: userId, type: 'group_invite' })
-      .select<{ id: string; reference_id: string | null }[]>('id', 'reference_id')
+      .select<{ id: string; reference_id: string | null; data: Record<string, unknown> | null }[]>(
+        'id',
+        'reference_id',
+        'data',
+      )
       .first()
     if (!notification || !notification.reference_id) {
       throw notFound('Group invitation not found', 'GROUP_INVITE_NOT_FOUND')
@@ -202,6 +206,7 @@ export class NotificationsService {
     const group = await groupsService.joinGroupViaInvite(
       { userId, universityId, role: userRole },
       notification.reference_id,
+      notification.data?.role,
     )
 
     await db('notifications').where({ id: notificationId, user_id: userId }).update({ is_read: true })

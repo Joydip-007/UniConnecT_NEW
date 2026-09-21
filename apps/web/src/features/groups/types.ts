@@ -56,6 +56,10 @@ export interface Group {
   previewMembers?: GroupPreviewMember[]
   /** Members of this group the viewer is connected to. List endpoint only. */
   knownMemberCount?: number
+  requirePostApproval?: boolean
+  requireEventApproval?: boolean
+  /** Unread count on the academic group chat. Not yet served by the API — optional. */
+  chatUnread?: number
 }
 
 export interface GroupMember {

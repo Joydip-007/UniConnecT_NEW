@@ -1,15 +1,45 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Users } from 'lucide-react'
+import { Forward, MessagesSquare, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { PATHS } from '@/router/paths'
 import { AllowedRoleBadge, OfficialBadge, TypeBadge } from './GroupBadges'
+import { MemberRoleTag } from './MemberRoleTag'
+import { MembersPanel } from './MembersPanel'
+import { InvitePanel } from './InvitePanel'
+import { ShareGroupModal } from './ShareGroupModal'
+import { useGroupMembers, useOpenGroupChat } from '../hooks/useGroupExtended'
 import type { Group } from '../types'
+
+const FACE_COUNT = 5
+
+type Overlay = 'members' | 'invite' | 'share' | null
 
 export function GroupHeader({ group }: { group: Group }) {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const [overlay, setOverlay] = useState<Overlay>(null)
+
+  const isAdmin = group.userRole === 'owner' || group.userRole === 'admin'
+  // The brief shows Invite for any member, but `POST /groups/:id/invitations` is
+  // owner/admin-only (`assertCanAdminGroup`) — a member's Invite would 403 on send.
+  const canInvite = !group.isSystem && isAdmin
+  const { data: facesPage } = useGroupMembers(group.id, {}, FACE_COUNT)
+  const faces = facesPage?.items ?? []
+  const others = Math.max(group.memberCount - FACE_COUNT, 0)
+
+  const openChat = useOpenGroupChat(group.id)
+  function goToChat() {
+    openChat.mutate(undefined, {
+      onSuccess: ({ conversationId }) => navigate(`${PATHS.MESSAGES}/${conversationId}`),
+      onError: () => toast.error('Could not open the group chat'),
+    })
+  }
 
   const toggleMutation = useMutation({
     mutationFn: () =>
@@ -77,19 +107,7 @@ export function GroupHeader({ group }: { group: Group }) {
               <TypeBadge type={group.type} />
               <OfficialBadge isSystem={group.isSystem} />
               <AllowedRoleBadge allowedRole={group.allowedRole} />
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontSize: 12,
-                  fontWeight: 400,
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                <Users size={12} strokeWidth={1.5} color="var(--text-tertiary)" />
-                {group.memberCount.toLocaleString()} {group.memberCount === 1 ? 'member' : 'members'}
-              </span>
+              {group.userRole && <MemberRoleTag role={group.userRole} hideOwner={group.isSystem} />}
             </div>
           </div>
 
@@ -130,20 +148,132 @@ export function GroupHeader({ group }: { group: Group }) {
           </p>
         )}
 
-        {group.isSystem && (
-          <p
+        <div
+          style={{
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: '0.5px solid var(--border-default)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {faces.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center' }} aria-hidden>
+                {faces.map((m, i) => (
+                  <div
+                    key={m.id}
+                    style={{
+                      marginLeft: i === 0 ? 0 : -9,
+                      border: '2px solid var(--surface-card)',
+                      borderRadius: '50%',
+                      display: 'inline-flex',
+                      zIndex: faces.length - i,
+                      position: 'relative',
+                    }}
+                  >
+                    <Avatar src={m.avatarUrl} initials={getInitials(m.fullName)} color={seedColor(m.id)} size={26} />
+                  </div>
+                ))}
+              </div>
+            )}
+            <GhostBtn
+              onClick={() => setOverlay('members')}
+              style={{ padding: '4px 12px', fontSize: 12 }}
+            >
+              {others > 0
+                ? `+${others.toLocaleString()} others`
+                : `${group.memberCount.toLocaleString()} ${group.memberCount === 1 ? 'member' : 'members'}`}
+            </GhostBtn>
+          </div>
+
+          <span style={{ flex: 1 }} />
+
+          {canInvite && (
+            <GhostBtn onClick={() => setOverlay('invite')} style={{ padding: '4px 12px', fontSize: 12 }}>
+              <UserPlus size={13} strokeWidth={1.5} />
+              Invite
+            </GhostBtn>
+          )}
+          <button
+            type="button"
+            onClick={() => setOverlay('share')}
+            aria-label="Share group"
+            className="press-feedback row-hover-bg"
             style={{
-              margin: '10px 0 0',
-              fontSize: 12,
-              fontWeight: 400,
-              color: 'var(--text-tertiary)',
-              fontStyle: 'italic',
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'transparent',
+              border: '0.5px solid var(--border-hover)',
+              cursor: 'pointer',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
-            This is an official auto-managed group. Membership is updated automatically based on your role.
-          </p>
-        )}
+            <Forward size={15} strokeWidth={1.5} />
+          </button>
+          {group.type === 'academic' && group.isMember && (
+            <button
+              type="button"
+              onClick={goToChat}
+              disabled={openChat.isPending}
+              aria-label="Open group chat"
+              className="press-feedback"
+              style={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--uc-indigo-l)',
+                background: 'var(--uc-indigo-bg)',
+                border: '0.5px solid var(--uc-indigo-bdr)',
+                borderRadius: 'var(--r-pill)',
+                cursor: 'pointer',
+              }}
+            >
+              <MessagesSquare size={15} strokeWidth={1.5} />
+              Chat
+              {!!group.chatUnread && group.chatUnread > 0 && (
+                <span
+                  style={{
+                    minWidth: 16,
+                    height: 16,
+                    padding: '0 4px',
+                    borderRadius: 'var(--r-pill)',
+                    background: 'var(--uc-indigo)',
+                    color: 'var(--on-accent)',
+                    fontSize: 10,
+                    fontWeight: 500,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {group.chatUnread > 99 ? '99+' : group.chatUnread}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
+
+      {overlay === 'members' && (
+        <MembersPanel
+          group={group}
+          onClose={() => setOverlay(null)}
+          onInvite={canInvite ? () => setOverlay('invite') : undefined}
+        />
+      )}
+      {overlay === 'invite' && <InvitePanel group={group} onClose={() => setOverlay(null)} />}
+      {overlay === 'share' && <ShareGroupModal group={group} onClose={() => setOverlay(null)} />}
     </div>
   )
 }
