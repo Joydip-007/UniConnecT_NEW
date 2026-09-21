@@ -9,9 +9,7 @@ import { toast } from 'sonner'
 import { useMutation } from '@tanstack/react-query'
 import {
   Archive,
-  BellOff,
   Bookmark,
-  EyeOff,
   Flag,
   Link as LinkIcon,
   MessageCircle,
@@ -304,10 +302,10 @@ function PollBlock({ poll, readOnly = false }: { poll: FeedPoll; postId: string;
 interface GroupMenuContext {
   isModerator: boolean
   isPinned: boolean
+  /** Hidden for the author's own post — you cannot mute yourself. */
+  canMute: boolean
   onTogglePin: () => void
   onMute: () => void
-  onToggleNotifications: () => void
-  onHide: () => void
 }
 
 interface ThreeDotMenuProps {
@@ -381,15 +379,15 @@ function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport, onSave, 
                     {canEdit && (
                       <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={withClose(onEdit)} />
                     )}
-                    <MenuBtn icon={<VolumeX size={13} strokeWidth={1.5} />} label="Mute this member" onClick={withClose(groupContext.onMute)} />
+                    {groupContext.canMute && (
+                      <MenuBtn icon={<VolumeX size={13} strokeWidth={1.5} />} label="Mute this member" onClick={withClose(groupContext.onMute)} />
+                    )}
                     <MenuBtn icon={<Trash2 size={13} strokeWidth={1.5} />} label="Delete post" onClick={handleDelete} danger />
                   </>
                 ) : (
                   <>
                     <MenuBtn icon={<Bookmark size={13} strokeWidth={1.5} />} label="Save post" onClick={withClose(onSave)} />
                     <MenuBtn icon={<LinkIcon size={13} strokeWidth={1.5} />} label="Copy link to post" onClick={withClose(onCopyLink)} />
-                    <MenuBtn icon={<BellOff size={13} strokeWidth={1.5} />} label="Turn off notifications" onClick={withClose(groupContext.onToggleNotifications)} />
-                    <MenuBtn icon={<EyeOff size={13} strokeWidth={1.5} />} label="Hide this post" onClick={withClose(groupContext.onHide)} />
                     <MenuBtn icon={<Flag size={13} strokeWidth={1.5} />} label="Report to group admins" onClick={withClose(onReport)} danger />
                   </>
                 )
@@ -555,14 +553,6 @@ export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', h
     muteMutation.mutate()
   }
 
-  function handleToggleNotifications() {
-    toast.success('Notifications turned off for this post')
-  }
-
-  function handleHidePost() {
-    toast.success('Post hidden from your feed')
-  }
-
   const canEdit = user && (user.id === post.author.id || user.role === 'admin')
   const isGroupModerator = groupRole === 'owner' || groupRole === 'admin' || groupRole === 'moderator'
   const groupContext =
@@ -570,10 +560,9 @@ export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', h
       ? {
           isModerator: isGroupModerator,
           isPinned: post.isPinned,
+          canMute: !!user && user.id !== post.author.id,
           onTogglePin: handleTogglePin,
           onMute: handleMuteMember,
-          onToggleNotifications: handleToggleNotifications,
-          onHide: handleHidePost,
         }
       : undefined
   const isAnnouncement = post.type === 'announcement' || post.isPinned
