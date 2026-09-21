@@ -112,7 +112,7 @@ export default function GroupDetailPage() {
       )}
 
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {id && activeTab === 'feed' && <FeedTab groupId={id} />}
+        {id && activeTab === 'feed' && <FeedTab groupId={id} userRole={userRole} />}
         {id && activeTab === 'resources' && (
           <ResourcesTab groupId={id} userRole={userRole} currentUserId={user?.id} />
         )}

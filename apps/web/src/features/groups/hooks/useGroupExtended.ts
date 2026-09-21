@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
+import type { FeedPost } from '@uniconnect/shared'
 import type {
   AcademicModule,
   Assignment,
@@ -341,6 +342,35 @@ export function useReviewSummary(groupId: string, enabled = true) {
       api.get<{ data: ReviewSummary }>(`/groups/${groupId}/review/summary`).then((r) => r.data.data),
     enabled: !!groupId && enabled,
     staleTime: 60_000,
+  })
+}
+
+// ── Post review queue (Feed tab) ─────────────────────────────────────────────
+
+export const pendingPostsKey = (groupId: string) => ['groups', 'pending-posts', { groupId }] as const
+
+/** Moderator+ only — gate with `enabled` so a member never 403s on the group's own feed tab. */
+export function usePendingPosts(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: pendingPostsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: FeedPost[] } }>(`/groups/${groupId}/review/posts`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId && enabled,
+  })
+}
+
+export function useReviewPost(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ postId, action }: { postId: string; action: 'approve' | 'decline' }) =>
+      api.patch(`/groups/${groupId}/review/posts/${postId}`, { action }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pendingPostsKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: reviewSummaryKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'posts'] })
+    },
   })
 }
 

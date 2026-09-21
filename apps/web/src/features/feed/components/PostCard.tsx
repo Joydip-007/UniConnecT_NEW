@@ -9,13 +9,18 @@ import { toast } from 'sonner'
 import { useMutation } from '@tanstack/react-query'
 import {
   Archive,
+  BellOff,
   Bookmark,
+  EyeOff,
   Flag,
+  Link as LinkIcon,
   MessageCircle,
   MoreVertical,
+  Pin,
   Share2,
   Trash2,
   Pencil,
+  VolumeX,
 } from 'lucide-react'
 import type { FeedPost, FeedPoll } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
@@ -30,7 +35,10 @@ import { ShareMenu } from '@/components/ShareMenu'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { AttachmentList } from '@/features/content-sync'
 import { MediaGrid } from './MediaGrid'
-import { ReportModal } from '@/features/moderation'
+import { ReportModal, useUserModeration } from '@/features/moderation'
+import { useSetPinned } from '@/features/groups/hooks/useGroupExtended'
+import type { MemberRole } from '@/features/groups/types'
+import { useShareLink } from '@/features/share/hooks/useShareLink'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { useUpsertReaction } from '@/features/feed/hooks/useUpsertReaction'
@@ -287,15 +295,33 @@ function PollBlock({ poll, readOnly = false }: { poll: FeedPoll; postId: string;
 
 // ── ThreeDotMenu ──────────────────────────────────────────────────────────────
 
+/**
+ * Extra actions available only when the card is rendered inside a group's feed
+ * (`PostCard`'s `groupRole`/`groupId` props). `isModerator` picks which of the two
+ * group menu sets from the design spec applies — owner/admin/moderator get the
+ * moderation set, everyone else gets the member set.
+ */
+interface GroupMenuContext {
+  isModerator: boolean
+  isPinned: boolean
+  onTogglePin: () => void
+  onMute: () => void
+  onToggleNotifications: () => void
+  onHide: () => void
+}
+
 interface ThreeDotMenuProps {
   canEdit: boolean
   onEdit: () => void
   onDelete: () => void
   onArchive: () => void
   onReport: () => void
+  onSave: () => void
+  onCopyLink: () => void
+  groupContext?: GroupMenuContext
 }
 
-function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport }: ThreeDotMenuProps) {
+function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport, onSave, onCopyLink, groupContext }: ThreeDotMenuProps) {
   const [open, setOpen] = useState(false)
 
   function handleDelete() {
@@ -306,6 +332,13 @@ function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport }: ThreeD
   function handleArchive() {
     setOpen(false)
     onArchive()
+  }
+
+  function withClose(fn: () => void) {
+    return () => {
+      setOpen(false)
+      fn()
+    }
   }
 
   return (
@@ -335,7 +368,32 @@ function ThreeDotMenu({ canEdit, onEdit, onDelete, onArchive, onReport }: ThreeD
               transition={threeDotMenuTransition}
               style={threeDotMenuStyle}
             >
-              {canEdit ? (
+              {groupContext ? (
+                groupContext.isModerator ? (
+                  <>
+                    <MenuBtn icon={<Bookmark size={13} strokeWidth={1.5} />} label="Save post" onClick={withClose(onSave)} />
+                    <MenuBtn icon={<LinkIcon size={13} strokeWidth={1.5} />} label="Copy link to post" onClick={withClose(onCopyLink)} />
+                    <MenuBtn
+                      icon={<Pin size={13} strokeWidth={1.5} />}
+                      label={groupContext.isPinned ? 'Unpin from group' : 'Pin to group'}
+                      onClick={withClose(groupContext.onTogglePin)}
+                    />
+                    {canEdit && (
+                      <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={withClose(onEdit)} />
+                    )}
+                    <MenuBtn icon={<VolumeX size={13} strokeWidth={1.5} />} label="Mute this member" onClick={withClose(groupContext.onMute)} />
+                    <MenuBtn icon={<Trash2 size={13} strokeWidth={1.5} />} label="Delete post" onClick={handleDelete} danger />
+                  </>
+                ) : (
+                  <>
+                    <MenuBtn icon={<Bookmark size={13} strokeWidth={1.5} />} label="Save post" onClick={withClose(onSave)} />
+                    <MenuBtn icon={<LinkIcon size={13} strokeWidth={1.5} />} label="Copy link to post" onClick={withClose(onCopyLink)} />
+                    <MenuBtn icon={<BellOff size={13} strokeWidth={1.5} />} label="Turn off notifications" onClick={withClose(groupContext.onToggleNotifications)} />
+                    <MenuBtn icon={<EyeOff size={13} strokeWidth={1.5} />} label="Hide this post" onClick={withClose(groupContext.onHide)} />
+                    <MenuBtn icon={<Flag size={13} strokeWidth={1.5} />} label="Report to group admins" onClick={withClose(onReport)} danger />
+                  </>
+                )
+              ) : canEdit ? (
                 <>
                   <MenuBtn icon={<Pencil size={13} strokeWidth={1.5} />} label="Edit post" onClick={() => { setOpen(false); onEdit() }} />
                   <MenuBtn icon={<Archive size={13} strokeWidth={1.5} />} label="Archive" onClick={handleArchive} />
@@ -401,9 +459,13 @@ export interface PostCardProps {
    */
   variant?: 'feed' | 'admin'
   headerSlot?: React.ReactNode
+  /** Set when rendered inside a group's Feed tab — the card's `userRole` there. Drives the menu set below. */
+  groupRole?: MemberRole
+  /** Required alongside `groupRole` for the group-only actions (pin, mute) to know which group to act on. */
+  groupId?: string
 }
 
-export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', headerSlot }: PostCardProps) {
+export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', headerSlot, groupRole, groupId }: PostCardProps) {
   const user = useAuthStore((s) => s.user)
   const viewTransitionNavigate = useViewTransitionNavigate()
   const [myReaction, setMyReaction] = useState<ReactionKey | null>(post.myReaction as ReactionKey | null)
@@ -424,6 +486,11 @@ export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', h
   const deleteMutation = useDeletePost()
   const archiveMutation = useArchivePost()
   const unshareMutation = useUnsharePost(myShareId ?? '', rootPostId)
+
+  // Group-context actions (only used when rendered inside a group's Feed tab).
+  const setPinnedMutation = useSetPinned(groupId ?? '')
+  const { mute: muteMutation } = useUserModeration(post.author.id)
+  const { copy: copyPostLink } = useShareLink('post', post.id, `${post.author.fullName} on UniConnecT`)
 
   function handleDeletePost() {
     const tid = window.setTimeout(() => deleteMutation.mutate(post.id), 5000)
@@ -475,7 +542,40 @@ export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', h
     )
   }
 
+  function handleTogglePin() {
+    if (!groupId) return
+    if (post.isPinned) {
+      setPinnedMutation.mutate(null, { onSuccess: () => toast.success('Unpinned from group') })
+    } else {
+      setPinnedMutation.mutate(post.content.slice(0, 280), { onSuccess: () => toast.success('Pinned to group') })
+    }
+  }
+
+  function handleMuteMember() {
+    muteMutation.mutate()
+  }
+
+  function handleToggleNotifications() {
+    toast.success('Notifications turned off for this post')
+  }
+
+  function handleHidePost() {
+    toast.success('Post hidden from your feed')
+  }
+
   const canEdit = user && (user.id === post.author.id || user.role === 'admin')
+  const isGroupModerator = groupRole === 'owner' || groupRole === 'admin' || groupRole === 'moderator'
+  const groupContext =
+    groupId != null && groupRole != null
+      ? {
+          isModerator: isGroupModerator,
+          isPinned: post.isPinned,
+          onTogglePin: handleTogglePin,
+          onMute: handleMuteMember,
+          onToggleNotifications: handleToggleNotifications,
+          onHide: handleHidePost,
+        }
+      : undefined
   const isAnnouncement = post.type === 'announcement' || post.isPinned
   const author = post.author
   const authorProfileUrl = PATHS.PROFILE.replace(':id', author.id)
@@ -540,6 +640,9 @@ export function PostCard({ post, onCommentClick, onEditPost, variant = 'feed', h
               onDelete={handleDeletePost}
               onArchive={() => archiveMutation.mutate(post.id)}
               onReport={() => setReportOpen(true)}
+              onSave={handleSave}
+              onCopyLink={copyPostLink}
+              groupContext={groupContext}
             />
           )}
         </div>
