@@ -72,6 +72,11 @@ export default function GroupsPage() {
   const isFaculty = useAuthStore((s) => s.user?.role) === 'faculty'
   const defaultSection: Section = isFaculty ? 'sections' : 'groups'
 
+  // `University` is optional on `User` (not populated by the auth/me responses
+  // yet) — falls back to generic campus copy rather than hardcoding a tenant name.
+  const universityName = useAuthStore((s) => s.user?.university?.name)
+  const subtitleTenant = universityName ? `at ${universityName}` : 'on campus'
+
   // The rail row is "Groups & people", so connections fold in here as a section.
   // `/connections` stays routable for deep links and for the avatar menu.
   const rawSection = searchParams.get('section')
@@ -252,7 +257,7 @@ export default function GroupsPage() {
           Groups and people
         </h1>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          Departments, clubs and batches on campus, plus the people in them.
+          Departments, clubs and batches {subtitleTenant}, plus the people in them.
         </p>
       </header>
 
@@ -364,7 +369,7 @@ export default function GroupsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isPeople ? 'Search people by name' : 'Search groups'}
+            placeholder={isPeople ? 'Search people by name or department' : 'Search groups'}
             aria-label={isPeople ? 'Search people' : 'Search groups'}
             style={{
               width: '100%',

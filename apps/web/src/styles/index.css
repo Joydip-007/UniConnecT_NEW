@@ -1199,3 +1199,32 @@ select:focus-visible {
 .show-bar {
   scrollbar-width: thin;
 }
+
+/* ── `.uc-tip` — CSS-only tooltip. Pair with a `data-tip` attribute (the text)
+   and keep a matching `title` for assistive tech / no-JS. Positions above the
+   element; `.uc-tip-below` flips it under, for controls near the top edge. ── */
+.uc-tip {
+  position: relative;
+}
+.uc-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--overlay-bg-strong);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  z-index: 20;
+}
+.uc-tip:hover::after,
+.uc-tip:focus-visible::after {
+  opacity: 1;
+}

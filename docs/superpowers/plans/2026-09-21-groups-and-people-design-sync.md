@@ -1030,7 +1030,7 @@ Section label style: `fontSize 11, fontWeight 500, letterSpacing '0.04em', color
 - `GroupCard` mute switch gets the design's `.uc-badge` tooltip (`Notifications on|Notifications muted`) — implement as `title` + a CSS-only tooltip class `uc-tip` added to `index.css` (`position:absolute; bottom:calc(100% + 6px); … opacity 0 → 1 on :hover`). Private lock gets the same tooltip `Request to join`.
 - Search placeholder `Search groups` / `Search people by name or department`.
 
-- [ ] Steps: test (tooltip text present, placeholder) → implement → commit `feat(groups): directory copy and card tooltips per design`
+- [x] Steps: test (tooltip text present, placeholder) → implement → commit `feat(groups): directory copy and card tooltips per design`
 
 ---
 

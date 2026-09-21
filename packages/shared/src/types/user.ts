@@ -31,6 +31,9 @@ export interface User {
   email: string
   role: UserRole
   universityId: string
+  // Optional: not populated by the auth/me responses yet (only `universityId` is).
+  // Consumers must fall back gracefully rather than assume it is present.
+  university?: { name: string }
   isVerified: boolean
   themePreference: ThemePreference
   profile: UserProfile

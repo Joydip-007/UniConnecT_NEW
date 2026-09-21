@@ -132,6 +132,8 @@ export function GroupCard({ group }: { group: Group }) {
             </Link>
             {group.isPrivate && (
               <span
+                className="uc-tip"
+                data-tip="Request to join"
                 title="Request to join"
                 aria-label="Private group — request to join"
                 style={{ color: 'var(--text-tertiary)', lineHeight: 0 }}
@@ -215,6 +217,8 @@ export function GroupCard({ group }: { group: Group }) {
             aria-checked={!muted}
             aria-label={muted ? 'Notifications muted' : 'Notifications on'}
             title={muted ? 'Notifications muted' : 'Notifications on'}
+            className="uc-tip"
+            data-tip={muted ? 'Notifications muted' : 'Notifications on'}
             disabled={muteMutation.isPending}
             onClick={() => muteMutation.mutate(!muted)}
             style={{

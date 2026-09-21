@@ -1,8 +1,47 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { GROUP_FILTER_TYPES } from './GroupsPage'
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, expect, it, vi } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/tests/msw/server'
+import GroupsPage, { GROUP_FILTER_TYPES } from './GroupsPage'
 import { TYPE_LOOK } from '@/features/groups/groupTypeLook'
+
+vi.mock('@/stores/authStore', () => {
+  const state = () => ({
+    user: { id: 'viewer-1', role: 'student', university: { name: 'UIU' } },
+    accessToken: null,
+    clearAuth: () => {},
+  })
+  const useAuthStore = Object.assign(
+    (selector: (s: ReturnType<typeof state>) => unknown) => selector(state()),
+    { getState: state },
+  )
+  return { useAuthStore }
+})
+
+class NoopObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+function renderPage(initialEntries: string[] = ['/groups']) {
+  vi.stubGlobal('IntersectionObserver', NoopObserver)
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  server.use(
+    http.get('*/groups', () => HttpResponse.json({ data: { items: [], total: 0, hasMore: false, page: 1 } })),
+  )
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <GroupsPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
 
 /**
  * `GroupType` is the contract: the API accepts every one of these on `POST /groups`
@@ -36,5 +75,25 @@ describe('group type coverage', () => {
   it('labels each type distinctly, so two chips never mean the same thing', () => {
     const labels = Object.values(TYPE_LOOK).map((l) => l.label)
     expect(new Set(labels).size).toBe(labels.length)
+  })
+})
+
+describe('directory copy', () => {
+  it('names the tenant in the subtitle when the auth user carries one', () => {
+    renderPage()
+    expect(screen.getByText('Departments, clubs and batches at UIU, plus the people in them.')).toBeInTheDocument()
+  })
+
+  it('placeholders the groups search box distinctly from the people one', () => {
+    renderPage()
+    expect(screen.getByPlaceholderText('Search groups')).toBeInTheDocument()
+  })
+
+  it('placeholders the people search box with what it actually matches on', async () => {
+    server.use(
+      http.get('*/users', () => HttpResponse.json({ data: { items: [], total: 0, hasMore: false, page: 1 } })),
+    )
+    renderPage(['/groups?section=people'])
+    expect(await screen.findByPlaceholderText('Search people by name or department')).toBeInTheDocument()
   })
 })
