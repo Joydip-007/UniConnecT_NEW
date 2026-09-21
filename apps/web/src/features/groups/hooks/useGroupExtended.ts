@@ -760,6 +760,8 @@ export function useSharedNoteUpload(groupId: string) {
   })
 }
 
+const gradebookKey = (groupId: string) => ['groups', 'gradebook', { groupId }] as const
+
 // ── Course outline ───────────────────────────────────────────────────────────
 
 const courseOutlineKey = (groupId: string) => ['groups', 'course-outline', { groupId }] as const
@@ -782,13 +784,14 @@ export function useSaveCourseOutline(groupId: string, mode: 'create' | 'replace'
         : api.put<{ data: CourseOutline }>(`/groups/${groupId}/course-outline`, input).then((r) => r.data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseOutlineKey(groupId) })
+      // Assessment changes add/remove gradebook columns.
+      queryClient.invalidateQueries({ queryKey: gradebookKey(groupId) })
     },
   })
 }
 
 // ── Gradebook ────────────────────────────────────────────────────────────────
 
-const gradebookKey = (groupId: string) => ['groups', 'gradebook', { groupId }] as const
 const myGradeCardKey = (groupId: string) => ['groups', 'gradebook', 'me', { groupId }] as const
 
 export function useGradebook(groupId: string) {
