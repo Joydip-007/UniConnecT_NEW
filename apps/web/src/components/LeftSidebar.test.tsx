@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserRole } from '@uniconnect/shared'
 import { LeftSidebar } from './LeftSidebar'
 import { RAILS, type RailContext } from './leftSidebar.config'
+import { usePageRailStore } from '@/stores/pageRailStore'
 
 const navigate = vi.fn()
 let mockRole: UserRole = 'student'
@@ -107,6 +108,7 @@ describe('LeftSidebar', () => {
     mockRole = 'student'
     mockDraftCount = 0
     mockCtx = emptyCtx()
+    usePageRailStore.setState({ leftOverride: null, rightOverride: null })
   })
 
   it('renders the expanded sidebar with visible profile and labels', () => {
@@ -115,6 +117,14 @@ describe('LeftSidebar', () => {
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Home' })).toBeInTheDocument()
     expect(screen.getByText('Campus tools')).toBeInTheDocument()
+  })
+
+  it('renders a leftOverride in place of the fixed nav/contextual zone/tools, keeping the profile card', () => {
+    usePageRailStore.setState({ leftOverride: <div>In this group</div> })
+    renderSidebar(false)
+    expect(screen.getByText('In this group')).toBeInTheDocument()
+    expect(screen.queryByText('Campus tools')).not.toBeInTheDocument()
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
   })
 
   it('keeps the active route marked with aria-current page', () => {
@@ -218,6 +228,7 @@ describe('LeftSidebar contextual zone', () => {
     mockRole = 'student'
     mockDraftCount = 0
     mockCtx = emptyCtx()
+    usePageRailStore.setState({ leftOverride: null, rightOverride: null })
   })
 
   function zoneLabels(): string[] {

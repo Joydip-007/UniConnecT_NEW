@@ -3,6 +3,7 @@ import { RIGHT_RAIL_WIDGETS } from '@/components/rightRail'
 import { ROLE_SHELL } from '@/config/roleShell'
 import { listStagger } from '@/lib/motion'
 import { useAuthStore } from '@/stores/authStore'
+import { usePageRailStore } from '@/stores/pageRailStore'
 
 /**
  * The right rail owns layout and nothing else. Which widgets a role gets is a manifest
@@ -19,6 +20,30 @@ export function RightSidebar() {
   const prefersReducedMotion = useReducedMotion()
   const role = useAuthStore((s) => s.user?.role)
   const widgetKeys = ROLE_SHELL[role ?? 'student'].rightRail
+  const rightOverride = usePageRailStore((s) => s.rightOverride)
+
+  if (rightOverride) {
+    return (
+      <aside
+        aria-label="Suggestions and activity"
+        style={{
+          width: 272,
+          flexShrink: 0,
+          position: 'sticky',
+          top: 78,
+          height: 'calc(100vh - 78px)',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          paddingBottom: 20,
+        }}
+        className="right-rail rail-scroll"
+      >
+        {rightOverride}
+      </aside>
+    )
+  }
 
   if (widgetKeys.length === 0) return null
 
