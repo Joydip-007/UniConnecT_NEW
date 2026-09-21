@@ -1218,59 +1218,101 @@ export class GroupsService {
   async listSuggestions(context: AuthContext, limit: number) {
     // Non-member groups only, public or private — unlike `listGroups`, a private group
     // the caller hasn't joined is still a valid suggestion (surfaced by known-member
-    // count), so there is no `is_private` filter here.
+    // count), so there is no `is_private` filter here. System groups are excluded —
+    // `assertCanJoinGroup` rejects joining one outright, so they are never a valid
+    // suggestion.
+    //
+    // The known-member count that ranking depends on is computed as a correlated
+    // subquery and ordered/limited in the database — computing it in JS only after an
+    // arbitrary "top 50 by member_count" pre-cut would silently drop a group with many
+    // known connections but a small `member_count` once more than 50 groups are
+    // eligible, breaking the "knownMemberCount desc, member_count desc" contract.
     const memberGroupIds = db('group_members').select('group_id').where({ user_id: context.userId })
 
     const rows = (await groupSelectQuery(db, context.userId)
       .where('groups.university_id', context.universityId)
       .whereNotIn('groups.id', memberGroupIds)
-      .orderBy('groups.member_count', 'desc')
-      .limit(50)) as GroupRow[]
+      .whereNot('groups.is_system', true)
+      .select(
+        db.raw(
+          `(
+            select count(*)::int
+              from group_members gm
+              join connections conn
+                on conn.status = 'accepted'
+               and (
+                 (conn.requester_id = ? and conn.addressee_id = gm.user_id)
+                 or (conn.addressee_id = ? and conn.requester_id = gm.user_id)
+               )
+             where gm.group_id = groups.id
+          ) as known_member_count`,
+          [context.userId, context.userId],
+        ),
+      )
+      .orderByRaw('known_member_count desc, groups.member_count desc')
+      .limit(limit)) as (GroupRow & { known_member_count: number | string })[]
 
-    const { previewByGroup, knownByGroup } = await loadGroupSocialProof(
+    const { previewByGroup } = await loadGroupSocialProof(
       rows.map((row) => row.id),
       context.userId,
     )
 
-    const items = rows
-      .map((row) => ({
-        ...toGroup(row),
-        previewMembers: previewByGroup.get(row.id) ?? [],
-        knownMemberCount: knownByGroup.get(row.id) ?? 0,
-      }))
-      .sort((a, b) => {
-        if (b.knownMemberCount !== a.knownMemberCount) return b.knownMemberCount - a.knownMemberCount
-        return b.memberCount - a.memberCount
-      })
-      .slice(0, limit)
+    const items = rows.map((row) => ({
+      ...toGroup(row),
+      previewMembers: previewByGroup.get(row.id) ?? [],
+      knownMemberCount: Number(row.known_member_count ?? 0),
+    }))
 
     return { items }
   }
 
+  /**
+   * Lazily creates and returns the group's class-chat conversation id. Concurrent
+   * first calls (e.g. two members opening the chat tab at once) race on the
+   * check-then-create — a plain SELECT-then-UPDATE would let both requests see
+   * `chat_conversation_id: null` and each create its own conversation. Guarded here
+   * with `SELECT … FOR UPDATE` inside a transaction: the second transaction blocks on
+   * the row lock until the first commits, then re-reads the now-populated
+   * `chat_conversation_id` and returns it instead of creating a duplicate.
+   */
   async openGroupChat(context: AuthContext, groupId: string) {
     await assertMemberAccess(context, groupId)
 
-    const row = await db('groups')
-      .select<{ type: GroupType; name: string; chat_conversation_id: string | null }[]>(
-        'type',
-        'name',
-        'chat_conversation_id',
-      )
+    // Cheap pre-check outside the transaction — the common case (chat already
+    // exists) never needs to take the row lock at all.
+    const precheck = await db('groups')
+      .select<{ type: GroupType; chat_conversation_id: string | null }[]>('type', 'chat_conversation_id')
       .where({ id: groupId })
       .first()
 
-    if (!row) throw notFound('Group not found', 'GROUP_NOT_FOUND')
-    if (row.type !== 'academic') {
+    if (!precheck) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+    if (precheck.type !== 'academic') {
       throw badRequest('Only class groups have a group chat', 'GROUP_NOT_ACADEMIC')
     }
-    if (row.chat_conversation_id) return { conversationId: row.chat_conversation_id }
+    if (precheck.chat_conversation_id) return { conversationId: precheck.chat_conversation_id }
 
-    const memberIds = await db('group_members').where({ group_id: groupId }).pluck<string[]>('user_id')
-    const conversationId = await messagesService.createGroupConversationForGroup(context, {
-      name: row.name,
-      participantIds: memberIds,
+    const conversationId = await db.transaction(async (trx) => {
+      const locked = await trx('groups')
+        .select<{ name: string; chat_conversation_id: string | null }[]>('name', 'chat_conversation_id')
+        .where({ id: groupId })
+        .forUpdate()
+        .first()
+
+      if (!locked) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+      // Re-check after acquiring the lock — another transaction may have created and
+      // committed the chat while this one was waiting on the lock.
+      if (locked.chat_conversation_id) return locked.chat_conversation_id
+
+      const memberIds = await trx('group_members').where({ group_id: groupId }).pluck<string[]>('user_id')
+      const newConversationId = await messagesService.createGroupConversationForGroup(
+        context,
+        { name: locked.name, participantIds: memberIds },
+        trx,
+      )
+      await trx('groups').where({ id: groupId }).update({ chat_conversation_id: newConversationId })
+
+      return newConversationId
     })
-    await db('groups').where({ id: groupId }).update({ chat_conversation_id: conversationId })
 
     return { conversationId }
   }

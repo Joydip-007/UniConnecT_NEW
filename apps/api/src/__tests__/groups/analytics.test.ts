@@ -1,6 +1,7 @@
 import request from 'supertest'
-import { describe, it, expect, beforeAll } from 'vitest'
-import { app, DOMAIN, loginAs, CREDENTIALS } from '../setup'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { app, DOMAIN, loginAs, CREDENTIALS, TEST_UNIVERSITY_ID } from '../setup'
+import { db } from '../../config/db'
 
 describe('group analytics, suggestions, chat, ask-teacher', () => {
   let faculty: { accessToken: string }
@@ -8,6 +9,7 @@ describe('group analytics, suggestions, chat, ask-teacher', () => {
   let admin: { accessToken: string }
   let academicGroupId: string
   let clubGroupId: string
+  let systemGroupId: string
 
   beforeAll(async () => {
     faculty = await loginAs(CREDENTIALS.faculty.email, CREDENTIALS.faculty.password)
@@ -39,6 +41,33 @@ describe('group analytics, suggestions, chat, ask-teacher', () => {
       .set('x-university-domain', DOMAIN)
       .set('Authorization', `Bearer ${student.accessToken}`)
       .send({})
+
+    const adminUser = await db('users')
+      .where({ university_id: TEST_UNIVERSITY_ID, email: CREDENTIALS.admin.email })
+      .select<{ id: string }[]>('id')
+      .first()
+    const [systemGroup] = await db('groups')
+      .insert({
+        university_id: TEST_UNIVERSITY_ID,
+        created_by: adminUser!.id,
+        name: 'System-managed suggestions probe',
+        description: 'x',
+        type: 'other',
+        is_private: false,
+        is_system: true,
+        allowed_role: 'student',
+        // Deliberately huge — guarantees this row would sort to the very top of
+        // suggestions (member_count desc is the tiebreaker) if the is_system filter
+        // were ever dropped, making the exclusion assertion below meaningful even
+        // amid whatever other groups earlier tests left in this database.
+        member_count: 999999,
+      })
+      .returning<{ id: string }[]>('id')
+    systemGroupId = systemGroup!.id
+  })
+
+  afterAll(async () => {
+    await db('groups').where({ id: systemGroupId }).delete()
   })
 
   it('returns 5 postsPerWeek buckets for a moderator and 403 for a plain member', async () => {
@@ -74,6 +103,17 @@ describe('group analytics, suggestions, chat, ask-teacher', () => {
     expect(ids).not.toContain(clubGroupId)
   })
 
+  it('never surfaces a system group, even one that would otherwise rank first', async () => {
+    const res = await request(app)
+      .get('/api/v1/groups/suggestions?limit=20')
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${student.accessToken}`)
+
+    expect(res.status).toBe(200)
+    const ids = res.body.data.items.map((g: { id: string }) => g.id)
+    expect(ids).not.toContain(systemGroupId)
+  })
+
   it('rejects group chat on a non-academic group and returns a conversationId on an academic one', async () => {
     const nonAcademic = await request(app)
       .post(`/api/v1/groups/${clubGroupId}/chat`)
@@ -99,6 +139,54 @@ describe('group analytics, suggestions, chat, ask-teacher', () => {
       .send({})
     expect(second.status).toBe(200)
     expect(second.body.data.conversationId).toBe(first.body.data.conversationId)
+  })
+
+  it('creates exactly one class chat conversation under concurrent first opens', async () => {
+    const raceGroup = await request(app)
+      .post('/api/v1/groups')
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${faculty.accessToken}`)
+      .send({ name: 'CSE Race Section', description: 'x', type: 'academic', is_private: false })
+    const raceGroupId = raceGroup.body.data.id
+
+    await request(app)
+      .post(`/api/v1/groups/${raceGroupId}/members`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${student.accessToken}`)
+      .send({})
+
+    const [a, b, c] = await Promise.all([
+      request(app)
+        .post(`/api/v1/groups/${raceGroupId}/chat`)
+        .set('x-university-domain', DOMAIN)
+        .set('Authorization', `Bearer ${faculty.accessToken}`)
+        .send({}),
+      request(app)
+        .post(`/api/v1/groups/${raceGroupId}/chat`)
+        .set('x-university-domain', DOMAIN)
+        .set('Authorization', `Bearer ${student.accessToken}`)
+        .send({}),
+      request(app)
+        .post(`/api/v1/groups/${raceGroupId}/chat`)
+        .set('x-university-domain', DOMAIN)
+        .set('Authorization', `Bearer ${faculty.accessToken}`)
+        .send({}),
+    ])
+
+    expect(a.status).toBe(200)
+    expect(b.status).toBe(200)
+    expect(c.status).toBe(200)
+    expect(b.body.data.conversationId).toBe(a.body.data.conversationId)
+    expect(c.body.data.conversationId).toBe(a.body.data.conversationId)
+
+    const stored = await db('groups')
+      .where({ id: raceGroupId })
+      .select<{ chat_conversation_id: string }[]>('chat_conversation_id')
+      .first()
+    expect(stored?.chat_conversation_id).toBe(a.body.data.conversationId)
+
+    const matchingConversations = await db('conversations').where({ id: a.body.data.conversationId }).select('id')
+    expect(matchingConversations).toHaveLength(1)
   })
 
   it('ask-teacher is idempotent and returns the same conversation id twice', async () => {

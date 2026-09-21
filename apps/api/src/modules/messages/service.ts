@@ -1,3 +1,4 @@
+import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { enqueuePush } from '../push/service'
@@ -420,21 +421,46 @@ export class MessagesService {
   }
 
   /**
-   * Thin wrapper around the private group-conversation creator for callers (the groups
-   * module's class chat) that already know their full participant list and don't want
-   * the "creator must be included" / name-required checks re-derived from a caller's
-   * own membership — the group's member list is the source of truth here, not the
-   * requester. Returns the bare conversation id rather than a hydrated conversation.
+   * Thin, internal-use creator for callers (the groups module's class chat) that
+   * already know their full, university-verified participant list — the group's
+   * member list is the source of truth here, not the requester, so this skips the
+   * "creator must be included" / cross-university membership re-checks the public
+   * `createConversation` path does for arbitrary user input.
+   *
+   * Takes an optional `executor` (a `Knex.Transaction`) so the caller can run the
+   * conversation insert inside its own transaction — `groups/service.ts` uses this to
+   * create the chat and persist `groups.chat_conversation_id` atomically under a row
+   * lock, closing a check-then-create race on concurrent first opens.
    */
   async createGroupConversationForGroup(
     context: AuthContext,
     input: { name: string; participantIds: string[] },
+    executor: Knex | Knex.Transaction = db,
   ): Promise<string> {
-    const conversation = await this.createGroupConversation(context, {
-      is_group: true,
-      name: input.name,
-      participantIds: input.participantIds,
-    } as CreateConversationInput)
+    const participantIds = uniqueIds([context.userId, ...input.participantIds].filter(isString))
+    if (participantIds.length < 2) {
+      throw badRequest('Group conversations require at least two participants', 'GROUP_PARTICIPANTS_REQUIRED')
+    }
+
+    const [conversation] = await executor('conversations')
+      .insert({
+        university_id: context.universityId,
+        name: input.name,
+        is_group: true,
+        type: 'group',
+        created_by: context.userId,
+      })
+      .returning<{ id: string }[]>('id')
+
+    if (!conversation) throw badRequest('Conversation could not be created', 'CONVERSATION_CREATE_FAILED')
+
+    await executor('conversation_participants').insert(
+      participantIds.map((userId) => ({
+        conversation_id: conversation.id,
+        user_id: userId,
+      })),
+    )
+
     return conversation.id
   }
 
