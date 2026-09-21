@@ -22,6 +22,11 @@ export const POST_LIFECYCLE_EVENTS = {
   UNSHARED: 'post:unshared',
 } as const
 
+export const GROUP_EVENTS = {
+  /** A group's post/event review queue changed (new pending item) — sent to owner/admin/moderator rooms. */
+  REVIEW_QUEUE_CHANGED: 'group:review-queue-changed',
+} as const
+
 export const PRESENCE_EVENTS = {
   /** Server → client: a user's online status changed. */
   UPDATE: 'presence:update',

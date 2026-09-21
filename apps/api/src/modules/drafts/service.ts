@@ -31,6 +31,7 @@ export class DraftsService {
     const [posts, jobs, news, events] = await Promise.all([
       db('posts')
         .where({ university_id: universityId, author_id: userId, is_published: false })
+        .whereNull('group_review_status')
         .select<RawDraft[]>(
           'id',
           db.raw("left(content, 120) as title"),
@@ -49,6 +50,7 @@ export class DraftsService {
       db('events')
         // The events table has no updated_at column, so fall back to created_at for ordering.
         .where({ university_id: universityId, organizer_id: userId, is_published: false })
+        .whereNull('group_review_status')
         .select<RawDraft[]>(
           'id',
           'title',

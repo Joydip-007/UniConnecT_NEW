@@ -97,6 +97,12 @@ export const ModLogQuerySchema = PaginationQuerySchema.extend({
 })
 export type ModLogQuery = z.infer<typeof ModLogQuerySchema>
 
+// ── Post/event review queue ──────────────────────────────────
+export const ReviewActionSchema = z.object({
+  action: z.enum(['approve', 'decline']),
+})
+export type ReviewActionInput = z.infer<typeof ReviewActionSchema>
+
 // ── Group resources ──────────────────────────────────────────
 export const ResourceCategorySchema = z.enum(['notes', 'syllabus', 'past_papers', 'assignments', 'other'])
 

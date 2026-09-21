@@ -1,7 +1,9 @@
 import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
+import { getIo } from '../../socket'
 import { feedService } from '../feed/service'
+import { eventsService } from '../events/service'
 import { notificationsService } from '../notifications/service'
 import { badgeQueue } from '../../queues/badge.queue'
 import { notificationQueue } from '../../queues/notification.queue'
@@ -498,6 +500,129 @@ export class GroupsService {
       total: Number(count),
       page: query.page,
       limit: query.limit,
+    }
+  }
+
+  // ── Post/event review queue ────────────────────────────────
+
+  async listPendingPosts(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const ids = await db('posts')
+      .where({ group_id: groupId, group_review_status: 'pending' })
+      .orderBy('created_at')
+      .pluck('id')
+    return feedService.listPostsByIds(context.universityId, context.userId, ids)
+  }
+
+  async reviewPost(context: AuthContext, groupId: string, postId: string, action: 'approve' | 'decline') {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const post = await db('posts')
+      .leftJoin('profiles as p', 'p.user_id', 'posts.author_id')
+      .select<{ id: string; author_id: string; content: string; full_name: string | null }[]>(
+        'posts.id',
+        'posts.author_id',
+        'posts.content',
+        'p.full_name',
+      )
+      .where({ 'posts.id': postId, 'posts.group_id': groupId, 'posts.group_review_status': 'pending' })
+      .first()
+    if (!post) throw notFound('Post not found', 'POST_NOT_FOUND')
+
+    await db.transaction(async (trx) => {
+      await trx('posts')
+        .where({ id: postId })
+        .update(
+          action === 'approve'
+            ? { is_published: true, group_review_status: 'approved' }
+            : { group_review_status: 'declined', archived_at: trx.fn.now() },
+        )
+      await logModeration(trx, {
+        universityId: context.universityId,
+        groupId,
+        actorId: context.userId,
+        kind: 'post',
+        action: action === 'approve' ? 'Queued post approved' : 'Queued post declined',
+        target: `${post.full_name ?? 'Member'} · ${post.content.slice(0, 60)}`,
+        targetUserId: post.author_id,
+      })
+    })
+
+    if (action === 'approve') {
+      const publishedPost = await feedService.getPost(context.universityId, context.userId, postId, { incrementView: false })
+      getIo().to(`uni:${context.universityId}`).emit('post:created', publishedPost)
+      getIo().to(`uni:${context.universityId}`).emit('feed:post:new', { post: publishedPost })
+    }
+    return { id: postId, groupReviewStatus: action === 'approve' ? 'approved' : 'declined' }
+  }
+
+  async listPendingEvents(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const ids = await db('events')
+      .where({ group_id: groupId, group_review_status: 'pending' })
+      .orderBy('created_at')
+      .pluck('id')
+    return eventsService.listEventsByIds(context.userId, ids)
+  }
+
+  async reviewEvent(context: AuthContext, groupId: string, eventId: string, action: 'approve' | 'decline') {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const event = await db('events')
+      .leftJoin('profiles as p', 'p.user_id', 'events.organizer_id')
+      .select<{ id: string; organizer_id: string; title: string; full_name: string | null }[]>(
+        'events.id',
+        'events.organizer_id',
+        'events.title',
+        'p.full_name',
+      )
+      .where({ 'events.id': eventId, 'events.group_id': groupId, 'events.group_review_status': 'pending' })
+      .first()
+    if (!event) throw notFound('Event not found', 'EVENT_NOT_FOUND')
+
+    await db.transaction(async (trx) => {
+      await trx('events')
+        .where({ id: eventId })
+        .update(
+          action === 'approve'
+            ? { is_published: true, group_review_status: 'approved' }
+            : { group_review_status: 'declined' },
+        )
+      await logModeration(trx, {
+        universityId: context.universityId,
+        groupId,
+        actorId: context.userId,
+        kind: 'post',
+        action: action === 'approve' ? 'Queued event approved' : 'Queued event declined',
+        target: `${event.full_name ?? 'Member'} · ${event.title.slice(0, 60)}`,
+        targetUserId: event.organizer_id,
+      })
+    })
+
+    return { id: eventId, groupReviewStatus: action === 'approve' ? 'approved' : 'declined' }
+  }
+
+  async reviewSummary(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const [posts, events, joins, reports] = await Promise.all([
+      db('posts').where({ group_id: groupId, group_review_status: 'pending' }).count<CountRow[]>({ count: '*' }).first(),
+      db('events').where({ group_id: groupId, group_review_status: 'pending' }).count<CountRow[]>({ count: '*' }).first(),
+      db('group_join_requests').where({ group_id: groupId, status: 'pending' }).count<CountRow[]>({ count: '*' }).first(),
+      db('reports')
+        .where({ target_type: 'post', status: 'pending' })
+        .whereIn('target_id', db('posts').select('id').where({ group_id: groupId }))
+        .count<CountRow[]>({ count: '*' })
+        .first(),
+    ])
+    const n = (row: CountRow | undefined) => Number(row?.count ?? 0)
+    return {
+      pendingPosts: n(posts),
+      pendingEvents: n(events),
+      pendingJoinRequests: n(joins),
+      reportsOpen: n(reports),
     }
   }
 

@@ -44,15 +44,20 @@ import {
   listModerationLog,
   listMyGroups,
   listPendingAiContent,
+  listPendingEvents,
   listPendingInvites,
+  listPendingPosts,
   listResources,
   listSharedNotes,
   listStudySessions,
   putMySessionPrivateNotes,
   putSessionCreatorNotes,
   removeMember,
+  reviewEvent,
   reviewFlashcard,
   reviewJoinRequest,
+  reviewPost,
+  reviewSummary,
   rsvpStudySession,
   setPinned,
   setRules,
@@ -85,6 +90,7 @@ import {
   PutSessionCreatorNotesSchema,
   PutSessionPrivateNotesSchema,
   ResourceListQuerySchema,
+  ReviewActionSchema,
   RsvpStudySessionSchema,
   SetPinnedSchema,
   SetRulesSchema,
@@ -110,6 +116,11 @@ groupsRouter.get('/:groupId', getGroup)
 groupsRouter.patch('/:groupId', validate(UpdateGroupSchema), updateGroup)
 groupsRouter.patch('/:groupId/settings', validate(UpdateGroupSettingsSchema), updateSettings)
 groupsRouter.get('/:groupId/moderation-log', validateRequest({ query: ModLogQuerySchema }), listModerationLog)
+groupsRouter.get('/:groupId/review/summary', reviewSummary)
+groupsRouter.get('/:groupId/review/posts', listPendingPosts)
+groupsRouter.patch('/:groupId/review/posts/:postId', validate(ReviewActionSchema), reviewPost)
+groupsRouter.get('/:groupId/review/events', listPendingEvents)
+groupsRouter.patch('/:groupId/review/events/:eventId', validate(ReviewActionSchema), reviewEvent)
 groupsRouter.delete('/:groupId', deleteGroup)
 groupsRouter.post('/:groupId/join', validate(JoinGroupSchema), joinOrRequestGroup)
 groupsRouter.delete('/:groupId/leave', leaveGroup)

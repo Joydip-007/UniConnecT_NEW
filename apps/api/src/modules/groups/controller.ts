@@ -19,6 +19,7 @@ import type {
   PaginationQuery,
   PutSessionCreatorNotesInput,
   PutSessionPrivateNotesInput,
+  ReviewActionInput,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupAISettingsInput,
@@ -73,6 +74,35 @@ export const listModerationLog = asyncHandler(async (req: Request, res: Response
     req.query as unknown as ModLogQuery,
   )
   sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const listPendingPosts = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const items = await groupsService.listPendingPosts(context, getGroupIdParam(req))
+  sendSuccess(res, { items })
+})
+
+export const reviewPost = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { action } = req.body as ReviewActionInput
+  sendSuccess(res, await groupsService.reviewPost(context, getGroupIdParam(req), getPostIdParam(req), action))
+})
+
+export const listPendingEvents = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const items = await groupsService.listPendingEvents(context, getGroupIdParam(req))
+  sendSuccess(res, { items })
+})
+
+export const reviewEvent = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { action } = req.body as ReviewActionInput
+  sendSuccess(res, await groupsService.reviewEvent(context, getGroupIdParam(req), getEventIdParam(req), action))
+})
+
+export const reviewSummary = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.reviewSummary(context, getGroupIdParam(req)))
 })
 
 export const deleteGroup = asyncHandler(async (req: Request, res: Response) => {
@@ -555,6 +585,16 @@ function getResourceIdParam(req: Request) {
 
 function getSessionIdParam(req: Request) {
   const value = req.params.sessionId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getPostIdParam(req: Request) {
+  const value = req.params.postId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getEventIdParam(req: Request) {
+  const value = req.params.eventId
   return Array.isArray(value) ? value[0] : value
 }
 
