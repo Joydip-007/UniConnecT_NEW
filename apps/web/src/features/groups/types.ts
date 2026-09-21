@@ -329,3 +329,73 @@ export interface Submission {
   gradedAt?: string | null
   isLate: boolean
 }
+
+// ── Announcements (academic groups) ───────────────────────────────────────────
+
+export type AnnouncementKind = 'urgent' | 'schedule' | 'notice'
+
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  kind: AnnouncementKind
+  isPinned: boolean
+  attachments: Attachment[]
+  author: { id: string; fullName: string }
+  createdAt: string
+}
+
+export interface CreateAnnouncementInput {
+  title: string
+  body: string
+  kind: AnnouncementKind
+  notify_members: boolean
+  attachments: Attachment[]
+}
+
+// ── Ask teacher + consultation slots ─────────────────────────────────────────
+
+export interface AskTeacherResult {
+  conversationId: string
+  teacher: { id: string; fullName: string | null; avatarUrl: string | null; department: string | null }
+}
+
+export interface AskTeacherQueueItem {
+  conversationId: string
+  student: { id: string; fullName: string | null; avatarUrl: string | null }
+  lastMessage: string
+  lastAt: string | null
+  unread: number
+}
+
+export type BookingStatus = 'requested' | 'confirmed' | 'declined'
+
+export interface ConsultationBooking {
+  id: string
+  slotId: string
+  bookedFor: string
+  topic: string
+  status: BookingStatus
+  student: { id: string; fullName: string }
+}
+
+export interface ConsultationSlot {
+  id: string
+  weekday: number
+  startTime: string
+  endTime: string
+  location: string
+  walkIn: boolean
+  nextOccurrence: string
+  myBooking: { id: string; status: BookingStatus } | null
+  /** Admin only */
+  bookings?: ConsultationBooking[]
+}
+
+export interface CreateSlotInput {
+  weekday: number
+  start_time: string
+  end_time: string
+  location: string
+  walk_in: boolean
+}

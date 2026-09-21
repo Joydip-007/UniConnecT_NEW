@@ -4,8 +4,16 @@ import { api } from '@/lib/axios'
 import type { FeedPost } from '@uniconnect/shared'
 import type {
   AcademicModule,
+  Announcement,
+  AskTeacherQueueItem,
+  AskTeacherResult,
   Assignment,
   Attachment,
+  BookingStatus,
+  ConsultationBooking,
+  ConsultationSlot,
+  CreateAnnouncementInput,
+  CreateSlotInput,
   CourseOutline,
   CourseOutlineInput,
   FileUrlEntry,
@@ -1246,5 +1254,145 @@ export function useInviteToGroup(groupId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups', 'pending-invites', groupId] })
     },
+  })
+}
+
+// ── Announcements (academic groups) ───────────────────────────────────────────
+
+export const announcementsKey = (groupId: string) => ['groups', 'announcements', { groupId }] as const
+
+export function useAnnouncements(groupId: string) {
+  return useQuery({
+    queryKey: announcementsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: Announcement[] } }>(`/groups/${groupId}/announcements`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateAnnouncement(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateAnnouncementInput) =>
+      api.post<{ data: Announcement }>(`/groups/${groupId}/announcements`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: announcementsKey(groupId) })
+      toast.success('Announcement posted')
+    },
+  })
+}
+
+export function useUpdateAnnouncement(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      announcementId,
+      ...patch
+    }: { announcementId: string } & Partial<Pick<Announcement, 'title' | 'body' | 'kind' | 'isPinned'>>) =>
+      api
+        .patch<{ data: Announcement }>(`/groups/${groupId}/announcements/${announcementId}`, {
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.body !== undefined ? { body: patch.body } : {}),
+          ...(patch.kind !== undefined ? { kind: patch.kind } : {}),
+          ...(patch.isPinned !== undefined ? { is_pinned: patch.isPinned } : {}),
+        })
+        .then((r) => r.data.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: announcementsKey(groupId) }),
+  })
+}
+
+export function useDeleteAnnouncement(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (announcementId: string) => api.delete(`/groups/${groupId}/announcements/${announcementId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: announcementsKey(groupId) }),
+  })
+}
+
+// ── Ask teacher ──────────────────────────────────────────────────────────────
+
+/** `POST /groups/:id/ask-teacher` — idempotent; returns the student↔teacher DM. Student only. */
+export function useAskTeacher(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'ask-teacher', { groupId }],
+    queryFn: () =>
+      api.post<{ data: AskTeacherResult }>(`/groups/${groupId}/ask-teacher`).then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 5 * 60_000,
+  })
+}
+
+/** Admin only — gate with `enabled`. */
+export function useAskTeacherQueue(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'ask-teacher-queue', { groupId }],
+    queryFn: () =>
+      api
+        .get<{ data: { items: AskTeacherQueueItem[] } }>(`/groups/${groupId}/ask-teacher/queue`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId && enabled,
+    staleTime: 30_000,
+  })
+}
+
+// ── Consultation slots + bookings ────────────────────────────────────────────
+
+export const consultationSlotsKey = (groupId: string) => ['groups', 'consultation-slots', { groupId }] as const
+
+export function useConsultationSlots(groupId: string) {
+  return useQuery({
+    queryKey: consultationSlotsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: ConsultationSlot[] } }>(`/groups/${groupId}/consultation-slots`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateSlot(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateSlotInput) =>
+      api.post<{ data: ConsultationSlot }>(`/groups/${groupId}/consultation-slots`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: consultationSlotsKey(groupId) })
+      toast.success('Slot added')
+    },
+  })
+}
+
+export function useBookSlot(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ slotId, topic }: { slotId: string; topic: string }) =>
+      api
+        .post<{ data: ConsultationBooking }>(`/groups/${groupId}/consultation-slots/${slotId}/book`, { topic })
+        .then((r) => r.data.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: consultationSlotsKey(groupId) }),
+  })
+}
+
+export function useReviewBooking(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      slotId,
+      bookingId,
+      status,
+    }: {
+      slotId: string
+      bookingId: string
+      status: Exclude<BookingStatus, 'requested'>
+    }) =>
+      api
+        .patch<{ data: ConsultationBooking }>(
+          `/groups/${groupId}/consultation-slots/${slotId}/bookings/${bookingId}`,
+          { status },
+        )
+        .then((r) => r.data.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: consultationSlotsKey(groupId) }),
   })
 }

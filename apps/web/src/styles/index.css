@@ -1162,3 +1162,27 @@ select:focus-visible {
   }
 }
 
+
+/* ── Design field (`.fld`) — transparent input used inside cards (announcements,
+   gradebook, outline wizard). `.fld-need` marks a blank the user must fill. ── */
+.fld {
+  width: 100%;
+  background: transparent;
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  outline: none;
+}
+.fld::placeholder {
+  color: var(--text-tertiary);
+}
+.fld:focus {
+  border-color: var(--uc-indigo);
+}
+.fld-need {
+  border-style: dashed;
+  border-color: var(--uc-indigo-bdr);
+}
