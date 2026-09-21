@@ -137,6 +137,8 @@ interface GroupRow {
   ai_settings: Record<string, unknown> | null
   require_post_approval: boolean
   require_event_approval: boolean
+  /** Unread messages in the class chat for the requesting user; null when no chat or not a participant. */
+  chat_unread: number | null
 }
 
 /** A handful of members rendered as an avatar stack on the group card. */
@@ -3481,6 +3483,22 @@ function groupSelectQuery(knex: Knex, userId: string) {
       'groups.ai_settings',
       'groups.require_post_approval',
       'groups.require_event_approval',
+      // Same unread rule as messages/service.ts conversationSelectQuery: messages from
+      // others after the participant's last read (or join). NULL when there is no class
+      // chat or the user is not a participant — toGroup maps that to 0.
+      knex.raw(
+        `(
+          SELECT COUNT(*)::int
+          FROM messages unread_messages
+          JOIN conversation_participants chat_participant
+            ON chat_participant.conversation_id = groups.chat_conversation_id
+           AND chat_participant.user_id = ?
+          WHERE unread_messages.conversation_id = groups.chat_conversation_id
+            AND unread_messages.sender_id <> ?
+            AND unread_messages.created_at > COALESCE(chat_participant.last_read_at, chat_participant.joined_at)
+        ) AS chat_unread`,
+        [userId, userId],
+      ),
     )
 }
 
@@ -3999,6 +4017,7 @@ function toGroup(row: GroupRow) {
     aiSettings: withAiSettingsDefaults(row.ai_settings),
     requirePostApproval: row.require_post_approval,
     requireEventApproval: row.require_event_approval,
+    chatUnread: row.chat_unread ?? 0,
   }
 }
 

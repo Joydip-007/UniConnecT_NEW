@@ -114,6 +114,42 @@ describe('group analytics, suggestions, chat, ask-teacher', () => {
     expect(ids).not.toContain(systemGroupId)
   })
 
+  it('GET /groups/:id serves chatUnread for the class chat', async () => {
+    const opened = await request(app)
+      .post(`/api/v1/groups/${academicGroupId}/chat`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${student.accessToken}`)
+      .send({})
+    expect(opened.status).toBe(200)
+    const conversationId = opened.body.data.conversationId as string
+
+    const before = await request(app)
+      .get(`/api/v1/groups/${academicGroupId}`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${student.accessToken}`)
+    expect(before.body.data.chatUnread).toBe(0)
+
+    const sent = await request(app)
+      .post(`/api/v1/conversations/${conversationId}/messages`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${faculty.accessToken}`)
+      .send({ content: 'Reminder: quiz on Sunday' })
+    expect(sent.status).toBe(201)
+
+    const after = await request(app)
+      .get(`/api/v1/groups/${academicGroupId}`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${student.accessToken}`)
+    expect(after.body.data.chatUnread).toBe(1)
+
+    // The sender has nothing unread from others.
+    const senderView = await request(app)
+      .get(`/api/v1/groups/${academicGroupId}`)
+      .set('x-university-domain', DOMAIN)
+      .set('Authorization', `Bearer ${faculty.accessToken}`)
+    expect(senderView.body.data.chatUnread).toBe(0)
+  })
+
   it('rejects group chat on a non-academic group and returns a conversationId on an academic one', async () => {
     const nonAcademic = await request(app)
       .post(`/api/v1/groups/${clubGroupId}/chat`)
