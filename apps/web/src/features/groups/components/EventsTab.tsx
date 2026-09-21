@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns'
 import { Calendar, MapPin, Plus } from 'lucide-react'
 import { GROUP_EVENTS } from '@uniconnect/shared'
 import { socket } from '@/lib/socket'
+import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
@@ -26,7 +27,11 @@ export function EventsTab({ groupId, userRole = null }: { groupId: string; userR
   const [showCreate, setShowCreate] = useState(false)
 
   const isModeratorOrAbove = userRole === 'owner' || userRole === 'admin' || userRole === 'moderator'
-  const isAdmin = userRole === 'owner' || userRole === 'admin'
+  // POST /events is requireRole('faculty','admin'); a pill that lands on
+  // CreateEventForm's "Permission required" panel would be a dead-end control.
+  const platformRole = useAuthStore((s) => s.user?.role)
+  const isAdmin =
+    (userRole === 'owner' || userRole === 'admin') && (platformRole === 'faculty' || platformRole === 'admin')
   const { data: pendingEvents } = usePendingEvents(groupId, isModeratorOrAbove)
   const reviewEvent = useReviewEvent(groupId)
   const pending = pendingEvents ?? []

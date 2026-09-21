@@ -6,6 +6,16 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/tests/msw/server'
 import { EventsTab } from './EventsTab'
 
+// The Create event pill needs a faculty/admin platform role on top of the group role.
+vi.mock('@/stores/authStore', () => {
+  const state = () => ({ user: { id: 'viewer-1', role: 'faculty' }, accessToken: null, clearAuth: () => {} })
+  const useAuthStore = Object.assign(
+    (selector: (s: ReturnType<typeof state>) => unknown) => selector(state()),
+    { getState: state },
+  )
+  return { useAuthStore }
+})
+
 // jsdom has no IntersectionObserver; the events tab's infinite scroll needs a stub.
 class NoopObserver {
   observe() {}
