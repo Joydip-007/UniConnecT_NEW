@@ -18,11 +18,25 @@ interface ModalProps {
    * `title` still feeds `aria-label`.
    */
   frame?: 'default' | 'panel'
+  /**
+   * Renders as a bottom sheet under 767px (drag handle, bottom-anchored,
+   * top corners only) via the `.modal--sheet` CSS class — desktop is unaffected.
+   */
+  sheet?: boolean
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
-export function Modal({ isOpen, onClose, title, children, maxWidth = 440, triggerRef, frame = 'default' }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  maxWidth = 440,
+  triggerRef,
+  frame = 'default',
+  sheet = false,
+}: ModalProps) {
   const isPanel = frame === 'panel'
   const panelRef = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
@@ -80,6 +94,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
         <motion.div
           data-testid="modal-backdrop"
           onClick={onClose}
+          className={sheet ? 'modal-overlay--sheet' : undefined}
           initial={reduced ? false : overlayIn.initial}
           animate={overlayIn.animate}
           exit={reduced ? undefined : overlayIn.exit}
@@ -103,6 +118,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
             aria-modal="true"
             aria-label={title}
             onClick={(e) => e.stopPropagation()}
+            className={sheet ? 'modal--sheet' : undefined}
             initial={reduced ? false : modalIn.initial}
             animate={modalIn.animate}
             exit={reduced ? undefined : modalIn.exit}
@@ -131,6 +147,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 440, trigge
                   }
             }
           >
+            {sheet && <div className="modal-drag-handle" aria-hidden />}
             {!isPanel && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <h2 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</h2>

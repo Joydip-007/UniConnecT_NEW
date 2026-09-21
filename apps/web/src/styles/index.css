@@ -1228,3 +1228,31 @@ select:focus-visible {
 .uc-tip:focus-visible::after {
   opacity: 1;
 }
+
+/* ── `.modal--sheet` — bottom sheet layout for Modal's `sheet` prop.
+   Desktop renders the normal centered dialog; under 767px it drops to the
+   bottom edge with a drag handle and only rounds the top corners. ── */
+.modal-drag-handle {
+  display: none;
+}
+@media (max-width: 767px) {
+  .modal-overlay--sheet {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal--sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 78dvh !important;
+    border-radius: var(--r-xl) var(--r-xl) 0 0 !important;
+  }
+  .modal--sheet .modal-drag-handle {
+    display: block;
+    width: 34px;
+    height: 4px;
+    margin: 0 auto 12px;
+    border-radius: var(--r-pill);
+    background: var(--border-hover);
+    flex-shrink: 0;
+  }
+}

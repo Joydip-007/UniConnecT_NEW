@@ -1044,7 +1044,7 @@ Section label style: `fontSize 11, fontWeight 500, letterSpacing '0.04em', color
 - Success banner: `Group created. Members will show as pending until they accept.` then navigate to `/groups/:id`.
 - Mobile: renders as a bottom sheet (drag handle 34×4, `r-xl r-xl 0 0`, `max-height 78%`) — implement via a `sheet` prop on `Modal` that switches to bottom-anchored layout under `max-width: 767px` (CSS class `.modal--sheet`).
 
-- [ ] Steps: failing test (kind chips, count label, `Create with 2`) → implement → commit `feat(groups): create-group sheet with kind chooser and member picker`
+- [x] Steps: failing test (kind chips, count label, `Create with 2`) → implement → commit `feat(groups): create-group sheet with kind chooser and member picker`
 
 ---
 
