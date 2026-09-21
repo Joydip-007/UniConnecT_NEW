@@ -27,12 +27,14 @@ import type {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export type JoinRequestStatus = 'pending' | 'approved' | 'declined'
+
 export interface JoinRequest {
   id: string
   groupId: string
   userId: string
   message: string | null
-  status: 'pending' | 'approved' | 'declined'
+  status: JoinRequestStatus
   createdAt: string
   requester: {
     id: string
@@ -174,16 +176,41 @@ const sharedNotesKey = (groupId: string) => ['groups', 'shared-notes', { groupId
 
 // ── Join requests ─────────────────────────────────────────────────────────────
 
+const joinRequestsKey = (groupId: string, status: JoinRequestStatus, page: number, limit: number) =>
+  ['groups', 'join-requests', { groupId, status, page, limit }] as const
+
+function invalidateJoinRequests(queryClient: ReturnType<typeof useQueryClient>, groupId: string) {
+  // Matches every `['groups','join-requests',{ groupId, status, page, limit }]` key —
+  // the three status filters plus the three limit=1 count queries.
+  queryClient.invalidateQueries({
+    predicate: (q) => {
+      const [a, b, c] = q.queryKey as [unknown, unknown, { groupId?: string } | undefined]
+      return a === 'groups' && b === 'join-requests' && c?.groupId === groupId
+    },
+  })
+  queryClient.invalidateQueries({ queryKey: reviewSummaryKey(groupId) })
+  queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+}
+
 /**
  * Admin-only endpoint — pass `enabled: false` for non-admins, otherwise every
  * plain member's group page fires a request that 403s.
+ *
+ * `limit: 1` (reading back `total`) is how the filter chips get their counts
+ * without loading each status's full row set.
  */
-export function useJoinRequests(groupId: string, enabled = true) {
+export function useJoinRequests(
+  groupId: string,
+  opts: { status?: JoinRequestStatus; page?: number; limit?: number; enabled?: boolean } = {},
+) {
+  const { status = 'pending', page = 1, limit = 20, enabled = true } = opts
   return useQuery({
-    queryKey: ['groups', 'join-requests', { groupId }],
+    queryKey: joinRequestsKey(groupId, status, page, limit),
     queryFn: () =>
       api
-        .get<{ data: PaginatedResponse<JoinRequest> }>(`/groups/${groupId}/join-requests`)
+        .get<{ data: PaginatedResponse<JoinRequest> }>(`/groups/${groupId}/join-requests`, {
+          params: { status, page, limit },
+        })
         .then((r) => r.data.data),
     enabled: !!groupId && enabled,
   })
@@ -192,11 +219,34 @@ export function useJoinRequests(groupId: string, enabled = true) {
 export function useReviewJoinRequest(groupId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ requestId, action }: { requestId: string; action: 'approve' | 'decline' }) =>
+    mutationFn: ({ requestId, action }: { requestId: string; action: 'approve' | 'decline' | 'undo' }) =>
       api.patch(`/groups/${groupId}/join-requests/${requestId}`, { action }).then((r) => r.data.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', 'join-requests', { groupId }] })
-      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+    onSuccess: () => invalidateJoinRequests(queryClient, groupId),
+  })
+}
+
+/**
+ * No bulk-approve endpoint exists — runs the pending PATCHes client-side and
+ * reports partial failure honestly rather than pretending it's all-or-nothing.
+ */
+export function useApproveAllJoinRequests(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (requestIds: string[]) => {
+      const results = await Promise.allSettled(
+        requestIds.map((requestId) =>
+          api.patch(`/groups/${groupId}/join-requests/${requestId}`, { action: 'approve' }),
+        ),
+      )
+      const ok = results.filter((r) => r.status === 'fulfilled').length
+      return { ok, total: requestIds.length }
+    },
+    onSuccess: ({ ok, total }) => {
+      invalidateJoinRequests(queryClient, groupId)
+      toast.success(`Approved ${ok} of ${total}`)
+    },
+    onError: () => {
+      toast.error('Failed to approve requests')
     },
   })
 }
@@ -206,9 +256,7 @@ export function useCancelJoinRequest(groupId: string) {
   return useMutation({
     mutationFn: () =>
       api.delete(`/groups/${groupId}/join-requests/me`).then((r) => r.data.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', 'join-requests', { groupId }] })
-    },
+    onSuccess: () => invalidateJoinRequests(queryClient, groupId),
   })
 }
 
