@@ -62,7 +62,7 @@ export async function makeResource(overrides: {
   uploadedBy: string
   title?: string
   url?: string
-  category?: 'notes' | 'syllabus' | 'past_papers' | 'assignments' | 'other'
+  category?: 'researches' | 'projects' | 'assignments' | 'notes' | 'other'
 }) {
   const [row] = await db('group_resources')
     .insert({

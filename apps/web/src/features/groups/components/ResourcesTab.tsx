@@ -10,10 +10,10 @@ import {
 
 const CATEGORIES = [
   { value: '', label: 'All' },
-  { value: 'notes', label: 'Notes' },
-  { value: 'syllabus', label: 'Syllabus' },
-  { value: 'past_papers', label: 'Past Papers' },
+  { value: 'researches', label: 'Researches' },
+  { value: 'projects', label: 'Projects' },
   { value: 'assignments', label: 'Assignments' },
+  { value: 'notes', label: 'Notes' },
   { value: 'other', label: 'Other' },
 ]
 
@@ -45,7 +45,7 @@ export function ResourcesTab({ groupId, userRole, currentUserId }: Props) {
               type="button"
               onClick={() => setActiveCategory(cat.value)}
               style={{
-                padding: '4px 12px',
+                padding: '5px 12px',
                 fontSize: 12,
                 fontWeight: 400,
                 borderRadius: 'var(--r-pill)',
@@ -98,7 +98,9 @@ export function ResourcesTab({ groupId, userRole, currentUserId }: Props) {
       {isLoading ? (
         <ResourcesSkeleton />
       ) : !data?.items.length ? (
-        <EmptyState text="No resources yet. Be the first to upload one!" />
+        <EmptyState
+          text={`Nothing filed under ${(CATEGORIES.find((c) => c.value === activeCategory)?.label ?? 'all').toLowerCase()} yet.`}
+        />
       ) : (
         <div
           style={{

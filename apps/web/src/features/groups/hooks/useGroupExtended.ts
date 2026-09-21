@@ -48,7 +48,7 @@ export interface GroupResource {
   uploadedBy: string | null
   title: string
   url: string
-  category: 'notes' | 'syllabus' | 'past_papers' | 'assignments' | 'other'
+  category: 'researches' | 'projects' | 'assignments' | 'notes' | 'other'
   description: string | null
   clickCount: number
   createdAt: string

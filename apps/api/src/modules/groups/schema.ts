@@ -142,7 +142,7 @@ export const ReviewActionSchema = z.object({
 export type ReviewActionInput = z.infer<typeof ReviewActionSchema>
 
 // ── Group resources ──────────────────────────────────────────
-export const ResourceCategorySchema = z.enum(['notes', 'syllabus', 'past_papers', 'assignments', 'other'])
+export const ResourceCategorySchema = z.enum(['researches', 'projects', 'assignments', 'notes', 'other'])
 
 export const CreateResourceSchema = z.object({
   title: z.string().trim().min(1).max(255),
