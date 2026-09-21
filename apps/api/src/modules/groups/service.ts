@@ -26,7 +26,9 @@ import type {
   CreateStudySessionInput,
   FlashcardReviewInput,
   GroupListQuery,
+  JoinRequestsQuery,
   MembersQuery,
+  ModLogQuery,
   PaginationQuery,
   PutSessionCreatorNotesInput,
   PutSessionPrivateNotesInput,
@@ -35,10 +37,33 @@ import type {
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupInput,
+  UpdateGroupSettingsInput,
   UpdateSharedNoteInput,
 } from './schema'
 import { AISettingsSchema } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
+
+export interface ModLogWrite {
+  universityId: string
+  groupId: string
+  actorId: string | null
+  kind: 'post' | 'member' | 'settings'
+  action: string
+  target: string
+  targetUserId?: string | null
+}
+
+export async function logModeration(trx: Knex | Knex.Transaction, entry: ModLogWrite) {
+  await trx('group_moderation_log').insert({
+    university_id: entry.universityId,
+    group_id: entry.groupId,
+    actor_id: entry.actorId,
+    kind: entry.kind,
+    action: entry.action,
+    target: entry.target,
+    target_user_id: entry.targetUserId ?? null,
+  })
+}
 
 /**
  * `UpdateGroupAISettingsSchema` is built from a default-free shape, so a PATCH persists only the
@@ -94,6 +119,8 @@ interface GroupRow {
   pinned_by: string | null
   rules_md: string | null
   ai_settings: Record<string, unknown> | null
+  require_post_approval: boolean
+  require_event_approval: boolean
 }
 
 /** A handful of members rendered as an avatar stack on the group card. */
@@ -392,6 +419,88 @@ export class GroupsService {
     return this.getGroup(context, groupId)
   }
 
+  async updateSettings(context: AuthContext, groupId: string, input: UpdateGroupSettingsInput) {
+    const access = await assertGroupAdminAccess(context, groupId)
+    if (access.is_system) throw forbidden('System groups have no settings', 'GROUP_SYSTEM')
+    const before = await db('groups')
+      .select<{ is_private: boolean; require_post_approval: boolean; require_event_approval: boolean }[]>(
+        'is_private',
+        'require_post_approval',
+        'require_event_approval',
+      )
+      .where({ id: groupId })
+      .first()
+    if (!before) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+
+    await db.transaction(async (trx) => {
+      await trx('groups').where({ id: groupId }).update({ ...input })
+      const labels: [keyof UpdateGroupSettingsInput, string][] = [
+        ['is_private', 'Private group'],
+        ['require_post_approval', 'Post approval'],
+        ['require_event_approval', 'Event approval'],
+      ]
+      for (const [key, label] of labels) {
+        if (input[key] !== undefined && input[key] !== before[key]) {
+          await logModeration(trx, {
+            universityId: context.universityId,
+            groupId,
+            actorId: context.userId,
+            kind: 'settings',
+            action: `${label} turned ${input[key] ? 'on' : 'off'}`,
+            target: 'Group settings',
+          })
+        }
+      }
+    })
+    return this.getGroup(context, groupId)
+  }
+
+  async listModerationLog(context: AuthContext, groupId: string, query: ModLogQuery) {
+    await assertGroupAdminAccess(context, groupId)
+    const q = db('group_moderation_log as l')
+      .leftJoin('profiles as p', 'p.user_id', 'l.actor_id')
+      .where('l.group_id', groupId)
+      .modify((qb) => {
+        if (query.kind !== 'all') qb.where('l.kind', query.kind)
+      })
+    const [{ count }] = await q.clone().count<{ count: string }[]>({ count: '*' })
+    interface ModLogRow {
+      id: string
+      kind: 'post' | 'member' | 'settings'
+      action: string
+      target: string
+      actor_id: string | null
+      created_at: Date
+      actor_name: string | null
+    }
+    const rows = await q
+      .select<ModLogRow[]>(
+        'l.id',
+        'l.kind',
+        'l.action',
+        'l.target',
+        'l.actor_id',
+        'l.created_at',
+        'p.full_name as actor_name',
+      )
+      .orderBy('l.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        action: r.action,
+        target: r.target,
+        createdAt: r.created_at,
+        actor: r.actor_id ? { id: r.actor_id, fullName: r.actor_name ?? null } : null,
+      })),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
   async deleteGroup(context: AuthContext, groupId: string) {
     const group = await assertGroupAccess(context, groupId)
     if (group.is_system) {
@@ -493,15 +602,18 @@ export class GroupsService {
     return result
   }
 
-  async listJoinRequests(context: AuthContext, groupId: string, query: PaginationQuery) {
+  async listJoinRequests(context: AuthContext, groupId: string, query: JoinRequestsQuery) {
     await assertGroupAdminAccess(context, groupId)
 
-    const [{ count }] = await db('group_join_requests')
-      .where({ group_id: groupId, status: 'pending' })
-      .count<{ count: string }[]>({ count: '*' })
+    const baseQuery = db('group_join_requests').where({ group_id: groupId, status: query.status })
+    if (query.status !== 'pending') {
+      baseQuery.where('group_join_requests.reviewed_at', '>=', db.raw("now() - interval '30 days'"))
+    }
 
-    const rows = await db('group_join_requests')
-      .where({ group_id: groupId, status: 'pending' })
+    const [{ count }] = await baseQuery.clone().count<{ count: string }[]>({ count: '*' })
+
+    const rows = await baseQuery
+      .clone()
       .leftJoin('profiles as rp', 'rp.user_id', 'group_join_requests.user_id')
       .leftJoin('users as ru', 'ru.id', 'group_join_requests.user_id')
       .select<JoinRequestRow[]>(
@@ -519,7 +631,7 @@ export class GroupsService {
         'rp.department as requester_department',
         'ru.role as requester_user_role',
       )
-      .orderBy('group_join_requests.created_at', 'asc')
+      .orderBy('group_join_requests.created_at', query.status === 'pending' ? 'asc' : 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)
 
@@ -535,17 +647,25 @@ export class GroupsService {
     context: AuthContext,
     groupId: string,
     requestId: string,
-    action: 'approve' | 'decline',
+    action: 'approve' | 'decline' | 'undo',
   ) {
     await assertGroupAdminAccess(context, groupId)
 
     const request = await db('group_join_requests')
-      .where({ id: requestId, group_id: groupId, status: 'pending' })
-      .first<{ id: string; user_id: string; university_id: string } | undefined>()
+      .where({ id: requestId, group_id: groupId })
+      .first<{ id: string; user_id: string; university_id: string; status: 'pending' | 'approved' | 'declined' } | undefined>()
 
     if (!request) throw notFound('Join request not found', 'JOIN_REQUEST_NOT_FOUND')
 
+    const requester = await db('profiles')
+      .select<{ full_name: string | null }[]>('full_name')
+      .where({ user_id: request.user_id })
+      .first()
+    const requesterName = requester?.full_name ?? 'A member'
+
     if (action === 'approve') {
+      if (request.status !== 'pending') throw badRequest('Join request already reviewed', 'JOIN_REQUEST_ALREADY_REVIEWED')
+
       await db.transaction(async (trx) => {
         await trx('group_members').insert({
           group_id: groupId,
@@ -558,6 +678,15 @@ export class GroupsService {
           reviewed_by: context.userId,
           reviewed_at: new Date(),
           updated_at: new Date(),
+        })
+        await logModeration(trx, {
+          universityId: context.universityId,
+          groupId,
+          actorId: context.userId,
+          kind: 'member',
+          action: 'Join request approved',
+          target: requesterName,
+          targetUserId: request.user_id,
         })
       })
 
@@ -577,29 +706,92 @@ export class GroupsService {
         payload: {},
       })
 
-      return { action: 'approved' }
+      return { action: 'approved' as const, ...(await this.getJoinRequest(groupId, requestId)) }
     }
 
-    // decline
-    await db('group_join_requests').where({ id: requestId }).update({
-      status: 'declined',
-      reviewed_by: context.userId,
-      reviewed_at: new Date(),
-      updated_at: new Date(),
+    if (action === 'decline') {
+      if (request.status !== 'pending') throw badRequest('Join request already reviewed', 'JOIN_REQUEST_ALREADY_REVIEWED')
+
+      await db.transaction(async (trx) => {
+        await trx('group_join_requests').where({ id: requestId }).update({
+          status: 'declined',
+          reviewed_by: context.userId,
+          reviewed_at: new Date(),
+          updated_at: new Date(),
+        })
+        await logModeration(trx, {
+          universityId: context.universityId,
+          groupId,
+          actorId: context.userId,
+          kind: 'member',
+          action: 'Join request declined',
+          target: requesterName,
+          targetUserId: request.user_id,
+        })
+      })
+
+      await notificationQueue.add({
+        universityId: context.universityId,
+        userId: request.user_id,
+        type: 'group_join_declined',
+        actorId: context.userId,
+        referenceId: groupId,
+        referenceType: 'group',
+        content: 'Your request to join the group was declined',
+        payload: {},
+      })
+
+      return { action: 'declined' as const, ...(await this.getJoinRequest(groupId, requestId)) }
+    }
+
+    // undo
+    if (request.status === 'pending') throw badRequest('Join request is already pending', 'JOIN_REQUEST_NOT_REVIEWED')
+
+    await db.transaction(async (trx) => {
+      if (request.status === 'approved') {
+        const deleted = await trx('group_members').where({ group_id: groupId, user_id: request.user_id }).delete()
+        if (deleted > 0) {
+          await trx('groups')
+            .where({ id: groupId, university_id: context.universityId })
+            .where('member_count', '>', 0)
+            .decrement('member_count', 1)
+        }
+      }
+      await trx('group_join_requests').where({ id: requestId }).update({
+        status: 'pending',
+        reviewed_by: null,
+        reviewed_at: null,
+        updated_at: new Date(),
+      })
     })
 
-    await notificationQueue.add({
-      universityId: context.universityId,
-      userId: request.user_id,
-      type: 'group_join_declined',
-      actorId: context.userId,
-      referenceId: groupId,
-      referenceType: 'group',
-      content: 'Your request to join the group was declined',
-      payload: {},
-    })
+    return { action: 'undo' as const, ...(await this.getJoinRequest(groupId, requestId)) }
+  }
 
-    return { action: 'declined' }
+  private async getJoinRequest(groupId: string, requestId: string) {
+    const row = await db('group_join_requests')
+      .where({ 'group_join_requests.id': requestId, 'group_join_requests.group_id': groupId })
+      .leftJoin('profiles as rp', 'rp.user_id', 'group_join_requests.user_id')
+      .leftJoin('users as ru', 'ru.id', 'group_join_requests.user_id')
+      .select<JoinRequestRow[]>(
+        'group_join_requests.id',
+        'group_join_requests.group_id',
+        'group_join_requests.user_id',
+        'group_join_requests.university_id',
+        'group_join_requests.message',
+        'group_join_requests.status',
+        'group_join_requests.reviewed_by',
+        'group_join_requests.reviewed_at',
+        'group_join_requests.created_at',
+        'rp.full_name as requester_full_name',
+        'rp.avatar_url as requester_avatar_url',
+        'rp.department as requester_department',
+        'ru.role as requester_user_role',
+      )
+      .first<JoinRequestRow>()
+
+    if (!row) throw notFound('Join request not found', 'JOIN_REQUEST_NOT_FOUND')
+    return toJoinRequest(row)
   }
 
   async cancelJoinRequest(context: AuthContext, groupId: string) {
@@ -788,7 +980,20 @@ export class GroupsService {
 
     assertCanAssignRole(group.user_role, target.role, role)
 
-    await db('group_members').where({ group_id: groupId, user_id: targetUserId }).update({ role })
+    const targetName = await getMemberFullName(targetUserId)
+    await db.transaction(async (trx) => {
+      await trx('group_members').where({ group_id: groupId, user_id: targetUserId }).update({ role })
+      const action = role === 'moderator' ? 'Moderator added' : role === 'admin' ? 'Admin added' : 'Role removed'
+      await logModeration(trx, {
+        universityId: context.universityId,
+        groupId,
+        actorId: context.userId,
+        kind: 'member',
+        action,
+        target: targetName,
+        targetUserId,
+      })
+    })
     return this.getMember(groupId, targetUserId)
   }
 
@@ -804,6 +1009,7 @@ export class GroupsService {
     if (target.role === 'owner') throw badRequest('Cannot remove the group owner', 'GROUP_OWNER_REMOVE_FORBIDDEN')
     assertCanRemoveRole(group.user_role, target.role)
 
+    const targetName = await getMemberFullName(targetUserId)
     await db.transaction(async (trx) => {
       const deleted = await trx('group_members').where({ group_id: groupId, user_id: targetUserId }).delete()
       if (deleted > 0) {
@@ -811,6 +1017,15 @@ export class GroupsService {
           .where({ id: groupId, university_id: context.universityId })
           .where('member_count', '>', 0)
           .decrement('member_count', 1)
+        await logModeration(trx, {
+          universityId: context.universityId,
+          groupId,
+          actorId: context.userId,
+          kind: 'member',
+          action: 'Member removed',
+          target: targetName,
+          targetUserId,
+        })
       }
     })
 
@@ -2192,6 +2407,8 @@ function groupSelectQuery(knex: Knex, userId: string) {
       'groups.pinned_at',
       'groups.pinned_by',
       'groups.ai_settings',
+      'groups.require_post_approval',
+      'groups.require_event_approval',
     )
 }
 
@@ -2416,6 +2633,11 @@ async function getMembership(groupId: string, userId: string) {
   return db('group_members').select<{ role: GroupRole }[]>('role').where({ group_id: groupId, user_id: userId }).first()
 }
 
+async function getMemberFullName(userId: string): Promise<string> {
+  const row = await db('profiles').select<{ full_name: string | null }[]>('full_name').where({ user_id: userId }).first()
+  return row?.full_name ?? 'A member'
+}
+
 async function countOwners(groupId: string) {
   const [{ count }] = await db('group_members')
     .where({ group_id: groupId, role: 'owner' })
@@ -2612,6 +2834,8 @@ function toGroup(row: GroupRow) {
     // Collapse that to `false` — "not muted" is the honest answer for someone who is not in.
     isMuted: Boolean(row.is_muted),
     aiSettings: withAiSettingsDefaults(row.ai_settings),
+    requirePostApproval: row.require_post_approval,
+    requireEventApproval: row.require_event_approval,
   }
 }
 

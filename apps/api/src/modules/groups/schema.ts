@@ -74,8 +74,28 @@ export const JoinGroupSchema = z.object({
 })
 
 export const JoinRequestActionSchema = z.object({
-  action: z.enum(['approve', 'decline']),
+  action: z.enum(['approve', 'decline', 'undo']),
 })
+
+export const JoinRequestsQuerySchema = PaginationQuerySchema.extend({
+  status: z.enum(['pending', 'approved', 'declined']).default('pending'),
+})
+export type JoinRequestsQuery = z.infer<typeof JoinRequestsQuerySchema>
+
+// ── Group settings + moderation log ──────────────────────────
+export const UpdateGroupSettingsSchema = z
+  .object({
+    is_private: z.boolean().optional(),
+    require_post_approval: z.boolean().optional(),
+    require_event_approval: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'At least one field is required' })
+export type UpdateGroupSettingsInput = z.infer<typeof UpdateGroupSettingsSchema>
+
+export const ModLogQuerySchema = PaginationQuerySchema.extend({
+  kind: z.enum(['all', 'post', 'member', 'settings']).default('all'),
+})
+export type ModLogQuery = z.infer<typeof ModLogQuerySchema>
 
 // ── Group resources ──────────────────────────────────────────
 export const ResourceCategorySchema = z.enum(['notes', 'syllabus', 'past_papers', 'assignments', 'other'])

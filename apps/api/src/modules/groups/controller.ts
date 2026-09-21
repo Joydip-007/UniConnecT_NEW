@@ -12,7 +12,9 @@ import type {
   FlashcardReviewInput,
   InviteToGroupInput,
   JoinRequestActionInput,
+  JoinRequestsQuery,
   MembersQuery,
+  ModLogQuery,
   NoteUploadUrlRequest,
   PaginationQuery,
   PutSessionCreatorNotesInput,
@@ -21,6 +23,7 @@ import type {
   UpdateFlashcardInput,
   UpdateGroupAISettingsInput,
   UpdateGroupInput,
+  UpdateGroupSettingsInput,
   UpdateMemberInput,
   UpdateMyMuteInput,
   UpdateSharedNoteInput,
@@ -54,6 +57,24 @@ export const updateGroup = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await groupsService.updateGroup(context, getGroupIdParam(req), req.body as UpdateGroupInput))
 })
 
+export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateSettings(context, getGroupIdParam(req), req.body as UpdateGroupSettingsInput),
+  )
+})
+
+export const listModerationLog = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listModerationLog(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as ModLogQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
 export const deleteGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.deleteGroup(context, getGroupIdParam(req)))
@@ -79,7 +100,7 @@ export const listJoinRequests = asyncHandler(async (req: Request, res: Response)
   const result = await groupsService.listJoinRequests(
     context,
     getGroupIdParam(req),
-    req.query as unknown as PaginationQuery,
+    req.query as unknown as JoinRequestsQuery,
   )
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })

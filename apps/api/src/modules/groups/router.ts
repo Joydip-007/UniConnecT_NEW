@@ -41,6 +41,7 @@ import {
   listGroupPosts,
   listGroups,
   listJoinRequests,
+  listModerationLog,
   listMyGroups,
   listPendingAiContent,
   listPendingInvites,
@@ -61,6 +62,7 @@ import {
   updateFlashcardDeck,
   updateGroup,
   updateMember,
+  updateSettings,
   updateSharedNote,
 } from './controller'
 import {
@@ -75,7 +77,9 @@ import {
   InviteToGroupSchema,
   JoinGroupSchema,
   JoinRequestActionSchema,
+  JoinRequestsQuerySchema,
   MembersQuerySchema,
+  ModLogQuerySchema,
   NoteUploadUrlRequestSchema,
   PaginationQuerySchema,
   PutSessionCreatorNotesSchema,
@@ -88,6 +92,7 @@ import {
   UpdateFlashcardSchema,
   UpdateGroupAISettingsSchema,
   UpdateGroupSchema,
+  UpdateGroupSettingsSchema,
   UpdateMemberSchema,
   UpdateMyMuteSchema,
   UpdateSharedNoteSchema,
@@ -103,6 +108,8 @@ groupsRouter.post('/', validate(CreateGroupSchema), createGroup)
 groupsRouter.get('/my', validateRequest({ query: PaginationQuerySchema }), listMyGroups)
 groupsRouter.get('/:groupId', getGroup)
 groupsRouter.patch('/:groupId', validate(UpdateGroupSchema), updateGroup)
+groupsRouter.patch('/:groupId/settings', validate(UpdateGroupSettingsSchema), updateSettings)
+groupsRouter.get('/:groupId/moderation-log', validateRequest({ query: ModLogQuerySchema }), listModerationLog)
 groupsRouter.delete('/:groupId', deleteGroup)
 groupsRouter.post('/:groupId/join', validate(JoinGroupSchema), joinOrRequestGroup)
 groupsRouter.delete('/:groupId/leave', leaveGroup)
@@ -112,7 +119,7 @@ groupsRouter.patch('/:groupId/members/me/mute', validate(UpdateMyMuteSchema), up
 groupsRouter.get('/:groupId/members', validateRequest({ query: MembersQuerySchema }), listGroupMembers)
 groupsRouter.patch('/:groupId/members/:userId', validate(UpdateMemberSchema), updateMember)
 groupsRouter.delete('/:groupId/members/:userId', removeMember)
-groupsRouter.get('/:groupId/join-requests', validateRequest({ query: PaginationQuerySchema }), listJoinRequests)
+groupsRouter.get('/:groupId/join-requests', validateRequest({ query: JoinRequestsQuerySchema }), listJoinRequests)
 groupsRouter.patch('/:groupId/join-requests/:requestId', validate(JoinRequestActionSchema), reviewJoinRequest)
 groupsRouter.delete('/:groupId/join-requests/me', cancelJoinRequest)
 groupsRouter.get('/:groupId/posts', validateRequest({ query: PaginationQuerySchema }), listGroupPosts)
