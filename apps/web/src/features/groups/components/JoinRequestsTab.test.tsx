@@ -19,6 +19,7 @@ function makeRequest(overrides: Record<string, unknown> = {}) {
       fullName: 'Maria Chowdhury',
       avatarUrl: null,
       department: 'CSE',
+      batch: '2021',
     },
     ...overrides,
   }
@@ -130,6 +131,7 @@ describe('JoinRequestsTab', () => {
     renderTab()
 
     expect(await screen.findByRole('button', { name: 'Approve all 2' })).toBeInTheDocument()
+    expect(screen.getAllByText(/CSE · 2021 · requested/).length).toBeGreaterThan(0)
   })
 
   it('sends action:"undo" when Undo is clicked on a resolved request', async () => {

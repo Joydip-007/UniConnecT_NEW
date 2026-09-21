@@ -117,6 +117,9 @@ describe('Join requests', () => {
   it('approve: inserts member, increments member_count, returns { action: approved }', async () => {
     const group = await createPrivateGroup(TEST_UNIVERSITY_ID, adminUserId)
 
+    // Give the requester a batch year so the list response can assert it's served
+    await db('profiles').where({ user_id: studentUserId }).update({ batch_year: '2021' })
+
     // Submit request as student
     const reqRes = await api
       .post(`/api/v1/groups/${group.id}/members`)
@@ -131,6 +134,8 @@ describe('Join requests', () => {
       .set({ Authorization: `Bearer ${adminToken}` })
     expect(listRes.status).toBe(200)
     expect(listRes.body.data.items.length).toBeGreaterThan(0)
+    const requesterItem = listRes.body.data.items.find((item: { id: string }) => item.id === requestId)
+    expect(requesterItem.requester.batch).toBe('2021')
 
     // Approve
     const approveRes = await api

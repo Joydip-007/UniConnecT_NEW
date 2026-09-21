@@ -41,6 +41,7 @@ export interface JoinRequest {
     fullName: string | null
     avatarUrl: string | null
     department: string | null
+    batch: string | null
   }
 }
 

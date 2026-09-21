@@ -132,7 +132,9 @@ function RequestRow({ request, isLast, onApprove, onDecline, onUndo, isPending }
   isPending: boolean
 }) {
   const age = getRelativeAge(request.createdAt)
-  const meta = [request.requester.department, `requested ${age}`].filter(Boolean).join(' · ')
+  const meta = [request.requester.department, request.requester.batch, `requested ${age}`]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <div style={{ padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', borderBottom: isLast ? 'none' : '0.5px solid var(--border-default)' }}>

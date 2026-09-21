@@ -191,6 +191,7 @@ interface JoinRequestRow {
   requester_full_name: string | null
   requester_avatar_url: string | null
   requester_department: string | null
+  requester_batch_year: string | null
   requester_user_role: string | null
 }
 
@@ -773,6 +774,7 @@ export class GroupsService {
         'rp.full_name as requester_full_name',
         'rp.avatar_url as requester_avatar_url',
         'rp.department as requester_department',
+        'rp.batch_year as requester_batch_year',
         'ru.role as requester_user_role',
       )
       .orderBy('group_join_requests.created_at', query.status === 'pending' ? 'asc' : 'desc')
@@ -946,6 +948,7 @@ export class GroupsService {
         'rp.full_name as requester_full_name',
         'rp.avatar_url as requester_avatar_url',
         'rp.department as requester_department',
+        'rp.batch_year as requester_batch_year',
         'ru.role as requester_user_role',
       )
       .first<JoinRequestRow>()
@@ -4140,6 +4143,7 @@ function toJoinRequest(row: JoinRequestRow) {
       fullName: row.requester_full_name,
       avatarUrl: row.requester_avatar_url,
       department: row.requester_department,
+      batch: row.requester_batch_year ?? null,
       role: row.requester_user_role,
     },
   }
