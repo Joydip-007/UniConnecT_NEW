@@ -994,7 +994,7 @@ Section label style: `fontSize 11, fontWeight 500, letterSpacing '0.04em', color
 
 - Cards: `Members`, `Posts this week`, `Active, 30 days`, `Resources`, `Upcoming events` (first card `var(--surface-raised)`, others card). `Refresh` ghost with `refresh-cw` 12. Values `toLocaleString()`.
 
-- [ ] Steps: test (labels) → implement → commit `feat(groups): stats cards per design`
+- [x] Steps: test (labels) → implement → commit `feat(groups): stats cards per design`
 
 ---
 
@@ -1016,7 +1016,7 @@ Section label style: `fontSize 11, fontWeight 500, letterSpacing '0.04em', color
 - **Modules**: rows with title 14/500, description 13, right column `Published|Draft` 12, `paperclip Class content` link, file name 11; admin actions `Move up / Move down / Publish|Unpublish` ghosts under a divider.
 - **Assignments**: rows title 13/500, `Topic · {topic}` 12 tertiary, `Due {date}` 12 secondary, right `{n} submitted|Not open`; student `upload Submit work|Replace file|Not open yet` pill and, once submitted, a `file-check` line with `submitted just now` + X; admin `clipboard-check Review {n} submissions|unlock Open submissions` pill.
 
-- [ ] Steps per panel: failing test → implement → tests/typecheck/lint → commit (one commit per panel: `feat(groups): announcements panel`, `feat(groups): ask-teacher panel and slot booking`, `feat(groups): gradebook inline grid`, `feat(groups): LMS sub-tab order and module/assignment rows`).
+- [x] Steps per panel: failing test → implement → tests/typecheck/lint → commit (one commit per panel: `feat(groups): announcements panel`, `feat(groups): ask-teacher panel and slot booking`, `feat(groups): gradebook inline grid`, `feat(groups): LMS sub-tab order and module/assignment rows`).
 
 ---
 
