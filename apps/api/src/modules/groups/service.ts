@@ -653,7 +653,16 @@ export class GroupsService {
 
     const request = await db('group_join_requests')
       .where({ id: requestId, group_id: groupId })
-      .first<{ id: string; user_id: string; university_id: string; status: 'pending' | 'approved' | 'declined' } | undefined>()
+      .first<
+        | {
+            id: string
+            user_id: string
+            university_id: string
+            status: 'pending' | 'approved' | 'declined'
+            message: string | null
+          }
+        | undefined
+      >()
 
     if (!request) throw notFound('Join request not found', 'JOIN_REQUEST_NOT_FOUND')
 
@@ -662,6 +671,7 @@ export class GroupsService {
       .where({ user_id: request.user_id })
       .first()
     const requesterName = requester?.full_name ?? 'A member'
+    const modLogTarget = `${requesterName}${request.message ? ' · ' + request.message : ''}`
 
     if (action === 'approve') {
       if (request.status !== 'pending') throw badRequest('Join request already reviewed', 'JOIN_REQUEST_ALREADY_REVIEWED')
@@ -685,7 +695,7 @@ export class GroupsService {
           actorId: context.userId,
           kind: 'member',
           action: 'Join request approved',
-          target: requesterName,
+          target: modLogTarget,
           targetUserId: request.user_id,
         })
       })
@@ -725,7 +735,7 @@ export class GroupsService {
           actorId: context.userId,
           kind: 'member',
           action: 'Join request declined',
-          target: requesterName,
+          target: modLogTarget,
           targetUserId: request.user_id,
         })
       })
