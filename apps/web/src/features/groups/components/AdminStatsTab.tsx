@@ -6,6 +6,15 @@ interface Props {
   groupId: string
 }
 
+/** The five cards from the design, in order. The first sits on `--surface-raised`. */
+const CARDS = [
+  { key: 'members', label: 'Members' },
+  { key: 'postsThisWeek', label: 'Posts this week' },
+  { key: 'active30d', label: 'Active, 30 days' },
+  { key: 'resources', label: 'Resources' },
+  { key: 'upcomingEvents', label: 'Upcoming events' },
+] as const
+
 export function AdminStatsTab({ groupId }: Props) {
   const queryClient = useQueryClient()
   const { data, isLoading } = useGroupStats(groupId)
@@ -26,34 +35,28 @@ export function AdminStatsTab({ groupId }: Props) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {isLoading ? (
-          [0, 1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)
-        ) : data ? (
-          <>
-            <StatCard label="New members this week" value={data.newMembersThisWeek} />
-            <StatCard label="Posts this week" value={data.postsThisWeek} />
-            <StatCard label="Active contributors" value={data.activeContributors} />
-            <StatCard label="Pending join requests" value={data.pendingJoinRequests} highlight={data.pendingJoinRequests > 0} />
-            <StatCard label="Upcoming study sessions" value={data.upcomingStudySessions} />
-          </>
-        ) : null}
+        {isLoading
+          ? CARDS.map((c) => <StatCardSkeleton key={c.key} />)
+          : data
+            ? CARDS.map((c, i) => <StatCard key={c.key} label={c.label} value={data[c.key]} raised={i === 0} />)
+            : null}
       </div>
     </div>
   )
 }
 
-function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function StatCard({ label, value, raised }: { label: string; value: number; raised?: boolean }) {
   return (
     <div
       style={{
         flex: '1 1 140px',
-        background: highlight ? 'var(--uc-orange-bg)' : 'var(--surface-card)',
+        background: raised ? 'var(--surface-raised)' : 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
         padding: '16px 20px',
       }}
     >
-      <p style={{ margin: '0 0 4px', fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</p>
+      <p style={{ margin: '0 0 4px', fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>{value.toLocaleString()}</p>
       <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>{label}</p>
     </div>
   )
