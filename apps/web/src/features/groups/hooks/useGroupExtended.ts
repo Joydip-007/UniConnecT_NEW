@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import type {
   AcademicModule,
@@ -76,6 +77,45 @@ export interface GroupStats {
   activeContributors: number
   pendingJoinRequests: number
   upcomingStudySessions: number
+  members: number
+  active30d: number
+  resources: number
+  upcomingEvents: number
+}
+
+export interface ReviewSummary {
+  pendingPosts: number
+  pendingEvents: number
+  pendingJoinRequests: number
+  reportsOpen: number
+}
+
+export interface GroupAnalytics {
+  members: number
+  membersDelta7d: number
+  posts30d: number
+  postsDeltaPct: number | null
+  activePct: number
+  reportsOpen: number
+  postsPerWeek: { label: string; count: number }[]
+  topMembers: { id: string; fullName: string | null; avatarUrl: string | null; posts: number; replies: number }[]
+}
+
+export type ModLogKind = 'post' | 'member' | 'settings'
+
+export interface ModLogEntry {
+  id: string
+  kind: ModLogKind
+  action: string
+  target: string
+  createdAt: string
+  actor: { id: string; fullName: string | null } | null
+}
+
+export interface GroupSettingsPatch {
+  is_private?: boolean
+  require_post_approval?: boolean
+  require_event_approval?: boolean
 }
 
 interface PaginatedResponse<T> {
@@ -286,6 +326,126 @@ export function useGroupStats(groupId: string) {
     queryFn: () =>
       api.get<{ data: GroupStats }>(`/groups/${groupId}/stats`).then((r) => r.data.data),
     enabled: !!groupId,
+  })
+}
+
+// ── Manage card (right rail) ─────────────────────────────────────────────────
+
+export const reviewSummaryKey = (groupId: string) => ['groups', 'review-summary', { groupId }] as const
+
+/** Moderator+ only — gate with `enabled` so a member never 403s on every page. */
+export function useReviewSummary(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: reviewSummaryKey(groupId),
+    queryFn: () =>
+      api.get<{ data: ReviewSummary }>(`/groups/${groupId}/review/summary`).then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function useUpdateGroupSettings(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: GroupSettingsPatch) =>
+      api.patch<{ data: Group }>(`/groups/${groupId}/settings`, patch).then((r) => r.data.data),
+    onSuccess: (group) => {
+      queryClient.setQueryData(['groups', 'detail', groupId], group)
+      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+    },
+  })
+}
+
+export function useDeleteGroup(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.delete<{ data: { deleted: true } }>(`/groups/${groupId}`).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['groups', 'detail', groupId] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'list'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'my'] })
+    },
+  })
+}
+
+export function useGroupAnalytics(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'analytics', { groupId }],
+    queryFn: () =>
+      api.get<{ data: GroupAnalytics }>(`/groups/${groupId}/analytics`).then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function useModerationLog(groupId: string, kind: ModLogKind | 'all', enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'moderation-log', { groupId, kind }],
+    queryFn: () =>
+      api
+        .get<{ data: PaginatedResponse<ModLogEntry> }>(`/groups/${groupId}/moderation-log`, {
+          params: { kind, limit: 50 },
+        })
+        .then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function useGroupSuggestions(limit = 4, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'suggestions', { limit }],
+    queryFn: () =>
+      api
+        .get<{ data: { items: Group[] } }>('/groups/suggestions', { params: { limit } })
+        .then((r) => r.data.data.items),
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function useUpdateGroupDescription(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (description: string) =>
+      api.patch<{ data: Group }>(`/groups/${groupId}`, { description }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+    },
+  })
+}
+
+/**
+ * Join (or request to join) / leave a group. Shared by `GroupCard` and the right-rail
+ * suggestions so both surfaces invalidate the same caches and toast the same copy.
+ */
+export function useToggleGroupMembership(group: Pick<Group, 'id' | 'isMember'>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      group.isMember
+        ? api.delete(`/groups/${group.id}/members/me`).then((r) => r.data)
+        : api.post<{ data: { requested?: boolean } }>(`/groups/${group.id}/members`).then((r) => r.data.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['groups', 'list'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'my'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'suggestions'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', group.id] })
+      if (group.isMember) {
+        toast.success('Left group')
+      } else if (data && 'requested' in data && data.requested) {
+        toast.success('Join request sent')
+      } else {
+        toast.success('Joined group')
+      }
+    },
+    onError: (error: unknown) => {
+      const message =
+        typeof error === 'object' && error && 'response' in error
+          ? ((error as { response?: { data?: { error?: string } } }).response?.data?.error ?? null)
+          : null
+      toast.error(message ?? (group.isMember ? 'Failed to leave group' : 'Failed to join group'))
+    },
   })
 }
 

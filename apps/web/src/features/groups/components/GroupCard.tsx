@@ -7,6 +7,7 @@ import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { ShareMenu } from '@/components/ShareMenu'
 import { AllowedRoleBadge, OfficialBadge } from './GroupBadges'
 import { TYPE_LOOK } from '../groupTypeLook'
+import { useToggleGroupMembership } from '../hooks/useGroupExtended'
 import type { Group } from '../types'
 
 
@@ -60,30 +61,7 @@ export function GroupCard({ group }: { group: Group }) {
   const look = TYPE_LOOK[group.type] ?? TYPE_LOOK.other
   const Glyph = look.icon
 
-  const toggleMutation = useMutation({
-    mutationFn: () =>
-      group.isMember
-        ? api.delete(`/groups/${group.id}/members/me`).then((r) => r.data)
-        : api.post<{ data: { requested?: boolean } }>(`/groups/${group.id}/members`).then((r) => r.data.data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['groups', 'list'] })
-      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', group.id] })
-      if (group.isMember) {
-        toast.success('Left group')
-      } else if (data && 'requested' in data && data.requested) {
-        toast.success('Join request sent')
-      } else {
-        toast.success('Joined group')
-      }
-    },
-    onError: (error: unknown) => {
-      const message =
-        typeof error === 'object' && error && 'response' in error
-          ? ((error as { response?: { data?: { error?: string } } }).response?.data?.error ?? null)
-          : null
-      toast.error(message ?? (group.isMember ? 'Failed to leave group' : 'Failed to join group'))
-    },
-  })
+  const toggleMutation = useToggleGroupMembership(group)
 
   const muted = group.isMuted ?? false
   const muteMutation = useMutation({

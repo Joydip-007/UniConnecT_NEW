@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
@@ -8,21 +8,17 @@ import { GhostBtn } from '@/components/Button'
 import { usePageRails } from '@/stores/pageRailStore'
 import {
   EventsTab, FeedTab, GroupHeader,
-  GroupLeftRail, PinnedBanner, defaultTabFor,
-  ResourcesTab, StudyToolsTab, JoinRequestsTab, AboutTab, AdminStatsTab,
+  GroupLeftRail, GroupRightRail, PinnedBanner, defaultTabFor,
+  ResourcesTab, StudyToolsTab, JoinRequestsTab, AdminStatsTab,
   AcademicLMSTab,
   useJoinRequests,
 } from '@/features/groups'
 import type { Group, GroupTab } from '@/features/groups'
 
-// `about` is kept reachable via `?tab=` only so existing deep links don't 404 while
-// Task 10 turns it into a right-rail panel. Members now lives in the header overlay.
-type ActiveTab = GroupTab | 'about'
-
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
 
   const { data: group, isLoading: groupLoading, isError } = useQuery<Group>({
@@ -38,30 +34,34 @@ export default function GroupDetailPage() {
 
   const userRole = group?.userRole ?? null
   const isModeratorOrAbove = !!(userRole && ['owner', 'admin', 'moderator'].includes(userRole))
-  const canEditRules = userRole === 'owner' || userRole === 'admin'
+  // Bumped by the pinned banner's Edit; the right rail's About card opens its editor on change.
+  const [editAboutSignal, setEditAboutSignal] = useState(0)
 
   const rawTab = searchParams.get('tab')
-  const knownTabs: ActiveTab[] = ['feed', 'resources', 'study-sessions', 'events', 'about', 'stats', 'join-requests', 'academic']
-  const isAuthorised: Record<ActiveTab, boolean> = {
+  const knownTabs: GroupTab[] = ['feed', 'resources', 'study-sessions', 'events', 'stats', 'join-requests', 'academic']
+  const isAuthorised: Record<GroupTab, boolean> = {
     feed: true,
     resources: true,
     'study-sessions': true,
     events: true,
-    about: true,
     academic: group?.type === 'academic',
     stats: isModeratorOrAbove,
     'join-requests': isAdmin,
   }
-  const activeTab: ActiveTab =
-    rawTab && knownTabs.includes(rawTab as ActiveTab) && isAuthorised[rawTab as ActiveTab]
-      ? (rawTab as ActiveTab)
+  const activeTab: GroupTab =
+    rawTab && knownTabs.includes(rawTab as GroupTab) && isAuthorised[rawTab as GroupTab]
+      ? (rawTab as GroupTab)
       : defaultTabFor(group)
 
   const leftRail = useMemo(
     () => (group ? <GroupLeftRail group={group} activeTab={activeTab} pendingCount={pendingCount} /> : null),
     [group, activeTab, pendingCount],
   )
-  usePageRails(leftRail, null)
+  const rightRail = useMemo(
+    () => (group ? <GroupRightRail group={group} activeTab={activeTab} editAboutSignal={editAboutSignal} /> : null),
+    [group, activeTab, editAboutSignal],
+  )
+  usePageRails(leftRail, rightRail)
 
   if (isError) {
     return (
@@ -107,11 +107,7 @@ export default function GroupDetailPage() {
           text={group.pinnedText}
           pinnedBy={group.pinnedBy}
           canEdit={isModeratorOrAbove}
-          onEdit={() => {
-            const params = new URLSearchParams(searchParams)
-            params.set('tab', 'about')
-            setSearchParams(params)
-          }}
+          onEdit={() => setEditAboutSignal((n) => n + 1)}
         />
       )}
 
@@ -127,7 +123,6 @@ export default function GroupDetailPage() {
           <AcademicLMSTab groupId={id} isAdmin={isAdmin} />
         )}
         {id && activeTab === 'events' && <EventsTab groupId={id} />}
-        {id && group && activeTab === 'about' && <AboutTab groupId={id} rulesMd={group.rulesMd} canEdit={!!canEditRules} />}
         {id && isModeratorOrAbove && activeTab === 'stats' && <AdminStatsTab groupId={id} />}
         {id && isAdmin && activeTab === 'join-requests' && <JoinRequestsTab groupId={id} />}
       </div>
