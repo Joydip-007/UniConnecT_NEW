@@ -13,6 +13,7 @@ import type {
   FlashcardReviewResult,
   Gradebook,
   GradebookEntryInput,
+  Group,
   MyGradeCard,
   ReviewRating,
   SessionNotes,
@@ -869,5 +870,15 @@ export function useGradeSubmission(groupId: string, assignmentId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: submissionsKey(groupId, assignmentId) })
     },
+  })
+}
+
+/** "Your groups" list for the group-detail left rail. */
+export function useMyGroups() {
+  return useQuery({
+    queryKey: ['groups', 'my'],
+    queryFn: () =>
+      api.get<{ data: PaginatedResponse<Group> }>('/groups/my?limit=20').then((r) => r.data.data),
+    staleTime: 60_000,
   })
 }
