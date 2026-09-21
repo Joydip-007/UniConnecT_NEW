@@ -419,6 +419,55 @@ export class MessagesService {
     return this.getConversation(context, conversationId)
   }
 
+  /**
+   * Thin wrapper around the private group-conversation creator for callers (the groups
+   * module's class chat) that already know their full participant list and don't want
+   * the "creator must be included" / name-required checks re-derived from a caller's
+   * own membership — the group's member list is the source of truth here, not the
+   * requester. Returns the bare conversation id rather than a hydrated conversation.
+   */
+  async createGroupConversationForGroup(
+    context: AuthContext,
+    input: { name: string; participantIds: string[] },
+  ): Promise<string> {
+    const conversation = await this.createGroupConversation(context, {
+      is_group: true,
+      name: input.name,
+      participantIds: input.participantIds,
+    } as CreateConversationInput)
+    return conversation.id
+  }
+
+  /**
+   * Find-or-create a direct conversation between the caller and `otherUserId`, bypassing
+   * the messaging-privacy-tier gate in `createConversation` — used for the ask-teacher
+   * flow, where the pairing is established by academic-group membership, not a cold DM.
+   */
+  async getOrCreateDirect(context: AuthContext, otherUserId: string): Promise<string> {
+    const existing = await findDirectConversation(context.userId, otherUserId, context.universityId)
+    if (existing) return existing.id
+
+    return db.transaction(async (trx) => {
+      const [conversation] = await trx('conversations')
+        .insert({
+          university_id: context.universityId,
+          is_group: false,
+          type: 'direct',
+          created_by: context.userId,
+        })
+        .returning<{ id: string }[]>('id')
+
+      if (!conversation) throw badRequest('Conversation could not be created', 'CONVERSATION_CREATE_FAILED')
+
+      await trx('conversation_participants').insert([
+        { conversation_id: conversation.id, user_id: context.userId },
+        { conversation_id: conversation.id, user_id: otherUserId },
+      ])
+
+      return conversation.id
+    })
+  }
+
   async upsertMessageReaction(context: AuthContext, convId: string, msgId: string, reactionType: string) {
     const message = await db('messages').where({ id: msgId, conversation_id: convId }).first()
     if (!message) throw notFound('Message not found')

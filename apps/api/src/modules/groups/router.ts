@@ -5,6 +5,8 @@ import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
   approvePendingAiContent,
+  askTeacher,
+  askTeacherQueue,
   cancelInvite,
   cancelJoinRequest,
   createFlashcard,
@@ -21,6 +23,7 @@ import {
   deleteStudySession,
   discardPendingAiContent,
   getAiSettings,
+  getAnalytics,
   getFlashcardReviewQueue,
   getGroup,
   getGroupStats,
@@ -50,6 +53,8 @@ import {
   listResources,
   listSharedNotes,
   listStudySessions,
+  listSuggestions,
+  openGroupChat,
   putMySessionPrivateNotes,
   putSessionCreatorNotes,
   removeMember,
@@ -94,6 +99,7 @@ import {
   RsvpStudySessionSchema,
   SetPinnedSchema,
   SetRulesSchema,
+  SuggestionsQuerySchema,
   UpdateFlashcardDeckSchema,
   UpdateFlashcardSchema,
   UpdateGroupAISettingsSchema,
@@ -112,6 +118,7 @@ groupsRouter.use(requireAuth, resolveUniversity)
 groupsRouter.get('/', validateRequest({ query: GroupListQuerySchema }), listGroups)
 groupsRouter.post('/', validate(CreateGroupSchema), createGroup)
 groupsRouter.get('/my', validateRequest({ query: PaginationQuerySchema }), listMyGroups)
+groupsRouter.get('/suggestions', validateRequest({ query: SuggestionsQuerySchema }), listSuggestions)
 groupsRouter.get('/:groupId', getGroup)
 groupsRouter.patch('/:groupId', validate(UpdateGroupSchema), updateGroup)
 groupsRouter.patch('/:groupId/settings', validate(UpdateGroupSettingsSchema), updateSettings)
@@ -156,6 +163,12 @@ groupsRouter.patch('/:groupId/rules', validate(SetRulesSchema), setRules)
 
 // Analytics stats
 groupsRouter.get('/:groupId/stats', getGroupStats)
+groupsRouter.get('/:groupId/analytics', getAnalytics)
+
+// Group chat + ask-teacher
+groupsRouter.post('/:groupId/chat', openGroupChat)
+groupsRouter.post('/:groupId/ask-teacher', askTeacher)
+groupsRouter.get('/:groupId/ask-teacher/queue', askTeacherQueue)
 
 // Study sessions
 groupsRouter.get('/:groupId/study-sessions', validateRequest({ query: PaginationQuerySchema }), listStudySessions)

@@ -10,6 +10,7 @@ import { notificationQueue } from '../../queues/notification.queue'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { gradebookService } from '../academic/gradebook.service'
 import { contentSyncService } from '../content-sync/service'
+import { messagesService } from '../messages/service'
 import { logger } from '../../utils/logger'
 import {
   assertAllowedUploadType,
@@ -36,6 +37,7 @@ import type {
   PutSessionPrivateNotesInput,
   ResourceListQuery,
   RsvpStudySessionInput,
+  SuggestionsQuery,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupInput,
@@ -715,6 +717,8 @@ export class GroupsService {
       throw error
     }
 
+    await syncGroupChatParticipant(groupId, context.userId, 'add')
+
     const group = await this.getGroup(context, groupId)
     if (group.type === 'academic') {
       await gradebookService.autoPopulateGradebook(groupId, context.universityId, context.userId)
@@ -830,6 +834,8 @@ export class GroupsService {
         await gradebookService.autoPopulateGradebook(groupId, context.universityId, request.user_id)
       }
 
+      await syncGroupChatParticipant(groupId, request.user_id, 'add')
+
       await notificationQueue.add({
         universityId: context.universityId,
         userId: request.user_id,
@@ -899,6 +905,10 @@ export class GroupsService {
         updated_at: new Date(),
       })
     })
+
+    if (request.status === 'approved') {
+      await syncGroupChatParticipant(groupId, request.user_id, 'remove')
+    }
 
     return { action: 'undo' as const, ...(await this.getJoinRequest(groupId, requestId)) }
   }
@@ -971,6 +981,8 @@ export class GroupsService {
       throw error
     }
 
+    await syncGroupChatParticipant(groupId, context.userId, 'add')
+
     return this.getGroup(context, groupId)
   }
 
@@ -1000,6 +1012,8 @@ export class GroupsService {
           .decrement('member_count', 1)
       }
     })
+
+    await syncGroupChatParticipant(groupId, context.userId, 'remove')
 
     return { left: true }
   }
@@ -1052,6 +1066,7 @@ export class GroupsService {
     }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
     const [
       [newMembersRow],
@@ -1059,6 +1074,10 @@ export class GroupsService {
       [activeContributorsRow],
       [pendingRow],
       [upcomingRow],
+      [memberCountRow],
+      [active30dRow],
+      [resourcesRow],
+      [upcomingEventsRow],
     ] = await Promise.all([
       db('group_members')
         .where({ group_id: groupId })
@@ -1083,6 +1102,22 @@ export class GroupsService {
         .where({ group_id: groupId })
         .andWhere('starts_at', '>', new Date())
         .count<{ count: string }[]>({ count: '*' }),
+
+      // Design keys below — kept alongside the original set above since the contextual
+      // rail widget still reads the original keys.
+      db('group_members').where({ group_id: groupId }).count<{ count: string }[]>({ count: '*' }),
+
+      db('posts')
+        .where({ group_id: groupId })
+        .andWhere('created_at', '>=', thirtyDaysAgo)
+        .countDistinct<{ count: string }[]>({ count: 'author_id' }),
+
+      db('group_resources').where({ group_id: groupId }).count<{ count: string }[]>({ count: '*' }),
+
+      db('events')
+        .where({ group_id: groupId })
+        .andWhere('starts_at', '>=', new Date())
+        .count<{ count: string }[]>({ count: '*' }),
     ])
 
     return {
@@ -1091,7 +1126,294 @@ export class GroupsService {
       activeContributors: Number(activeContributorsRow.count),
       pendingJoinRequests: Number(pendingRow.count),
       upcomingStudySessions: Number(upcomingRow.count),
+      // Design's five keys
+      members: Number(memberCountRow.count),
+      active30d: Number(active30dRow.count),
+      resources: Number(resourcesRow.count),
+      upcomingEvents: Number(upcomingEventsRow.count),
     }
+  }
+
+  async getAnalytics(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+
+    const base = db('posts').where({ group_id: groupId, is_published: true }).whereNull('archived_at')
+
+    const [members, newMembers, posts30, postsPrev30, active, reports, weeks, top] = await Promise.all([
+      db('group_members').where({ group_id: groupId }).count<{ c: string }[]>({ c: '*' }).then((rows) => rows[0]),
+      db('group_members')
+        .where({ group_id: groupId })
+        .where('joined_at', '>=', db.raw("now() - interval '7 days'"))
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      base
+        .clone()
+        .where('created_at', '>=', db.raw("now() - interval '30 days'"))
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      base
+        .clone()
+        .whereBetween('created_at', [db.raw("now() - interval '60 days'"), db.raw("now() - interval '30 days'")])
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      base
+        .clone()
+        .where('created_at', '>=', db.raw("now() - interval '30 days'"))
+        .countDistinct<{ c: string }[]>({ c: 'author_id' })
+        .then((rows) => rows[0]),
+      db('reports')
+        .where({ target_type: 'post', status: 'pending' })
+        .whereIn('target_id', db('posts').select('id').where({ group_id: groupId }))
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      db.raw<{ rows: { week_start: Date; count: number }[] }>(
+        `SELECT g.week_start, COUNT(p.id)::int AS count
+           FROM generate_series(date_trunc('week', now()) - interval '4 weeks', date_trunc('week', now()), interval '1 week') AS g(week_start)
+           LEFT JOIN posts p ON p.group_id = ? AND p.is_published AND p.archived_at IS NULL
+             AND p.created_at >= g.week_start AND p.created_at < g.week_start + interval '1 week'
+          GROUP BY g.week_start ORDER BY g.week_start`,
+        [groupId],
+      ),
+      db.raw<{
+        rows: { id: string; full_name: string | null; avatar_url: string | null; posts: number; replies: number }[]
+      }>(
+        `SELECT u.id, pr.full_name, pr.avatar_url,
+                COUNT(DISTINCT p.id)::int AS posts, COUNT(DISTINCT c.id)::int AS replies
+           FROM users u JOIN profiles pr ON pr.user_id = u.id
+           LEFT JOIN posts p ON p.author_id = u.id AND p.group_id = ? AND p.created_at >= now() - interval '30 days'
+           LEFT JOIN comments c ON c.author_id = u.id AND c.post_id IN (SELECT id FROM posts WHERE group_id = ?)
+             AND c.created_at >= now() - interval '30 days'
+          WHERE u.id IN (SELECT user_id FROM group_members WHERE group_id = ?)
+          GROUP BY u.id, pr.full_name, pr.avatar_url
+          HAVING COUNT(DISTINCT p.id) + COUNT(DISTINCT c.id) > 0
+          ORDER BY posts DESC, replies DESC LIMIT 3`,
+        [groupId, groupId, groupId],
+      ),
+    ])
+
+    const memberCount = Number(members?.c ?? 0)
+    const p30 = Number(posts30?.c ?? 0)
+    const pPrev = Number(postsPrev30?.c ?? 0)
+    const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'This week']
+
+    return {
+      members: memberCount,
+      membersDelta7d: Number(newMembers?.c ?? 0),
+      posts30d: p30,
+      postsDeltaPct: pPrev === 0 ? null : Math.round(((p30 - pPrev) / pPrev) * 100),
+      activePct: memberCount === 0 ? 0 : Math.round((Number(active?.c ?? 0) / memberCount) * 100),
+      reportsOpen: Number(reports?.c ?? 0),
+      postsPerWeek: weeks.rows.map((r, i) => ({ label: labels[i] ?? `Week ${i + 1}`, count: r.count })),
+      topMembers: top.rows.map((r) => ({
+        id: r.id,
+        fullName: r.full_name,
+        avatarUrl: r.avatar_url,
+        posts: r.posts,
+        replies: r.replies,
+      })),
+    }
+  }
+
+  async listSuggestions(context: AuthContext, limit: number) {
+    // Non-member groups only, public or private — unlike `listGroups`, a private group
+    // the caller hasn't joined is still a valid suggestion (surfaced by known-member
+    // count), so there is no `is_private` filter here.
+    const memberGroupIds = db('group_members').select('group_id').where({ user_id: context.userId })
+
+    const rows = (await groupSelectQuery(db, context.userId)
+      .where('groups.university_id', context.universityId)
+      .whereNotIn('groups.id', memberGroupIds)
+      .orderBy('groups.member_count', 'desc')
+      .limit(50)) as GroupRow[]
+
+    const { previewByGroup, knownByGroup } = await loadGroupSocialProof(
+      rows.map((row) => row.id),
+      context.userId,
+    )
+
+    const items = rows
+      .map((row) => ({
+        ...toGroup(row),
+        previewMembers: previewByGroup.get(row.id) ?? [],
+        knownMemberCount: knownByGroup.get(row.id) ?? 0,
+      }))
+      .sort((a, b) => {
+        if (b.knownMemberCount !== a.knownMemberCount) return b.knownMemberCount - a.knownMemberCount
+        return b.memberCount - a.memberCount
+      })
+      .slice(0, limit)
+
+    return { items }
+  }
+
+  async openGroupChat(context: AuthContext, groupId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const row = await db('groups')
+      .select<{ type: GroupType; name: string; chat_conversation_id: string | null }[]>(
+        'type',
+        'name',
+        'chat_conversation_id',
+      )
+      .where({ id: groupId })
+      .first()
+
+    if (!row) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+    if (row.type !== 'academic') {
+      throw badRequest('Only class groups have a group chat', 'GROUP_NOT_ACADEMIC')
+    }
+    if (row.chat_conversation_id) return { conversationId: row.chat_conversation_id }
+
+    const memberIds = await db('group_members').where({ group_id: groupId }).pluck<string[]>('user_id')
+    const conversationId = await messagesService.createGroupConversationForGroup(context, {
+      name: row.name,
+      participantIds: memberIds,
+    })
+    await db('groups').where({ id: groupId }).update({ chat_conversation_id: conversationId })
+
+    return { conversationId }
+  }
+
+  async askTeacher(context: AuthContext, groupId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const group = await db('groups')
+      .select<{ type: GroupType; created_by: string }[]>('type', 'created_by')
+      .where({ id: groupId })
+      .first()
+    if (!group) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+    if (group.type !== 'academic') {
+      throw badRequest('Only class groups can message their teacher', 'GROUP_NOT_ACADEMIC')
+    }
+
+    const teacherId = await resolveGroupTeacherId(groupId, group.created_by)
+    const conversationId = await messagesService.getOrCreateDirect(context, teacherId)
+
+    const teacherProfile = await db('profiles')
+      .select<{ full_name: string | null; avatar_url: string | null; department: string | null }[]>(
+        'full_name',
+        'avatar_url',
+        'department',
+      )
+      .where('user_id', teacherId)
+      .first()
+
+    return {
+      conversationId,
+      teacher: {
+        id: teacherId,
+        fullName: teacherProfile?.full_name ?? null,
+        avatarUrl: teacherProfile?.avatar_url ?? null,
+        department: teacherProfile?.department ?? null,
+      },
+    }
+  }
+
+  async askTeacherQueue(context: AuthContext, groupId: string) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const row = await db('groups')
+      .select<{ type: GroupType; created_by: string }[]>('type', 'created_by')
+      .where({ id: groupId })
+      .first()
+    if (!row) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+    if (row.type !== 'academic') {
+      throw badRequest('Only class groups have an ask-teacher queue', 'GROUP_NOT_ACADEMIC')
+    }
+
+    const teacherId = await resolveGroupTeacherId(groupId, row.created_by)
+
+    const memberIds = await db('group_members').where({ group_id: groupId }).pluck<string[]>('user_id')
+    const studentIds = memberIds.filter((id) => id !== teacherId)
+    if (studentIds.length === 0) return { items: [] }
+
+    // Direct conversations the teacher is in, restricted to the other participant
+    // being one of this group's members — this is what makes it "the ask-teacher
+    // queue for this class" rather than every DM the teacher has.
+    const conversationRows = (await db('conversation_participants as owner_p')
+      .join('conversations as c', 'c.id', 'owner_p.conversation_id')
+      .join('conversation_participants as student_p', function joinStudent() {
+        this.on('student_p.conversation_id', '=', 'c.id').andOn('student_p.user_id', '!=', 'owner_p.user_id')
+      })
+      .join('profiles as sp', 'sp.user_id', 'student_p.user_id')
+      .where('owner_p.user_id', teacherId)
+      .andWhere('c.university_id', context.universityId)
+      .andWhere('c.is_group', false)
+      .whereIn('student_p.user_id', studentIds)
+      .select<
+        {
+          conversation_id: string
+          student_id: string
+          full_name: string | null
+          avatar_url: string | null
+          owner_last_read_at: Date | null
+        }[]
+      >(
+        'c.id as conversation_id',
+        'student_p.user_id as student_id',
+        'sp.full_name',
+        'sp.avatar_url',
+        'owner_p.last_read_at as owner_last_read_at',
+      )) as {
+      conversation_id: string
+      student_id: string
+      full_name: string | null
+      avatar_url: string | null
+      owner_last_read_at: Date | null
+    }[]
+
+    if (conversationRows.length === 0) return { items: [] }
+
+    const conversationIds = conversationRows.map((row) => row.conversation_id)
+
+    const lastMessages = await db('messages')
+      .whereIn('conversation_id', conversationIds)
+      .andWhere('is_deleted', false)
+      .orderBy('created_at', 'desc')
+      .select<{ conversation_id: string; content: string | null; created_at: Date; sender_id: string }[]>(
+        'conversation_id',
+        'content',
+        'created_at',
+        'sender_id',
+      )
+
+    const lastByConversation = new Map<string, { content: string | null; created_at: Date }>()
+    for (const message of lastMessages) {
+      if (!lastByConversation.has(message.conversation_id)) {
+        lastByConversation.set(message.conversation_id, { content: message.content, created_at: message.created_at })
+      }
+    }
+
+    const unreadMessages = await db('messages')
+      .whereIn('conversation_id', conversationIds)
+      .andWhere('sender_id', '!=', teacherId)
+      .select<{ conversation_id: string; created_at: Date }[]>('conversation_id', 'created_at')
+
+    const unreadByConversation = new Map<string, number>()
+    for (const row of conversationRows) {
+      const threshold = row.owner_last_read_at
+      const count = unreadMessages.filter(
+        (m) => m.conversation_id === row.conversation_id && (!threshold || m.created_at > threshold),
+      ).length
+      unreadByConversation.set(row.conversation_id, count)
+    }
+
+    const items = conversationRows
+      .map((row) => ({
+        conversationId: row.conversation_id,
+        student: { id: row.student_id, fullName: row.full_name, avatarUrl: row.avatar_url },
+        lastMessage: lastByConversation.get(row.conversation_id)?.content ?? '',
+        lastAt: lastByConversation.get(row.conversation_id)?.created_at ?? null,
+        unread: unreadByConversation.get(row.conversation_id) ?? 0,
+      }))
+      .sort((a, b) => {
+        const aTime = a.lastAt ? new Date(a.lastAt).getTime() : 0
+        const bTime = b.lastAt ? new Date(b.lastAt).getTime() : 0
+        return bTime - aTime
+      })
+
+    return { items }
   }
 
   async updateMember(context: AuthContext, groupId: string, targetUserId: string, role: GroupRole) {
@@ -1163,6 +1485,8 @@ export class GroupsService {
         })
       }
     })
+
+    await syncGroupChatParticipant(groupId, targetUserId, 'remove')
 
     return { removed: true }
   }
@@ -2766,6 +3090,42 @@ export async function assertGroupAdminAccess(context: AuthContext, groupId: stri
 
 async function getMembership(groupId: string, userId: string) {
   return db('group_members').select<{ role: GroupRole }[]>('role').where({ group_id: groupId, user_id: userId }).first()
+}
+
+/** The academic group's teacher — the member with `role: 'owner'`, falling back to
+ * `groups.created_by` for the rare case where ownership was never seeded as a
+ * membership row. */
+async function resolveGroupTeacherId(groupId: string, createdBy: string): Promise<string> {
+  const owner = await db('group_members')
+    .select<{ user_id: string }[]>('user_id')
+    .where({ group_id: groupId, role: 'owner' })
+    .orderBy('joined_at', 'asc')
+    .first()
+  return owner?.user_id ?? createdBy
+}
+
+/**
+ * Keeps a group's class-chat conversation's participant list in sync with membership.
+ * A no-op when the group has no chat conversation yet — the chat is created lazily on
+ * first `POST /:groupId/chat`, so most groups never pay this query.
+ */
+async function syncGroupChatParticipant(groupId: string, userId: string, action: 'add' | 'remove') {
+  const group = await db('groups')
+    .select<{ chat_conversation_id: string | null }[]>('chat_conversation_id')
+    .where({ id: groupId })
+    .first()
+  if (!group?.chat_conversation_id) return
+
+  if (action === 'add') {
+    await db('conversation_participants')
+      .insert({ conversation_id: group.chat_conversation_id, user_id: userId })
+      .onConflict(['conversation_id', 'user_id'])
+      .ignore()
+  } else {
+    await db('conversation_participants')
+      .where({ conversation_id: group.chat_conversation_id, user_id: userId })
+      .delete()
+  }
 }
 
 async function getMemberFullName(userId: string): Promise<string> {

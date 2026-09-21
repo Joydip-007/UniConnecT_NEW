@@ -20,6 +20,7 @@ import type {
   PutSessionCreatorNotesInput,
   PutSessionPrivateNotesInput,
   ReviewActionInput,
+  SuggestionsQuery,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupAISettingsInput,
@@ -292,6 +293,32 @@ export const setRules = asyncHandler(async (req, res) => {
 export const getGroupStats = asyncHandler(async (req, res) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.getGroupStats(context, getGroupIdParam(req)))
+})
+
+export const getAnalytics = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.getAnalytics(context, getGroupIdParam(req)))
+})
+
+export const listSuggestions = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const query = req.query as unknown as SuggestionsQuery
+  sendSuccess(res, await groupsService.listSuggestions(context, query.limit))
+})
+
+export const openGroupChat = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.openGroupChat(context, getGroupIdParam(req)))
+})
+
+export const askTeacher = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.askTeacher(context, getGroupIdParam(req)))
+})
+
+export const askTeacherQueue = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.askTeacherQueue(context, getGroupIdParam(req)))
 })
 
 export const listStudySessions = asyncHandler(async (req, res) => {

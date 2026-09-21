@@ -291,3 +291,10 @@ export const UploadUrlQuerySchema = z.object({
 export type PutSessionCreatorNotesInput = z.infer<typeof PutSessionCreatorNotesSchema>
 export type PutSessionPrivateNotesInput = z.infer<typeof PutSessionPrivateNotesSchema>
 export type UploadUrlQuery = z.infer<typeof UploadUrlQuerySchema>
+
+// ── Suggestions ────────────────────────────────────────────
+export const SuggestionsQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(20).default(4),
+})
+
+export type SuggestionsQuery = z.infer<typeof SuggestionsQuerySchema>
