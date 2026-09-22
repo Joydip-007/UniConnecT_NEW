@@ -1058,7 +1058,7 @@ Section label style: `fontSize 11, fontWeight 500, letterSpacing '0.04em', color
 - **Created**: mint check circle, `{code} · section {s} is live`, explanatory copy, group card row (`graduation-cap` orange tile, `you own this` orange pill, `Academic · students only · 1 member`); footer `user-plus Invite students by section`.
 - **Invite**: `Course` locked field (`lock`), `Department` + `Batch year` selects (our deviation from "Section"), indigo info row `{n} students match this department and batch` from `useInviteMatch`; `Also invite by email` switch revealing a textarea + `{n} addresses added` / `A roster file fills this in for you` (pre-filled from `rosterEmails`); footer `Send invites` → `POST /groups/:id/invitations/bulk` → `Invite summary` card (`{invited} invited · just now`, `{skipped} skipped, already members`, `{mailed} mailed · by email`) and the button reads `Invites sent`; `Discard` → closes and navigates to the new group.
 
-- [ ] Steps: failing tests (weights sum message; `Confirm and create group` disabled at 90%) → implement → commit `feat(groups): course-outline import wizard`
+- [x] Steps: failing tests (weights sum message; `Confirm and create group` disabled at 90%) → implement → commit `feat(groups): course-outline import wizard`
 
 ---
 

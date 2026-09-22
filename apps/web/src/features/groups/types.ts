@@ -274,6 +274,44 @@ export interface CourseOutlineInput {
   topics: CourseOutlineTopic[]
 }
 
+// ── Course-outline import wizard ───────────────────────────────
+export type OutlineAssignmentKind = 'assignment' | 'class_test'
+
+export interface CourseOutlineDraftAssignment {
+  title: string
+  dueDate: string | null
+  topic: string | null
+  kind: OutlineAssignmentKind
+}
+
+/** Reviewable draft returned by `POST /groups/course-outline/draft` and accepted back by
+ *  `POST /groups/from-outline` — topics' free-text date range is folded into `description`
+ *  server-side (see `outline-import.service.ts`). */
+export interface CourseOutlineDraft {
+  courseCode?: string
+  courseTitle: string
+  section?: string
+  creditHours?: number
+  trimester?: string
+  description?: string
+  gradingScale: 'uiu' | 'ugc' | 'custom'
+  customScaleJson?: unknown
+  assessments: CourseOutlineAssessment[]
+  topics: CourseOutlineTopic[]
+  assignments: CourseOutlineDraftAssignment[]
+}
+
+export interface CourseOutlineDraftResponse {
+  draft: CourseOutlineDraft
+  rosterEmails: string[]
+}
+
+export interface BulkInviteResult {
+  invited: number
+  skipped: number
+  mailed: number
+}
+
 export interface FileUrlEntry {
   name: string
   url: string

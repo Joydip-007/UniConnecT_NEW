@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Check, FileUp, GraduationCap, Search, Users } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { Modal } from '@/components/Modal'
+import { OutlineImportWizard } from './OutlineImportWizard'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { ImageUploadField } from '@/components/ImageUploadField'
 import { useAuthStore } from '@/stores/authStore'
@@ -47,6 +48,7 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
 
   const [step, setStep] = useState<Step>('members')
   const [kind, setKind] = useState<Kind>('other')
+  const [showOutlineWizard, setShowOutlineWizard] = useState(false)
 
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Map<string, UserSearchResult>>(new Map())
@@ -121,6 +123,10 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
   const canSubmit = name.trim().length > 0 && description.trim().length > 0 && !createMutation.isPending
   const count = selected.size
 
+  if (showOutlineWizard) {
+    return <OutlineImportWizard onClose={onClose} />
+  }
+
   if (step === 'members') {
     return (
       <Modal isOpen onClose={onClose} title="Create group" maxWidth={480} sheet>
@@ -144,7 +150,7 @@ export function CreateGroupModal({ onClose }: { onClose: () => void }) {
             {kind === 'academic' && (
               <button
                 type="button"
-                onClick={() => toast('Course outline import lands in the next update.')}
+                onClick={() => setShowOutlineWizard(true)}
                 className="press-feedback"
                 style={{
                   display: 'inline-flex',
