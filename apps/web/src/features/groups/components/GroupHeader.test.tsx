@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
@@ -34,6 +34,11 @@ function makeGroup(overrides: Partial<Group> = {}): Group {
   }
 }
 
+function LocationProbe() {
+  const { search } = useLocation()
+  return <span data-testid="search">{search}</span>
+}
+
 const members = Array.from({ length: 5 }, (_, i) => ({
   id: `m${i}`,
   fullName: `Member ${i}`,
@@ -43,7 +48,7 @@ const members = Array.from({ length: 5 }, (_, i) => ({
   department: 'CSE',
 }))
 
-function renderHeader(group: Group) {
+function renderHeader(group: Group, initialEntry = '/groups/g1') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   server.use(
     http.get('*/groups/g1/members', () =>
@@ -52,8 +57,9 @@ function renderHeader(group: Group) {
   )
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <GroupHeader group={group} />
+        <LocationProbe />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -98,5 +104,36 @@ describe('GroupHeader', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Copy link' }))
     expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/groups/g1`)
     expect(await screen.findByText('Link copied')).toBeInTheDocument()
+  })
+
+  describe('?modal= in the URL', () => {
+    it('writes the open overlay to the URL and clears it on close', async () => {
+      renderHeader(makeGroup())
+      await userEvent.click(screen.getByRole('button', { name: 'Share group' }))
+      expect(await screen.findByRole('dialog', { name: 'Share this group' })).toBeInTheDocument()
+      expect(screen.getByTestId('search')).toHaveTextContent('?modal=share')
+      await userEvent.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(screen.getByTestId('search')).toHaveTextContent('')
+    })
+
+    it('opens the dialog a shared link names, keeping the tab', async () => {
+      renderHeader(makeGroup(), '/groups/g1?tab=events&modal=members')
+      expect(await screen.findByRole('dialog', { name: 'Members' })).toBeInTheDocument()
+      expect(screen.getByTestId('search')).toHaveTextContent('?tab=events&modal=members')
+    })
+
+    it('ignores ?modal=invite for a viewer who cannot invite', () => {
+      // An admin's invite link must not hand a member a panel that 403s on send.
+      renderHeader(makeGroup({ userRole: 'member' }), '/groups/g1?modal=invite')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('swaps Members for Invite in place', async () => {
+      renderHeader(makeGroup(), '/groups/g1?modal=members')
+      const panel = await screen.findByRole('dialog', { name: 'Members' })
+      await userEvent.click(within(panel).getByRole('button', { name: /Invite/ }))
+      expect(screen.getByTestId('search')).toHaveTextContent('?modal=invite')
+    })
   })
 })

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Forward, MessagesSquare, UserPlus } from 'lucide-react'
@@ -14,16 +13,16 @@ import { MembersPanel } from './MembersPanel'
 import { InvitePanel } from './InvitePanel'
 import { ShareGroupModal } from './ShareGroupModal'
 import { useGroupMembers, useOpenGroupChat } from '../hooks/useGroupExtended'
+import { useGroupModal } from '../groupDetailRoute'
 import type { Group } from '../types'
 
 const FACE_COUNT = 5
 
-type Overlay = 'members' | 'invite' | 'share' | null
-
 export function GroupHeader({ group }: { group: Group }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [overlay, setOverlay] = useState<Overlay>(null)
+  // `?modal=` — a shared link opens the same dialog, and Back closes it.
+  const [overlay, setOverlay] = useGroupModal(group)
 
   const isAdmin = group.userRole === 'owner' || group.userRole === 'admin'
   // The brief shows Invite for any member, but `POST /groups/:id/invitations` is
