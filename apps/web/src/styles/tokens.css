@@ -19,7 +19,7 @@
   --uc-indigo-bdr:    rgba(78, 98, 191, 0.30);
 
   /* ── Brand — self identity (study mauve) ──────────── */
-  --uc-orange:        #7B5E64;
+  --uc-orange:        #E86518;
   --uc-orange-l:      #C79FAA;
   --uc-orange-bg:     rgba(123, 94, 100, 0.18);
   --uc-orange-bdr:    rgba(123, 94, 100, 0.40);
@@ -28,7 +28,7 @@
 
   /* ── Tenant accent — per-university identity slot.
      Defaults to study mauve; later set at runtime from university_settings. */
-  --tenant-accent:     #7B5E64;
+  --tenant-accent:     #E86518;
   --tenant-accent-l:   #C79FAA;
   --tenant-accent-bg:  rgba(123, 94, 100, 0.18);
   --tenant-accent-bdr: rgba(123, 94, 100, 0.40);

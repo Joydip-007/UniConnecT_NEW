@@ -327,7 +327,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
   student: {
     fixed: [
       { key: 'home', label: 'Home', icon: Home, to: PATHS.FEED },
-      { key: 'groups', label: 'Groups & people', icon: Users, to: PATHS.GROUPS },
+      { key: 'groups', label: 'Groups', icon: Users, to: PATHS.GROUPS },
       { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS },
       { key: 'jobs', label: 'Jobs', icon: Briefcase, to: PATHS.JOBS },
       { key: 'mentorship', label: 'Mentorship', icon: Handshake, to: PATHS.MENTORSHIP },
@@ -343,7 +343,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
   alumni: {
     fixed: [
       { key: 'home', label: 'Home', icon: Home, to: PATHS.FEED },
-      { key: 'groups', label: 'Groups & people', icon: Users, to: PATHS.GROUPS },
+      { key: 'groups', label: 'Groups', icon: Users, to: PATHS.GROUPS },
       { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS },
       { key: 'postings', label: 'My postings', icon: Briefcase, to: PATHS.JOBS },
       { key: 'mentees', label: 'Mentees', icon: Handshake, to: PATHS.MENTORSHIP },
@@ -360,19 +360,20 @@ export const RAILS: Record<UserRole, RoleRail> = {
   faculty: {
     fixed: [
       { key: 'home', label: 'Home', icon: Home, to: PATHS.FEED },
-      // Both land on /groups; the section param is what makes them different rows.
-      // `isActive` is query-aware, so exactly one of the two lights up.
-      { key: 'sections', label: 'My sections', icon: GraduationCap, to: `${PATHS.GROUPS}?section=sections` },
-      { key: 'groups', label: 'Groups & people', icon: Users, to: `${PATHS.GROUPS}?section=groups` },
+      // Explore is a fixed row here rather than in `secondary`: with no sections view
+      // there is a free slot, and faculty reach tags and lost & found from the rail.
+      { key: 'explore', label: 'Explore', icon: Compass, to: PATHS.EXPLORE },
+      { key: 'groups', label: 'Groups', icon: Users, to: PATHS.GROUPS },
       { key: 'events', label: 'Events', icon: Calendar, to: PATHS.EVENTS },
       { key: 'announcements', label: 'Announcements', icon: Newspaper, to: PATHS.NEWS },
     ],
     contextual: [draftsRule('Drafts')],
-    secondary: [...MEMBER_SECONDARY, JOBS_ROW],
+    // Explore is a fixed row above, so it leaves `secondary` — a row must have one home.
+    secondary: [...MEMBER_SECONDARY.filter((row) => row.key !== 'explore'), JOBS_ROW],
     tools: [
       { key: 'elms', label: 'eLMS', icon: BookOpen, iconColor: 'var(--uc-orange-l)', iconBg: 'var(--uc-orange-bg)', externalUrl: 'https://elms.uiu.ac.bd' },
       // No third tile: "Attendance" named a module that does not exist, and the gradebook
-      // it would honestly be renamed to is reached through the `sections` row above —
+      // it would honestly be renamed to is reached through the "Sections" chip on Groups —
       // a tile pointing there would just be that row under a second name.
       { key: 'shuttle', label: 'Shuttle', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
     ],

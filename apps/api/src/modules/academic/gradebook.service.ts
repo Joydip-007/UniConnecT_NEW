@@ -1,6 +1,6 @@
 import { db } from '../../config/db'
 import type { AuthContext } from '../../types/auth'
-import { notFound } from '../../utils/errors'
+import { badRequest, notFound } from '../../utils/errors'
 import { assertGroupAdminAccess, assertMemberAccess } from '../groups/service'
 import { courseOutlineService, type CourseOutline } from './course-outline.service'
 
@@ -60,6 +60,14 @@ function resolveScale(outline: CourseOutline): GradeScaleEntry[] {
     return (outline.customScaleJson as GradeScaleEntry[] | null) ?? UIU_SCALE
   }
   return UIU_SCALE
+}
+
+// The gradebook is a roster of learners: the owning faculty, TAs and any
+// admin who joined are group members too, but they are never graded.
+function studentMembersQuery(groupId: string) {
+  return db('group_members')
+    .join('users', 'users.id', 'group_members.user_id')
+    .where({ 'group_members.group_id': groupId, 'users.role': 'student' })
 }
 
 function buildColumns(outline: CourseOutline) {
@@ -144,10 +152,8 @@ export const gradebookService = {
     const outline = await courseOutlineService.getOutline(context, groupId)
     if (!outline) throw notFound('Course outline must be created before viewing the gradebook')
 
-    const members = await db('group_members')
-      .join('users', 'users.id', 'group_members.user_id')
+    const members = await studentMembersQuery(groupId)
       .join('profiles', 'profiles.user_id', 'users.id')
-      .where({ 'group_members.group_id': groupId })
       .select('users.id', 'profiles.full_name', 'profiles.avatar_url', 'profiles.department')
 
     const entries = await db<GradebookEntryRow>('gradebook_entries').where({ group_id: groupId })
@@ -191,6 +197,12 @@ export const gradebookService = {
     }>,
   ) {
     await assertGroupAdminAccess(context, groupId)
+    const studentIds = new Set(
+      (await studentMembersQuery(groupId).select('users.id')).map((row: { id: string }) => row.id),
+    )
+    const outsider = entries.find((entry) => !studentIds.has(entry.studentId))
+    if (outsider) throw badRequest('Only student members of this group can be graded', 'NOT_A_STUDENT_MEMBER')
+
     await db.transaction(async (trx) => {
       for (const entry of entries) {
         await trx('gradebook_entries')

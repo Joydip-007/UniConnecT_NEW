@@ -84,16 +84,16 @@ function renderPage(ui: React.ReactElement, route: string) {
 }
 
 describe('GroupsPage people section', () => {
-  it('shows groups by default and folds the people directory in behind a People tab', async () => {
-    const user = userEvent.setup()
+  it('offers a single Groups tab — the people directory has no tab of its own', () => {
     renderPage(<GroupsPage />, '/groups')
 
+    expect(screen.getByRole('button', { name: /^Groups/ })).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByRole('button', { name: 'People' })).not.toBeInTheDocument()
     expect(screen.queryByText('people directory')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'People' }))
-    expect(screen.getByText('people directory')).toBeInTheDocument()
   })
 
+  // The invite panel and create-group modal still link here, so the deep link must
+  // keep landing on the directory even though no tab leads to it.
   it('honours a deep link to the people section', () => {
     renderPage(<GroupsPage />, '/groups?section=people')
     expect(screen.getByText('people directory')).toBeInTheDocument()
@@ -108,8 +108,7 @@ describe('GroupsPage people section', () => {
     await user.click(screen.getByRole('button', { name: 'Clubs' }))
     expect(screen.getByRole('button', { name: 'Clubs' })).toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: 'People' }))
-    expect(screen.queryByRole('button', { name: 'Clubs' })).not.toBeInTheDocument()
+    renderPage(<GroupsPage />, '/groups?section=people')
     expect(screen.getByRole('button', { name: 'Alumni' })).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -173,47 +172,15 @@ describe('ExplorePage lost & found section', () => {
   })
 })
 
-describe('GroupsPage faculty sections view', () => {
-  it('lands faculty on My sections, since sections are their unit of navigation', async () => {
+describe('GroupsPage for faculty', () => {
+  // Faculty used to land on a separate "My sections" view; academic groups now sit in
+  // the one Groups list behind the "Sections" chip, so faculty gets the same page.
+  it('lands faculty on the same Groups view as everyone else', async () => {
     currentRole = 'faculty'
-    renderPage(<GroupsPage />, '/groups')
-
-    expect(await screen.findByRole('button', { name: 'My sections' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-  })
-
-  it('fetches only academic groups in the sections view', async () => {
-    currentRole = 'faculty'
-    renderPage(<GroupsPage />, '/groups')
-
-    await waitFor(() => expect(groupsGet).toHaveBeenCalled())
-    expect(requestedType()).toBe('academic')
-  })
-
-  it('hides the group-type chips there, which would contradict the tab', async () => {
-    currentRole = 'faculty'
-    renderPage(<GroupsPage />, '/groups')
-
-    await screen.findByRole('button', { name: 'My sections' })
-    expect(screen.queryByRole('button', { name: 'Clubs' })).not.toBeInTheDocument()
-  })
-
-  it('restores the type chips once faculty switches to all groups', async () => {
-    const user = userEvent.setup()
-    currentRole = 'faculty'
-    renderPage(<GroupsPage />, '/groups')
-
-    await user.click(await screen.findByRole('button', { name: /^Groups/ }))
-    expect(screen.getByRole('button', { name: 'Clubs' })).toBeInTheDocument()
-  })
-
-  it('gives no other role the sections tab, and ignores the param for them', async () => {
-    currentRole = 'student'
     renderPage(<GroupsPage />, '/groups?section=sections')
 
     expect(screen.queryByRole('button', { name: 'My sections' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sections' })).toBeInTheDocument()
     await waitFor(() => expect(groupsGet).toHaveBeenCalled())
     expect(requestedType()).toBeNull()
   })

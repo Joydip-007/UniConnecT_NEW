@@ -81,7 +81,7 @@ describe('group type coverage', () => {
 describe('directory copy', () => {
   it('names the tenant in the subtitle when the auth user carries one', () => {
     renderPage()
-    expect(screen.getByText('Departments, clubs and batches at UIU, plus the people in them.')).toBeInTheDocument()
+    expect(screen.getByText('Departments, clubs, batches and sections at UIU.')).toBeInTheDocument()
   })
 
   it('placeholders the groups search box distinctly from the people one', () => {

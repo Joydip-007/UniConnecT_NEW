@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { PackageSearch, Plus, Search, UserCircle2, Users } from 'lucide-react'
+import { PackageSearch, Plus, Search, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { UserRole } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
@@ -10,7 +10,7 @@ import type { Group, GroupType } from '@/features/groups'
 import { PeopleDirectory, type PeopleDirectoryFilters } from '@/features/connections'
 import { useAuthStore } from '@/stores/authStore'
 
-type Section = 'groups' | 'people' | 'sections'
+type Section = 'groups' | 'people'
 
 interface GroupsResponse {
   items: Group[]
@@ -66,31 +66,20 @@ const PEOPLE_FILTERS: PeopleFilter[] = [
 export default function GroupsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Faculty teach sections, so academic groups are the unit of navigation for them and
-  // get their own tab — it is what the rail's "My sections" row points at. Nobody else
-  // sees it: academic groups are faculty-created, so the tab would be empty elsewhere.
-  const isFaculty = useAuthStore((s) => s.user?.role) === 'faculty'
-  const defaultSection: Section = isFaculty ? 'sections' : 'groups'
+  const defaultSection: Section = 'groups'
 
   // `University` is optional on `User` (not populated by the auth/me responses
   // yet) — falls back to generic campus copy rather than hardcoding a tenant name.
   const universityName = useAuthStore((s) => s.user?.university?.name)
   const subtitleTenant = universityName ? `at ${universityName}` : 'on campus'
 
-  // The rail row is "Groups & people", so connections fold in here as a section.
-  // `/connections` stays routable for deep links and for the avatar menu.
+  // The people directory has no tab of its own — the strip is Groups only — but it
+  // still answers `?section=people` so the "find people" links in the invite panel and
+  // the create-group modal keep landing on it. `/connections` stays routable too.
   const rawSection = searchParams.get('section')
-  const section: Section =
-    rawSection === 'people'
-      ? 'people'
-      : rawSection === 'sections' && isFaculty
-      ? 'sections'
-      : rawSection === 'groups'
-      ? 'groups'
-      : defaultSection
+  const section: Section = rawSection === 'people' ? 'people' : defaultSection
 
   const isPeople = section === 'people'
-  const isSections = section === 'sections'
 
   function setSection(next: Section) {
     const params = new URLSearchParams(searchParams)
@@ -134,9 +123,7 @@ export default function GroupsPage() {
 
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  // The sections view is the academic slice, so the type filter is fixed there rather
-  // than offered — a "Clubs" chip inside "My sections" would contradict the tab itself.
-  const requestType: GroupType | undefined = isSections ? 'academic' : groupFilter?.type
+  const requestType: GroupType | undefined = groupFilter?.type
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<GroupsResponse>({
     queryKey: ['groups', 'list', { type: requestType ?? 'all', search: debounced }],
@@ -236,9 +223,7 @@ export default function GroupsPage() {
   }
 
   const views: { key: Section; label: string; icon: LucideIcon; count?: number }[] = [
-    ...(isFaculty ? [{ key: 'sections' as Section, label: 'My sections', icon: Users }] : []),
     { key: 'groups', label: 'Groups', icon: Users, count: isPeople ? undefined : groupTotal },
-    { key: 'people', label: 'People', icon: UserCircle2 },
   ]
 
   const emptyState = (
@@ -254,10 +239,10 @@ export default function GroupsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <header style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-          Groups and people
+          Groups
         </h1>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-          Departments, clubs and batches {subtitleTenant}, plus the people in them.
+          Departments, clubs, batches and sections {subtitleTenant}.
         </p>
       </header>
 
@@ -388,9 +373,7 @@ export default function GroupsPage() {
           />
         </div>
 
-        {/* Sections is already type-pinned to academic, so type chips there would lie. */}
-        {!isSections &&
-          activeFilters.map((f) => {
+        {activeFilters.map((f) => {
             const active = activeFilter?.label === f.label
             return (
               <button

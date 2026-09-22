@@ -130,7 +130,7 @@ describe('LeftSidebar', () => {
   it('keeps the active route marked with aria-current page', () => {
     renderSidebar(false)
     expect(screen.getByRole('button', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('button', { name: 'Groups & people' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('button', { name: 'Groups' })).not.toHaveAttribute('aria-current')
   })
 
   it('renders collapsed nav as accessible icon buttons without visible labels', () => {
