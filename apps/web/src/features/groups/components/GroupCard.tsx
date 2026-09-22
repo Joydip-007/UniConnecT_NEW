@@ -153,8 +153,10 @@ export function GroupCard({ group }: { group: Group }) {
             <OfficialBadge isSystem={group.isSystem} />
             <AllowedRoleBadge allowedRole={group.allowedRole} />
           </div>
+          {/* Type only — the footer's face stack and "+N others" already say how big
+              the group is, and saying it twice on one card just reads as a mistake. */}
           <p style={{ margin: '3px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-            {look.label} · {memberLabel(group.memberCount)}
+            {look.label}
           </p>
         </div>
 

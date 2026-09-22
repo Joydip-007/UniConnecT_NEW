@@ -102,6 +102,12 @@ describe('GroupCard', () => {
 
   // "9 people you know" is the reason to click; the members the faces leave out are the
   // fallback when the viewer knows nobody, so a zero must never render as "0 people you know".
+  // The card states its size once, in the footer — the subtitle carries the type alone.
+  it('never states the member count twice on one card', () => {
+    renderCard(makeGroup({ knownMemberCount: 0 }))
+    expect(screen.getAllByText(/\d+ members/)).toHaveLength(1)
+  })
+
   it('prefers known members over the count of the rest, and falls back when there are none', () => {
     const { unmount } = renderCard(makeGroup({ knownMemberCount: 9 }))
     expect(screen.getByText('9 people you know')).toBeInTheDocument()
@@ -109,7 +115,7 @@ describe('GroupCard', () => {
 
     renderCard(makeGroup({ knownMemberCount: 0 }))
     expect(screen.queryByText(/people you know/)).not.toBeInTheDocument()
-    expect(screen.getAllByText('284 members').length).toBeGreaterThan(0)
+    expect(screen.getByText('284 members')).toBeInTheDocument()
   })
 
   // The faces stand for themselves, so the pill must not count them a second time —

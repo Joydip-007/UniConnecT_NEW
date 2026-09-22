@@ -73,6 +73,17 @@ const DEV_GROUP = {
   pinnedAt: null,
   pinnedBy: null,
   rulesMd: 'Keep decks accurate and cite course material when possible.',
+  // The list endpoint fills these for every card (`loadGroupSocialProof`), and the card
+  // footer's "+N others" pill counts the members these faces leave out — so a fixture
+  // without them would screenshot a fallback the real app never shows.
+  previewMembers: [
+    { id: 'dev-face-1', fullName: 'Kabir Uddin', avatarUrl: null },
+    { id: 'dev-face-2', fullName: 'Sara Rahman', avatarUrl: null },
+    { id: 'dev-face-3', fullName: 'Tanvir Fahim', avatarUrl: null },
+    { id: 'dev-face-4', fullName: 'Nusrat Ahmed', avatarUrl: null },
+    { id: 'dev-face-5', fullName: 'Rafi Ahsan', avatarUrl: null },
+  ],
+  knownMemberCount: 0,
 }
 
 // `dev-role=faculty` (the `group-detail-admin` screenshot route) also promotes the caller
