@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useCourseOutline, useSaveCourseOutline } from '../hooks/useGroupExtended'
-import type { CourseOutlineAssessment, CourseOutlineTopic } from '../types'
+import type { CourseOutline, CourseOutlineAssessment, CourseOutlineTopic } from '../types'
 
 interface CourseOutlineFormProps {
   groupId: string
+  /** Students see the design's 4-row summary instead of the editor. */
+  readOnly?: boolean
 }
 
 type KeyedAssessment = CourseOutlineAssessment & { _id: string }
@@ -15,7 +17,75 @@ function nextLocalId() {
   return `local-${localIdCounter}`
 }
 
-export function CourseOutlineForm({ groupId }: CourseOutlineFormProps) {
+/** Buckets topics into four-week rows (`Week 1 to 4`, `Week 5 to 8`, …) plus a `Grading` row. */
+function outlineSummaryRows(outline: CourseOutline) {
+  const weeks = [...outline.topics].sort((a, b) => a.weekNumber - b.weekNumber)
+  const maxWeek = weeks.length ? weeks[weeks.length - 1].weekNumber : 0
+  const rows: { label: string; body: string }[] = []
+  for (let start = 1; start <= maxWeek; start += 4) {
+    const end = Math.min(start + 3, maxWeek)
+    const titles = weeks.filter((t) => t.weekNumber >= start && t.weekNumber <= end).map((t) => t.title)
+    rows.push({ label: end === start ? `Week ${start}` : `Week ${start} to ${end}`, body: titles.join(' · ') || '—' })
+  }
+  rows.push({
+    label: 'Grading',
+    body: outline.assessments.map((a) => `${a.categoryName} ${a.weightPercent}%`).join(' · ') || '—',
+  })
+  return rows
+}
+
+const summaryCard = {
+  background: 'var(--surface-card)',
+  border: '0.5px solid var(--border-default)',
+  borderRadius: 'var(--r-lg)',
+  overflow: 'hidden',
+} as const
+const summaryMuted = { margin: 0, padding: 16, fontSize: 13, color: 'var(--text-tertiary)' } as const
+
+function CourseOutlineSummary({ groupId }: { groupId: string }) {
+  const { data: outline, isLoading } = useCourseOutline(groupId)
+  if (isLoading) {
+    return (
+      <div style={summaryCard}>
+        <p style={summaryMuted}>Loading outline…</p>
+      </div>
+    )
+  }
+  if (!outline) {
+    return (
+      <div style={summaryCard}>
+        <p style={summaryMuted}>The teacher has not added a course outline yet.</p>
+      </div>
+    )
+  }
+  const rows = outlineSummaryRows(outline)
+  return (
+    <div style={summaryCard}>
+      <div style={{ padding: '12px 16px', borderBottom: '0.5px solid var(--border-subtle)' }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+          {outline.courseCode ? `${outline.courseCode} · ` : ''}
+          {outline.courseTitle}
+        </div>
+        {outline.trimester && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{outline.trimester}</div>}
+      </div>
+      {rows.map((r, i) => (
+        <div
+          key={r.label}
+          style={{ display: 'flex', gap: 12, padding: '10px 16px', borderBottom: i === rows.length - 1 ? 'none' : '0.5px solid var(--border-subtle)' }}
+        >
+          <span style={{ width: 96, flexShrink: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{r.label}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{r.body}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function CourseOutlineForm({ groupId, readOnly = false }: CourseOutlineFormProps) {
+  return readOnly ? <CourseOutlineSummary groupId={groupId} /> : <CourseOutlineEditor groupId={groupId} />
+}
+
+function CourseOutlineEditor({ groupId }: { groupId: string }) {
   const { data: outline } = useCourseOutline(groupId)
   const save = useSaveCourseOutline(groupId, outline ? 'replace' : 'create')
 

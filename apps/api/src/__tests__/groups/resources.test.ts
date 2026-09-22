@@ -76,14 +76,37 @@ describe('Group resources', () => {
 
     await api.post(`/api/v1/groups/${group.id}/resources`)
       .set({ Authorization: `Bearer ${studentToken}`, 'x-university-domain': DOMAIN })
-      .send({ title: 'Syllabus', url: 'https://example.com/s.pdf', category: 'syllabus' })
+      .send({ title: 'Research paper', url: 'https://example.com/s.pdf', category: 'researches' })
 
     const res = await api
-      .get(`/api/v1/groups/${group.id}/resources?category=syllabus`)
+      .get(`/api/v1/groups/${group.id}/resources?category=researches`)
       .set({ Authorization: `Bearer ${studentToken}`, 'x-university-domain': DOMAIN })
 
     expect(res.status).toBe(200)
-    expect(res.body.data.items.every((r: { category: string }) => r.category === 'syllabus')).toBe(true)
+    expect(res.body.data.items.every((r: { category: string }) => r.category === 'researches')).toBe(true)
+
+    await db('groups').where({ id: group.id }).delete()
+  })
+
+  it('accepts the widened category set (researches, projects) and rejects the retired ones', async () => {
+    const group = await createGroupWithMember(TEST_UNIVERSITY_ID, adminUserId, studentUserId)
+
+    const researchesRes = await api.post(`/api/v1/groups/${group.id}/resources`)
+      .set({ Authorization: `Bearer ${studentToken}`, 'x-university-domain': DOMAIN })
+      .send({ title: 'Research paper', url: 'https://example.com/r.pdf', category: 'researches' })
+    expect(researchesRes.status).toBe(201)
+    expect(researchesRes.body.data.category).toBe('researches')
+
+    const projectsRes = await api.post(`/api/v1/groups/${group.id}/resources`)
+      .set({ Authorization: `Bearer ${studentToken}`, 'x-university-domain': DOMAIN })
+      .send({ title: 'Capstone project', url: 'https://example.com/p.pdf', category: 'projects' })
+    expect(projectsRes.status).toBe(201)
+    expect(projectsRes.body.data.category).toBe('projects')
+
+    const rejectedRes = await api.post(`/api/v1/groups/${group.id}/resources`)
+      .set({ Authorization: `Bearer ${studentToken}`, 'x-university-domain': DOMAIN })
+      .send({ title: 'Old category', url: 'https://example.com/o.pdf', category: 'past_papers' })
+    expect(rejectedRes.status).toBe(422)
 
     await db('groups').where({ id: group.id }).delete()
   })

@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import { isAxiosError } from 'axios'
 import { BookOpen, Layers, Pencil, RotateCcw, Save, Trash2, X } from 'lucide-react'
 import {
   useCreateFlashcard,
@@ -12,6 +13,7 @@ import {
 } from '../hooks/useGroupExtended'
 import type { Flashcard, FlashcardDeck, FlashcardReviewResult, MemberRole, ReviewRating } from '../types'
 import {
+  AcademicOnlyNotice,
   EmptyState,
   ErrorState,
   ListSkeleton,
@@ -20,7 +22,6 @@ import {
 import {
   controlButton,
   fieldStyle,
-  formatDisplayDate,
   iconButton,
   listSurface,
 } from './StudyToolsStyles'
@@ -35,6 +36,9 @@ export function StudyDecksPanel({ groupId, currentUserId, userRole }: {
   const decksQuery = useFlashcardDecks(groupId)
   const decks = decksQuery.data ?? EMPTY_DECKS
   const createDeck = useCreateFlashcardDeck(groupId)
+  // The API decides who gets flashcard decks (academic groups created by faculty) —
+  // a 403 from the decks query is the locked state, never a groupType guess on the client.
+  const isLocked = decksQuery.isError && isAxiosError(decksQuery.error) && decksQuery.error.response?.status === 403
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null)
   const [showNewDeck, setShowNewDeck] = useState(false)
   const [title, setTitle] = useState('')
@@ -55,6 +59,18 @@ export function StudyDecksPanel({ groupId, currentUserId, userRole }: {
         setShowNewDeck(false)
       },
     })
+  }
+
+  if (isLocked) {
+    return (
+      <section style={listSurface}>
+        <AcademicOnlyNotice
+          message="Flashcard decks are available in academic groups created by faculty."
+          subtitle="Sessions still work here."
+          icon="🎓"
+        />
+      </section>
+    )
   }
 
   return (
@@ -113,10 +129,12 @@ function DeckSummary({ totalDecks, dueCards, totalCards }: { totalDecks: number;
 }
 
 function DeckRow({ deck, selected, onSelect }: { deck: FlashcardDeck; selected: boolean; onSelect: () => void }) {
+  const masteredPct = deck.cardCount ? Math.round((deck.masteredCount / deck.cardCount) * 100) : 0
+
   return (
     <article
       style={{
-        minHeight: 84,
+        minHeight: 92,
         padding: '12px 14px',
         borderTop: '0.5px solid var(--border-default)',
         background: selected ? 'var(--uc-indigo-bg)' : 'transparent',
@@ -127,15 +145,25 @@ function DeckRow({ deck, selected, onSelect }: { deck: FlashcardDeck; selected: 
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <button type="button" onClick={onSelect} style={{ margin: 0, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 14, fontWeight: 500, cursor: 'pointer', textAlign: 'left', textWrap: 'balance' }}>
+        <button type="button" onClick={onSelect} style={{ margin: 0, padding: 0, border: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: 13, fontWeight: 500, cursor: 'pointer', textAlign: 'left', textWrap: 'balance' }}>
           {deck.title}
         </button>
         {deck.description && <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{deck.description}</p>}
         <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
-          {deck.cardCount} cards · {deck.dueCount} due · {formatDisplayDate(deck.updatedAt)}
+          {deck.cardCount} cards · {deck.dueCount} due today
         </p>
+        <div style={{ margin: '8px 0 4px', height: 4, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${masteredPct}%`, borderRadius: 'var(--r-pill)', background: 'var(--uc-indigo)' }} />
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>{masteredPct}% mastered</p>
       </div>
-      <button type="button" onClick={onSelect} style={controlButton}>Review</button>
+      <button
+        type="button"
+        onClick={onSelect}
+        style={{ padding: '6px 16px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: 'none', background: 'var(--uc-indigo)', color: 'var(--on-accent)', cursor: 'pointer' }}
+      >
+        Study
+      </button>
     </article>
   )
 }

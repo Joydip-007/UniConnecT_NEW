@@ -1,46 +1,84 @@
 import { useState } from 'react'
-import { MapPin, Globe, NotebookPen, Plus } from 'lucide-react'
+import { FileText, Globe, MapPin, Plus } from 'lucide-react'
 import {
   useStudySessions,
   useCreateStudySession,
   useRsvpStudySession,
   type StudySession,
 } from '@/features/groups'
+import type { MemberRole } from '../types'
 import { SessionNotesPanel } from './SessionNotesPanel'
+import { StudyNotesPanel } from './StudyNotesPanel'
 
 interface Props {
   groupId: string
   currentUserId?: string
-  showCreateAction?: boolean
+  userRole?: MemberRole | null
 }
 
-export function StudySessionsTab({ groupId, currentUserId, showCreateAction = true }: Props) {
+const eyebrowStyle = {
+  margin: '0 0 8px',
+  fontSize: 11,
+  fontWeight: 500,
+  letterSpacing: '0.04em',
+  color: 'var(--text-label)',
+} as const
+
+export function StudySessionsTab({ groupId, currentUserId, userRole = null }: Props) {
   const [showCreate, setShowCreate] = useState(false)
+  const [showSharedNotes, setShowSharedNotes] = useState(false)
   const [activeNotesSessionId, setActiveNotesSessionId] = useState<string | null>(null)
   const { data, isLoading } = useStudySessions(groupId)
   const createMutation = useCreateStudySession(groupId)
   const rsvpMutation = useRsvpStudySession(groupId)
 
+  // Any group member (member, moderator, admin, owner) can create a session — see
+  // groups/service.ts createStudySession, which only requires assertMemberAccess.
+  const canCreateSession = !!userRole
+
   const now = new Date()
-  const upcoming = data?.items.filter((s) => new Date(s.startsAt) > now) ?? []
-  const past = data?.items.filter((s) => new Date(s.startsAt) <= now) ?? []
+  const upcoming = data?.items.filter((s) => new Date(s.startsAt) >= now) ?? []
+  const past = data?.items.filter((s) => new Date(s.startsAt) < now) ?? []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {showCreateAction && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setShowSharedNotes((current) => !current)}
+          style={{
+            minHeight: 36,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 400,
+            borderRadius: 'var(--r-pill)',
+            border: '0.5px solid var(--border-default)',
+            background: showSharedNotes ? 'var(--surface-raised)' : 'none',
+            color: 'var(--text-secondary)',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          <FileText size={12} strokeWidth={1.5} />
+          Notes
+        </button>
+        {canCreateSession && (
           <button
             type="button"
             onClick={() => setShowCreate(true)}
-            style={{ minHeight: 44, padding: '8px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'var(--surface-raised)', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            style={{ minHeight: 36, padding: '6px 14px', fontSize: 13, fontWeight: 400, borderRadius: 'var(--r-pill)', border: '0.5px solid var(--border-default)', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
           >
             <Plus size={13} strokeWidth={1.5} />
             New session
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
-      {showCreateAction && showCreate && (
+      {showSharedNotes && <StudyNotesPanel groupId={groupId} currentUserId={currentUserId} userRole={userRole} />}
+
+      {canCreateSession && showCreate && (
         <CreateSessionForm
           onSubmit={(input) => createMutation.mutate(input, { onSuccess: () => setShowCreate(false) })}
           onCancel={() => setShowCreate(false)}
@@ -54,7 +92,7 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
         <>
           {upcoming.length > 0 && (
             <section>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>Upcoming</p>
+              <p style={eyebrowStyle}>Upcoming</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {upcoming.map((s) => (
                   <SessionCard
@@ -62,6 +100,7 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
                     groupId={groupId}
                     session={s}
                     currentUserId={currentUserId}
+                    isPast={false}
                     onRsvp={(status) => rsvpMutation.mutate({ sessionId: s.id, status })}
                     isRsvpPending={rsvpMutation.isPending}
                     notesOpen={activeNotesSessionId === s.id}
@@ -73,7 +112,7 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
           )}
           {past.length > 0 && (
             <section>
-              <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 500, color: 'var(--text-tertiary)' }}>Past</p>
+              <p style={eyebrowStyle}>Past</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {past.map((s) => (
                   <SessionCard
@@ -81,6 +120,7 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
                     groupId={groupId}
                     session={s}
                     currentUserId={currentUserId}
+                    isPast
                     onRsvp={(status) => rsvpMutation.mutate({ sessionId: s.id, status })}
                     isRsvpPending={rsvpMutation.isPending}
                     notesOpen={activeNotesSessionId === s.id}
@@ -101,10 +141,11 @@ export function StudySessionsTab({ groupId, currentUserId, showCreateAction = tr
   )
 }
 
-function SessionCard({ groupId, session, currentUserId, onRsvp, isRsvpPending, notesOpen, onToggleNotes }: {
+function SessionCard({ groupId, session, currentUserId, isPast, onRsvp, isRsvpPending, notesOpen, onToggleNotes }: {
   groupId: string
   session: StudySession
   currentUserId?: string
+  isPast: boolean
   onRsvp: (status: 'going' | 'not_going') => void
   isRsvpPending: boolean
   notesOpen: boolean
@@ -112,16 +153,16 @@ function SessionCard({ groupId, session, currentUserId, onRsvp, isRsvpPending, n
 }) {
   const isGoing = session.ownRsvp === 'going'
   const d = new Date(session.startsAt)
-  const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase()
   const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   const isCreator = !!currentUserId && session.createdBy === currentUserId
 
   return (
     <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        {/* Date chip */}
-        <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)', padding: '6px 10px', textAlign: 'center', flexShrink: 0 }}>
-          <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>{dateStr}</p>
+        {/* Date tile */}
+        <div style={{ background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)', padding: '6px 10px', textAlign: 'center', flexShrink: 0, minWidth: 62 }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 400, letterSpacing: '0.04em', color: 'var(--text-tertiary)' }}>{dateStr}</p>
           <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{timeStr}</p>
         </div>
 
@@ -143,23 +184,38 @@ function SessionCard({ groupId, session, currentUserId, onRsvp, isRsvpPending, n
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
-          <button
-            type="button"
-            disabled={isRsvpPending}
-            onClick={() => onRsvp(isGoing ? 'not_going' : 'going')}
-            style={{
-              padding: '5px 12px',
-              fontSize: 12,
-              fontWeight: 400,
-              borderRadius: 'var(--r-pill)',
-              border: isGoing ? 'none' : '0.5px solid var(--border-default)',
-              background: isGoing ? 'var(--uc-indigo)' : 'none',
-              color: isGoing ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-              cursor: isRsvpPending ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {isGoing ? 'Going ✓' : 'RSVP'}
-          </button>
+          {isPast ? (
+            <span
+              style={{
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 400,
+                borderRadius: 'var(--r-pill)',
+                border: '0.5px solid var(--border-default)',
+                color: 'var(--text-tertiary)',
+              }}
+            >
+              Ended
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={isRsvpPending}
+              onClick={() => onRsvp(isGoing ? 'not_going' : 'going')}
+              style={{
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 400,
+                borderRadius: 'var(--r-pill)',
+                border: isGoing ? 'none' : '0.5px solid var(--border-default)',
+                background: isGoing ? 'var(--uc-indigo)' : 'none',
+                color: isGoing ? 'var(--on-accent)' : 'var(--text-secondary)',
+                cursor: isRsvpPending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {isGoing ? 'Going' : 'RSVP'}
+            </button>
+          )}
           <button
             type="button"
             onClick={onToggleNotes}
@@ -177,7 +233,7 @@ function SessionCard({ groupId, session, currentUserId, onRsvp, isRsvpPending, n
               cursor: 'pointer',
             }}
           >
-            <NotebookPen size={12} strokeWidth={1.5} />
+            <FileText size={12} strokeWidth={1.5} />
             Notes
           </button>
         </div>
@@ -247,7 +303,7 @@ function SessionsSkeleton() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {[0, 1].map((i) => (
         <div key={i} style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '12px 16px', display: 'flex', gap: 12 }}>
-          <div style={{ width: 56, height: 44, background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
+          <div style={{ width: 62, height: 44, background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ height: 14, width: '50%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />
             <div style={{ height: 12, width: '30%', background: 'var(--surface-raised)', borderRadius: 'var(--r-sm)' }} />

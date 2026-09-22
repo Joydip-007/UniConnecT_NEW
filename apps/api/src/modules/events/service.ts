@@ -5,6 +5,9 @@ import { env } from '../../config/env'
 import { getIo } from '../../socket'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
+import { notifyGroupReviewers } from '../groups/review-notify'
+import { canModerate, loadGroupApprovalContext } from '../groups/permissions'
+import { logger } from '../../utils/logger'
 import type { AttendeesQuery, CreateEventInput, EventListQuery, PaginationQuery, UpdateEventInput } from './schema'
 
 type EventType = 'general' | 'career_fair' | 'seminar' | 'alumni_meetup' | 'workshop' | 'club'
@@ -37,6 +40,7 @@ interface EventRow {
   type: EventType
   is_published: boolean
   is_imported: boolean
+  group_review_status: 'pending' | 'approved' | 'declined' | null
   created_at: Date
   organizer_full_name: string
   organizer_avatar_url: string | null
@@ -91,6 +95,16 @@ export class EventsService {
   }
 
   async createEvent(context: AuthContext, input: CreateEventInput) {
+    // A group with `require_event_approval` on holds a non-moderator member's event for
+    // review, same rule as posts — but only when the organizer actually asked to
+    // publish it now. A draft event (is_published: false) has nothing to hold.
+    const willPublish = input.is_published ?? false
+    let reviewPending = false
+    if (input.group_id && willPublish) {
+      const g = await loadGroupApprovalContext(input.group_id, context.userId)
+      reviewPending = !!g?.require_event_approval && !canModerate(g?.role)
+    }
+
     const eventId = await db.transaction(async (trx) => {
       const [event] = await trx('events')
         .insert({
@@ -107,7 +121,8 @@ export class EventsService {
           ends_at: input.ends_at ? new Date(input.ends_at) : null,
           capacity: input.capacity ?? null,
           type: input.type,
-          is_published: input.is_published ?? false,
+          is_published: reviewPending ? false : willPublish,
+          group_review_status: reviewPending ? 'pending' : null,
         })
         .returning<{ id: string }[]>('id')
 
@@ -123,6 +138,12 @@ export class EventsService {
       return event.id
     })
 
+    if (reviewPending && input.group_id) {
+      notifyGroupReviewers(input.group_id).catch((err: unknown) =>
+        logger.warn('Failed to notify group reviewers of a pending event', { err, groupId: input.group_id }),
+      )
+    }
+
     return this.getEvent(context, eventId)
   }
 
@@ -135,6 +156,18 @@ export class EventsService {
     assertCanViewEvent(context, row)
     const attachments = await getAttachmentsFor('event', eventId)
     return { ...toEvent(row), attachments }
+  }
+
+  /**
+   * Hydrates an arbitrary set of event ids into `Event` shapes, preserving order and
+   * bypassing the normal publish/organizer visibility gate — the caller (the groups
+   * review queue) has already authorized itself as a group moderator.
+   */
+  async listEventsByIds(userId: string, ids: string[]) {
+    if (ids.length === 0) return []
+    const rows = (await eventSelectQuery(db, userId).whereIn('events.id', ids)) as EventRow[]
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    return ids.map((id) => byId.get(id)).filter((row): row is EventRow => row !== undefined).map(toEvent)
   }
 
   async updateEvent(context: AuthContext, eventId: string, input: UpdateEventInput) {
@@ -341,6 +374,7 @@ function eventSelectQuery(knex: Knex, userId: string) {
       'events.type',
       'events.is_published',
       'events.is_imported',
+      'events.group_review_status',
       'events.created_at',
       'profiles.full_name as organizer_full_name',
       'profiles.avatar_url as organizer_avatar_url',
@@ -413,6 +447,7 @@ function toEvent(row: EventRow) {
     capacity: row.capacity,
     type: row.type,
     isPublished: row.is_published,
+    groupReviewStatus: row.group_review_status ?? null,
     createdAt: row.created_at,
     organizer: {
       id: row.organizer_id,

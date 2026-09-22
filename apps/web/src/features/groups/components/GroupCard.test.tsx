@@ -112,6 +112,19 @@ describe('GroupCard', () => {
     expect(screen.getAllByText('284 members').length).toBeGreaterThan(0)
   })
 
+  it('gives the mute switch and the private lock a CSS tooltip', () => {
+    const { unmount } = renderCard(makeGroup({ isMember: true, isMuted: false }))
+    const toggle = screen.getByRole('switch')
+    expect(toggle).toHaveClass('uc-tip')
+    expect(toggle).toHaveAttribute('data-tip', 'Notifications on')
+    unmount()
+
+    renderCard(makeGroup({ isPrivate: true }))
+    const lock = screen.getByLabelText('Private group — request to join')
+    expect(lock).toHaveClass('uc-tip')
+    expect(lock).toHaveAttribute('data-tip', 'Request to join')
+  })
+
   it('renders a face per preview member', () => {
     renderCard(
       makeGroup({

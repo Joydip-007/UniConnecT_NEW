@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ALLOWED_UPLOAD_CONTENT_TYPES } from '../../services/upload.service'
+import { CourseOutlineDraftSchema } from '../academic/schema'
 
 export const GroupTypeSchema = z.enum(['department', 'club', 'batch', 'research', 'interest', 'other', 'academic'])
 export const GroupRoleSchema = z.enum(['owner', 'admin', 'moderator', 'member'])
@@ -54,8 +55,40 @@ export const UpdateMemberSchema = z.object({
   role: GroupRoleSchema,
 })
 
+/** Role the invitee lands with on accept. Owner-only for `admin` (mirrors `assertCanAssignRole`). */
+export const InviteRoleSchema = z.enum(['member', 'moderator', 'admin'])
+
 export const InviteToGroupSchema = z.object({
   userId: z.string().uuid(),
+  role: InviteRoleSchema.optional(),
+})
+
+// ── Course-outline import + bulk invites ──────────────────────
+export const CourseOutlineDraftRequestSchema = z.object({
+  file_url: z.string().url(),
+  roster_url: z.string().url().optional(),
+})
+
+export const CreateGroupFromOutlineSchema = z.object({
+  name: z.string().trim().min(1).max(255),
+  section: z.string().trim().max(50).optional(),
+  draft: CourseOutlineDraftSchema,
+  is_private: z.boolean().default(false),
+})
+
+export const BulkInviteSchema = z
+  .object({
+    department: z.string().trim().min(1).max(100).optional(),
+    batch_year: z.coerce.number().int().optional(),
+    emails: z.array(z.string().trim().toLowerCase().email()).optional(),
+  })
+  .refine((v) => Boolean(v.department) || v.batch_year != null || (v.emails && v.emails.length > 0), {
+    message: 'Provide at least one of department, batch_year, or emails',
+  })
+
+export const InviteMatchQuerySchema = z.object({
+  department: z.string().trim().min(1).max(100).optional(),
+  batch_year: z.coerce.number().int().optional(),
 })
 
 export type GroupListQuery = z.infer<typeof GroupListQuerySchema>
@@ -66,7 +99,12 @@ export type CreateGroupInput = z.infer<typeof CreateGroupSchema>
 export type UpdateGroupInput = z.infer<typeof UpdateGroupSchema>
 export type UpdateMemberInput = z.infer<typeof UpdateMemberSchema>
 export type InviteToGroupInput = z.infer<typeof InviteToGroupSchema>
+export type InviteRole = z.infer<typeof InviteRoleSchema>
 export type AllowedRole = z.infer<typeof AllowedRoleSchema>
+export type CourseOutlineDraftRequestInput = z.infer<typeof CourseOutlineDraftRequestSchema>
+export type CreateGroupFromOutlineInput = z.infer<typeof CreateGroupFromOutlineSchema>
+export type BulkInviteInput = z.infer<typeof BulkInviteSchema>
+export type InviteMatchQuery = z.infer<typeof InviteMatchQuerySchema>
 
 // ── Join requests ─────────────────────────────────────────────
 export const JoinGroupSchema = z.object({
@@ -74,11 +112,37 @@ export const JoinGroupSchema = z.object({
 })
 
 export const JoinRequestActionSchema = z.object({
-  action: z.enum(['approve', 'decline']),
+  action: z.enum(['approve', 'decline', 'undo']),
 })
 
+export const JoinRequestsQuerySchema = PaginationQuerySchema.extend({
+  status: z.enum(['pending', 'approved', 'declined']).default('pending'),
+})
+export type JoinRequestsQuery = z.infer<typeof JoinRequestsQuerySchema>
+
+// ── Group settings + moderation log ──────────────────────────
+export const UpdateGroupSettingsSchema = z
+  .object({
+    is_private: z.boolean().optional(),
+    require_post_approval: z.boolean().optional(),
+    require_event_approval: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'At least one field is required' })
+export type UpdateGroupSettingsInput = z.infer<typeof UpdateGroupSettingsSchema>
+
+export const ModLogQuerySchema = PaginationQuerySchema.extend({
+  kind: z.enum(['all', 'post', 'member', 'settings']).default('all'),
+})
+export type ModLogQuery = z.infer<typeof ModLogQuerySchema>
+
+// ── Post/event review queue ──────────────────────────────────
+export const ReviewActionSchema = z.object({
+  action: z.enum(['approve', 'decline']),
+})
+export type ReviewActionInput = z.infer<typeof ReviewActionSchema>
+
 // ── Group resources ──────────────────────────────────────────
-export const ResourceCategorySchema = z.enum(['notes', 'syllabus', 'past_papers', 'assignments', 'other'])
+export const ResourceCategorySchema = z.enum(['researches', 'projects', 'assignments', 'notes', 'other'])
 
 export const CreateResourceSchema = z.object({
   title: z.string().trim().min(1).max(255),
@@ -265,3 +329,46 @@ export const UploadUrlQuerySchema = z.object({
 export type PutSessionCreatorNotesInput = z.infer<typeof PutSessionCreatorNotesSchema>
 export type PutSessionPrivateNotesInput = z.infer<typeof PutSessionPrivateNotesSchema>
 export type UploadUrlQuery = z.infer<typeof UploadUrlQuerySchema>
+
+// ── Suggestions ────────────────────────────────────────────
+export const SuggestionsQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(20).default(4),
+})
+
+export type SuggestionsQuery = z.infer<typeof SuggestionsQuerySchema>
+
+// ── Announcements (academic groups) ──────────────────────────
+export const AnnouncementKindSchema = z.enum(['urgent', 'schedule', 'notice'])
+
+export const CreateAnnouncementSchema = z.object({
+  title: z.string().trim().min(1).max(255),
+  body: z.string().trim().min(1).max(5000),
+  kind: AnnouncementKindSchema.default('notice'),
+  notify_members: z.boolean().default(false),
+  attachments: z.array(AttachmentSchema).max(5).default([]),
+})
+
+export const UpdateAnnouncementSchema = CreateAnnouncementSchema.omit({ notify_members: true, attachments: true })
+  .partial()
+  .extend({ is_pinned: z.boolean().optional() })
+  .refine((v) => Object.keys(v).length > 0, { message: 'At least one field is required' })
+
+export type CreateAnnouncementInput = z.infer<typeof CreateAnnouncementSchema>
+export type UpdateAnnouncementInput = z.infer<typeof UpdateAnnouncementSchema>
+
+// ── Consultation slots + bookings ────────────────────────────
+export const CreateSlotSchema = z.object({
+  weekday: z.number().int().min(0).max(6),
+  start_time: z.string().regex(/^\d{2}:\d{2}$/),
+  end_time: z.string().regex(/^\d{2}:\d{2}$/),
+  location: z.string().trim().min(1).max(255),
+  walk_in: z.boolean().default(false),
+})
+
+export const BookSlotSchema = z.object({ topic: z.string().trim().min(1).max(500) })
+
+export const ReviewBookingSchema = z.object({ status: z.enum(['confirmed', 'declined']) })
+
+export type CreateSlotInput = z.infer<typeof CreateSlotSchema>
+export type BookSlotInput = z.infer<typeof BookSlotSchema>
+export type ReviewBookingInput = z.infer<typeof ReviewBookingSchema>

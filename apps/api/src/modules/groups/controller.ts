@@ -2,25 +2,40 @@ import type { Request, Response } from 'express'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
+import { buildCourseOutlineDraft } from '../academic/outline-import.service'
 import { groupsService } from './service'
 import type {
+  BookSlotInput,
+  BulkInviteInput,
+  CourseOutlineDraftRequestInput,
+  CreateAnnouncementInput,
   CreateFlashcardDeckInput,
   CreateFlashcardInput,
+  CreateGroupFromOutlineInput,
   CreateGroupInput,
   CreateSharedNoteInput,
+  CreateSlotInput,
   GroupListQuery,
   FlashcardReviewInput,
+  InviteMatchQuery,
   InviteToGroupInput,
   JoinRequestActionInput,
+  JoinRequestsQuery,
   MembersQuery,
+  ModLogQuery,
   NoteUploadUrlRequest,
   PaginationQuery,
   PutSessionCreatorNotesInput,
   PutSessionPrivateNotesInput,
+  ReviewActionInput,
+  ReviewBookingInput,
+  SuggestionsQuery,
+  UpdateAnnouncementInput,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupAISettingsInput,
   UpdateGroupInput,
+  UpdateGroupSettingsInput,
   UpdateMemberInput,
   UpdateMyMuteInput,
   UpdateSharedNoteInput,
@@ -38,6 +53,30 @@ export const createGroup = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await groupsService.createGroup(context, req.body as CreateGroupInput), 201)
 })
 
+export const draftCourseOutline = asyncHandler(async (req: Request, res: Response) => {
+  const input = req.body as CourseOutlineDraftRequestInput
+  const result = await buildCourseOutlineDraft(input.file_url, input.roster_url)
+  sendSuccess(res, result)
+})
+
+export const createGroupFromOutline = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.createGroupFromOutline(context, req.body as CreateGroupFromOutlineInput)
+  sendSuccess(res, result, 201)
+})
+
+export const bulkInviteToGroup = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.bulkInviteToGroup(context, getGroupIdParam(req), req.body as BulkInviteInput)
+  sendSuccess(res, result)
+})
+
+export const getInviteMatchCount = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.countInviteMatches(context, req.query as unknown as InviteMatchQuery)
+  sendSuccess(res, result)
+})
+
 export const listMyGroups = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   const result = await groupsService.listMyGroups(context, req.query as unknown as PaginationQuery)
@@ -52,6 +91,53 @@ export const getGroup = asyncHandler(async (req: Request, res: Response) => {
 export const updateGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.updateGroup(context, getGroupIdParam(req), req.body as UpdateGroupInput))
+})
+
+export const updateSettings = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateSettings(context, getGroupIdParam(req), req.body as UpdateGroupSettingsInput),
+  )
+})
+
+export const listModerationLog = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const result = await groupsService.listModerationLog(
+    context,
+    getGroupIdParam(req),
+    req.query as unknown as ModLogQuery,
+  )
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const listPendingPosts = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const items = await groupsService.listPendingPosts(context, getGroupIdParam(req))
+  sendSuccess(res, { items })
+})
+
+export const reviewPost = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { action } = req.body as ReviewActionInput
+  sendSuccess(res, await groupsService.reviewPost(context, getGroupIdParam(req), getPostIdParam(req), action))
+})
+
+export const listPendingEvents = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const items = await groupsService.listPendingEvents(context, getGroupIdParam(req))
+  sendSuccess(res, { items })
+})
+
+export const reviewEvent = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { action } = req.body as ReviewActionInput
+  sendSuccess(res, await groupsService.reviewEvent(context, getGroupIdParam(req), getEventIdParam(req), action))
+})
+
+export const reviewSummary = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.reviewSummary(context, getGroupIdParam(req)))
 })
 
 export const deleteGroup = asyncHandler(async (req: Request, res: Response) => {
@@ -79,7 +165,7 @@ export const listJoinRequests = asyncHandler(async (req: Request, res: Response)
   const result = await groupsService.listJoinRequests(
     context,
     getGroupIdParam(req),
-    req.query as unknown as PaginationQuery,
+    req.query as unknown as JoinRequestsQuery,
   )
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
@@ -173,11 +259,8 @@ export const listGroupCollaborations = asyncHandler(async (req: Request, res: Re
 
 export const inviteToGroup = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  const result = await groupsService.inviteToGroup(
-    context,
-    getGroupIdParam(req),
-    (req.body as InviteToGroupInput).userId,
-  )
+  const body = req.body as InviteToGroupInput
+  const result = await groupsService.inviteToGroup(context, getGroupIdParam(req), body.userId, body.role)
   sendSuccess(res, result, 201)
 })
 
@@ -241,6 +324,32 @@ export const setRules = asyncHandler(async (req, res) => {
 export const getGroupStats = asyncHandler(async (req, res) => {
   const context = getAuthContext(req)
   sendSuccess(res, await groupsService.getGroupStats(context, getGroupIdParam(req)))
+})
+
+export const getAnalytics = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.getAnalytics(context, getGroupIdParam(req)))
+})
+
+export const listSuggestions = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const query = req.query as unknown as SuggestionsQuery
+  sendSuccess(res, await groupsService.listSuggestions(context, query.limit))
+})
+
+export const openGroupChat = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.openGroupChat(context, getGroupIdParam(req)))
+})
+
+export const askTeacher = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.askTeacher(context, getGroupIdParam(req)))
+})
+
+export const askTeacherQueue = asyncHandler(async (req, res) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.askTeacherQueue(context, getGroupIdParam(req)))
 })
 
 export const listStudySessions = asyncHandler(async (req, res) => {
@@ -507,6 +616,110 @@ function getContentIdParam(req: Request) {
   return Array.isArray(value) ? value[0] : value
 }
 
+// ── Announcements ──────────────────────────────────────────────
+
+export const listAnnouncements = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.listAnnouncements(context, getGroupIdParam(req)))
+})
+
+export const createAnnouncement = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createAnnouncement(context, getGroupIdParam(req), req.body as CreateAnnouncementInput),
+    201,
+  )
+})
+
+export const updateAnnouncement = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.updateAnnouncement(
+      context,
+      getGroupIdParam(req),
+      getAnnouncementIdParam(req),
+      req.body as UpdateAnnouncementInput,
+    ),
+  )
+})
+
+export const deleteAnnouncement = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.deleteAnnouncement(context, getGroupIdParam(req), getAnnouncementIdParam(req)),
+  )
+})
+
+function getAnnouncementIdParam(req: Request) {
+  const value = req.params.announcementId
+  return Array.isArray(value) ? value[0] : value
+}
+
+// ── Consultation slots + bookings ───────────────────────────────
+
+export const listConsultationSlots = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await groupsService.listConsultationSlots(context, getGroupIdParam(req)))
+})
+
+export const createConsultationSlot = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.createConsultationSlot(context, getGroupIdParam(req), req.body as CreateSlotInput),
+    201,
+  )
+})
+
+export const deleteConsultationSlot = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.deleteConsultationSlot(context, getGroupIdParam(req), getSlotIdParam(req)),
+  )
+})
+
+export const bookConsultationSlot = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.bookConsultationSlot(
+      context,
+      getGroupIdParam(req),
+      getSlotIdParam(req),
+      req.body as BookSlotInput,
+    ),
+    201,
+  )
+})
+
+export const reviewConsultationBooking = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await groupsService.reviewConsultationBooking(
+      context,
+      getGroupIdParam(req),
+      getSlotIdParam(req),
+      getBookingIdParam(req),
+      req.body as ReviewBookingInput,
+    ),
+  )
+})
+
+function getSlotIdParam(req: Request) {
+  const value = req.params.slotId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getBookingIdParam(req: Request) {
+  const value = req.params.bookingId
+  return Array.isArray(value) ? value[0] : value
+}
+
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
 
@@ -534,6 +747,16 @@ function getResourceIdParam(req: Request) {
 
 function getSessionIdParam(req: Request) {
   const value = req.params.sessionId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getPostIdParam(req: Request) {
+  const value = req.params.postId
+  return Array.isArray(value) ? value[0] : value
+}
+
+function getEventIdParam(req: Request) {
+  const value = req.params.eventId
   return Array.isArray(value) ? value[0] : value
 }
 

@@ -44,4 +44,29 @@ describe('CourseOutlineForm', () => {
 
     expect(screen.getByRole('button', { name: /save course outline/i })).toBeEnabled()
   })
+
+  it('readOnly renders the four-week summary rows and grading instead of the editor', () => {
+    mockUseCourseOutline.mockReturnValue({
+      isLoading: false,
+      data: {
+        id: 'o1',
+        groupId: 'g1',
+        courseCode: 'CSE 2218',
+        courseTitle: 'Data Structures',
+        gradingScale: 'uiu',
+        assessments: [{ categoryName: 'CT', fullMarks: 20, weightPercent: 20, totalGiven: 3, bestNCounted: 2, displayOrder: 1 }],
+        topics: [
+          { weekNumber: 1, title: 'Arrays' },
+          { weekNumber: 5, title: 'Trees' },
+        ],
+      },
+    })
+    render(<CourseOutlineForm groupId="g1" readOnly />)
+
+    expect(screen.getByText('Week 1 to 4')).toBeInTheDocument()
+    expect(screen.getByText('Week 5')).toBeInTheDocument()
+    expect(screen.getByText('Grading')).toBeInTheDocument()
+    expect(screen.getByText('CT 20%')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /save course outline/i })).not.toBeInTheDocument()
+  })
 })

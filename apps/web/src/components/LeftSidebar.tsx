@@ -7,6 +7,7 @@ import { useCountUp } from '@/hooks/useCountUp'
 import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { PanelLeftClose, PanelLeftOpen, ExternalLink, MoreHorizontal, type LucideIcon } from 'lucide-react'
 import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
+import type { User } from '@uniconnect/shared/types'
 import { Avatar } from '@/components/Avatar'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/lib/axios'
@@ -15,6 +16,7 @@ import { avatarColor, getInitials } from '@/utils/avatar'
 import { RAILS, TONE_TOKENS, isRailRowActive } from './leftSidebar.config'
 import { useRailContext } from './useRailContext'
 import { ROLE_SHELL } from '@/config/roleShell'
+import { usePageRailStore } from '@/stores/pageRailStore'
 
 // ── NavItem ─────────────────────────────────────────────
 
@@ -277,6 +279,160 @@ function CampusTool({ icon: Icon, label, iconColor, iconBg, external = false, co
   )
 }
 
+// ── ProfileMiniCard ──────────────────────────────────────
+
+interface ProfileMiniCardProps {
+  collapsed: boolean
+  user: User | null
+  profilePath: string
+  onNavigate: (to: string) => void
+  initials: string
+  avatarBg: string
+  deptLabel: string
+  firstStat: { label: string }
+  secondStat: { label: string }
+  firstShown: number
+  secondShown: number
+}
+
+function ProfileMiniCard({
+  collapsed,
+  user,
+  profilePath,
+  onNavigate,
+  initials,
+  avatarBg,
+  deptLabel,
+  firstStat,
+  secondStat,
+  firstShown,
+  secondShown,
+}: ProfileMiniCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(profilePath)}
+      aria-label="View my profile"
+      style={{
+        background: 'transparent',
+        border: 'none',
+        padding: 0,
+        width: '100%',
+        textAlign: 'left',
+        cursor: 'pointer',
+        flexShrink: 0,
+      }}
+    >
+      {collapsed ? (
+        <div
+          className="interactive-surface"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            borderRadius: 'var(--r-lg)',
+            overflow: 'hidden',
+            flexShrink: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            padding: '4px 0',
+          }}
+        >
+          <div
+            style={{
+              borderRadius: '50%',
+              background: 'var(--tenant-accent)',
+              padding: 1.5,
+              lineHeight: 0,
+            }}
+          >
+            <div
+              style={{
+                borderRadius: '50%',
+                border: '2px solid var(--surface-card)',
+                lineHeight: 0,
+              }}
+            >
+              <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="interactive-surface"
+          style={{
+            background: 'var(--surface-card)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-lg)',
+            overflow: 'hidden',
+            flexShrink: 0,
+          }}
+        >
+          {/* Cover strip — user photo or dot-pattern fallback */}
+          <div
+            style={{
+              height: 60,
+              background: user?.profile.coverUrl
+                ? `center / cover no-repeat url(${user.profile.coverUrl})`
+                : [
+                    'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
+                    'var(--surface-raised)',
+                  ].join(', '),
+              backgroundSize: user?.profile.coverUrl ? undefined : '14px 14px',
+            }}
+          />
+
+          {/* Name + dept + stats */}
+          <div style={{ padding: '0 14px 14px' }}>
+            {/* Avatar pulled up over the cover with negative margin */}
+            <div
+              style={{
+                marginTop: -20,
+                marginBottom: 8,
+                display: 'inline-block',
+                borderRadius: '50%',
+                background: 'var(--tenant-accent)',
+                padding: 1.5,
+                lineHeight: 0,
+              }}
+            >
+              <div
+                style={{
+                  borderRadius: '50%',
+                  border: '2px solid var(--surface-card)',
+                  lineHeight: 0,
+                }}
+              >
+                <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
+              </div>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+              {user?.profile.fullName ?? 'Loading…'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, minHeight: 16 }}>
+              {deptLabel}
+            </div>
+
+            {/* Role stats pair — labels and sources both from the manifest */}
+            <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
+              {[
+                { label: firstStat.label, value: firstShown },
+                { label: secondStat.label, value: secondShown },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+                    {value}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </button>
+  )
+}
+
 // ── LeftSidebar ──────────────────────────────────────────
 
 interface LeftSidebarProps {
@@ -354,6 +510,60 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
   const visibleContextual = displayedContextual.slice(0, 2)
   const overflowCount = displayedContextual.length - visibleContextual.length
 
+  const leftOverride = usePageRailStore((s) => s.leftOverride)
+
+  const profileCard = (
+    <ProfileMiniCard
+      collapsed={collapsed}
+      user={user}
+      profilePath={profilePath}
+      onNavigate={navigate}
+      initials={initials}
+      avatarBg={avatarBg}
+      deptLabel={deptLabel}
+      firstStat={firstStat}
+      secondStat={secondStat}
+      firstShown={firstShown}
+      secondShown={secondShown}
+    />
+  )
+
+  const toggle = (
+    <button
+      type="button"
+      onClick={onToggleCollapsed}
+      aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      className="left-sidebar-toggle press-feedback"
+    >
+      <ToggleIcon size={17} />
+    </button>
+  )
+
+  if (leftOverride) {
+    return (
+      <aside
+        style={{
+          width: collapsed ? 68 : 232,
+          flexShrink: 0,
+          position: 'sticky',
+          top: 78,
+          height: 'calc(100vh - 78px)',
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          paddingBottom: 20,
+        }}
+        className={`rail-scroll left-sidebar-shell${collapsed ? ' left-sidebar--collapsed' : ''}`}
+      >
+        {toggle}
+        {profileCard}
+        {collapsed ? null : leftOverride}
+      </aside>
+    )
+  }
+
   return (
     <aside
       style={{
@@ -370,138 +580,10 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
       }}
       className={`rail-scroll left-sidebar-shell${collapsed ? ' left-sidebar--collapsed' : ''}`}
     >
-      <button
-        type="button"
-        onClick={onToggleCollapsed}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="left-sidebar-toggle press-feedback"
-      >
-        <ToggleIcon size={17} />
-      </button>
+      {toggle}
 
       {/* Profile mini-card */}
-      <button
-        type="button"
-        onClick={() => navigate(profilePath)}
-        aria-label="View my profile"
-        style={{
-          background: 'transparent',
-          border: 'none',
-          padding: 0,
-          width: '100%',
-          textAlign: 'left',
-          cursor: 'pointer',
-          flexShrink: 0,
-        }}
-      >
-        {collapsed ? (
-          <div
-            className="interactive-surface"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderRadius: 'var(--r-lg)',
-              overflow: 'hidden',
-              flexShrink: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              padding: '4px 0',
-            }}
-          >
-            <div
-              style={{
-                borderRadius: '50%',
-                background: 'var(--tenant-accent)',
-                padding: 1.5,
-                lineHeight: 0,
-              }}
-            >
-              <div
-                style={{
-                  borderRadius: '50%',
-                  border: '2px solid var(--surface-card)',
-                  lineHeight: 0,
-                }}
-              >
-                <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div
-            className="interactive-surface"
-            style={{
-              background: 'var(--surface-card)',
-              border: '0.5px solid var(--border-default)',
-              borderRadius: 'var(--r-lg)',
-              overflow: 'hidden',
-              flexShrink: 0,
-            }}
-          >
-            {/* Cover strip — user photo or dot-pattern fallback */}
-            <div
-              style={{
-                height: 60,
-                background: user?.profile.coverUrl
-                  ? `center / cover no-repeat url(${user.profile.coverUrl})`
-                  : [
-                      'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
-                      'var(--surface-raised)',
-                    ].join(', '),
-                backgroundSize: user?.profile.coverUrl ? undefined : '14px 14px',
-              }}
-            />
-
-            {/* Name + dept + stats */}
-            <div style={{ padding: '0 14px 14px' }}>
-              {/* Avatar pulled up over the cover with negative margin */}
-              <div
-                style={{
-                  marginTop: -20,
-                  marginBottom: 8,
-                  display: 'inline-block',
-                  borderRadius: '50%',
-                  background: 'var(--tenant-accent)',
-                  padding: 1.5,
-                  lineHeight: 0,
-                }}
-              >
-                <div
-                  style={{
-                    borderRadius: '50%',
-                    border: '2px solid var(--surface-card)',
-                    lineHeight: 0,
-                  }}
-                >
-                  <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
-                </div>
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                {user?.profile.fullName ?? 'Loading…'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, minHeight: 16 }}>
-                {deptLabel}
-              </div>
-
-              {/* Role stats pair — labels and sources both from the manifest */}
-              <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
-                {[
-                  { label: firstStat.label, value: firstShown },
-                  { label: secondStat.label, value: secondShown },
-                ].map(({ label, value }) => (
-                  <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
-                      {value}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </button>
+      {profileCard}
 
       {/* Fixed rows — role manifest, order never changes */}
       <nav style={{ padding: '2px 2px', flexShrink: 0 }}>

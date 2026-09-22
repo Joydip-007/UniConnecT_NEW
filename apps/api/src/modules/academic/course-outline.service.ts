@@ -1,3 +1,4 @@
+import type { Knex } from 'knex'
 import { db } from '../../config/db'
 import type { AuthContext } from '../../types/auth'
 import { badRequest, forbidden, notFound } from '../../utils/errors'
@@ -143,6 +144,62 @@ function toOutline(row: OutlineRow, assessments: AssessmentRow[], topics: TopicR
       title: t.title,
       description: t.description,
     })),
+  }
+}
+
+/**
+ * Inserts a fresh course outline (+ assessments + topics) inside a caller-owned
+ * transaction, without the membership/admin assertions `createOutline` does — used by
+ * `POST /groups/from-outline`, where the group (and the caller's `owner` membership) is
+ * being created in the very same transaction, so no membership row exists yet to assert
+ * against. Callers must validate `input` themselves (the from-outline draft is validated
+ * by `CourseOutlineDraftSchema`, which mirrors this schema's weight-sum/week-uniqueness
+ * refinements).
+ */
+export async function insertOutlineRows(
+  trx: Knex.Transaction,
+  params: { groupId: string; universityId: string; createdBy: string },
+  input: Pick<
+    CreateCourseOutlineInput,
+    'courseCode' | 'courseTitle' | 'creditHours' | 'trimester' | 'description' | 'gradingScale' | 'customScaleJson' | 'assessments' | 'topics'
+  >,
+): Promise<void> {
+  const [outline] = await trx<OutlineRow>('academic_course_outlines')
+    .insert({
+      group_id: params.groupId,
+      university_id: params.universityId,
+      created_by: params.createdBy,
+      course_code: input.courseCode ?? null,
+      course_title: input.courseTitle,
+      credit_hours: input.creditHours != null ? String(input.creditHours) : null,
+      trimester: input.trimester ?? null,
+      description: input.description ?? null,
+      grading_scale: input.gradingScale,
+      custom_scale_json: input.customScaleJson ? JSON.stringify(input.customScaleJson) : null,
+    })
+    .returning('*')
+
+  await trx('course_outline_assessments').insert(
+    input.assessments.map((a) => ({
+      outline_id: outline.id,
+      category_name: a.categoryName,
+      full_marks: a.fullMarks,
+      weight_percent: a.weightPercent,
+      total_given: a.totalGiven,
+      best_n_counted: a.bestNCounted,
+      display_order: a.displayOrder,
+    })),
+  )
+
+  if (input.topics.length > 0) {
+    await trx('course_outline_topics').insert(
+      input.topics.map((t) => ({
+        outline_id: outline.id,
+        week_number: t.weekNumber,
+        title: t.title,
+        description: t.description ?? null,
+      })),
+    )
   }
 }
 

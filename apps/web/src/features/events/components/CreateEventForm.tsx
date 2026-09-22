@@ -33,6 +33,8 @@ interface Props {
   onClose: () => void
   /** When provided, the form edits this existing event (PATCH) instead of creating one. */
   initial?: EventEditInitial
+  /** When provided (create mode only), presets `group_id` on the created event — used by a group's Events tab. */
+  groupId?: string
 }
 
 interface EventForm {
@@ -121,7 +123,7 @@ function toLocalInput(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-export function CreateEventForm({ onClose, initial }: Props) {
+export function CreateEventForm({ onClose, initial, groupId }: Props) {
   const isEdit = Boolean(initial)
   const role = useAuthStore((s) => s.user?.role)
   const overlayRef   = useRef<HTMLDivElement>(null)
@@ -199,11 +201,16 @@ export function CreateEventForm({ onClose, initial }: Props) {
             ...content,
             removedAttachmentIds: removedAttachmentIds.length > 0 ? removedAttachmentIds : undefined,
           })
-        : api.post('/events', { ...content, isPublished: form.isPublished })
+        : api.post('/events', { ...content, isPublished: form.isPublished, groupId: groupId ?? undefined })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] })
       if (initial) queryClient.invalidateQueries({ queryKey: ['events', 'detail', initial.id] })
+      if (groupId) {
+        queryClient.invalidateQueries({ queryKey: ['groups', 'events', groupId] })
+        queryClient.invalidateQueries({ queryKey: ['groups', 'pending-events', { groupId }] })
+        queryClient.invalidateQueries({ queryKey: ['groups', 'review-summary', { groupId }] })
+      }
       queryClient.invalidateQueries({ queryKey: ['content-sync', 'pending'] })
       onClose()
     },

@@ -1,13 +1,19 @@
 import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
+import { getIo } from '../../socket'
 import { feedService } from '../feed/service'
+import { eventsService } from '../events/service'
 import { notificationsService } from '../notifications/service'
 import { badgeQueue } from '../../queues/badge.queue'
+import { emailQueue } from '../../queues/email.queue'
 import { notificationQueue } from '../../queues/notification.queue'
+import { env } from '../../config/env'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { gradebookService } from '../academic/gradebook.service'
+import { insertOutlineRows } from '../academic/course-outline.service'
 import { contentSyncService } from '../content-sync/service'
+import { messagesService } from '../messages/service'
 import { logger } from '../../utils/logger'
 import {
   assertAllowedUploadType,
@@ -18,27 +24,63 @@ import {
 import type {
   AllowedRole,
   Attachment,
+  BookSlotInput,
+  BulkInviteInput,
+  CreateAnnouncementInput,
   CreateFlashcardDeckInput,
   CreateFlashcardInput,
+  CreateGroupFromOutlineInput,
   CreateGroupInput,
   CreateResourceInput,
   CreateSharedNoteInput,
+  CreateSlotInput,
   CreateStudySessionInput,
   FlashcardReviewInput,
   GroupListQuery,
+  InviteMatchQuery,
+  InviteRole,
+  JoinRequestsQuery,
   MembersQuery,
+  ModLogQuery,
   PaginationQuery,
   PutSessionCreatorNotesInput,
   PutSessionPrivateNotesInput,
   ResourceListQuery,
+  ReviewBookingInput,
   RsvpStudySessionInput,
+  SuggestionsQuery,
+  UpdateAnnouncementInput,
   UpdateFlashcardDeckInput,
   UpdateFlashcardInput,
   UpdateGroupInput,
+  UpdateGroupSettingsInput,
   UpdateSharedNoteInput,
 } from './schema'
-import { AISettingsSchema } from './schema'
+import { AISettingsSchema, InviteRoleSchema } from './schema'
 import { scheduleFlashcardReview } from './spacedRepetition'
+import { canModerate, type GroupRole } from './permissions'
+
+export interface ModLogWrite {
+  universityId: string
+  groupId: string
+  actorId: string | null
+  kind: 'post' | 'member' | 'settings'
+  action: string
+  target: string
+  targetUserId?: string | null
+}
+
+export async function logModeration(trx: Knex | Knex.Transaction, entry: ModLogWrite) {
+  await trx('group_moderation_log').insert({
+    university_id: entry.universityId,
+    group_id: entry.groupId,
+    actor_id: entry.actorId,
+    kind: entry.kind,
+    action: entry.action,
+    target: entry.target,
+    target_user_id: entry.targetUserId ?? null,
+  })
+}
 
 /**
  * `UpdateGroupAISettingsSchema` is built from a default-free shape, so a PATCH persists only the
@@ -57,7 +99,6 @@ function withAiSettingsDefaults(raw: unknown): Record<string, unknown> {
 }
 
 type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
-type GroupRole = 'owner' | 'admin' | 'moderator' | 'member'
 
 interface AuthContext {
   userId: string
@@ -94,6 +135,10 @@ interface GroupRow {
   pinned_by: string | null
   rules_md: string | null
   ai_settings: Record<string, unknown> | null
+  require_post_approval: boolean
+  require_event_approval: boolean
+  /** Unread messages in the class chat for the requesting user; null when no chat or not a participant. */
+  chat_unread: number | null
 }
 
 /** A handful of members rendered as an avatar stack on the group card. */
@@ -146,6 +191,7 @@ interface JoinRequestRow {
   requester_full_name: string | null
   requester_avatar_url: string | null
   requester_department: string | null
+  requester_batch_year: string | null
   requester_user_role: string | null
 }
 
@@ -198,6 +244,7 @@ interface FlashcardDeckRow {
   creator_full_name: string | null
   creator_avatar_url: string | null
   due_count: string | number
+  mastered_count: string | number
 }
 
 interface FlashcardRow {
@@ -392,6 +439,211 @@ export class GroupsService {
     return this.getGroup(context, groupId)
   }
 
+  async updateSettings(context: AuthContext, groupId: string, input: UpdateGroupSettingsInput) {
+    const access = await assertGroupAdminAccess(context, groupId)
+    if (access.is_system) throw forbidden('System groups have no settings', 'GROUP_SYSTEM')
+    const before = await db('groups')
+      .select<{ is_private: boolean; require_post_approval: boolean; require_event_approval: boolean }[]>(
+        'is_private',
+        'require_post_approval',
+        'require_event_approval',
+      )
+      .where({ id: groupId })
+      .first()
+    if (!before) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+
+    await db.transaction(async (trx) => {
+      await trx('groups').where({ id: groupId }).update({ ...input })
+      const labels: [keyof UpdateGroupSettingsInput, string][] = [
+        ['is_private', 'Private group'],
+        ['require_post_approval', 'Post approval'],
+        ['require_event_approval', 'Event approval'],
+      ]
+      for (const [key, label] of labels) {
+        if (input[key] !== undefined && input[key] !== before[key]) {
+          await logModeration(trx, {
+            universityId: context.universityId,
+            groupId,
+            actorId: context.userId,
+            kind: 'settings',
+            action: `${label} turned ${input[key] ? 'on' : 'off'}`,
+            target: 'Group settings',
+          })
+        }
+      }
+    })
+    return this.getGroup(context, groupId)
+  }
+
+  async listModerationLog(context: AuthContext, groupId: string, query: ModLogQuery) {
+    await assertGroupAdminAccess(context, groupId)
+    const q = db('group_moderation_log as l')
+      .leftJoin('profiles as p', 'p.user_id', 'l.actor_id')
+      .where('l.group_id', groupId)
+      .modify((qb) => {
+        if (query.kind !== 'all') qb.where('l.kind', query.kind)
+      })
+    const [{ count }] = await q.clone().count<{ count: string }[]>({ count: '*' })
+    interface ModLogRow {
+      id: string
+      kind: 'post' | 'member' | 'settings'
+      action: string
+      target: string
+      actor_id: string | null
+      created_at: Date
+      actor_name: string | null
+    }
+    const rows = await q
+      .select<ModLogRow[]>(
+        'l.id',
+        'l.kind',
+        'l.action',
+        'l.target',
+        'l.actor_id',
+        'l.created_at',
+        'p.full_name as actor_name',
+      )
+      .orderBy('l.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)
+    return {
+      items: rows.map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        action: r.action,
+        target: r.target,
+        createdAt: r.created_at,
+        actor: r.actor_id ? { id: r.actor_id, fullName: r.actor_name ?? null } : null,
+      })),
+      total: Number(count),
+      page: query.page,
+      limit: query.limit,
+    }
+  }
+
+  // ── Post/event review queue ────────────────────────────────
+
+  async listPendingPosts(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const ids = await db('posts')
+      .where({ group_id: groupId, group_review_status: 'pending' })
+      .orderBy('created_at')
+      .pluck('id')
+    return feedService.listPostsByIds(context.universityId, context.userId, ids)
+  }
+
+  async reviewPost(context: AuthContext, groupId: string, postId: string, action: 'approve' | 'decline') {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const post = await db('posts')
+      .leftJoin('profiles as p', 'p.user_id', 'posts.author_id')
+      .select<{ id: string; author_id: string; content: string; full_name: string | null }[]>(
+        'posts.id',
+        'posts.author_id',
+        'posts.content',
+        'p.full_name',
+      )
+      .where({ 'posts.id': postId, 'posts.group_id': groupId, 'posts.group_review_status': 'pending' })
+      .first()
+    if (!post) throw notFound('Post not found', 'POST_NOT_FOUND')
+
+    await db.transaction(async (trx) => {
+      await trx('posts')
+        .where({ id: postId })
+        .update(
+          action === 'approve'
+            ? { is_published: true, group_review_status: 'approved' }
+            : { group_review_status: 'declined', archived_at: trx.fn.now() },
+        )
+      await logModeration(trx, {
+        universityId: context.universityId,
+        groupId,
+        actorId: context.userId,
+        kind: 'post',
+        action: action === 'approve' ? 'Queued post approved' : 'Queued post declined',
+        target: `${post.full_name ?? 'Member'} · ${post.content.slice(0, 60)}`,
+        targetUserId: post.author_id,
+      })
+    })
+
+    if (action === 'approve') {
+      const publishedPost = await feedService.getPost(context.universityId, context.userId, postId, { incrementView: false })
+      getIo().to(`uni:${context.universityId}`).emit('post:created', publishedPost)
+      getIo().to(`uni:${context.universityId}`).emit('feed:post:new', { post: publishedPost })
+    }
+    return { id: postId, groupReviewStatus: action === 'approve' ? 'approved' : 'declined' }
+  }
+
+  async listPendingEvents(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const ids = await db('events')
+      .where({ group_id: groupId, group_review_status: 'pending' })
+      .orderBy('created_at')
+      .pluck('id')
+    return eventsService.listEventsByIds(context.userId, ids)
+  }
+
+  async reviewEvent(context: AuthContext, groupId: string, eventId: string, action: 'approve' | 'decline') {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const event = await db('events')
+      .leftJoin('profiles as p', 'p.user_id', 'events.organizer_id')
+      .select<{ id: string; organizer_id: string; title: string; full_name: string | null }[]>(
+        'events.id',
+        'events.organizer_id',
+        'events.title',
+        'p.full_name',
+      )
+      .where({ 'events.id': eventId, 'events.group_id': groupId, 'events.group_review_status': 'pending' })
+      .first()
+    if (!event) throw notFound('Event not found', 'EVENT_NOT_FOUND')
+
+    await db.transaction(async (trx) => {
+      await trx('events')
+        .where({ id: eventId })
+        .update(
+          action === 'approve'
+            ? { is_published: true, group_review_status: 'approved' }
+            : { group_review_status: 'declined' },
+        )
+      await logModeration(trx, {
+        universityId: context.universityId,
+        groupId,
+        actorId: context.userId,
+        kind: 'post',
+        action: action === 'approve' ? 'Queued event approved' : 'Queued event declined',
+        target: `${event.full_name ?? 'Member'} · ${event.title.slice(0, 60)}`,
+        targetUserId: event.organizer_id,
+      })
+    })
+
+    return { id: eventId, groupReviewStatus: action === 'approve' ? 'approved' : 'declined' }
+  }
+
+  async reviewSummary(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+    const [posts, events, joins, reports] = await Promise.all([
+      db('posts').where({ group_id: groupId, group_review_status: 'pending' }).count<CountRow[]>({ count: '*' }).first(),
+      db('events').where({ group_id: groupId, group_review_status: 'pending' }).count<CountRow[]>({ count: '*' }).first(),
+      db('group_join_requests').where({ group_id: groupId, status: 'pending' }).count<CountRow[]>({ count: '*' }).first(),
+      db('reports')
+        .where({ target_type: 'post', status: 'pending' })
+        .whereIn('target_id', db('posts').select('id').where({ group_id: groupId }))
+        .count<CountRow[]>({ count: '*' })
+        .first(),
+    ])
+    const n = (row: CountRow | undefined) => Number(row?.count ?? 0)
+    return {
+      pendingPosts: n(posts),
+      pendingEvents: n(events),
+      pendingJoinRequests: n(joins),
+      reportsOpen: n(reports),
+    }
+  }
+
   async deleteGroup(context: AuthContext, groupId: string) {
     const group = await assertGroupAccess(context, groupId)
     if (group.is_system) {
@@ -481,6 +733,8 @@ export class GroupsService {
       throw error
     }
 
+    await syncGroupChatParticipant(groupId, context.userId, 'add')
+
     const group = await this.getGroup(context, groupId)
     if (group.type === 'academic') {
       await gradebookService.autoPopulateGradebook(groupId, context.universityId, context.userId)
@@ -493,15 +747,18 @@ export class GroupsService {
     return result
   }
 
-  async listJoinRequests(context: AuthContext, groupId: string, query: PaginationQuery) {
+  async listJoinRequests(context: AuthContext, groupId: string, query: JoinRequestsQuery) {
     await assertGroupAdminAccess(context, groupId)
 
-    const [{ count }] = await db('group_join_requests')
-      .where({ group_id: groupId, status: 'pending' })
-      .count<{ count: string }[]>({ count: '*' })
+    const baseQuery = db('group_join_requests').where({ group_id: groupId, status: query.status })
+    if (query.status !== 'pending') {
+      baseQuery.where('group_join_requests.reviewed_at', '>=', db.raw("now() - interval '30 days'"))
+    }
 
-    const rows = await db('group_join_requests')
-      .where({ group_id: groupId, status: 'pending' })
+    const [{ count }] = await baseQuery.clone().count<{ count: string }[]>({ count: '*' })
+
+    const rows = await baseQuery
+      .clone()
       .leftJoin('profiles as rp', 'rp.user_id', 'group_join_requests.user_id')
       .leftJoin('users as ru', 'ru.id', 'group_join_requests.user_id')
       .select<JoinRequestRow[]>(
@@ -517,9 +774,10 @@ export class GroupsService {
         'rp.full_name as requester_full_name',
         'rp.avatar_url as requester_avatar_url',
         'rp.department as requester_department',
+        'rp.batch_year as requester_batch_year',
         'ru.role as requester_user_role',
       )
-      .orderBy('group_join_requests.created_at', 'asc')
+      .orderBy('group_join_requests.created_at', query.status === 'pending' ? 'asc' : 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)
 
@@ -535,17 +793,35 @@ export class GroupsService {
     context: AuthContext,
     groupId: string,
     requestId: string,
-    action: 'approve' | 'decline',
+    action: 'approve' | 'decline' | 'undo',
   ) {
     await assertGroupAdminAccess(context, groupId)
 
     const request = await db('group_join_requests')
-      .where({ id: requestId, group_id: groupId, status: 'pending' })
-      .first<{ id: string; user_id: string; university_id: string } | undefined>()
+      .where({ id: requestId, group_id: groupId })
+      .first<
+        | {
+            id: string
+            user_id: string
+            university_id: string
+            status: 'pending' | 'approved' | 'declined'
+            message: string | null
+          }
+        | undefined
+      >()
 
     if (!request) throw notFound('Join request not found', 'JOIN_REQUEST_NOT_FOUND')
 
+    const requester = await db('profiles')
+      .select<{ full_name: string | null }[]>('full_name')
+      .where({ user_id: request.user_id })
+      .first()
+    const requesterName = requester?.full_name ?? 'A member'
+    const modLogTarget = `${requesterName}${request.message ? ' · ' + request.message : ''}`
+
     if (action === 'approve') {
+      if (request.status !== 'pending') throw badRequest('Join request already reviewed', 'JOIN_REQUEST_ALREADY_REVIEWED')
+
       await db.transaction(async (trx) => {
         await trx('group_members').insert({
           group_id: groupId,
@@ -559,12 +835,23 @@ export class GroupsService {
           reviewed_at: new Date(),
           updated_at: new Date(),
         })
+        await logModeration(trx, {
+          universityId: context.universityId,
+          groupId,
+          actorId: context.userId,
+          kind: 'member',
+          action: 'Join request approved',
+          target: modLogTarget,
+          targetUserId: request.user_id,
+        })
       })
 
       const group = await db('groups').where({ id: groupId }).first<{ type: string } | undefined>('type')
       if (group?.type === 'academic') {
         await gradebookService.autoPopulateGradebook(groupId, context.universityId, request.user_id)
       }
+
+      await syncGroupChatParticipant(groupId, request.user_id, 'add')
 
       await notificationQueue.add({
         universityId: context.universityId,
@@ -577,29 +864,97 @@ export class GroupsService {
         payload: {},
       })
 
-      return { action: 'approved' }
+      return { action: 'approved' as const, ...(await this.getJoinRequest(groupId, requestId)) }
     }
 
-    // decline
-    await db('group_join_requests').where({ id: requestId }).update({
-      status: 'declined',
-      reviewed_by: context.userId,
-      reviewed_at: new Date(),
-      updated_at: new Date(),
+    if (action === 'decline') {
+      if (request.status !== 'pending') throw badRequest('Join request already reviewed', 'JOIN_REQUEST_ALREADY_REVIEWED')
+
+      await db.transaction(async (trx) => {
+        await trx('group_join_requests').where({ id: requestId }).update({
+          status: 'declined',
+          reviewed_by: context.userId,
+          reviewed_at: new Date(),
+          updated_at: new Date(),
+        })
+        await logModeration(trx, {
+          universityId: context.universityId,
+          groupId,
+          actorId: context.userId,
+          kind: 'member',
+          action: 'Join request declined',
+          target: modLogTarget,
+          targetUserId: request.user_id,
+        })
+      })
+
+      await notificationQueue.add({
+        universityId: context.universityId,
+        userId: request.user_id,
+        type: 'group_join_declined',
+        actorId: context.userId,
+        referenceId: groupId,
+        referenceType: 'group',
+        content: 'Your request to join the group was declined',
+        payload: {},
+      })
+
+      return { action: 'declined' as const, ...(await this.getJoinRequest(groupId, requestId)) }
+    }
+
+    // undo
+    if (request.status === 'pending') throw badRequest('Join request is already pending', 'JOIN_REQUEST_NOT_REVIEWED')
+
+    await db.transaction(async (trx) => {
+      if (request.status === 'approved') {
+        const deleted = await trx('group_members').where({ group_id: groupId, user_id: request.user_id }).delete()
+        if (deleted > 0) {
+          await trx('groups')
+            .where({ id: groupId, university_id: context.universityId })
+            .where('member_count', '>', 0)
+            .decrement('member_count', 1)
+        }
+      }
+      await trx('group_join_requests').where({ id: requestId }).update({
+        status: 'pending',
+        reviewed_by: null,
+        reviewed_at: null,
+        updated_at: new Date(),
+      })
     })
 
-    await notificationQueue.add({
-      universityId: context.universityId,
-      userId: request.user_id,
-      type: 'group_join_declined',
-      actorId: context.userId,
-      referenceId: groupId,
-      referenceType: 'group',
-      content: 'Your request to join the group was declined',
-      payload: {},
-    })
+    if (request.status === 'approved') {
+      await syncGroupChatParticipant(groupId, request.user_id, 'remove')
+    }
 
-    return { action: 'declined' }
+    return { action: 'undo' as const, ...(await this.getJoinRequest(groupId, requestId)) }
+  }
+
+  private async getJoinRequest(groupId: string, requestId: string) {
+    const row = await db('group_join_requests')
+      .where({ 'group_join_requests.id': requestId, 'group_join_requests.group_id': groupId })
+      .leftJoin('profiles as rp', 'rp.user_id', 'group_join_requests.user_id')
+      .leftJoin('users as ru', 'ru.id', 'group_join_requests.user_id')
+      .select<JoinRequestRow[]>(
+        'group_join_requests.id',
+        'group_join_requests.group_id',
+        'group_join_requests.user_id',
+        'group_join_requests.university_id',
+        'group_join_requests.message',
+        'group_join_requests.status',
+        'group_join_requests.reviewed_by',
+        'group_join_requests.reviewed_at',
+        'group_join_requests.created_at',
+        'rp.full_name as requester_full_name',
+        'rp.avatar_url as requester_avatar_url',
+        'rp.department as requester_department',
+        'rp.batch_year as requester_batch_year',
+        'ru.role as requester_user_role',
+      )
+      .first<JoinRequestRow>()
+
+    if (!row) throw notFound('Join request not found', 'JOIN_REQUEST_NOT_FOUND')
+    return toJoinRequest(row)
   }
 
   async cancelJoinRequest(context: AuthContext, groupId: string) {
@@ -612,7 +967,14 @@ export class GroupsService {
     return { cancelled: true }
   }
 
-  async joinGroupViaInvite(context: AuthContext, groupId: string) {
+  /**
+   * `role` is the group role stored on the invite notification (`data.role`). Anything
+   * outside the invite-role enum (the bulk path stores the platform `allowed_role` there)
+   * falls back to `member`.
+   */
+  async joinGroupViaInvite(context: AuthContext, groupId: string, role?: unknown) {
+    const parsedRole = InviteRoleSchema.safeParse(role)
+    const memberRole: InviteRole = parsedRole.success ? parsedRole.data : 'member'
     const access = await assertGroupAccess(context, groupId)
     if (access.is_system) {
       throw forbidden('System groups cannot be joined via invite', 'GROUP_SYSTEM_JOIN_FORBIDDEN')
@@ -632,7 +994,7 @@ export class GroupsService {
         await trx('group_members').insert({
           group_id: groupId,
           user_id: context.userId,
-          role: 'member',
+          role: memberRole,
         })
         await trx('groups').where({ id: groupId, university_id: context.universityId }).increment('member_count', 1)
       })
@@ -643,6 +1005,8 @@ export class GroupsService {
       }
       throw error
     }
+
+    await syncGroupChatParticipant(groupId, context.userId, 'add')
 
     return this.getGroup(context, groupId)
   }
@@ -673,6 +1037,8 @@ export class GroupsService {
           .decrement('member_count', 1)
       }
     })
+
+    await syncGroupChatParticipant(groupId, context.userId, 'remove')
 
     return { left: true }
   }
@@ -725,6 +1091,7 @@ export class GroupsService {
     }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
     const [
       [newMembersRow],
@@ -732,6 +1099,10 @@ export class GroupsService {
       [activeContributorsRow],
       [pendingRow],
       [upcomingRow],
+      [memberCountRow],
+      [active30dRow],
+      [resourcesRow],
+      [upcomingEventsRow],
     ] = await Promise.all([
       db('group_members')
         .where({ group_id: groupId })
@@ -756,6 +1127,22 @@ export class GroupsService {
         .where({ group_id: groupId })
         .andWhere('starts_at', '>', new Date())
         .count<{ count: string }[]>({ count: '*' }),
+
+      // Design keys below — kept alongside the original set above since the contextual
+      // rail widget still reads the original keys.
+      db('group_members').where({ group_id: groupId }).count<{ count: string }[]>({ count: '*' }),
+
+      db('posts')
+        .where({ group_id: groupId })
+        .andWhere('created_at', '>=', thirtyDaysAgo)
+        .countDistinct<{ count: string }[]>({ count: 'author_id' }),
+
+      db('group_resources').where({ group_id: groupId }).count<{ count: string }[]>({ count: '*' }),
+
+      db('events')
+        .where({ group_id: groupId })
+        .andWhere('starts_at', '>=', new Date())
+        .count<{ count: string }[]>({ count: '*' }),
     ])
 
     return {
@@ -764,7 +1151,336 @@ export class GroupsService {
       activeContributors: Number(activeContributorsRow.count),
       pendingJoinRequests: Number(pendingRow.count),
       upcomingStudySessions: Number(upcomingRow.count),
+      // Design's five keys
+      members: Number(memberCountRow.count),
+      active30d: Number(active30dRow.count),
+      resources: Number(resourcesRow.count),
+      upcomingEvents: Number(upcomingEventsRow.count),
     }
+  }
+
+  async getAnalytics(context: AuthContext, groupId: string) {
+    const access = await assertGroupAccess(context, groupId)
+    if (!canModerate(access.user_role)) throw forbidden('Moderator required', 'GROUP_MOD_REQUIRED')
+
+    const base = db('posts').where({ group_id: groupId, is_published: true }).whereNull('archived_at')
+
+    const [members, newMembers, posts30, postsPrev30, active, reports, weeks, top] = await Promise.all([
+      db('group_members').where({ group_id: groupId }).count<{ c: string }[]>({ c: '*' }).then((rows) => rows[0]),
+      db('group_members')
+        .where({ group_id: groupId })
+        .where('joined_at', '>=', db.raw("now() - interval '7 days'"))
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      base
+        .clone()
+        .where('created_at', '>=', db.raw("now() - interval '30 days'"))
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      base
+        .clone()
+        .whereBetween('created_at', [db.raw("now() - interval '60 days'"), db.raw("now() - interval '30 days'")])
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      base
+        .clone()
+        .where('created_at', '>=', db.raw("now() - interval '30 days'"))
+        .countDistinct<{ c: string }[]>({ c: 'author_id' })
+        .then((rows) => rows[0]),
+      db('reports')
+        .where({ target_type: 'post', status: 'pending' })
+        .whereIn('target_id', db('posts').select('id').where({ group_id: groupId }))
+        .count<{ c: string }[]>({ c: '*' })
+        .then((rows) => rows[0]),
+      db.raw<{ rows: { week_start: Date; count: number }[] }>(
+        `SELECT g.week_start, COUNT(p.id)::int AS count
+           FROM generate_series(date_trunc('week', now()) - interval '4 weeks', date_trunc('week', now()), interval '1 week') AS g(week_start)
+           LEFT JOIN posts p ON p.group_id = ? AND p.is_published AND p.archived_at IS NULL
+             AND p.created_at >= g.week_start AND p.created_at < g.week_start + interval '1 week'
+          GROUP BY g.week_start ORDER BY g.week_start`,
+        [groupId],
+      ),
+      db.raw<{
+        rows: { id: string; full_name: string | null; avatar_url: string | null; posts: number; replies: number }[]
+      }>(
+        `SELECT u.id, pr.full_name, pr.avatar_url,
+                COUNT(DISTINCT p.id)::int AS posts, COUNT(DISTINCT c.id)::int AS replies
+           FROM users u JOIN profiles pr ON pr.user_id = u.id
+           LEFT JOIN posts p ON p.author_id = u.id AND p.group_id = ? AND p.created_at >= now() - interval '30 days'
+           LEFT JOIN comments c ON c.author_id = u.id AND c.post_id IN (SELECT id FROM posts WHERE group_id = ?)
+             AND c.created_at >= now() - interval '30 days'
+          WHERE u.id IN (SELECT user_id FROM group_members WHERE group_id = ?)
+          GROUP BY u.id, pr.full_name, pr.avatar_url
+          HAVING COUNT(DISTINCT p.id) + COUNT(DISTINCT c.id) > 0
+          ORDER BY posts DESC, replies DESC LIMIT 3`,
+        [groupId, groupId, groupId],
+      ),
+    ])
+
+    const memberCount = Number(members?.c ?? 0)
+    const p30 = Number(posts30?.c ?? 0)
+    const pPrev = Number(postsPrev30?.c ?? 0)
+    const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'This week']
+
+    return {
+      members: memberCount,
+      membersDelta7d: Number(newMembers?.c ?? 0),
+      posts30d: p30,
+      postsDeltaPct: pPrev === 0 ? null : Math.round(((p30 - pPrev) / pPrev) * 100),
+      activePct: memberCount === 0 ? 0 : Math.round((Number(active?.c ?? 0) / memberCount) * 100),
+      reportsOpen: Number(reports?.c ?? 0),
+      postsPerWeek: weeks.rows.map((r, i) => ({ label: labels[i] ?? `Week ${i + 1}`, count: r.count })),
+      topMembers: top.rows.map((r) => ({
+        id: r.id,
+        fullName: r.full_name,
+        avatarUrl: r.avatar_url,
+        posts: r.posts,
+        replies: r.replies,
+      })),
+    }
+  }
+
+  async listSuggestions(context: AuthContext, limit: number) {
+    // Non-member groups only, public or private — unlike `listGroups`, a private group
+    // the caller hasn't joined is still a valid suggestion (surfaced by known-member
+    // count), so there is no `is_private` filter here. System groups are excluded —
+    // `assertCanJoinGroup` rejects joining one outright, so they are never a valid
+    // suggestion.
+    //
+    // The known-member count that ranking depends on is computed as a correlated
+    // subquery and ordered/limited in the database — computing it in JS only after an
+    // arbitrary "top 50 by member_count" pre-cut would silently drop a group with many
+    // known connections but a small `member_count` once more than 50 groups are
+    // eligible, breaking the "knownMemberCount desc, member_count desc" contract.
+    const memberGroupIds = db('group_members').select('group_id').where({ user_id: context.userId })
+
+    const rows = (await groupSelectQuery(db, context.userId)
+      .where('groups.university_id', context.universityId)
+      .whereNotIn('groups.id', memberGroupIds)
+      .whereNot('groups.is_system', true)
+      .select(
+        db.raw(
+          `(
+            select count(*)::int
+              from group_members gm
+              join connections conn
+                on conn.status = 'accepted'
+               and (
+                 (conn.requester_id = ? and conn.addressee_id = gm.user_id)
+                 or (conn.addressee_id = ? and conn.requester_id = gm.user_id)
+               )
+             where gm.group_id = groups.id
+          ) as known_member_count`,
+          [context.userId, context.userId],
+        ),
+      )
+      .orderByRaw('known_member_count desc, groups.member_count desc')
+      .limit(limit)) as (GroupRow & { known_member_count: number | string })[]
+
+    const { previewByGroup } = await loadGroupSocialProof(
+      rows.map((row) => row.id),
+      context.userId,
+    )
+
+    const items = rows.map((row) => ({
+      ...toGroup(row),
+      previewMembers: previewByGroup.get(row.id) ?? [],
+      knownMemberCount: Number(row.known_member_count ?? 0),
+    }))
+
+    return { items }
+  }
+
+  /**
+   * Lazily creates and returns the group's class-chat conversation id. Concurrent
+   * first calls (e.g. two members opening the chat tab at once) race on the
+   * check-then-create — a plain SELECT-then-UPDATE would let both requests see
+   * `chat_conversation_id: null` and each create its own conversation. Guarded here
+   * with `SELECT … FOR UPDATE` inside a transaction: the second transaction blocks on
+   * the row lock until the first commits, then re-reads the now-populated
+   * `chat_conversation_id` and returns it instead of creating a duplicate.
+   */
+  async openGroupChat(context: AuthContext, groupId: string) {
+    await assertMemberAccess(context, groupId)
+
+    // Cheap pre-check outside the transaction — the common case (chat already
+    // exists) never needs to take the row lock at all.
+    const precheck = await db('groups')
+      .select<{ type: GroupType; chat_conversation_id: string | null }[]>('type', 'chat_conversation_id')
+      .where({ id: groupId })
+      .first()
+
+    if (!precheck) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+    if (precheck.type !== 'academic') {
+      throw badRequest('Only class groups have a group chat', 'GROUP_NOT_ACADEMIC')
+    }
+    if (precheck.chat_conversation_id) return { conversationId: precheck.chat_conversation_id }
+
+    const conversationId = await db.transaction(async (trx) => {
+      const locked = await trx('groups')
+        .select<{ name: string; chat_conversation_id: string | null }[]>('name', 'chat_conversation_id')
+        .where({ id: groupId })
+        .forUpdate()
+        .first()
+
+      if (!locked) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+      // Re-check after acquiring the lock — another transaction may have created and
+      // committed the chat while this one was waiting on the lock.
+      if (locked.chat_conversation_id) return locked.chat_conversation_id
+
+      const memberIds = await trx('group_members').where({ group_id: groupId }).pluck<string[]>('user_id')
+      const newConversationId = await messagesService.createGroupConversationForGroup(
+        context,
+        { name: locked.name, participantIds: memberIds },
+        trx,
+      )
+      await trx('groups').where({ id: groupId }).update({ chat_conversation_id: newConversationId })
+
+      return newConversationId
+    })
+
+    return { conversationId }
+  }
+
+  async askTeacher(context: AuthContext, groupId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const group = await db('groups')
+      .select<{ type: GroupType; created_by: string }[]>('type', 'created_by')
+      .where({ id: groupId })
+      .first()
+    if (!group) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+    if (group.type !== 'academic') {
+      throw badRequest('Only class groups can message their teacher', 'GROUP_NOT_ACADEMIC')
+    }
+
+    const teacherId = await resolveGroupTeacherId(groupId, group.created_by)
+    const conversationId = await messagesService.getOrCreateDirect(context, teacherId)
+
+    const teacherProfile = await db('profiles')
+      .select<{ full_name: string | null; avatar_url: string | null; department: string | null }[]>(
+        'full_name',
+        'avatar_url',
+        'department',
+      )
+      .where('user_id', teacherId)
+      .first()
+
+    return {
+      conversationId,
+      teacher: {
+        id: teacherId,
+        fullName: teacherProfile?.full_name ?? null,
+        avatarUrl: teacherProfile?.avatar_url ?? null,
+        department: teacherProfile?.department ?? null,
+      },
+    }
+  }
+
+  async askTeacherQueue(context: AuthContext, groupId: string) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const row = await db('groups')
+      .select<{ type: GroupType; created_by: string }[]>('type', 'created_by')
+      .where({ id: groupId })
+      .first()
+    if (!row) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+    if (row.type !== 'academic') {
+      throw badRequest('Only class groups have an ask-teacher queue', 'GROUP_NOT_ACADEMIC')
+    }
+
+    const teacherId = await resolveGroupTeacherId(groupId, row.created_by)
+
+    const memberIds = await db('group_members').where({ group_id: groupId }).pluck<string[]>('user_id')
+    const studentIds = memberIds.filter((id) => id !== teacherId)
+    if (studentIds.length === 0) return { items: [] }
+
+    // Direct conversations the teacher is in, restricted to the other participant
+    // being one of this group's members — this is what makes it "the ask-teacher
+    // queue for this class" rather than every DM the teacher has.
+    const conversationRows = (await db('conversation_participants as owner_p')
+      .join('conversations as c', 'c.id', 'owner_p.conversation_id')
+      .join('conversation_participants as student_p', function joinStudent() {
+        this.on('student_p.conversation_id', '=', 'c.id').andOn('student_p.user_id', '!=', 'owner_p.user_id')
+      })
+      .join('profiles as sp', 'sp.user_id', 'student_p.user_id')
+      .where('owner_p.user_id', teacherId)
+      .andWhere('c.university_id', context.universityId)
+      .andWhere('c.is_group', false)
+      .whereIn('student_p.user_id', studentIds)
+      .select<
+        {
+          conversation_id: string
+          student_id: string
+          full_name: string | null
+          avatar_url: string | null
+          owner_last_read_at: Date | null
+        }[]
+      >(
+        'c.id as conversation_id',
+        'student_p.user_id as student_id',
+        'sp.full_name',
+        'sp.avatar_url',
+        'owner_p.last_read_at as owner_last_read_at',
+      )) as {
+      conversation_id: string
+      student_id: string
+      full_name: string | null
+      avatar_url: string | null
+      owner_last_read_at: Date | null
+    }[]
+
+    if (conversationRows.length === 0) return { items: [] }
+
+    const conversationIds = conversationRows.map((row) => row.conversation_id)
+
+    const lastMessages = await db('messages')
+      .whereIn('conversation_id', conversationIds)
+      .andWhere('is_deleted', false)
+      .orderBy('created_at', 'desc')
+      .select<{ conversation_id: string; content: string | null; created_at: Date; sender_id: string }[]>(
+        'conversation_id',
+        'content',
+        'created_at',
+        'sender_id',
+      )
+
+    const lastByConversation = new Map<string, { content: string | null; created_at: Date }>()
+    for (const message of lastMessages) {
+      if (!lastByConversation.has(message.conversation_id)) {
+        lastByConversation.set(message.conversation_id, { content: message.content, created_at: message.created_at })
+      }
+    }
+
+    const unreadMessages = await db('messages')
+      .whereIn('conversation_id', conversationIds)
+      .andWhere('sender_id', '!=', teacherId)
+      .select<{ conversation_id: string; created_at: Date }[]>('conversation_id', 'created_at')
+
+    const unreadByConversation = new Map<string, number>()
+    for (const row of conversationRows) {
+      const threshold = row.owner_last_read_at
+      const count = unreadMessages.filter(
+        (m) => m.conversation_id === row.conversation_id && (!threshold || m.created_at > threshold),
+      ).length
+      unreadByConversation.set(row.conversation_id, count)
+    }
+
+    const items = conversationRows
+      .map((row) => ({
+        conversationId: row.conversation_id,
+        student: { id: row.student_id, fullName: row.full_name, avatarUrl: row.avatar_url },
+        lastMessage: lastByConversation.get(row.conversation_id)?.content ?? '',
+        lastAt: lastByConversation.get(row.conversation_id)?.created_at ?? null,
+        unread: unreadByConversation.get(row.conversation_id) ?? 0,
+      }))
+      .sort((a, b) => {
+        const aTime = a.lastAt ? new Date(a.lastAt).getTime() : 0
+        const bTime = b.lastAt ? new Date(b.lastAt).getTime() : 0
+        return bTime - aTime
+      })
+
+    return { items }
   }
 
   async updateMember(context: AuthContext, groupId: string, targetUserId: string, role: GroupRole) {
@@ -788,7 +1504,20 @@ export class GroupsService {
 
     assertCanAssignRole(group.user_role, target.role, role)
 
-    await db('group_members').where({ group_id: groupId, user_id: targetUserId }).update({ role })
+    const targetName = await getMemberFullName(targetUserId)
+    await db.transaction(async (trx) => {
+      await trx('group_members').where({ group_id: groupId, user_id: targetUserId }).update({ role })
+      const action = role === 'moderator' ? 'Moderator added' : role === 'admin' ? 'Admin added' : 'Role removed'
+      await logModeration(trx, {
+        universityId: context.universityId,
+        groupId,
+        actorId: context.userId,
+        kind: 'member',
+        action,
+        target: targetName,
+        targetUserId,
+      })
+    })
     return this.getMember(groupId, targetUserId)
   }
 
@@ -804,6 +1533,7 @@ export class GroupsService {
     if (target.role === 'owner') throw badRequest('Cannot remove the group owner', 'GROUP_OWNER_REMOVE_FORBIDDEN')
     assertCanRemoveRole(group.user_role, target.role)
 
+    const targetName = await getMemberFullName(targetUserId)
     await db.transaction(async (trx) => {
       const deleted = await trx('group_members').where({ group_id: groupId, user_id: targetUserId }).delete()
       if (deleted > 0) {
@@ -811,8 +1541,19 @@ export class GroupsService {
           .where({ id: groupId, university_id: context.universityId })
           .where('member_count', '>', 0)
           .decrement('member_count', 1)
+        await logModeration(trx, {
+          universityId: context.universityId,
+          groupId,
+          actorId: context.userId,
+          kind: 'member',
+          action: 'Member removed',
+          target: targetName,
+          targetUserId,
+        })
       }
     })
+
+    await syncGroupChatParticipant(groupId, targetUserId, 'remove')
 
     return { removed: true }
   }
@@ -1088,9 +1829,16 @@ export class GroupsService {
     return { clickCount: row?.click_count ?? 0 }
   }
 
-  async inviteToGroup(context: AuthContext, groupId: string, targetUserId: string) {
+  async inviteToGroup(
+    context: AuthContext,
+    groupId: string,
+    targetUserId: string,
+    role: InviteRole = 'member',
+  ) {
     const group = await assertGroupAccess(context, groupId)
     assertCanAdminGroup(group.user_role)
+    // Same tier cap as PATCH /members/:userId — an admin cannot mint another admin via invite.
+    assertCanAssignRole(group.user_role, 'member', role)
     if (group.is_system) {
       throw forbidden('System groups cannot be invited to', 'GROUP_SYSTEM_INVITE_FORBIDDEN')
     }
@@ -1145,6 +1893,7 @@ export class GroupsService {
       referenceId: groupId,
       referenceType: 'group',
       content: `${inviterName} invited you to join "${groupName}"`,
+      data: { role },
     })
 
     return { invited: true, notificationId: notification.id }
@@ -2083,6 +2832,550 @@ export class GroupsService {
 
     throw notFound('Pending content not found')
   }
+
+  // ── Announcements (academic groups) ──────────────────────────
+
+  async listAnnouncements(context: AuthContext, groupId: string) {
+    await assertMemberAccess(context, groupId)
+
+    const rows = await db('group_announcements')
+      .leftJoin('profiles as p', 'p.user_id', 'group_announcements.author_id')
+      .select<AnnouncementRow[]>(
+        'group_announcements.id',
+        'group_announcements.title',
+        'group_announcements.body',
+        'group_announcements.kind',
+        'group_announcements.is_pinned',
+        'group_announcements.attachments',
+        'group_announcements.author_id',
+        'group_announcements.created_at',
+        'p.full_name as author_full_name',
+      )
+      .where({
+        'group_announcements.group_id': groupId,
+        'group_announcements.university_id': context.universityId,
+      })
+      .orderBy('group_announcements.is_pinned', 'desc')
+      .orderBy('group_announcements.created_at', 'desc')
+
+    return { items: rows.map(toAnnouncement) }
+  }
+
+  async createAnnouncement(context: AuthContext, groupId: string, input: CreateAnnouncementInput) {
+    await assertGroupAdminAccess(context, groupId)
+    await assertAcademicGroup(groupId, 'Announcements are for class groups')
+    assertAttachmentsAreOwnUploads(input.attachments)
+
+    const [row] = await db('group_announcements')
+      .insert({
+        university_id: context.universityId,
+        group_id: groupId,
+        author_id: context.userId,
+        title: input.title,
+        body: input.body,
+        kind: input.kind,
+        notify_members: input.notify_members,
+        attachments: JSON.stringify(input.attachments),
+      })
+      .returning<AnnouncementRow[]>([
+        'id',
+        'title',
+        'body',
+        'kind',
+        'is_pinned',
+        'attachments',
+        'author_id',
+        'created_at',
+      ])
+
+    if (input.notify_members) {
+      const memberIds = await db('group_members')
+        .where({ group_id: groupId })
+        .whereNot({ user_id: context.userId })
+        .pluck<string[]>('user_id')
+
+      for (const userId of memberIds) {
+        await notificationQueue.add({
+          universityId: context.universityId,
+          userId,
+          type: 'group_announcement',
+          actorId: context.userId,
+          referenceId: groupId,
+          referenceType: 'group',
+          content: `New announcement: ${input.title}`,
+          payload: {},
+        })
+      }
+    }
+
+    const authorFullName = await getMemberFullName(context.userId)
+    return toAnnouncement({ ...row, author_full_name: authorFullName })
+  }
+
+  async updateAnnouncement(
+    context: AuthContext,
+    groupId: string,
+    announcementId: string,
+    input: UpdateAnnouncementInput,
+  ) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const patch = pickDefined({
+      title: input.title,
+      body: input.body,
+      kind: input.kind,
+      is_pinned: input.is_pinned,
+    })
+
+    const [row] = await db('group_announcements')
+      .where({ id: announcementId, group_id: groupId, university_id: context.universityId })
+      .update({ ...patch, updated_at: new Date() })
+      .returning<AnnouncementRow[]>([
+        'id',
+        'title',
+        'body',
+        'kind',
+        'is_pinned',
+        'attachments',
+        'author_id',
+        'created_at',
+      ])
+
+    if (!row) throw notFound('Announcement not found', 'ANNOUNCEMENT_NOT_FOUND')
+
+    const authorFullName = await getMemberFullName(row.author_id)
+    return toAnnouncement({ ...row, author_full_name: authorFullName })
+  }
+
+  async deleteAnnouncement(context: AuthContext, groupId: string, announcementId: string) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const deleted = await db('group_announcements')
+      .where({ id: announcementId, group_id: groupId, university_id: context.universityId })
+      .delete()
+
+    if (deleted === 0) throw notFound('Announcement not found', 'ANNOUNCEMENT_NOT_FOUND')
+    return { deleted: true }
+  }
+
+  // ── Consultation slots + bookings ─────────────────────────────
+
+  async listConsultationSlots(context: AuthContext, groupId: string) {
+    const access = await assertMemberAccess(context, groupId)
+    const isAdmin = access.user_role === 'owner' || access.user_role === 'admin'
+
+    const slots = await db('group_consultation_slots')
+      .select<ConsultationSlotRow[]>(
+        'id',
+        'weekday',
+        'start_time',
+        'end_time',
+        'location',
+        'walk_in',
+        db.raw(
+          `(current_date + ((weekday - extract(dow from current_date)::int + 7) % 7))::date::text as next_occurrence`,
+        ),
+      )
+      .where({ group_id: groupId, university_id: context.universityId })
+      .orderBy('weekday', 'asc')
+      .orderBy('start_time', 'asc')
+
+    const myBookingRows = await db('group_consultation_bookings as b')
+      .join('group_consultation_slots as s', 's.id', 'b.slot_id')
+      .where('s.group_id', groupId)
+      .andWhere('b.student_id', context.userId)
+      .andWhereRaw(
+        `b.booked_for = (current_date + ((s.weekday - extract(dow from current_date)::int + 7) % 7))::date`,
+      )
+      .select<{ id: string; slot_id: string; status: string }[]>('b.id', 'b.slot_id', 'b.status')
+
+    const myBookingBySlot = new Map(myBookingRows.map((b) => [b.slot_id, b]))
+
+    const bookingsBySlot = new Map<string, BookingWithStudent[]>()
+    if (isAdmin) {
+      const bookingRows = await db('group_consultation_bookings as b')
+        .join('group_consultation_slots as s', 's.id', 'b.slot_id')
+        .leftJoin('profiles as p', 'p.user_id', 'b.student_id')
+        .where('s.group_id', groupId)
+        .select<
+          {
+            id: string
+            slot_id: string
+            student_id: string
+            booked_for: Date | string
+            topic: string
+            status: string
+            student_full_name: string | null
+          }[]
+        >(
+          'b.id',
+          'b.slot_id',
+          'b.student_id',
+          'b.booked_for',
+          'b.topic',
+          'b.status',
+          'p.full_name as student_full_name',
+        )
+        .orderBy('b.created_at', 'desc')
+
+      for (const row of bookingRows) {
+        const booking: BookingWithStudent = {
+          id: row.id,
+          slotId: row.slot_id,
+          bookedFor: toDateString(row.booked_for),
+          topic: row.topic,
+          status: row.status as 'requested' | 'confirmed' | 'declined',
+          student: { id: row.student_id, fullName: row.student_full_name ?? 'A member' },
+        }
+        const list = bookingsBySlot.get(row.slot_id) ?? []
+        list.push(booking)
+        bookingsBySlot.set(row.slot_id, list)
+      }
+    }
+
+    return {
+      items: slots.map((row) => {
+        const myBooking = myBookingBySlot.get(row.id)
+        return {
+          id: row.id,
+          weekday: row.weekday,
+          startTime: row.start_time,
+          endTime: row.end_time,
+          location: row.location,
+          walkIn: row.walk_in,
+          nextOccurrence: row.next_occurrence,
+          myBooking: myBooking ? { id: myBooking.id, status: myBooking.status } : null,
+          ...(isAdmin ? { bookings: bookingsBySlot.get(row.id) ?? [] } : {}),
+        }
+      }),
+    }
+  }
+
+  async createConsultationSlot(context: AuthContext, groupId: string, input: CreateSlotInput) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const [row] = await db('group_consultation_slots')
+      .insert({
+        university_id: context.universityId,
+        group_id: groupId,
+        teacher_id: context.userId,
+        weekday: input.weekday,
+        start_time: input.start_time,
+        end_time: input.end_time,
+        location: input.location,
+        walk_in: input.walk_in,
+      })
+      .returning<ConsultationSlotRow[]>(['id', 'weekday', 'start_time', 'end_time', 'location', 'walk_in'])
+
+    return {
+      id: row.id,
+      weekday: row.weekday,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      location: row.location,
+      walkIn: row.walk_in,
+    }
+  }
+
+  async deleteConsultationSlot(context: AuthContext, groupId: string, slotId: string) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const deleted = await db('group_consultation_slots')
+      .where({ id: slotId, group_id: groupId, university_id: context.universityId })
+      .delete()
+
+    if (deleted === 0) throw notFound('Consultation slot not found', 'SLOT_NOT_FOUND')
+    return { deleted: true }
+  }
+
+  async bookConsultationSlot(context: AuthContext, groupId: string, slotId: string, input: BookSlotInput) {
+    await assertMemberAccess(context, groupId)
+
+    const slot = await db('group_consultation_slots')
+      .select<{ id: string }[]>('id')
+      .where({ id: slotId, group_id: groupId, university_id: context.universityId })
+      .first()
+    if (!slot) throw notFound('Consultation slot not found', 'SLOT_NOT_FOUND')
+
+    try {
+      const [row] = await db('group_consultation_bookings')
+        .insert({
+          university_id: context.universityId,
+          slot_id: slotId,
+          student_id: context.userId,
+          booked_for: db.raw(
+            `(select (current_date + ((weekday - extract(dow from current_date)::int + 7) % 7))::date from group_consultation_slots where id = ?)`,
+            [slotId],
+          ),
+          topic: input.topic,
+          status: 'requested',
+        })
+        .returning<{ id: string; slot_id: string; booked_for: Date | string; topic: string; status: string }[]>([
+          'id',
+          'slot_id',
+          'booked_for',
+          'topic',
+          'status',
+        ])
+
+      return {
+        id: row.id,
+        slotId: row.slot_id,
+        bookedFor: toDateString(row.booked_for),
+        topic: row.topic,
+        status: row.status,
+      }
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw conflict('Already booked', 'SLOT_ALREADY_BOOKED')
+      }
+      throw error
+    }
+  }
+
+  async reviewConsultationBooking(
+    context: AuthContext,
+    groupId: string,
+    slotId: string,
+    bookingId: string,
+    input: ReviewBookingInput,
+  ) {
+    await assertGroupAdminAccess(context, groupId)
+
+    const booking = await db('group_consultation_bookings as b')
+      .join('group_consultation_slots as s', 's.id', 'b.slot_id')
+      .where({
+        'b.id': bookingId,
+        'b.slot_id': slotId,
+        's.group_id': groupId,
+        'b.university_id': context.universityId,
+      })
+      .select<{ id: string; student_id: string }[]>('b.id', 'b.student_id')
+      .first()
+    if (!booking) throw notFound('Booking not found', 'BOOKING_NOT_FOUND')
+
+    const [row] = await db('group_consultation_bookings')
+      .where({ id: bookingId })
+      .update({ status: input.status })
+      .returning<{ id: string; slot_id: string; booked_for: Date | string; topic: string; status: string }[]>([
+        'id',
+        'slot_id',
+        'booked_for',
+        'topic',
+        'status',
+      ])
+
+    await notificationQueue.add({
+      universityId: context.universityId,
+      userId: booking.student_id,
+      type: 'consultation_booking',
+      actorId: context.userId,
+      referenceId: groupId,
+      referenceType: 'group',
+      content:
+        input.status === 'confirmed'
+          ? 'Your consultation booking was confirmed'
+          : 'Your consultation booking was declined',
+      payload: {},
+    })
+
+    return {
+      id: row.id,
+      slotId: row.slot_id,
+      bookedFor: toDateString(row.booked_for),
+      topic: row.topic,
+      status: row.status,
+    }
+  }
+
+  /**
+   * Creates an academic group and saves the imported course outline (+ unpublished
+   * assignments) in one transaction — the group's `owner` membership row is inserted
+   * here too, so `insertOutlineRows` (which needs no membership to already exist) is used
+   * instead of `courseOutlineService.createOutline` (which asserts one).
+   */
+  async createGroupFromOutline(context: AuthContext, input: CreateGroupFromOutlineInput) {
+    if (context.role !== 'faculty' && context.role !== 'admin') {
+      throw forbidden('Only faculty or admin can import a course outline', 'ACADEMIC_GROUP_FACULTY_ONLY')
+    }
+    const draft = input.draft
+
+    const groupId = await db.transaction(async (trx) => {
+      const [group] = await trx('groups')
+        .insert({
+          university_id: context.universityId,
+          created_by: context.userId,
+          name: input.name,
+          description: draft.description ?? draft.courseTitle,
+          type: 'academic',
+          is_private: input.is_private,
+          allowed_role: 'student',
+          is_system: false,
+          department: null,
+          member_count: 1,
+        })
+        .returning<{ id: string }[]>('id')
+
+      if (!group) throw badRequest('Group could not be created', 'GROUP_CREATE_FAILED')
+
+      await trx('group_members').insert({ group_id: group.id, user_id: context.userId, role: 'owner' })
+
+      await insertOutlineRows(
+        trx,
+        { groupId: group.id, universityId: context.universityId, createdBy: context.userId },
+        {
+          courseCode: draft.courseCode,
+          courseTitle: draft.courseTitle,
+          creditHours: draft.creditHours,
+          trimester: draft.trimester,
+          description: draft.description,
+          gradingScale: draft.gradingScale,
+          customScaleJson: draft.customScaleJson,
+          assessments: draft.assessments,
+          topics: draft.topics,
+        },
+      )
+
+      if (draft.assignments.length > 0) {
+        await trx('academic_assignments').insert(
+          draft.assignments.map((a) => ({
+            group_id: group.id,
+            university_id: context.universityId,
+            created_by: context.userId,
+            title: a.title,
+            description: a.topic ?? null,
+            file_urls: JSON.stringify([]),
+            deadline: a.dueDate ? new Date(a.dueDate) : null,
+            max_score: 100,
+            is_published: false,
+          })),
+        )
+      }
+
+      return group.id
+    })
+
+    return this.getGroup(context, groupId)
+  }
+
+  /**
+   * Matches `profiles` on department/batch within the caller's university (plus any
+   * explicit emails), skips existing members and users with an already-pending invite,
+   * and invites the rest via the same in-app notification path as `inviteToGroup`.
+   * Emails that don't match an existing account get a queued email with the group link
+   * instead — they have nothing to notify in-app.
+   */
+  async bulkInviteToGroup(context: AuthContext, groupId: string, input: BulkInviteInput) {
+    const group = await assertGroupAdminAccess(context, groupId)
+    if (group.is_system) {
+      throw forbidden('System groups cannot be invited to', 'GROUP_SYSTEM_INVITE_FORBIDDEN')
+    }
+
+    const groupRow = await db('groups').where({ id: groupId }).select<{ name: string }[]>('name').first()
+    const groupName = groupRow?.name ?? 'a group'
+    const inviterName = await notificationsService.getActorName(context.userId)
+
+    const matchesById = new Map<string, { id: string; email: string; role: UserRole }>()
+
+    if (input.department || input.batch_year != null) {
+      const rows = await db('users')
+        .join('profiles', 'profiles.user_id', 'users.id')
+        .where('users.university_id', context.universityId)
+        .modify((qb) => {
+          if (input.department) qb.andWhere('profiles.department', input.department)
+          if (input.batch_year != null) qb.andWhere('profiles.batch_year', String(input.batch_year))
+        })
+        .select<{ id: string; email: string; role: UserRole }[]>('users.id', 'users.email', 'users.role')
+      for (const row of rows) matchesById.set(row.id, row)
+    }
+
+    const requestedEmails = new Set((input.emails ?? []).map((e) => e.toLowerCase()))
+    const matchedEmails = new Set<string>()
+    if (requestedEmails.size > 0) {
+      const rows = await db('users')
+        .where('university_id', context.universityId)
+        .whereIn('email', [...requestedEmails])
+        .select<{ id: string; email: string; role: UserRole }[]>('id', 'email', 'role')
+      for (const row of rows) {
+        matchesById.set(row.id, row)
+        matchedEmails.add(row.email.toLowerCase())
+      }
+    }
+
+    let invited = 0
+    let skipped = 0
+    let mailed = 0
+
+    for (const target of matchesById.values()) {
+      if (group.allowed_role && target.role !== group.allowed_role) {
+        skipped++
+        continue
+      }
+      const existingMembership = await db('group_members')
+        .where({ group_id: groupId, user_id: target.id })
+        .first()
+      if (existingMembership) {
+        skipped++
+        continue
+      }
+      const pendingInvite = await db('notifications')
+        .where({
+          user_id: target.id,
+          type: 'group_invite',
+          reference_id: groupId,
+          reference_type: 'group',
+          is_read: false,
+        })
+        .first()
+      if (pendingInvite) {
+        skipped++
+        continue
+      }
+
+      await notificationsService.createNotification({
+        userId: target.id,
+        type: 'group_invite',
+        actorId: context.userId,
+        referenceId: groupId,
+        referenceType: 'group',
+        content: `${inviterName} invited you to join "${groupName}"`,
+        data: { role: group.allowed_role },
+      })
+      invited++
+    }
+
+    const unknownEmails = [...requestedEmails].filter((email) => !matchedEmails.has(email))
+    for (const email of unknownEmails) {
+      void emailQueue.add({
+        to: email,
+        subject: `You're invited to join "${groupName}"`,
+        text: JSON.stringify({
+          template: 'group-invite',
+          groupName,
+          link: `${env.WEB_URL}/groups/${groupId}`,
+        }),
+      })
+      mailed++
+    }
+
+    return { invited, skipped, mailed }
+  }
+
+  /** Backs the "N students match" line on the bulk-invite composer. */
+  async countInviteMatches(context: AuthContext, query: InviteMatchQuery) {
+    if (!query.department && query.batch_year == null) return { count: 0 }
+
+    const [{ count }] = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where('users.university_id', context.universityId)
+      .modify((qb) => {
+        if (query.department) qb.andWhere('profiles.department', query.department)
+        if (query.batch_year != null) qb.andWhere('profiles.batch_year', String(query.batch_year))
+      })
+      .count<{ count: string }[]>({ count: '*' })
+
+    return { count: Number(count) }
+  }
 }
 
 export const groupsService = new GroupsService()
@@ -2192,6 +3485,24 @@ function groupSelectQuery(knex: Knex, userId: string) {
       'groups.pinned_at',
       'groups.pinned_by',
       'groups.ai_settings',
+      'groups.require_post_approval',
+      'groups.require_event_approval',
+      // Same unread rule as messages/service.ts conversationSelectQuery: messages from
+      // others after the participant's last read (or join). NULL when there is no class
+      // chat or the user is not a participant — toGroup maps that to 0.
+      knex.raw(
+        `(
+          SELECT COUNT(*)::int
+          FROM messages unread_messages
+          JOIN conversation_participants chat_participant
+            ON chat_participant.conversation_id = groups.chat_conversation_id
+           AND chat_participant.user_id = ?
+          WHERE unread_messages.conversation_id = groups.chat_conversation_id
+            AND unread_messages.sender_id <> ?
+            AND unread_messages.created_at > COALESCE(chat_participant.last_read_at, chat_participant.joined_at)
+        ) AS chat_unread`,
+        [userId, userId],
+      ),
     )
 }
 
@@ -2239,6 +3550,20 @@ function flashcardDeckSelectQuery(userId: string) {
           WHERE due_cards.deck_id = group_flashcard_decks.id
             AND (due_reviews.card_id IS NULL OR due_reviews.due_at <= now())
         ) AS due_count`,
+        [userId],
+      ),
+      db.raw(
+        `(
+          SELECT COUNT(*)::int
+          FROM group_flashcards mastered_cards
+          JOIN group_flashcard_reviews mastered_reviews
+            ON mastered_reviews.card_id = mastered_cards.id
+           AND mastered_reviews.user_id = ?
+          WHERE mastered_cards.deck_id = group_flashcard_decks.id
+            -- SM-2 convention: a card is "mature"/mastered once its review interval
+            -- reaches 21 days.
+            AND mastered_reviews.interval_days >= 21
+        ) AS mastered_count`,
         [userId],
       ),
     )
@@ -2416,6 +3741,47 @@ async function getMembership(groupId: string, userId: string) {
   return db('group_members').select<{ role: GroupRole }[]>('role').where({ group_id: groupId, user_id: userId }).first()
 }
 
+/** The academic group's teacher — the member with `role: 'owner'`, falling back to
+ * `groups.created_by` for the rare case where ownership was never seeded as a
+ * membership row. */
+async function resolveGroupTeacherId(groupId: string, createdBy: string): Promise<string> {
+  const owner = await db('group_members')
+    .select<{ user_id: string }[]>('user_id')
+    .where({ group_id: groupId, role: 'owner' })
+    .orderBy('joined_at', 'asc')
+    .first()
+  return owner?.user_id ?? createdBy
+}
+
+/**
+ * Keeps a group's class-chat conversation's participant list in sync with membership.
+ * A no-op when the group has no chat conversation yet — the chat is created lazily on
+ * first `POST /:groupId/chat`, so most groups never pay this query.
+ */
+async function syncGroupChatParticipant(groupId: string, userId: string, action: 'add' | 'remove') {
+  const group = await db('groups')
+    .select<{ chat_conversation_id: string | null }[]>('chat_conversation_id')
+    .where({ id: groupId })
+    .first()
+  if (!group?.chat_conversation_id) return
+
+  if (action === 'add') {
+    await db('conversation_participants')
+      .insert({ conversation_id: group.chat_conversation_id, user_id: userId })
+      .onConflict(['conversation_id', 'user_id'])
+      .ignore()
+  } else {
+    await db('conversation_participants')
+      .where({ conversation_id: group.chat_conversation_id, user_id: userId })
+      .delete()
+  }
+}
+
+async function getMemberFullName(userId: string): Promise<string> {
+  const row = await db('profiles').select<{ full_name: string | null }[]>('full_name').where({ user_id: userId }).first()
+  return row?.full_name ?? 'A member'
+}
+
 async function countOwners(groupId: string) {
   const [{ count }] = await db('group_members')
     .where({ group_id: groupId, role: 'owner' })
@@ -2433,13 +3799,68 @@ function assertCanAdminGroup(role: GroupRole | null) {
   throw forbidden('You do not have permission to manage this group', 'GROUP_ADMIN_REQUIRED')
 }
 
-function canModerate(role: GroupRole | null) {
-  return role === 'owner' || role === 'admin' || role === 'moderator'
-}
-
 function assertCanEditOwnedResource(access: GroupAccessRow, ownerId: string | null, userId: string) {
   if (ownerId === userId || canModerate(access.user_role)) return
   throw forbidden('Only the creator or group moderators can edit this item', 'GROUP_ROLE_FORBIDDEN')
+}
+
+/** Announcements are an academic-LMS feature — gates create on `groups.type`, mirroring
+ * how `openGroupChat`/`askTeacher` gate their own academic-only actions. */
+async function assertAcademicGroup(groupId: string, message: string) {
+  const group = await db('groups').select<{ type: GroupType }[]>('type').where({ id: groupId }).first()
+  if (!group) throw notFound('Group not found', 'GROUP_NOT_FOUND')
+  if (group.type !== 'academic') {
+    throw badRequest(message, 'GROUP_NOT_ACADEMIC')
+  }
+}
+
+interface AnnouncementRow {
+  id: string
+  title: string
+  body: string
+  kind: 'urgent' | 'schedule' | 'notice'
+  is_pinned: boolean
+  attachments: Attachment[]
+  author_id: string
+  created_at: Date
+  author_full_name?: string | null
+}
+
+function toAnnouncement(row: AnnouncementRow) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    kind: row.kind,
+    isPinned: row.is_pinned,
+    attachments: row.attachments,
+    author: { id: row.author_id, fullName: row.author_full_name ?? 'A member' },
+    createdAt: row.created_at,
+  }
+}
+
+interface ConsultationSlotRow {
+  id: string
+  weekday: number
+  start_time: string
+  end_time: string
+  location: string
+  walk_in: boolean
+  next_occurrence: string
+}
+
+interface BookingWithStudent {
+  id: string
+  slotId: string
+  bookedFor: string
+  topic: string
+  status: 'requested' | 'confirmed' | 'declined'
+  student: { id: string; fullName: string }
+}
+
+function toDateString(value: Date | string): string {
+  if (typeof value === 'string') return value.slice(0, 10)
+  return value.toISOString().slice(0, 10)
 }
 
 function assertCanEditCard(access: GroupAccessRow, card: FlashcardOwnerRow, userId: string) {
@@ -2519,6 +3940,7 @@ function toFlashcardDeck(row: FlashcardDeckRow) {
     isArchived: row.is_archived,
     cardCount: Number(row.card_count),
     dueCount: Number(row.due_count ?? 0),
+    masteredCount: Number(row.mastered_count ?? 0),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     creator: row.created_by
@@ -2612,6 +4034,9 @@ function toGroup(row: GroupRow) {
     // Collapse that to `false` — "not muted" is the honest answer for someone who is not in.
     isMuted: Boolean(row.is_muted),
     aiSettings: withAiSettingsDefaults(row.ai_settings),
+    requirePostApproval: row.require_post_approval,
+    requireEventApproval: row.require_event_approval,
+    chatUnread: row.chat_unread ?? 0,
   }
 }
 
@@ -2718,6 +4143,7 @@ function toJoinRequest(row: JoinRequestRow) {
       fullName: row.requester_full_name,
       avatarUrl: row.requester_avatar_url,
       department: row.requester_department,
+      batch: row.requester_batch_year ?? null,
       role: row.requester_user_role,
     },
   }

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { Paperclip } from 'lucide-react'
 import {
   useCreateModule,
   useModuleUpload,
@@ -8,6 +9,17 @@ import {
   useTogglePublishModule,
 } from '../hooks/useGroupExtended'
 import type { FileUrlEntry } from '../types'
+
+const ghost = {
+  padding: '4px 12px',
+  fontSize: 12,
+  borderRadius: 'var(--r-pill)',
+  border: '0.5px solid var(--border-default)',
+  background: 'transparent',
+  color: 'var(--text-secondary)',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+} as const
 
 interface ModulesPanelProps {
   groupId: string
@@ -74,70 +86,60 @@ export function ModulesPanel({ groupId, isAdmin }: ModulesPanelProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <ul className="flex flex-col gap-2">
+      <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+        {sorted.length === 0 && (
+          <p style={{ margin: 0, padding: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>No modules yet.</p>
+        )}
         {sorted.map((m, index) => (
-          <li
+          <div
             key={m.id}
-            className="flex items-center justify-between gap-3 rounded-[var(--r-md)] px-3 py-3"
-            style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)' }}
+            style={{ padding: '12px 16px', borderBottom: index === sorted.length - 1 ? 'none' : '0.5px solid var(--border-subtle)' }}
           >
-            <div className="flex flex-col gap-1">
-              <span>{m.title}</span>
-              {m.description && <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{m.description}</span>}
-              {m.fileUrls && m.fileUrls.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  {m.fileUrls.map((f, idx) => (
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{m.title}</div>
+                {m.description && (
+                  <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--text-secondary)' }}>{m.description}</p>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: m.isPublished ? 'var(--uc-mint)' : 'var(--text-tertiary)' }}>
+                  {m.isPublished ? 'Published' : 'Draft'}
+                </span>
+                {m.fileUrls && m.fileUrls.length > 0 && (
+                  <>
                     <a
-                      key={idx}
-                      href={f.url}
+                      href={m.fileUrls[0].url}
                       target="_blank"
                       rel="noreferrer"
-                      style={{ color: 'var(--uc-indigo)', fontSize: 12 }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
                     >
-                      {f.name}
+                      <Paperclip size={11} strokeWidth={1.5} />
+                      Class content
                     </a>
-                  ))}
-                </div>
-              )}
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {m.fileUrls.map((f) => f.name).join(', ')}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{m.isPublished ? 'Published' : 'Draft'}</span>
-              {isAdmin && (
-                <>
-                  <button
-                    type="button"
-                    aria-label={`Move ${m.title} up`}
-                    onClick={() => move(index, -1)}
-                    disabled={index === 0}
-                    className="rounded-[var(--r-pill)] border-[0.5px] px-3 py-1"
-                    style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
-                  >
-                    Up
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Move ${m.title} down`}
-                    onClick={() => move(index, 1)}
-                    disabled={index === sorted.length - 1}
-                    className="rounded-[var(--r-pill)] border-[0.5px] px-3 py-1"
-                    style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
-                  >
-                    Down
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => togglePublish.mutate(m.id)}
-                    className="rounded-[var(--r-pill)] border-[0.5px] px-4 py-1"
-                    style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
-                  >
-                    {m.isPublished ? 'Unpublish' : 'Publish'}
-                  </button>
-                </>
-              )}
-            </div>
-          </li>
+            {isAdmin && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '0.5px solid var(--border-subtle)' }}>
+                <button type="button" aria-label={`Move ${m.title} up`} onClick={() => move(index, -1)} disabled={index === 0} style={ghost}>
+                  Move up
+                </button>
+                <button type="button" aria-label={`Move ${m.title} down`} onClick={() => move(index, 1)} disabled={index === sorted.length - 1} style={ghost}>
+                  Move down
+                </button>
+                <button type="button" onClick={() => togglePublish.mutate(m.id)} style={ghost}>
+                  {m.isPublished ? 'Unpublish' : 'Publish'}
+                </button>
+              </div>
+            )}
+          </div>
         ))}
-      </ul>
+      </div>
 
       {isAdmin && (
         <form

@@ -1,4 +1,6 @@
 export { academicRouter } from './router'
 export { assignmentsService } from './assignments.service'
-export { courseOutlineService } from './course-outline.service'
+export { courseOutlineService, insertOutlineRows } from './course-outline.service'
 export type { CourseOutline } from './course-outline.service'
+export { buildCourseOutlineDraft } from './outline-import.service'
+export type { CourseOutlineDraftResult } from './outline-import.service'

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { format, parseISO } from 'date-fns'
+import { ClipboardCheck, FileCheck, Unlock, Upload, X } from 'lucide-react'
 import {
   useAssignments,
   useCreateAssignment,
@@ -141,12 +143,71 @@ function CreateAssignmentForm({ groupId }: { groupId: string }) {
   )
 }
 
-function AssignmentRow({ groupId, assignment, isAdmin }: { groupId: string; assignment: Assignment; isAdmin: boolean }) {
+const pill = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '5px 12px',
+  fontSize: 12,
+  borderRadius: 'var(--r-pill)',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+} as const
+const indigoPill = { ...pill, border: '0.5px solid var(--uc-indigo-bdr)', background: 'var(--uc-indigo-bg)', color: 'var(--uc-indigo-l)' } as const
+const ghostPill = { ...pill, border: '0.5px solid var(--border-default)', background: 'transparent', color: 'var(--text-secondary)' } as const
+
+function formatDue(iso: string | null | undefined) {
+  if (!iso) return null
+  const d = parseISO(iso)
+  return isNaN(d.getTime()) ? null : format(d, 'd MMM, HH:mm')
+}
+
+function AdminAssignmentRow({ groupId, assignment, last }: { groupId: string; assignment: Assignment; last: boolean }) {
+  const [showSubmissions, setShowSubmissions] = useState(false)
+  const { data: submissions } = useSubmissions(groupId, assignment.id)
+  const count = submissions?.length ?? 0
+  const due = formatDue(assignment.deadline)
+
+  return (
+    <li style={{ padding: '12px 16px', borderBottom: last ? 'none' : '0.5px solid var(--border-subtle)', listStyle: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{assignment.title}</div>
+          {assignment.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Topic · {assignment.description}</div>}
+          {due && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Due {due}</div>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{assignment.isPublished ? `${count} submitted` : 'Not open'}</span>
+          <button type="button" onClick={() => setShowSubmissions((v) => !v)} style={indigoPill}>
+            {assignment.isPublished ? (
+              <>
+                <ClipboardCheck size={12} strokeWidth={1.5} />
+                {showSubmissions ? 'Hide submissions' : `Review ${count} ${count === 1 ? 'submission' : 'submissions'}`}
+              </>
+            ) : (
+              <>
+                <Unlock size={12} strokeWidth={1.5} />
+                Open submissions
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+      {showSubmissions && (
+        <div style={{ marginTop: 10 }}>
+          <SubmissionsList groupId={groupId} assignment={assignment} />
+        </div>
+      )}
+    </li>
+  )
+}
+
+function StudentAssignmentRow({ groupId, assignment, last }: { groupId: string; assignment: Assignment; last: boolean }) {
   const [submitting, setSubmitting] = useState(false)
   const [text, setText] = useState('')
   const [submitted, setSubmitted] = useState(false)
-  const [showSubmissions, setShowSubmissions] = useState(false)
   const submit = useSubmitAssignment(groupId, assignment.id)
+  const due = formatDue(assignment.deadline)
 
   async function handleConfirm() {
     await submit.mutateAsync({ textContent: text })
@@ -155,64 +216,47 @@ function AssignmentRow({ groupId, assignment, isAdmin }: { groupId: string; assi
   }
 
   return (
-    <li
-      className="flex flex-col gap-2 rounded-[var(--r-md)] p-3"
-      style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)' }}
-    >
-      <div className="flex items-center justify-between">
-        <span>{assignment.title}</span>
-        <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Max score: {assignment.maxScore}</span>
+    <li style={{ padding: '12px 16px', borderBottom: last ? 'none' : '0.5px solid var(--border-subtle)', listStyle: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{assignment.title}</div>
+          {assignment.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Topic · {assignment.description}</div>}
+          {due && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Due {due}</div>}
+        </div>
+        {!assignment.isPublished ? (
+          <span style={{ ...ghostPill, cursor: 'default' }}>Not open yet</span>
+        ) : submitting ? null : (
+          <button type="button" onClick={() => setSubmitting(true)} style={indigoPill}>
+            <Upload size={12} strokeWidth={1.5} />
+            {submitted ? 'Replace file' : 'Submit work'}
+          </button>
+        )}
       </div>
 
-      {!isAdmin && (
-        <>
-          {submitted ? (
-            <p>Submitted ✓</p>
-          ) : submitting ? (
-            <div className="flex flex-col gap-2">
-              <label className="flex flex-col gap-1">
-                <span>Your answer</span>
-                <textarea
-                  aria-label="Your answer"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  className="rounded-[var(--r-md)] border-[0.5px] px-3 py-2"
-                  style={{ borderColor: 'var(--border-default)', background: 'var(--surface-page)' }}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => void handleConfirm()}
-                className="self-start rounded-[var(--r-pill)] px-4 py-2"
-                style={{ background: 'var(--uc-indigo)', color: 'var(--on-accent)' }}
-              >
-                Confirm submit
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSubmitting(true)}
-              className="self-start rounded-[var(--r-pill)] border-[0.5px] px-4 py-2"
-              style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
-            >
-              Submit
-            </button>
-          )}
-        </>
+      {submitted && !submitting && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, color: 'var(--uc-mint)' }}>
+          <FileCheck size={12} strokeWidth={1.5} />
+          Submitted just now
+          <button type="button" aria-label="Dismiss" onClick={() => setSubmitted(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, display: 'inline-flex' }}>
+            <X size={12} strokeWidth={1.5} />
+          </button>
+        </div>
       )}
 
-      {isAdmin && (
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setShowSubmissions((v) => !v)}
-            className="self-start rounded-[var(--r-pill)] border-[0.5px] px-4 py-2"
-            style={{ borderColor: 'var(--border-default)', background: 'var(--surface-card)' }}
-          >
-            {showSubmissions ? 'Hide submissions' : 'View submissions'}
-          </button>
-          {showSubmissions && <SubmissionsList groupId={groupId} assignment={assignment} />}
+      {submitting && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+            <span>Your answer</span>
+            <textarea aria-label="Your answer" className="fld" rows={3} value={text} onChange={(e) => setText(e.target.value)} />
+          </label>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button" onClick={() => setSubmitting(false)} style={ghostPill}>
+              Cancel
+            </button>
+            <button type="button" onClick={() => void handleConfirm()} style={{ ...pill, border: 'none', background: 'var(--uc-indigo)', color: 'var(--on-accent)' }}>
+              Confirm submit
+            </button>
+          </div>
         </div>
       )}
     </li>
@@ -221,14 +265,21 @@ function AssignmentRow({ groupId, assignment, isAdmin }: { groupId: string; assi
 
 export function AssignmentsPanel({ groupId, isAdmin }: AssignmentsPanelProps) {
   const { data: assignments, isLoading } = useAssignments(groupId)
-  if (isLoading || !assignments) return <div>Loading assignments…</div>
+  if (isLoading || !assignments) return <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Loading assignments…</div>
 
   return (
     <div className="flex flex-col gap-4">
-      <ul className="flex flex-col gap-2">
-        {assignments.map((a) => (
-          <AssignmentRow key={a.id} groupId={groupId} assignment={a} isAdmin={isAdmin} />
-        ))}
+      <ul style={{ margin: 0, padding: 0, background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+        {assignments.length === 0 && (
+          <li style={{ padding: 16, fontSize: 13, color: 'var(--text-tertiary)', listStyle: 'none' }}>No assignments yet.</li>
+        )}
+        {assignments.map((a, i) =>
+          isAdmin ? (
+            <AdminAssignmentRow key={a.id} groupId={groupId} assignment={a} last={i === assignments.length - 1} />
+          ) : (
+            <StudentAssignmentRow key={a.id} groupId={groupId} assignment={a} last={i === assignments.length - 1} />
+          ),
+        )}
       </ul>
       {isAdmin && <CreateAssignmentForm groupId={groupId} />}
     </div>

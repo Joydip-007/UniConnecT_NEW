@@ -11,6 +11,8 @@ import { notificationsService } from '../notifications/service'
 import { moderationService } from '../moderation/service'
 import { cancelPostJob, schedulePostJob } from '../../queues/post-lifecycle.queue'
 import { addUserAttachments, getAttachmentsFor, getAttachmentsForMany, removeAttachments } from '../content-sync/attachments'
+import { notifyGroupReviewers } from '../groups/review-notify'
+import { canModerate, loadGroupApprovalContext } from '../groups/permissions'
 
 type PostType = 'post' | 'announcement' | 'lost_found' | 'news' | 'event_promo' | 'job_promo'
 type ReactionType = 'like' | 'love' | 'care' | 'haha' | 'wow' | 'sad' | 'angry'
@@ -49,6 +51,7 @@ interface PostRow {
   publish_at: Date | null
   archived_at: Date | null
   removed_at: Date | null
+  group_review_status: 'pending' | 'approved' | 'declined' | null
   expires_at: Date | null
   view_count: number
   created_at: Date
@@ -244,6 +247,29 @@ export class FeedService {
     return { items: withAttachments, total, page: query.page, limit: query.limit }
   }
 
+  /**
+   * Hydrates an arbitrary set of post ids into full `FeedPost` shapes (same mapper as
+   * every other feed listing), preserving the caller's order. Used by the groups
+   * review queue, which selects pending ids directly rather than through a normal
+   * feed filter.
+   */
+  async listPostsByIds(universityId: string, userId: string, ids: string[]) {
+    if (ids.length === 0) return []
+
+    const rows = (await postSelectQuery(db, userId, universityId)
+      .where('posts.university_id', universityId)
+      .whereIn('posts.id', ids)) as PostRow[]
+
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    const ordered = ids.map((id) => byId.get(id)).filter((row): row is PostRow => row !== undefined)
+
+    const [posts, attachmentsMap] = await Promise.all([
+      this.attachPolls(ordered.map((r) => toPost(r, userId)), ids, userId),
+      getAttachmentsForMany('post', ids),
+    ])
+    return posts.map((p) => ({ ...p, attachments: attachmentsMap.get(p.id) ?? [] }))
+  }
+
   async createPost(context: AuthContext, input: CreatePostInput) {
     assertCanUsePostType(context.role, input.type)
 
@@ -252,6 +278,17 @@ export class FeedService {
     const publishAt = input.publish_at ? new Date(input.publish_at) : null
     const isScheduled = publishAt !== null && publishAt.getTime() > Date.now()
     const isPublished = isScheduled ? false : (input.is_published ?? true)
+
+    // A group with `require_post_approval` on holds a non-moderator member's post for
+    // review — but only when the post is actually being published now. A draft
+    // (is_published: false, not scheduled) has nothing to hold: it's not visible to
+    // anyone yet, and holding it would wrongly surface it in the moderator queue while
+    // hiding it from the author's own Drafts list.
+    let reviewPending = false
+    if (input.group_id && isPublished) {
+      const g = await loadGroupApprovalContext(input.group_id, context.userId)
+      reviewPending = !!g?.require_post_approval && !canModerate(g?.role) && !isScheduled
+    }
 
     const postId = await db.transaction(async (trx) => {
       const [post] = await trx('posts')
@@ -262,7 +299,8 @@ export class FeedService {
           content: input.content,
           media_urls: input.media_urls,
           group_id: input.group_id ?? null,
-          is_published: isPublished,
+          is_published: reviewPending ? false : isPublished,
+          group_review_status: reviewPending ? 'pending' : null,
           publish_at: isScheduled ? publishAt : null,
           hide_reaction_counts: input.hide_reaction_counts ?? false,
           comments_disabled: input.comments_disabled ?? false,
@@ -327,8 +365,15 @@ export class FeedService {
       await schedulePostJob('publish', postId, context.universityId, publishAt)
     }
 
+    if (reviewPending && input.group_id) {
+      notifyGroupReviewers(input.group_id).catch((err: unknown) =>
+        logger.warn('Failed to notify group reviewers of a pending post', { err, groupId: input.group_id }),
+      )
+    }
+
     const post = await this.getPost(context.universityId, context.userId, postId, { incrementView: false })
-    // Drafts and scheduled posts are not broadcast to the feed — only published posts reach other users.
+    // Drafts, scheduled posts and posts held for group review are not broadcast — only
+    // published posts reach other users.
     if (post.isPublished) {
       const io = getIo()
       io.to(`uni:${context.universityId}`).emit('post:created', post)
@@ -1302,6 +1347,7 @@ function postSelectQuery(knex: Knex, userId: string, universityId?: string) {
       'posts.publish_at',
       'posts.archived_at',
       'posts.removed_at',
+      'posts.group_review_status',
       'posts.expires_at',
       'posts.view_count',
       'posts.created_at',
@@ -1516,6 +1562,7 @@ function toPost(row: PostRow, viewerUserId?: string) {
     publishAt: row.publish_at,
     archivedAt: row.archived_at,
     removedAt: row.removed_at,
+    groupReviewStatus: row.group_review_status ?? null,
     expiresAt: row.expires_at,
     viewCount: row.view_count,
     createdAt: row.created_at,

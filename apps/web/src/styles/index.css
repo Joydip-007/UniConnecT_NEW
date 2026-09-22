@@ -1162,48 +1162,97 @@ select:focus-visible {
   }
 }
 
-/* ── Group detail tab rail ─────────────────────────────────────────────
-   A group carries up to nine tabs. Stacked in a 176px column they are all
-   visible at once; below 900px that column costs more than it returns, so
-   the same markup folds back into a horizontal scroller. */
-.group-detail-body {
-  display: grid;
-  grid-template-columns: 176px minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
+
+/* ── Design field (`.fld`) — transparent input used inside cards (announcements,
+   gradebook, outline wizard). `.fld-need` marks a blank the user must fill. ── */
+.fld {
+  width: 100%;
+  background: transparent;
+  border: 0.5px solid var(--border-default);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  outline: none;
+}
+.fld::placeholder {
+  color: var(--text-tertiary);
+}
+.fld:focus {
+  border-color: var(--uc-indigo);
+}
+.fld-need {
+  border-style: dashed;
+  border-color: var(--uc-indigo-bdr);
 }
 
-.group-tab-rail {
-  flex-direction: column;
+/* Horizontal chip strips: `.hide-bar` scrolls without a visible scrollbar,
+   `.show-bar` keeps a thin one (mobile tab strip). */
+.hide-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-bar::-webkit-scrollbar {
+  display: none;
+}
+.show-bar {
+  scrollbar-width: thin;
 }
 
-@media (max-width: 900px) {
-  .group-detail-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* ── `.uc-tip` — CSS-only tooltip. Pair with a `data-tip` attribute (the text)
+   and keep a matching `title` for assistive tech / no-JS. Positions above the
+   element; `.uc-tip-below` flips it under, for controls near the top edge. ── */
+.uc-tip {
+  position: relative;
+}
+.uc-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--overlay-bg-strong);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+  z-index: 20;
+}
+.uc-tip:hover::after,
+.uc-tip:focus-visible::after {
+  opacity: 1;
+}
 
-  .group-tab-rail {
-    flex-direction: row;
-    overflow-x: auto;
-    scrollbar-width: none;
+/* ── `.modal--sheet` — bottom sheet layout for Modal's `sheet` prop.
+   Desktop renders the normal centered dialog; under 767px it drops to the
+   bottom edge with a drag handle and only rounds the top corners. ── */
+.modal-drag-handle {
+  display: none;
+}
+@media (max-width: 767px) {
+  .modal-overlay--sheet {
+    align-items: flex-end !important;
+    padding: 0 !important;
   }
-
-  .group-tab-rail::-webkit-scrollbar {
-    display: none;
+  .modal--sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 78dvh !important;
+    border-radius: var(--r-xl) var(--r-xl) 0 0 !important;
   }
-
-  .group-tab-rail > button {
-    width: auto;
+  .modal--sheet .modal-drag-handle {
+    display: block;
+    width: 34px;
+    height: 4px;
+    margin: 0 auto 12px;
+    border-radius: var(--r-pill);
+    background: var(--border-hover);
     flex-shrink: 0;
-  }
-
-  /* Vertical marker on a horizontal row reads as an underline instead. */
-  .group-tab-rail__marker {
-    left: 10px;
-    right: 10px;
-    top: auto;
-    bottom: 2px;
-    width: auto;
-    height: 2px;
   }
 }

@@ -1,18 +1,28 @@
 import { Router } from 'express'
-import { requireAuth } from '../../middleware/auth'
+import { requireAuth, requireRole } from '../../middleware/auth'
 import { requireAcademicGroup } from '../../middleware/requireAcademicGroup'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
   approvePendingAiContent,
+  askTeacher,
+  askTeacherQueue,
+  bookConsultationSlot,
+  bulkInviteToGroup,
   cancelInvite,
   cancelJoinRequest,
+  createAnnouncement,
+  createConsultationSlot,
   createFlashcard,
   createFlashcardDeck,
   createGroup,
+  createGroupFromOutline,
   createResource,
   createSharedNote,
   createStudySession,
+  deleteAnnouncement,
+  draftCourseOutline,
+  deleteConsultationSlot,
   deleteFlashcard,
   deleteFlashcardDeck,
   deleteGroup,
@@ -21,9 +31,11 @@ import {
   deleteStudySession,
   discardPendingAiContent,
   getAiSettings,
+  getAnalytics,
   getFlashcardReviewQueue,
   getGroup,
   getGroupStats,
+  getInviteMatchCount,
   getMySessionPrivateNotes,
   getSessionCreatorNotes,
   getSessionCreatorNotesUploadUrl,
@@ -33,6 +45,8 @@ import {
   joinOrRequestGroup,
   leaveGroup,
   updateMyMute,
+  listAnnouncements,
+  listConsultationSlots,
   listFlashcardDecks,
   listFlashcards,
   listGroupCollaborations,
@@ -41,53 +55,78 @@ import {
   listGroupPosts,
   listGroups,
   listJoinRequests,
+  listModerationLog,
   listMyGroups,
   listPendingAiContent,
+  listPendingEvents,
   listPendingInvites,
+  listPendingPosts,
   listResources,
   listSharedNotes,
   listStudySessions,
+  listSuggestions,
+  openGroupChat,
   putMySessionPrivateNotes,
   putSessionCreatorNotes,
   removeMember,
+  reviewConsultationBooking,
+  reviewEvent,
   reviewFlashcard,
   reviewJoinRequest,
+  reviewPost,
+  reviewSummary,
   rsvpStudySession,
   setPinned,
   setRules,
   trackResource,
+  updateAnnouncement,
   updateFlashcard,
   updateAiSettings,
   updateFlashcardDeck,
   updateGroup,
   updateMember,
+  updateSettings,
   updateSharedNote,
 } from './controller'
 import {
+  BookSlotSchema,
+  BulkInviteSchema,
+  CourseOutlineDraftRequestSchema,
+  CreateAnnouncementSchema,
   CreateFlashcardDeckSchema,
   CreateFlashcardSchema,
+  CreateGroupFromOutlineSchema,
   CreateGroupSchema,
   CreateResourceSchema,
   CreateSharedNoteSchema,
+  CreateSlotSchema,
   CreateStudySessionSchema,
   FlashcardReviewSchema,
   GroupListQuerySchema,
+  InviteMatchQuerySchema,
   InviteToGroupSchema,
   JoinGroupSchema,
   JoinRequestActionSchema,
+  JoinRequestsQuerySchema,
   MembersQuerySchema,
+  ModLogQuerySchema,
   NoteUploadUrlRequestSchema,
   PaginationQuerySchema,
   PutSessionCreatorNotesSchema,
   PutSessionPrivateNotesSchema,
   ResourceListQuerySchema,
+  ReviewActionSchema,
+  ReviewBookingSchema,
   RsvpStudySessionSchema,
   SetPinnedSchema,
   SetRulesSchema,
+  SuggestionsQuerySchema,
+  UpdateAnnouncementSchema,
   UpdateFlashcardDeckSchema,
   UpdateFlashcardSchema,
   UpdateGroupAISettingsSchema,
   UpdateGroupSchema,
+  UpdateGroupSettingsSchema,
   UpdateMemberSchema,
   UpdateMyMuteSchema,
   UpdateSharedNoteSchema,
@@ -101,8 +140,38 @@ groupsRouter.use(requireAuth, resolveUniversity)
 groupsRouter.get('/', validateRequest({ query: GroupListQuerySchema }), listGroups)
 groupsRouter.post('/', validate(CreateGroupSchema), createGroup)
 groupsRouter.get('/my', validateRequest({ query: PaginationQuerySchema }), listMyGroups)
+groupsRouter.get('/suggestions', validateRequest({ query: SuggestionsQuerySchema }), listSuggestions)
+
+// Course-outline import (declared before `/:groupId` — literal paths would otherwise be
+// swallowed by the param route)
+groupsRouter.post(
+  '/course-outline/draft',
+  requireRole('faculty', 'admin'),
+  validate(CourseOutlineDraftRequestSchema),
+  draftCourseOutline,
+)
+groupsRouter.post(
+  '/from-outline',
+  requireRole('faculty', 'admin'),
+  validate(CreateGroupFromOutlineSchema),
+  createGroupFromOutline,
+)
+groupsRouter.get(
+  '/invite-match',
+  requireRole('faculty', 'admin'),
+  validateRequest({ query: InviteMatchQuerySchema }),
+  getInviteMatchCount,
+)
+
 groupsRouter.get('/:groupId', getGroup)
 groupsRouter.patch('/:groupId', validate(UpdateGroupSchema), updateGroup)
+groupsRouter.patch('/:groupId/settings', validate(UpdateGroupSettingsSchema), updateSettings)
+groupsRouter.get('/:groupId/moderation-log', validateRequest({ query: ModLogQuerySchema }), listModerationLog)
+groupsRouter.get('/:groupId/review/summary', reviewSummary)
+groupsRouter.get('/:groupId/review/posts', listPendingPosts)
+groupsRouter.patch('/:groupId/review/posts/:postId', validate(ReviewActionSchema), reviewPost)
+groupsRouter.get('/:groupId/review/events', listPendingEvents)
+groupsRouter.patch('/:groupId/review/events/:eventId', validate(ReviewActionSchema), reviewEvent)
 groupsRouter.delete('/:groupId', deleteGroup)
 groupsRouter.post('/:groupId/join', validate(JoinGroupSchema), joinOrRequestGroup)
 groupsRouter.delete('/:groupId/leave', leaveGroup)
@@ -112,7 +181,7 @@ groupsRouter.patch('/:groupId/members/me/mute', validate(UpdateMyMuteSchema), up
 groupsRouter.get('/:groupId/members', validateRequest({ query: MembersQuerySchema }), listGroupMembers)
 groupsRouter.patch('/:groupId/members/:userId', validate(UpdateMemberSchema), updateMember)
 groupsRouter.delete('/:groupId/members/:userId', removeMember)
-groupsRouter.get('/:groupId/join-requests', validateRequest({ query: PaginationQuerySchema }), listJoinRequests)
+groupsRouter.get('/:groupId/join-requests', validateRequest({ query: JoinRequestsQuerySchema }), listJoinRequests)
 groupsRouter.patch('/:groupId/join-requests/:requestId', validate(JoinRequestActionSchema), reviewJoinRequest)
 groupsRouter.delete('/:groupId/join-requests/me', cancelJoinRequest)
 groupsRouter.get('/:groupId/posts', validateRequest({ query: PaginationQuerySchema }), listGroupPosts)
@@ -123,6 +192,12 @@ groupsRouter.get(
   listGroupCollaborations,
 )
 groupsRouter.post('/:groupId/invitations', validate(InviteToGroupSchema), inviteToGroup)
+groupsRouter.post(
+  '/:groupId/invitations/bulk',
+  requireRole('admin'),
+  validate(BulkInviteSchema),
+  bulkInviteToGroup,
+)
 groupsRouter.get('/:groupId/invitations', validateRequest({ query: PaginationQuerySchema }), listPendingInvites)
 groupsRouter.delete('/:groupId/invitations/:invitationId', cancelInvite)
 
@@ -138,6 +213,12 @@ groupsRouter.patch('/:groupId/rules', validate(SetRulesSchema), setRules)
 
 // Analytics stats
 groupsRouter.get('/:groupId/stats', getGroupStats)
+groupsRouter.get('/:groupId/analytics', getAnalytics)
+
+// Group chat + ask-teacher
+groupsRouter.post('/:groupId/chat', openGroupChat)
+groupsRouter.post('/:groupId/ask-teacher', askTeacher)
+groupsRouter.get('/:groupId/ask-teacher/queue', askTeacherQueue)
 
 // Study sessions
 groupsRouter.get('/:groupId/study-sessions', validateRequest({ query: PaginationQuerySchema }), listStudySessions)
@@ -225,3 +306,28 @@ groupsRouter.patch('/:groupId/ai-settings', validate(UpdateGroupAISettingsSchema
 groupsRouter.get('/:groupId/ai-settings/pending', listPendingAiContent)
 groupsRouter.post('/:groupId/ai-settings/pending/:contentId/approve', approvePendingAiContent)
 groupsRouter.delete('/:groupId/ai-settings/pending/:contentId', discardPendingAiContent)
+
+// Announcements (academic groups)
+groupsRouter.get('/:groupId/announcements', listAnnouncements)
+groupsRouter.post('/:groupId/announcements', validate(CreateAnnouncementSchema), createAnnouncement)
+groupsRouter.patch(
+  '/:groupId/announcements/:announcementId',
+  validate(UpdateAnnouncementSchema),
+  updateAnnouncement,
+)
+groupsRouter.delete('/:groupId/announcements/:announcementId', deleteAnnouncement)
+
+// Consultation slots + bookings
+groupsRouter.get('/:groupId/consultation-slots', listConsultationSlots)
+groupsRouter.post('/:groupId/consultation-slots', validate(CreateSlotSchema), createConsultationSlot)
+groupsRouter.delete('/:groupId/consultation-slots/:slotId', deleteConsultationSlot)
+groupsRouter.post(
+  '/:groupId/consultation-slots/:slotId/book',
+  validate(BookSlotSchema),
+  bookConsultationSlot,
+)
+groupsRouter.patch(
+  '/:groupId/consultation-slots/:slotId/bookings/:bookingId',
+  validate(ReviewBookingSchema),
+  reviewConsultationBooking,
+)

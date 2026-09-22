@@ -26,6 +26,7 @@ interface CreateNotificationInput {
   referenceId?: string | null
   referenceType?: string | null
   content: string
+  data?: Record<string, unknown> | null
 }
 
 interface NotificationRow {
@@ -38,6 +39,7 @@ interface NotificationRow {
   content: string
   is_read: boolean
   created_at: Date
+  data: Record<string, unknown> | null
   actor_full_name: string | null
   actor_avatar_url: string | null
   actor_headline: string | null
@@ -98,6 +100,7 @@ export class NotificationsService {
         reference_id: input.referenceId ?? null,
         reference_type: input.referenceType ?? null,
         content: input.content,
+        data: input.data ? JSON.stringify(input.data) : null,
       })
       .returning<{ id: string }[]>('id')
 
@@ -189,7 +192,11 @@ export class NotificationsService {
   ) {
     const notification = await db('notifications')
       .where({ id: notificationId, user_id: userId, type: 'group_invite' })
-      .select<{ id: string; reference_id: string | null }[]>('id', 'reference_id')
+      .select<{ id: string; reference_id: string | null; data: Record<string, unknown> | null }[]>(
+        'id',
+        'reference_id',
+        'data',
+      )
       .first()
     if (!notification || !notification.reference_id) {
       throw notFound('Group invitation not found', 'GROUP_INVITE_NOT_FOUND')
@@ -199,6 +206,7 @@ export class NotificationsService {
     const group = await groupsService.joinGroupViaInvite(
       { userId, universityId, role: userRole },
       notification.reference_id,
+      notification.data?.role,
     )
 
     await db('notifications').where({ id: notificationId, user_id: userId }).update({ is_read: true })
@@ -280,6 +288,7 @@ function notificationSelectQuery() {
       'notifications.content',
       'notifications.is_read',
       'notifications.created_at',
+      'notifications.data',
       'actor_profile.full_name as actor_full_name',
       'actor_profile.avatar_url as actor_avatar_url',
       'actor_profile.headline as actor_headline',
@@ -312,6 +321,7 @@ function toNotification(row: NotificationRow) {
     content: row.content,
     isRead: row.is_read,
     createdAt: row.created_at,
+    data: row.data ?? null,
     refUrl,
     actor: row.actor_id
       ? {

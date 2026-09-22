@@ -1,9 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { api } from '@/lib/axios'
+import type { FeedPost } from '@uniconnect/shared'
 import type {
   AcademicModule,
+  Announcement,
+  AskTeacherQueueItem,
+  AskTeacherResult,
   Assignment,
   Attachment,
+  BookingStatus,
+  ConsultationBooking,
+  ConsultationSlot,
+  CreateAnnouncementInput,
+  CreateSlotInput,
   CourseOutline,
   CourseOutlineInput,
   FileUrlEntry,
@@ -13,6 +23,9 @@ import type {
   FlashcardReviewResult,
   Gradebook,
   GradebookEntryInput,
+  Group,
+  GroupMember,
+  MemberRole,
   MyGradeCard,
   ReviewRating,
   SessionNotes,
@@ -22,18 +35,21 @@ import type {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+export type JoinRequestStatus = 'pending' | 'approved' | 'declined'
+
 export interface JoinRequest {
   id: string
   groupId: string
   userId: string
   message: string | null
-  status: 'pending' | 'approved' | 'declined'
+  status: JoinRequestStatus
   createdAt: string
   requester: {
     id: string
     fullName: string | null
     avatarUrl: string | null
     department: string | null
+    batch: string | null
   }
 }
 
@@ -43,7 +59,7 @@ export interface GroupResource {
   uploadedBy: string | null
   title: string
   url: string
-  category: 'notes' | 'syllabus' | 'past_papers' | 'assignments' | 'other'
+  category: 'researches' | 'projects' | 'assignments' | 'notes' | 'other'
   description: string | null
   clickCount: number
   createdAt: string
@@ -73,6 +89,53 @@ export interface GroupStats {
   activeContributors: number
   pendingJoinRequests: number
   upcomingStudySessions: number
+  members: number
+  active30d: number
+  resources: number
+  upcomingEvents: number
+}
+
+export interface ReviewSummary {
+  pendingPosts: number
+  pendingEvents: number
+  pendingJoinRequests: number
+  reportsOpen: number
+}
+
+export interface PendingGroupEvent {
+  id: string
+  title: string
+  startDate: string
+  location: string
+  organizer: { id: string; fullName: string }
+}
+
+export interface GroupAnalytics {
+  members: number
+  membersDelta7d: number
+  posts30d: number
+  postsDeltaPct: number | null
+  activePct: number
+  reportsOpen: number
+  postsPerWeek: { label: string; count: number }[]
+  topMembers: { id: string; fullName: string | null; avatarUrl: string | null; posts: number; replies: number }[]
+}
+
+export type ModLogKind = 'post' | 'member' | 'settings'
+
+export interface ModLogEntry {
+  id: string
+  kind: ModLogKind
+  action: string
+  target: string
+  createdAt: string
+  actor: { id: string; fullName: string | null } | null
+}
+
+export interface GroupSettingsPatch {
+  is_private?: boolean
+  require_post_approval?: boolean
+  require_event_approval?: boolean
 }
 
 interface PaginatedResponse<T> {
@@ -122,16 +185,41 @@ const sharedNotesKey = (groupId: string) => ['groups', 'shared-notes', { groupId
 
 // ── Join requests ─────────────────────────────────────────────────────────────
 
+const joinRequestsKey = (groupId: string, status: JoinRequestStatus, page: number, limit: number) =>
+  ['groups', 'join-requests', { groupId, status, page, limit }] as const
+
+function invalidateJoinRequests(queryClient: ReturnType<typeof useQueryClient>, groupId: string) {
+  // Matches every `['groups','join-requests',{ groupId, status, page, limit }]` key —
+  // the three status filters plus the three limit=1 count queries.
+  queryClient.invalidateQueries({
+    predicate: (q) => {
+      const [a, b, c] = q.queryKey as [unknown, unknown, { groupId?: string } | undefined]
+      return a === 'groups' && b === 'join-requests' && c?.groupId === groupId
+    },
+  })
+  queryClient.invalidateQueries({ queryKey: reviewSummaryKey(groupId) })
+  queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+}
+
 /**
  * Admin-only endpoint — pass `enabled: false` for non-admins, otherwise every
  * plain member's group page fires a request that 403s.
+ *
+ * `limit: 1` (reading back `total`) is how the filter chips get their counts
+ * without loading each status's full row set.
  */
-export function useJoinRequests(groupId: string, enabled = true) {
+export function useJoinRequests(
+  groupId: string,
+  opts: { status?: JoinRequestStatus; page?: number; limit?: number; enabled?: boolean } = {},
+) {
+  const { status = 'pending', page = 1, limit = 20, enabled = true } = opts
   return useQuery({
-    queryKey: ['groups', 'join-requests', { groupId }],
+    queryKey: joinRequestsKey(groupId, status, page, limit),
     queryFn: () =>
       api
-        .get<{ data: PaginatedResponse<JoinRequest> }>(`/groups/${groupId}/join-requests`)
+        .get<{ data: PaginatedResponse<JoinRequest> }>(`/groups/${groupId}/join-requests`, {
+          params: { status, page, limit },
+        })
         .then((r) => r.data.data),
     enabled: !!groupId && enabled,
   })
@@ -140,11 +228,34 @@ export function useJoinRequests(groupId: string, enabled = true) {
 export function useReviewJoinRequest(groupId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ requestId, action }: { requestId: string; action: 'approve' | 'decline' }) =>
+    mutationFn: ({ requestId, action }: { requestId: string; action: 'approve' | 'decline' | 'undo' }) =>
       api.patch(`/groups/${groupId}/join-requests/${requestId}`, { action }).then((r) => r.data.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', 'join-requests', { groupId }] })
-      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+    onSuccess: () => invalidateJoinRequests(queryClient, groupId),
+  })
+}
+
+/**
+ * No bulk-approve endpoint exists — runs the pending PATCHes client-side and
+ * reports partial failure honestly rather than pretending it's all-or-nothing.
+ */
+export function useApproveAllJoinRequests(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (requestIds: string[]) => {
+      const results = await Promise.allSettled(
+        requestIds.map((requestId) =>
+          api.patch(`/groups/${groupId}/join-requests/${requestId}`, { action: 'approve' }),
+        ),
+      )
+      const ok = results.filter((r) => r.status === 'fulfilled').length
+      return { ok, total: requestIds.length }
+    },
+    onSuccess: ({ ok, total }) => {
+      invalidateJoinRequests(queryClient, groupId)
+      toast.success(`Approved ${ok} of ${total}`)
+    },
+    onError: () => {
+      toast.error('Failed to approve requests')
     },
   })
 }
@@ -154,9 +265,7 @@ export function useCancelJoinRequest(groupId: string) {
   return useMutation({
     mutationFn: () =>
       api.delete(`/groups/${groupId}/join-requests/me`).then((r) => r.data.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups', 'join-requests', { groupId }] })
-    },
+    onSuccess: () => invalidateJoinRequests(queryClient, groupId),
   })
 }
 
@@ -283,6 +392,184 @@ export function useGroupStats(groupId: string) {
     queryFn: () =>
       api.get<{ data: GroupStats }>(`/groups/${groupId}/stats`).then((r) => r.data.data),
     enabled: !!groupId,
+  })
+}
+
+// ── Manage card (right rail) ─────────────────────────────────────────────────
+
+export const reviewSummaryKey = (groupId: string) => ['groups', 'review-summary', { groupId }] as const
+
+/** Moderator+ only — gate with `enabled` so a member never 403s on every page. */
+export function useReviewSummary(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: reviewSummaryKey(groupId),
+    queryFn: () =>
+      api.get<{ data: ReviewSummary }>(`/groups/${groupId}/review/summary`).then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 60_000,
+  })
+}
+
+// ── Post review queue (Feed tab) ─────────────────────────────────────────────
+
+export const pendingPostsKey = (groupId: string) => ['groups', 'pending-posts', { groupId }] as const
+
+/** Moderator+ only — gate with `enabled` so a member never 403s on the group's own feed tab. */
+export function usePendingPosts(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: pendingPostsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: FeedPost[] } }>(`/groups/${groupId}/review/posts`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId && enabled,
+  })
+}
+
+export function useReviewPost(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ postId, action }: { postId: string; action: 'approve' | 'decline' }) =>
+      api.patch(`/groups/${groupId}/review/posts/${postId}`, { action }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pendingPostsKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: reviewSummaryKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: ['groups', groupId, 'posts'] })
+    },
+  })
+}
+
+// ── Event review queue (Events tab) ──────────────────────────────────────────
+
+export const pendingEventsKey = (groupId: string) => ['groups', 'pending-events', { groupId }] as const
+
+/** Moderator+ only — gate with `enabled` so a member never 403s on the group's own events tab. */
+export function usePendingEvents(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: pendingEventsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: PendingGroupEvent[] } }>(`/groups/${groupId}/review/events`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId && enabled,
+  })
+}
+
+export function useReviewEvent(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ eventId, action }: { eventId: string; action: 'approve' | 'decline' }) =>
+      api.patch(`/groups/${groupId}/review/events/${eventId}`, { action }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pendingEventsKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: reviewSummaryKey(groupId) })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'events', groupId] })
+    },
+  })
+}
+
+export function useUpdateGroupSettings(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: GroupSettingsPatch) =>
+      api.patch<{ data: Group }>(`/groups/${groupId}/settings`, patch).then((r) => r.data.data),
+    onSuccess: (group) => {
+      queryClient.setQueryData(['groups', 'detail', groupId], group)
+      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+    },
+  })
+}
+
+export function useDeleteGroup(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.delete<{ data: { deleted: true } }>(`/groups/${groupId}`).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: ['groups', 'detail', groupId] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'list'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'my'] })
+    },
+  })
+}
+
+export function useGroupAnalytics(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'analytics', { groupId }],
+    queryFn: () =>
+      api.get<{ data: GroupAnalytics }>(`/groups/${groupId}/analytics`).then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function useModerationLog(groupId: string, kind: ModLogKind | 'all', enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'moderation-log', { groupId, kind }],
+    queryFn: () =>
+      api
+        .get<{ data: PaginatedResponse<ModLogEntry> }>(`/groups/${groupId}/moderation-log`, {
+          params: { kind, limit: 50 },
+        })
+        .then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function useGroupSuggestions(limit = 4, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'suggestions', { limit }],
+    queryFn: () =>
+      api
+        .get<{ data: { items: Group[] } }>('/groups/suggestions', { params: { limit } })
+        .then((r) => r.data.data.items),
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+export function useUpdateGroupDescription(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (description: string) =>
+      api.patch<{ data: Group }>(`/groups/${groupId}`, { description }).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+    },
+  })
+}
+
+/**
+ * Join (or request to join) / leave a group. Shared by `GroupCard` and the right-rail
+ * suggestions so both surfaces invalidate the same caches and toast the same copy.
+ */
+export function useToggleGroupMembership(group: Pick<Group, 'id' | 'isMember'>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      group.isMember
+        ? api.delete(`/groups/${group.id}/members/me`).then((r) => r.data)
+        : api.post<{ data: { requested?: boolean } }>(`/groups/${group.id}/members`).then((r) => r.data.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['groups', 'list'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'my'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'suggestions'] })
+      queryClient.invalidateQueries({ queryKey: ['groups', 'detail', group.id] })
+      if (group.isMember) {
+        toast.success('Left group')
+      } else if (data && 'requested' in data && data.requested) {
+        toast.success('Join request sent')
+      } else {
+        toast.success('Joined group')
+      }
+    },
+    onError: (error: unknown) => {
+      const message =
+        typeof error === 'object' && error && 'response' in error
+          ? ((error as { response?: { data?: { error?: string } } }).response?.data?.error ?? null)
+          : null
+      toast.error(message ?? (group.isMember ? 'Failed to leave group' : 'Failed to join group'))
+    },
   })
 }
 
@@ -473,6 +760,8 @@ export function useSharedNoteUpload(groupId: string) {
   })
 }
 
+const gradebookKey = (groupId: string) => ['groups', 'gradebook', { groupId }] as const
+
 // ── Course outline ───────────────────────────────────────────────────────────
 
 const courseOutlineKey = (groupId: string) => ['groups', 'course-outline', { groupId }] as const
@@ -495,13 +784,14 @@ export function useSaveCourseOutline(groupId: string, mode: 'create' | 'replace'
         : api.put<{ data: CourseOutline }>(`/groups/${groupId}/course-outline`, input).then((r) => r.data.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseOutlineKey(groupId) })
+      // Assessment changes add/remove gradebook columns.
+      queryClient.invalidateQueries({ queryKey: gradebookKey(groupId) })
     },
   })
 }
 
 // ── Gradebook ────────────────────────────────────────────────────────────────
 
-const gradebookKey = (groupId: string) => ['groups', 'gradebook', { groupId }] as const
 const myGradeCardKey = (groupId: string) => ['groups', 'gradebook', 'me', { groupId }] as const
 
 export function useGradebook(groupId: string) {
@@ -869,5 +1159,243 @@ export function useGradeSubmission(groupId: string, assignmentId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: submissionsKey(groupId, assignmentId) })
     },
+  })
+}
+
+/** "Your groups" list for the group-detail left rail. */
+export function useMyGroups() {
+  return useQuery({
+    queryKey: ['groups', 'my'],
+    queryFn: () =>
+      api.get<{ data: PaginatedResponse<Group> }>('/groups/my?limit=20').then((r) => r.data.data),
+    staleTime: 60_000,
+  })
+}
+
+// ── Members (header face stack + Members panel) ───────────────────────────────
+
+export interface MembersFilters {
+  search?: string
+  role?: MemberRole
+}
+
+const membersKey = (groupId: string, filters: MembersFilters, limit: number) =>
+  ['groups', 'members', { groupId, search: filters.search ?? '', role: filters.role ?? '', limit }] as const
+
+/**
+ * First page of a group's members. The header's face stack reads it with `limit: 5`;
+ * the Members panel reads it with the default page size and its own search/role.
+ */
+export function useGroupMembers(groupId: string, filters: MembersFilters = {}, limit = 20) {
+  return useQuery({
+    queryKey: membersKey(groupId, filters, limit),
+    queryFn: () =>
+      api
+        .get<{ data: PaginatedResponse<GroupMember> }>(`/groups/${groupId}/members`, {
+          params: {
+            page: 1,
+            limit,
+            ...(filters.search ? { search: filters.search } : {}),
+            ...(filters.role ? { role: filters.role } : {}),
+          },
+        })
+        .then((r) => r.data.data),
+    enabled: !!groupId,
+    staleTime: 60_000,
+  })
+}
+
+function invalidateMembers(queryClient: ReturnType<typeof useQueryClient>, groupId: string) {
+  // Matches every `['groups','members',{ groupId, … }]` key regardless of filters.
+  queryClient.invalidateQueries({
+    predicate: (q) => {
+      const [a, b, c] = q.queryKey as [unknown, unknown, { groupId?: string } | undefined]
+      return a === 'groups' && b === 'members' && c?.groupId === groupId
+    },
+  })
+  queryClient.invalidateQueries({ queryKey: ['groups', 'detail', groupId] })
+}
+
+export function useUpdateMemberRole(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: Exclude<MemberRole, 'owner'> }) =>
+      api.patch(`/groups/${groupId}/members/${userId}`, { role }).then((r) => r.data.data),
+    onSuccess: () => invalidateMembers(queryClient, groupId),
+  })
+}
+
+export function useRemoveMember(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => api.delete(`/groups/${groupId}/members/${userId}`).then((r) => r.data.data),
+    onSuccess: () => invalidateMembers(queryClient, groupId),
+  })
+}
+
+/** `POST /groups/:id/chat` — creates or returns the academic group conversation. */
+export function useOpenGroupChat(groupId: string) {
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ data: { conversationId: string } }>(`/groups/${groupId}/chat`).then((r) => r.data.data),
+  })
+}
+
+export type InviteRole = Exclude<MemberRole, 'owner'>
+
+/** One `POST /groups/:id/invitations` per user; resolves with how many failed. */
+export function useInviteToGroup(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ userIds, role }: { userIds: string[]; role: InviteRole }) => {
+      const results = await Promise.allSettled(
+        userIds.map((userId) => api.post(`/groups/${groupId}/invitations`, { userId, role })),
+      )
+      const failed = results.filter((r) => r.status === 'rejected').length
+      return { total: userIds.length, sent: userIds.length - failed, failed }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups', 'pending-invites', groupId] })
+    },
+  })
+}
+
+// ── Announcements (academic groups) ───────────────────────────────────────────
+
+export const announcementsKey = (groupId: string) => ['groups', 'announcements', { groupId }] as const
+
+export function useAnnouncements(groupId: string) {
+  return useQuery({
+    queryKey: announcementsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: Announcement[] } }>(`/groups/${groupId}/announcements`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateAnnouncement(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateAnnouncementInput) =>
+      api.post<{ data: Announcement }>(`/groups/${groupId}/announcements`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: announcementsKey(groupId) })
+      toast.success('Announcement posted')
+    },
+  })
+}
+
+export function useUpdateAnnouncement(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      announcementId,
+      ...patch
+    }: { announcementId: string } & Partial<Pick<Announcement, 'title' | 'body' | 'kind' | 'isPinned'>>) =>
+      api
+        .patch<{ data: Announcement }>(`/groups/${groupId}/announcements/${announcementId}`, {
+          ...(patch.title !== undefined ? { title: patch.title } : {}),
+          ...(patch.body !== undefined ? { body: patch.body } : {}),
+          ...(patch.kind !== undefined ? { kind: patch.kind } : {}),
+          ...(patch.isPinned !== undefined ? { is_pinned: patch.isPinned } : {}),
+        })
+        .then((r) => r.data.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: announcementsKey(groupId) }),
+  })
+}
+
+export function useDeleteAnnouncement(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (announcementId: string) => api.delete(`/groups/${groupId}/announcements/${announcementId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: announcementsKey(groupId) }),
+  })
+}
+
+// ── Ask teacher ──────────────────────────────────────────────────────────────
+
+/** `POST /groups/:id/ask-teacher` — idempotent; returns the student↔teacher DM. Student only. */
+export function useAskTeacher(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'ask-teacher', { groupId }],
+    queryFn: () =>
+      api.post<{ data: AskTeacherResult }>(`/groups/${groupId}/ask-teacher`).then((r) => r.data.data),
+    enabled: !!groupId && enabled,
+    staleTime: 5 * 60_000,
+  })
+}
+
+/** Admin only — gate with `enabled`. */
+export function useAskTeacherQueue(groupId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['groups', 'ask-teacher-queue', { groupId }],
+    queryFn: () =>
+      api
+        .get<{ data: { items: AskTeacherQueueItem[] } }>(`/groups/${groupId}/ask-teacher/queue`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId && enabled,
+    staleTime: 30_000,
+  })
+}
+
+// ── Consultation slots + bookings ────────────────────────────────────────────
+
+export const consultationSlotsKey = (groupId: string) => ['groups', 'consultation-slots', { groupId }] as const
+
+export function useConsultationSlots(groupId: string) {
+  return useQuery({
+    queryKey: consultationSlotsKey(groupId),
+    queryFn: () =>
+      api
+        .get<{ data: { items: ConsultationSlot[] } }>(`/groups/${groupId}/consultation-slots`)
+        .then((r) => r.data.data.items),
+    enabled: !!groupId,
+  })
+}
+
+export function useCreateSlot(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateSlotInput) =>
+      api.post<{ data: ConsultationSlot }>(`/groups/${groupId}/consultation-slots`, input).then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: consultationSlotsKey(groupId) })
+      toast.success('Slot added')
+    },
+  })
+}
+
+export function useBookSlot(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ slotId, topic }: { slotId: string; topic: string }) =>
+      api
+        .post<{ data: ConsultationBooking }>(`/groups/${groupId}/consultation-slots/${slotId}/book`, { topic })
+        .then((r) => r.data.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: consultationSlotsKey(groupId) }),
+  })
+}
+
+export function useReviewBooking(groupId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      slotId,
+      bookingId,
+      status,
+    }: {
+      slotId: string
+      bookingId: string
+      status: Exclude<BookingStatus, 'requested'>
+    }) =>
+      api
+        .patch<{ data: ConsultationBooking }>(
+          `/groups/${groupId}/consultation-slots/${slotId}/bookings/${bookingId}`,
+          { status },
+        )
+        .then((r) => r.data.data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: consultationSlotsKey(groupId) }),
   })
 }

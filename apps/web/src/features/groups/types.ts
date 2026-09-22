@@ -56,6 +56,10 @@ export interface Group {
   previewMembers?: GroupPreviewMember[]
   /** Members of this group the viewer is connected to. List endpoint only. */
   knownMemberCount?: number
+  requirePostApproval?: boolean
+  requireEventApproval?: boolean
+  /** Unread count on the academic group chat. Not yet served by the API — optional. */
+  chatUnread?: number
 }
 
 export interface GroupMember {
@@ -125,6 +129,7 @@ export interface FlashcardDeck {
   isArchived: boolean
   cardCount: number
   dueCount: number
+  masteredCount: number
   createdAt: string
   updatedAt: string
   creator: GroupUserSummary | null
@@ -269,6 +274,44 @@ export interface CourseOutlineInput {
   topics: CourseOutlineTopic[]
 }
 
+// ── Course-outline import wizard ───────────────────────────────
+export type OutlineAssignmentKind = 'assignment' | 'class_test'
+
+export interface CourseOutlineDraftAssignment {
+  title: string
+  dueDate: string | null
+  topic: string | null
+  kind: OutlineAssignmentKind
+}
+
+/** Reviewable draft returned by `POST /groups/course-outline/draft` and accepted back by
+ *  `POST /groups/from-outline` — topics' free-text date range is folded into `description`
+ *  server-side (see `outline-import.service.ts`). */
+export interface CourseOutlineDraft {
+  courseCode?: string
+  courseTitle: string
+  section?: string
+  creditHours?: number
+  trimester?: string
+  description?: string
+  gradingScale: 'uiu' | 'ugc' | 'custom'
+  customScaleJson?: unknown
+  assessments: CourseOutlineAssessment[]
+  topics: CourseOutlineTopic[]
+  assignments: CourseOutlineDraftAssignment[]
+}
+
+export interface CourseOutlineDraftResponse {
+  draft: CourseOutlineDraft
+  rosterEmails: string[]
+}
+
+export interface BulkInviteResult {
+  invited: number
+  skipped: number
+  mailed: number
+}
+
 export interface FileUrlEntry {
   name: string
   url: string
@@ -323,4 +366,74 @@ export interface Submission {
   submittedAt: string
   gradedAt?: string | null
   isLate: boolean
+}
+
+// ── Announcements (academic groups) ───────────────────────────────────────────
+
+export type AnnouncementKind = 'urgent' | 'schedule' | 'notice'
+
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  kind: AnnouncementKind
+  isPinned: boolean
+  attachments: Attachment[]
+  author: { id: string; fullName: string }
+  createdAt: string
+}
+
+export interface CreateAnnouncementInput {
+  title: string
+  body: string
+  kind: AnnouncementKind
+  notify_members: boolean
+  attachments: Attachment[]
+}
+
+// ── Ask teacher + consultation slots ─────────────────────────────────────────
+
+export interface AskTeacherResult {
+  conversationId: string
+  teacher: { id: string; fullName: string | null; avatarUrl: string | null; department: string | null }
+}
+
+export interface AskTeacherQueueItem {
+  conversationId: string
+  student: { id: string; fullName: string | null; avatarUrl: string | null }
+  lastMessage: string
+  lastAt: string | null
+  unread: number
+}
+
+export type BookingStatus = 'requested' | 'confirmed' | 'declined'
+
+export interface ConsultationBooking {
+  id: string
+  slotId: string
+  bookedFor: string
+  topic: string
+  status: BookingStatus
+  student: { id: string; fullName: string }
+}
+
+export interface ConsultationSlot {
+  id: string
+  weekday: number
+  startTime: string
+  endTime: string
+  location: string
+  walkIn: boolean
+  nextOccurrence: string
+  myBooking: { id: string; status: BookingStatus } | null
+  /** Admin only */
+  bookings?: ConsultationBooking[]
+}
+
+export interface CreateSlotInput {
+  weekday: number
+  start_time: string
+  end_time: string
+  location: string
+  walk_in: boolean
 }

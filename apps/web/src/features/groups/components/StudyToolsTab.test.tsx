@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AxiosError, AxiosHeaders } from 'axios'
 import { StudyToolsTab } from './StudyToolsTab'
-import type { GroupType } from '../types'
 
 const mockUseStudySessions = vi.fn()
 const mockUseCreateStudySession = vi.fn()
@@ -20,6 +20,10 @@ const mockUseSharedNotes = vi.fn()
 const mockUseCreateSharedNote = vi.fn()
 const mockUseUpdateSharedNote = vi.fn()
 const mockUseDeleteSharedNote = vi.fn()
+const mockUseSessionCreatorNotes = vi.fn()
+const mockUseSaveSessionCreatorNotes = vi.fn()
+const mockUseMySessionPrivateNotes = vi.fn()
+const mockUseSaveMySessionPrivateNotes = vi.fn()
 
 vi.mock('@/features/groups', () => ({
   useStudySessions: () => mockUseStudySessions(),
@@ -42,17 +46,18 @@ vi.mock('../hooks/useGroupExtended', () => ({
   useCreateSharedNote: () => mockUseCreateSharedNote(),
   useUpdateSharedNote: () => mockUseUpdateSharedNote(),
   useDeleteSharedNote: () => mockUseDeleteSharedNote(),
+  useSessionCreatorNotes: () => mockUseSessionCreatorNotes(),
+  useSaveSessionCreatorNotes: () => mockUseSaveSessionCreatorNotes(),
+  useMySessionPrivateNotes: () => mockUseMySessionPrivateNotes(),
+  useSaveMySessionPrivateNotes: () => mockUseSaveMySessionPrivateNotes(),
 }))
 
 function pendingMutation(mutate = vi.fn()) {
   return { mutate, isPending: false }
 }
 
-function renderStudyTools(
-  userRole: 'owner' | 'admin' | 'moderator' | 'member' = 'member',
-  groupType: string = 'academic',
-) {
-  render(<StudyToolsTab groupId="group-1" currentUserId="user-1" userRole={userRole} groupType={groupType as GroupType} />)
+function renderStudyTools(userRole: 'owner' | 'admin' | 'moderator' | 'member' = 'member') {
+  render(<StudyToolsTab groupId="group-1" currentUserId="user-1" userRole={userRole} />)
 }
 
 function deck(overrides = {}) {
@@ -65,6 +70,7 @@ function deck(overrides = {}) {
     isArchived: false,
     cardCount: 12,
     dueCount: 3,
+    masteredCount: 5,
     createdAt: '2026-07-01T00:00:00.000Z',
     updatedAt: '2026-07-01T00:00:00.000Z',
     creator: null,
@@ -89,13 +95,29 @@ function card(overrides = {}) {
   }
 }
 
+function forbiddenError() {
+  return new AxiosError(
+    'Request failed with status code 403',
+    'ERR_BAD_REQUEST',
+    { headers: new AxiosHeaders() },
+    {},
+    {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+      data: { error: 'Forbidden', code: 'FORBIDDEN' },
+    },
+  )
+}
+
 describe('StudyToolsTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseStudySessions.mockReturnValue({ data: { items: [], total: 0, page: 1, hasMore: false }, isLoading: false })
     mockUseCreateStudySession.mockReturnValue(pendingMutation())
     mockUseRsvpStudySession.mockReturnValue(pendingMutation())
-    mockUseFlashcardDecks.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() })
+    mockUseFlashcardDecks.mockReturnValue({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() })
     mockUseCreateFlashcardDeck.mockReturnValue(pendingMutation())
     mockUseUpdateFlashcardDeck.mockReturnValue(pendingMutation())
     mockUseDeleteFlashcardDeck.mockReturnValue(pendingMutation())
@@ -109,14 +131,28 @@ describe('StudyToolsTab', () => {
     mockUseCreateSharedNote.mockReturnValue(pendingMutation())
     mockUseUpdateSharedNote.mockReturnValue(pendingMutation())
     mockUseDeleteSharedNote.mockReturnValue(pendingMutation())
+    mockUseSessionCreatorNotes.mockReturnValue({ data: null, isLoading: false })
+    mockUseSaveSessionCreatorNotes.mockReturnValue({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })
+    mockUseMySessionPrivateNotes.mockReturnValue({ data: null, isLoading: false })
+    mockUseSaveMySessionPrivateNotes.mockReturnValue({ mutateAsync: vi.fn(), isPending: false })
   })
 
-  it('renders segmented controls for study tools', () => {
+  it('renders segmented controls for Sessions and Decks only — no Notes mode', () => {
     renderStudyTools()
 
     expect(screen.getByRole('tab', { name: 'Sessions' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Decks' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Notes' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument()
+  })
+
+  it('reaches shared notes from a Notes chip in the Sessions header', () => {
+    renderStudyTools()
+
+    expect(screen.queryByText('No shared notes yet')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Notes$/i }))
+
+    expect(screen.getByText('No shared notes yet')).toBeInTheDocument()
   })
 
   it('shows the empty decks state with a deck creation affordance', () => {
@@ -135,6 +171,7 @@ describe('StudyToolsTab', () => {
       ],
       isLoading: false,
       isError: false,
+      error: null,
       refetch: vi.fn(),
     })
     mockUseReviewQueue.mockReturnValue({
@@ -166,15 +203,6 @@ describe('StudyToolsTab', () => {
     expect(screen.getByRole('button', { name: 'Easy' })).toBeTruthy()
   })
 
-  it('shows the empty notes state with a note creation affordance', () => {
-    renderStudyTools()
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Notes' }))
-
-    expect(screen.getByText('No shared notes yet')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: /New note/i }).length).toBeGreaterThan(0)
-  })
-
   it('moves to the next review card, then shows closure after rating the final card', () => {
     const reviewMutate = vi.fn((_input, options) => {
       options?.onSuccess?.({
@@ -195,6 +223,7 @@ describe('StudyToolsTab', () => {
       data: [deck()],
       isLoading: false,
       isError: false,
+      error: null,
       refetch: vi.fn(),
     })
     mockUseReviewQueue.mockReturnValue({
@@ -234,6 +263,7 @@ describe('StudyToolsTab', () => {
       data: [deck()],
       isLoading: false,
       isError: false,
+      error: null,
       refetch: vi.fn(),
     })
     mockUseFlashcards.mockReturnValue({ data: [card()], isLoading: false })
@@ -257,9 +287,15 @@ describe('StudyToolsTab', () => {
     expect(deleteMutate).toHaveBeenCalledWith('card-1')
   })
 
-  it('shows a deck error state with retry', () => {
+  it('shows a deck error state with retry for a non-403 failure', () => {
     const refetch = vi.fn()
-    mockUseFlashcardDecks.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch })
+    mockUseFlashcardDecks.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('network down'),
+      refetch,
+    })
 
     renderStudyTools()
 
@@ -273,13 +309,12 @@ describe('StudyToolsTab', () => {
   })
 })
 
-describe('StudyToolsTab — academic gating', () => {
+describe('StudyToolsTab — decks locked by the API', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseStudySessions.mockReturnValue({ data: { items: [], total: 0, page: 1, hasMore: false }, isLoading: false })
     mockUseCreateStudySession.mockReturnValue(pendingMutation())
     mockUseRsvpStudySession.mockReturnValue(pendingMutation())
-    mockUseFlashcardDecks.mockReturnValue({ data: [], isLoading: false, isError: false, refetch: vi.fn() })
     mockUseCreateFlashcardDeck.mockReturnValue(pendingMutation())
     mockUseUpdateFlashcardDeck.mockReturnValue(pendingMutation())
     mockUseDeleteFlashcardDeck.mockReturnValue(pendingMutation())
@@ -293,22 +328,31 @@ describe('StudyToolsTab — academic gating', () => {
     mockUseCreateSharedNote.mockReturnValue(pendingMutation())
     mockUseUpdateSharedNote.mockReturnValue(pendingMutation())
     mockUseDeleteSharedNote.mockReturnValue(pendingMutation())
+    mockUseSessionCreatorNotes.mockReturnValue({ data: null, isLoading: false })
+    mockUseSaveSessionCreatorNotes.mockReturnValue({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false })
+    mockUseMySessionPrivateNotes.mockReturnValue({ data: null, isLoading: false })
+    mockUseSaveMySessionPrivateNotes.mockReturnValue({ mutateAsync: vi.fn(), isPending: false })
   })
 
-  it('shows AcademicOnlyNotice on the decks tab for a non-academic group', () => {
-    renderStudyTools('member', 'club')
+  it('shows the locked-decks notice when useFlashcardDecks 403s, regardless of group type', () => {
+    mockUseFlashcardDecks.mockReturnValue({ data: undefined, isLoading: false, isError: true, error: forbiddenError(), refetch: vi.fn() })
+
+    renderStudyTools('member')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Decks' }))
 
-    expect(screen.getByText(/Flashcard decks are available in Academic Groups/i)).toBeInTheDocument()
+    expect(screen.getByText(/Flashcard decks are available in academic groups/i)).toBeInTheDocument()
+    expect(screen.getByText('Sessions still work here.')).toBeInTheDocument()
   })
 
-  it('shows StudyDecksPanel on the decks tab for an academic group', () => {
-    renderStudyTools('member', 'academic')
+  it('shows StudyDecksPanel normally when the decks query succeeds', () => {
+    mockUseFlashcardDecks.mockReturnValue({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() })
+
+    renderStudyTools('member')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Decks' }))
 
-    expect(screen.queryByText(/Flashcard decks are available in Academic Groups/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Flashcard decks are available in academic groups/i)).not.toBeInTheDocument()
     expect(screen.getByText('No decks yet')).toBeInTheDocument()
   })
 })
