@@ -7,6 +7,8 @@ const fs = require('fs');
 // Must match AuthLoader.tsx's DEV_MOCK_USER.id and devMocks.ts's DEV_PROFILE.id —
 // ProfilePage's isOwnProfile check compares this against the fetched profile's id.
 const DEV_USER_ID = '11111111-1111-4111-8111-111111111111';
+// Must match devMocks.ts's DEV_GROUP.id.
+const DEV_GROUP_ID = 'dev-study-group';
 
 const PUBLIC_CAPTURE_MATRIX = [
   { suffix: '',               w: 1440, h: 900, theme: 'dark' },
@@ -40,6 +42,12 @@ const ROUTES = {
   'saved':       { path: '/saved',                    auth: true,  w: 1440, h: 900  },
   // `role` seeds the dev-auth mock user with that role so role-gated shells can be captured.
   'admin-learning': { path: '/admin?tab=learning',    auth: true,  role: 'admin', w: 1440, h: 900 },
+  // DEV_GROUP.id from devMocks.ts — member view (userRole: 'member').
+  'group-detail': { path: `/groups/${DEV_GROUP_ID}`,  auth: true,  w: 1440, h: 900  },
+  // Same group, but devMocks flips DEV_GROUP.userRole to 'owner' whenever dev-role=faculty,
+  // so this captures the admin "Manage this group" shell instead of the plain member view.
+  'group-detail-admin': { path: `/groups/${DEV_GROUP_ID}`, auth: true, role: 'faculty', w: 1440, h: 900 },
+  'groups-mobile': { path: `/groups/${DEV_GROUP_ID}`, auth: true,  w: 390,  h: 844  },
 };
 
 async function capture(name, route) {

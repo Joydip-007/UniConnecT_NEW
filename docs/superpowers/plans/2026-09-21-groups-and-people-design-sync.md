@@ -1084,7 +1084,7 @@ Section label style: `fontSize 11, fontWeight 500, letterSpacing '0.04em', color
 - Update CLAUDE.md module notes: groups module now has settings/review/announcements/consultation/analytics/moderation-log/chat/ask-teacher routes; `GET /groups/suggestions`, `/groups/from-outline`, `/groups/course-outline/draft`, `/groups/invite-match` are declared before `/:groupId`; detail page tabs live in `?tab=`; page-scoped rails via `pageRailStore`.
 - Run `node scripts/screenshot.cjs groups && node scripts/screenshot.cjs group-detail && node scripts/screenshot.cjs group-detail-admin && node scripts/screenshot.cjs groups-mobile`, `npx pnpm typecheck && npx pnpm lint && npx pnpm test`, `graphify update .`.
 
-- [ ] Commit `chore(groups): screenshots, docs and graph for the groups design sync`
+- [x] Commit `chore(groups): screenshots, docs and graph for the groups design sync`
 
 ---
 

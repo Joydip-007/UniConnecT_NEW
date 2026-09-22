@@ -75,6 +75,15 @@ const DEV_GROUP = {
   rulesMd: 'Keep decks accurate and cite course material when possible.',
 }
 
+// `dev-role=faculty` (the `group-detail-admin` screenshot route) also promotes the caller
+// to the group's owner, so GroupDetailPage renders the admin "Manage this group" shell
+// instead of the plain member view. Read per-request rather than cached at module init
+// since `resolveMockBody` runs on every mocked call.
+function currentDevGroup() {
+  const devRole = new URLSearchParams(window.location.search).get('dev-role')
+  return devRole === 'faculty' ? { ...DEV_GROUP, userRole: 'owner' as const } : DEV_GROUP
+}
+
 const DEV_DECK = {
   id: 'dev-deck-1',
   groupId: DEV_GROUP.id,
@@ -115,9 +124,34 @@ const DEV_NOTE = {
   creator: { id: DEV_PROFILE.id, fullName: DEV_PROFILE.profile.fullName, avatarUrl: null },
 }
 
+const DEV_GROUP_MEMBER = {
+  id: DEV_PROFILE.id,
+  fullName: DEV_PROFILE.profile.fullName,
+  avatarUrl: null,
+  role: 'member' as const,
+  headline: DEV_PROFILE.profile.headline,
+  department: DEV_PROFILE.profile.department,
+}
+
+const DEV_REVIEW_SUMMARY = { pendingPosts: 1, pendingEvents: 1, pendingJoinRequests: 2, reportsOpen: 0 }
+
+const DEV_GROUP_STATS = {
+  newMembersThisWeek: 4,
+  postsThisWeek: 9,
+  activeContributors: 21,
+  pendingJoinRequests: 2,
+  upcomingStudySessions: 1,
+  members: 48,
+  active30d: 33,
+  resources: 6,
+  upcomingEvents: 2,
+}
+
 /** Returns the HTTP body to fake for a GET, or null to defer to the real adapter. */
 function resolveMockBody(url: string): unknown | null {
+  const DEV_GROUP = currentDevGroup()
   if (url === '/groups') return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
+  if (url.startsWith('/groups/my')) return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
   if (url === `/groups/${DEV_GROUP.id}`) return { data: DEV_GROUP }
   if (url === `/groups/${DEV_GROUP.id}/join-requests`) {
     return { data: { items: [], total: 0, page: 1, hasMore: false } }
@@ -133,6 +167,26 @@ function resolveMockBody(url: string): unknown | null {
   if (url.startsWith(`/groups/${DEV_GROUP.id}/shared-notes`)) {
     return { data: { items: [DEV_NOTE], total: 1, page: 1, hasMore: false } }
   }
+  if (url === `/groups/${DEV_GROUP.id}/posts`) return { data: { items: [], hasMore: false, page: 1 } }
+  if (url === `/groups/${DEV_GROUP.id}/events`) return { data: { items: [], hasMore: false, page: 1 } }
+  if (url.startsWith(`/groups/${DEV_GROUP.id}/resources?`)) {
+    return { data: { items: [], total: 0, page: 1, hasMore: false } }
+  }
+  if (url === `/groups/${DEV_GROUP.id}/stats`) return { data: DEV_GROUP_STATS }
+  if (url === `/groups/${DEV_GROUP.id}/review/summary`) return { data: DEV_REVIEW_SUMMARY }
+  if (url === `/groups/${DEV_GROUP.id}/review/posts`) return { data: { items: [] } }
+  if (url === `/groups/${DEV_GROUP.id}/review/events`) return { data: { items: [] } }
+  if (url === `/groups/${DEV_GROUP.id}/members`) {
+    return { data: { items: [DEV_GROUP_MEMBER], total: 1, page: 1, hasMore: false } }
+  }
+  if (url === `/groups/${DEV_GROUP.id}/announcements`) return { data: { items: [] } }
+  if (url === `/groups/${DEV_GROUP.id}/course-outline`) return { data: null }
+  if (url === `/groups/${DEV_GROUP.id}/modules`) return { data: [] }
+  if (url === `/groups/${DEV_GROUP.id}/assignments`) return { data: [] }
+  if (url === `/groups/${DEV_GROUP.id}/gradebook`) return { data: { rows: [], assignments: [] } }
+  if (url === `/groups/${DEV_GROUP.id}/gradebook/me`) return { data: { assignments: [] } }
+  if (url === `/groups/${DEV_GROUP.id}/consultation-slots`) return { data: { items: [], total: 0, page: 1, hasMore: false } }
+  if (url === `/groups/${DEV_GROUP.id}/ask-teacher/queue`) return { data: { items: [], total: 0, page: 1, hasMore: false } }
   if (/\/users\/by-username\/[^/]+$/.test(url)) return { data: DEV_PROFILE }
   if (/\/users\/me\/analytics$/.test(url))
     return {
