@@ -100,9 +100,9 @@ describe('GroupCard', () => {
     await waitFor(() => expect(mutePatch).toHaveBeenCalledWith({ muted: true }))
   })
 
-  // "9 people you know" is the reason to click; the raw member count is the fallback
-  // when the viewer knows nobody, so a zero must never render as "0 people you know".
-  it('prefers known members over the raw count, and falls back when there are none', () => {
+  // "9 people you know" is the reason to click; the members the faces leave out are the
+  // fallback when the viewer knows nobody, so a zero must never render as "0 people you know".
+  it('prefers known members over the count of the rest, and falls back when there are none', () => {
     const { unmount } = renderCard(makeGroup({ knownMemberCount: 9 }))
     expect(screen.getByText('9 people you know')).toBeInTheDocument()
     unmount()
@@ -110,6 +110,22 @@ describe('GroupCard', () => {
     renderCard(makeGroup({ knownMemberCount: 0 }))
     expect(screen.queryByText(/people you know/)).not.toBeInTheDocument()
     expect(screen.getAllByText('284 members').length).toBeGreaterThan(0)
+  })
+
+  // The faces stand for themselves, so the pill must not count them a second time —
+  // and with no faces there is nobody to be "other" than, so it stays a plain count.
+  it('excludes the faces it shows from the "+N others" count', () => {
+    renderCard(
+      makeGroup({
+        knownMemberCount: 0,
+        memberCount: 1840,
+        previewMembers: [
+          { id: 'm1', fullName: 'Kabir Uddin', avatarUrl: null },
+          { id: 'm2', fullName: 'Sara Rahman', avatarUrl: null },
+        ],
+      }),
+    )
+    expect(screen.getByText('+1,838 others')).toBeInTheDocument()
   })
 
   it('gives the mute switch and the private lock a CSS tooltip', () => {

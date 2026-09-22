@@ -75,9 +75,18 @@ export function GroupCard({ group }: { group: Group }) {
   })
 
   const known = group.knownMemberCount ?? 0
+  // The faces already stand for the members they show, so the label counts what they
+  // leave out — the same "+N others" the group header uses, rather than a total that
+  // contradicts the row of avatars beside it.
+  // With no faces beside it there is nobody for "others" to be other than, so the
+  // pill falls back to the plain count.
+  const faceCount = group.previewMembers?.length ?? 0
+  const others = faceCount > 0 ? Math.max(group.memberCount - faceCount, 0) : 0
   const socialProof =
     known > 0
       ? `${known} ${known === 1 ? 'person' : 'people'} you know`
+      : others > 0
+      ? `+${others.toLocaleString()} others`
       : memberLabel(group.memberCount)
 
   const ctaLabel = group.isMember ? 'Joined' : group.isPrivate ? 'Request' : 'Join'
@@ -197,11 +206,17 @@ export function GroupCard({ group }: { group: Group }) {
             fontSize: 12,
             fontWeight: 400,
             color: 'var(--text-tertiary)',
-            flex: '1 1 auto',
-            minWidth: 96,
+            flex: '0 1 auto',
+            minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            // Pill so it reads as the tail of the face stack, like the group header's.
+            padding: '4px 12px',
+            borderRadius: 'var(--r-pill)',
+            border: '0.5px solid var(--border-default)',
+            background: 'var(--surface-raised)',
+            marginLeft: faceCount > 0 ? -6 : 0,
           }}
         >
           {socialProof}
