@@ -110,8 +110,13 @@ interface CountRow {
   count: string | number
 }
 
-/** Faces rendered in the group-card avatar stack. Kept small — the card has room for three. */
-const GROUP_PREVIEW_MEMBER_COUNT = 3
+/**
+ * Faces rendered in a group card's avatar stack. Must match `GROUP_FACE_COUNT` in
+ * apps/web (features/groups/groupFaces.ts): the card's "+N others" counts the members
+ * these faces leave out, so a different number here makes the card and the group header
+ * disagree about the same group.
+ */
+const GROUP_PREVIEW_MEMBER_COUNT = 5
 
 interface GroupRow {
   id: string

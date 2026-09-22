@@ -70,11 +70,21 @@ describe('GroupHeader', () => {
 
   it('renders "+1,835 others" for 1840 members and opens the Members panel', async () => {
     renderHeader(makeGroup())
-    const btn = await screen.findByRole('button', { name: '+1,835 others' })
+    // Faces and label are one control, named for what it opens rather than its text.
+    const btn = await screen.findByRole('button', { name: /^Members —/ })
+    expect(within(btn).getByText('+1,835 others')).toBeInTheDocument()
     await userEvent.click(btn)
     expect(await screen.findByRole('dialog', { name: 'Members' })).toBeInTheDocument()
     expect(await screen.findByText('Member 1')).toBeInTheDocument()
     expect(screen.getByText('1,840 members')).toBeInTheDocument()
+  })
+
+  // Below the face count the stack already is the membership, so no label is rendered.
+  it('drops the label entirely for a group that fits in the face stack', async () => {
+    renderHeader(makeGroup({ memberCount: 3 }))
+    expect(await screen.findByRole('button', { name: /^Members —/ })).toBeInTheDocument()
+    expect(screen.queryByText(/others/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^\d[\d,]* members?$/)).not.toBeInTheDocument()
   })
 
   it('shows my-role tag and the chat button only for academic members', () => {

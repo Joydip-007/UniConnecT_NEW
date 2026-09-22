@@ -71,12 +71,16 @@ describe('Groups directory — social proof and mute', () => {
     }[]
   }
 
-  it('returns at most three preview members, owner first', async () => {
+  // The cap is five, matching GROUP_FACE_COUNT in apps/web: the card's "+N others"
+  // counts the members these faces leave out, so a smaller page here would make the
+  // card and the group header disagree. Only four users are seeded, so this covers a
+  // group under the cap — every member comes back, owner first.
+  it('returns every member up to the five-face cap, owner first', async () => {
     const group = await createGroup(adminId, [adminId, facultyId, alumniId, studentId])
 
     const row = (await listGroups()).find((g) => g.id === group.id)
     expect(row).toBeDefined()
-    expect(row!.previewMembers).toHaveLength(3)
+    expect(row!.previewMembers).toHaveLength(4)
     expect(row!.previewMembers[0].id).toBe(adminId)
   })
 

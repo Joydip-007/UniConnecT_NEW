@@ -13,10 +13,11 @@ import { MembersPanel } from './MembersPanel'
 import { InvitePanel } from './InvitePanel'
 import { ShareGroupModal } from './ShareGroupModal'
 import { useGroupMembers, useOpenGroupChat } from '../hooks/useGroupExtended'
+import { GROUP_FACE_COUNT, othersBeyondFaces } from '../groupFaces'
 import { useGroupModal } from '../groupDetailRoute'
 import type { Group } from '../types'
 
-const FACE_COUNT = 5
+
 
 export function GroupHeader({ group }: { group: Group }) {
   const queryClient = useQueryClient()
@@ -28,9 +29,9 @@ export function GroupHeader({ group }: { group: Group }) {
   // The brief shows Invite for any member, but `POST /groups/:id/invitations` is
   // owner/admin-only (`assertCanAdminGroup`) — a member's Invite would 403 on send.
   const canInvite = !group.isSystem && isAdmin
-  const { data: facesPage } = useGroupMembers(group.id, {}, FACE_COUNT)
+  const { data: facesPage } = useGroupMembers(group.id, {}, GROUP_FACE_COUNT)
   const faces = facesPage?.items ?? []
-  const others = Math.max(group.memberCount - FACE_COUNT, 0)
+  const others = othersBeyondFaces(group.memberCount)
 
   const openChat = useOpenGroupChat(group.id)
   function goToChat() {
@@ -159,11 +160,29 @@ export function GroupHeader({ group }: { group: Group }) {
             overflow: 'hidden',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+          {/* The faces and the "+N others" label are one control, not a stack beside a
+              button: they name the same thing — this group's members — so they open the
+              members dialog together and sit flush, with no gap to read as a separator. */}
+          <button
+            type="button"
+            onClick={() => setOverlay('members')}
+            aria-label={`Members — ${group.memberCount.toLocaleString()} in this group`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0,
+              minWidth: 0,
+              padding: 0,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
             {faces.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center' }} aria-hidden>
+              <span style={{ display: 'flex', alignItems: 'center' }} aria-hidden>
                 {faces.map((m, i) => (
-                  <div
+                  <span
                     key={m.id}
                     style={{
                       marginLeft: i === 0 ? 0 : -9,
@@ -175,19 +194,30 @@ export function GroupHeader({ group }: { group: Group }) {
                     }}
                   >
                     <Avatar src={m.avatarUrl} initials={getInitials(m.fullName)} color={seedColor(m.id)} size={26} />
-                  </div>
+                  </span>
                 ))}
-              </div>
+              </span>
             )}
-            <GhostBtn
-              onClick={() => setOverlay('members')}
-              style={{ padding: '4px 12px', fontSize: 12 }}
-            >
-              {others > 0
-                ? `+${others.toLocaleString()} others`
-                : `${group.memberCount.toLocaleString()} ${group.memberCount === 1 ? 'member' : 'members'}`}
-            </GhostBtn>
-          </div>
+            {/* Nothing left over means the faces already are the membership — a count
+                there would only repeat them. */}
+            {others > 0 && (
+              <span
+                style={{
+                  marginLeft: faces.length > 0 ? -8 : 0,
+                  padding: '4px 12px 4px 16px',
+                  fontSize: 12,
+                  fontWeight: 400,
+                  color: 'var(--text-secondary)',
+                  background: 'var(--surface-raised)',
+                  border: '0.5px solid var(--border-default)',
+                  borderRadius: 'var(--r-pill)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                +{others.toLocaleString()} others
+              </span>
+            )}
+          </button>
 
           <span style={{ flex: 1 }} />
 

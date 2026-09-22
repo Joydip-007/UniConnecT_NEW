@@ -5,23 +5,19 @@ import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { ShareMenu } from '@/components/ShareMenu'
+import { PATHS } from '@/router/paths'
 import { AllowedRoleBadge, OfficialBadge } from './GroupBadges'
 import { TYPE_LOOK } from '../groupTypeLook'
 import { useToggleGroupMembership } from '../hooks/useGroupExtended'
+import { GROUP_FACE_COUNT, othersBeyondFaces } from '../groupFaces'
 import type { Group } from '../types'
 
-
-function memberLabel(count: number) {
-  if (count >= 1000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}k members`
-  return `${count} ${count === 1 ? 'member' : 'members'}`
-}
-
 /**
- * Overlapping faces of the first few members. Purely decorative next to the count, so it
- * is hidden from assistive tech — `socialProof` beside it carries the same information.
+ * Overlapping faces of the first few members. Decorative inside the members link, whose
+ * own label carries the same information for assistive tech.
  */
 function FaceStack({ group }: { group: Group }) {
-  const faces = group.previewMembers ?? []
+  const faces = (group.previewMembers ?? []).slice(0, GROUP_FACE_COUNT)
   if (faces.length === 0) return null
 
   return (
@@ -74,20 +70,8 @@ export function GroupCard({ group }: { group: Group }) {
     onError: () => toast.error('Could not change notifications'),
   })
 
-  const known = group.knownMemberCount ?? 0
-  // The faces already stand for the members they show, so the label counts what they
-  // leave out — the same "+N others" the group header uses, rather than a total that
-  // contradicts the row of avatars beside it.
-  // With no faces beside it there is nobody for "others" to be other than, so the
-  // pill falls back to the plain count.
-  const faceCount = group.previewMembers?.length ?? 0
-  const others = faceCount > 0 ? Math.max(group.memberCount - faceCount, 0) : 0
-  const socialProof =
-    known > 0
-      ? `${known} ${known === 1 ? 'person' : 'people'} you know`
-      : others > 0
-      ? `+${others.toLocaleString()} others`
-      : memberLabel(group.memberCount)
+  const faceCount = Math.min(group.previewMembers?.length ?? 0, GROUP_FACE_COUNT)
+  const others = othersBeyondFaces(group.memberCount)
 
   const ctaLabel = group.isMember ? 'Joined' : group.isPrivate ? 'Request' : 'Join'
 
@@ -202,27 +186,39 @@ export function GroupCard({ group }: { group: Group }) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <FaceStack group={group} />
-        <span
+        {/* Faces and "+N others" are one link to the group's members, flush against each
+            other: they name the same thing, and a gap between them would read as two
+            controls. Below the face count there is no remainder, so the label is dropped
+            rather than restating a total the faces already show. */}
+        <Link
+          to={`${PATHS.GROUPS}/${group.id}?modal=members`}
+          aria-label={`Members — ${group.memberCount.toLocaleString()} in ${group.name}`}
           style={{
-            fontSize: 12,
-            fontWeight: 400,
-            color: 'var(--text-tertiary)',
-            flex: '0 1 auto',
+            display: 'flex',
+            alignItems: 'center',
             minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            // Pill so it reads as the tail of the face stack, like the group header's.
-            padding: '4px 12px',
-            borderRadius: 'var(--r-pill)',
-            border: '0.5px solid var(--border-default)',
-            background: 'var(--surface-raised)',
-            marginLeft: faceCount > 0 ? -6 : 0,
+            textDecoration: 'none',
           }}
         >
-          {socialProof}
-        </span>
+          <FaceStack group={group} />
+          {others > 0 && (
+            <span
+              style={{
+                marginLeft: faceCount > 0 ? -8 : 0,
+                padding: '4px 12px 4px 16px',
+                fontSize: 12,
+                fontWeight: 400,
+                color: 'var(--text-secondary)',
+                background: 'var(--surface-raised)',
+                border: '0.5px solid var(--border-default)',
+                borderRadius: 'var(--r-pill)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              +{others.toLocaleString()} others
+            </span>
+          )}
+        </Link>
 
         {/* The switch and the CTA travel together: wrapping them apart leaves the
             button alone on a second line while the toggle stays up beside the proof. */}

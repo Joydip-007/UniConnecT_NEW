@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -10,6 +10,12 @@ import type { Group } from '../types'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('@/components/ShareMenu', () => ({ ShareMenu: () => null }))
+
+const FACES = Array.from({ length: 5 }, (_, i) => ({
+  id: `f${i}`,
+  fullName: `Face ${i}`,
+  avatarUrl: null,
+}))
 
 function makeGroup(overrides: Partial<Group> = {}): Group {
   return {
@@ -102,36 +108,29 @@ describe('GroupCard', () => {
 
   // "9 people you know" is the reason to click; the members the faces leave out are the
   // fallback when the viewer knows nobody, so a zero must never render as "0 people you know".
-  // The card states its size once, in the footer — the subtitle carries the type alone.
-  it('never states the member count twice on one card', () => {
-    renderCard(makeGroup({ knownMemberCount: 0 }))
-    expect(screen.getAllByText(/\d+ members/)).toHaveLength(1)
-  })
-
-  it('prefers known members over the count of the rest, and falls back when there are none', () => {
-    const { unmount } = renderCard(makeGroup({ knownMemberCount: 9 }))
-    expect(screen.getByText('9 people you know')).toBeInTheDocument()
-    unmount()
-
-    renderCard(makeGroup({ knownMemberCount: 0 }))
-    expect(screen.queryByText(/people you know/)).not.toBeInTheDocument()
-    expect(screen.getByText('284 members')).toBeInTheDocument()
-  })
-
-  // The faces stand for themselves, so the pill must not count them a second time —
-  // and with no faces there is nobody to be "other" than, so it stays a plain count.
-  it('excludes the faces it shows from the "+N others" count', () => {
+  // Faces and label are one link, and the count only names who the faces leave out.
+  it('shows faces alone when the group fits in the face stack', () => {
     renderCard(
       makeGroup({
         knownMemberCount: 0,
-        memberCount: 1840,
-        previewMembers: [
-          { id: 'm1', fullName: 'Kabir Uddin', avatarUrl: null },
-          { id: 'm2', fullName: 'Sara Rahman', avatarUrl: null },
-        ],
+        memberCount: 4,
+        previewMembers: FACES.slice(0, 4),
       }),
     )
-    expect(screen.getByText('+1,838 others')).toBeInTheDocument()
+    expect(screen.queryByText(/others/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/\d+ members?/)).not.toBeInTheDocument()
+  })
+
+  it('caps the stack at five faces and counts only the rest', () => {
+    renderCard(makeGroup({ knownMemberCount: 0, memberCount: 1840, previewMembers: FACES }))
+    expect(screen.getByText('+1,835 others')).toBeInTheDocument()
+  })
+
+  it('routes the whole faces-and-count control to the members dialog', () => {
+    renderCard(makeGroup({ knownMemberCount: 0, memberCount: 1840, previewMembers: FACES }))
+    const link = screen.getByRole('link', { name: /^Members —/ })
+    expect(link).toHaveAttribute('href', '/groups/g1?modal=members')
+    expect(within(link).getByText('+1,835 others')).toBeInTheDocument()
   })
 
   it('gives the mute switch and the private lock a CSS tooltip', () => {
