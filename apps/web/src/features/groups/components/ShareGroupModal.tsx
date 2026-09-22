@@ -31,7 +31,7 @@ export function ShareGroupModal({ group, onClose }: ShareGroupModalProps) {
   ]
 
   return (
-    <Modal isOpen onClose={onClose} title="Share this group" maxWidth={440}>
+    <Modal isOpen onClose={onClose} title="Share this group" maxWidth={440} sheet>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--text-label)' }}>

@@ -156,10 +156,11 @@ export function GroupHeader({ group }: { group: Group }) {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            flexWrap: 'wrap',
+            flexWrap: 'nowrap',
+            overflow: 'hidden',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
             {faces.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center' }} aria-hidden>
                 {faces.map((m, i) => (

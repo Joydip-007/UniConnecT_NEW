@@ -10,7 +10,7 @@ import {
   EventsTab, FeedTab, GroupHeader,
   GroupLeftRail, GroupRightRail, PinnedBanner, defaultTabFor,
   ResourcesTab, StudyToolsTab, JoinRequestsTab, AdminStatsTab,
-  AcademicLMSTab,
+  AcademicLMSTab, MobileManageCard, MobileTabStrip, SettingsCard,
   useJoinRequests,
 } from '@/features/groups'
 import type { Group, GroupTab } from '@/features/groups'
@@ -36,6 +36,8 @@ export default function GroupDetailPage() {
   const isModeratorOrAbove = !!(userRole && ['owner', 'admin', 'moderator'].includes(userRole))
   // Bumped by the pinned banner's Edit; the right rail's About card opens its editor on change.
   const [editAboutSignal, setEditAboutSignal] = useState(0)
+  // The mobile Group settings card sits inline on the page instead of the (hidden) right rail.
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false)
 
   const rawTab = searchParams.get('tab')
   const knownTabs: GroupTab[] = ['feed', 'resources', 'study-sessions', 'events', 'stats', 'join-requests', 'academic']
@@ -110,6 +112,15 @@ export default function GroupDetailPage() {
           onEdit={() => setEditAboutSignal((n) => n + 1)}
         />
       )}
+
+      {/* Mobile-only — the left/right rails are hidden by FeedLayout under 767px */}
+      {group && (
+        <MobileManageCard group={group} onToggleSettings={() => setMobileSettingsOpen((v) => !v)} />
+      )}
+      {group && mobileSettingsOpen && !group.isSystem && (
+        <SettingsCard group={group} onClose={() => setMobileSettingsOpen(false)} />
+      )}
+      {group && <MobileTabStrip group={group} activeTab={activeTab} pendingCount={pendingCount} />}
 
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {id && activeTab === 'feed' && <FeedTab groupId={id} userRole={userRole} />}

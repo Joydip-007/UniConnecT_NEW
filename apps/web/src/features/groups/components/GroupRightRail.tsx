@@ -266,7 +266,7 @@ function Switch({ checked, onChange, disabled, label }: { checked: boolean; onCh
   )
 }
 
-function SettingsCard({ group, onClose }: { group: Group; onClose: () => void }) {
+export function SettingsCard({ group, onClose }: { group: Group; onClose: () => void }) {
   const navigate = useNavigate()
   const update = useUpdateGroupSettings(group.id)
   const del = useDeleteGroup(group.id)

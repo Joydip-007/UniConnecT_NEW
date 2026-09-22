@@ -1072,7 +1072,7 @@ Section label style: `fontSize 11, fontWeight 500, letterSpacing '0.04em', color
 - `GroupPanel` and `ShareGroupModal` use the `sheet` mode from Task 19 on mobile.
 - Header card footer must not wrap (`flex-wrap: nowrap`, faces `overflow: hidden`) — matches the design.
 
-- [ ] Steps: test at 390px via `window.matchMedia` stub (`MobileTabStrip` renders tabs; desktop renders nothing) → implement → commit `feat(groups): mobile manage card and tab strip`
+- [x] Steps: test at 390px via `window.matchMedia` stub (`MobileTabStrip` renders tabs; desktop renders nothing) → implement → commit `feat(groups): mobile manage card and tab strip`
 
 ---
 

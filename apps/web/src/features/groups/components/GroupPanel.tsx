@@ -19,7 +19,7 @@ interface GroupPanelProps {
  */
 export function GroupPanel({ icon: Icon, title, subtitle, onClose, footer, children }: GroupPanelProps) {
   return (
-    <Modal isOpen onClose={onClose} title={title} frame="panel">
+    <Modal isOpen onClose={onClose} title={title} frame="panel" sheet>
       <div
         style={{
           display: 'flex',
