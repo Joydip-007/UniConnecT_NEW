@@ -108,10 +108,12 @@ export function ProfileHeader({
               </span>
             )}
             <ShowcasedBadge userId={user.id} />
-            {user.profile.department && (
+            {/* Batch alone still shows — it used to vanish whenever department was empty. */}
+            {(user.profile.department || user.profile.batchYear) && (
               <Badge variant="neutral">
-                {user.profile.department}
-                {user.profile.batchYear && ` '${user.profile.batchYear.slice(-2)}`}
+                {user.profile.department
+                  ? `${user.profile.department}${user.profile.batchYear ? ` '${user.profile.batchYear.slice(-2)}` : ''}`
+                  : `Batch ${user.profile.batchYear}`}
               </Badge>
             )}
             {showOpenToWork && (

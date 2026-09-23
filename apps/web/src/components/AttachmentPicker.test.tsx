@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useState } from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { AttachmentInput } from '@uniconnect/shared'
 import { AttachmentPicker } from './AttachmentPicker'
@@ -34,6 +35,26 @@ describe('AttachmentPicker', () => {
     await waitFor(() => expect(onChange).toHaveBeenCalled())
     const emitted = onChange.mock.calls[0][0] as AttachmentInput[]
     expect(emitted[0]).toMatchObject({ fileName: 'doc.pdf', fileUrl: 'https://files.example.com/doc.pdf' })
+  })
+
+  it('keeps every file when several are picked at once', async () => {
+    uploadMock
+      .mockResolvedValueOnce('https://files.example.com/a.pdf')
+      .mockResolvedValueOnce('https://files.example.com/b.pdf')
+    // A real stateful parent, like the composers — the picker must not overwrite the first
+    // upload with a stale copy of `value` when the second resolves.
+    function Harness() {
+      const [value, setValue] = useState<AttachmentInput[]>([])
+      return <AttachmentPicker value={value} onChange={setValue} />
+    }
+    render(<Harness />)
+
+    fireEvent.change(fileInput(), {
+      target: { files: [makeFile('a.pdf', 'application/pdf'), makeFile('b.pdf', 'application/pdf')] },
+    })
+
+    expect(await screen.findByText('b.pdf')).toBeInTheDocument()
+    expect(screen.getByText('a.pdf')).toBeInTheDocument()
   })
 
   it('rejects a disallowed file type without uploading', async () => {

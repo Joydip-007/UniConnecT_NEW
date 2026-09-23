@@ -62,6 +62,29 @@ interface CountRow {
 // camelCase shapes from @uniconnect/shared, so every response goes through these.
 type Row = Record<string, unknown>
 
+/**
+ * `profile_experiences` dates are Postgres `date`s, which node-pg turns into a Date at
+ * *server-local* midnight. Serialising that as an ISO timestamp shifts the day (and at
+ * the 1st, the month) for any viewer on the other side of UTC, so send the calendar
+ * date itself.
+ */
+function toDateOnly(v: unknown): string | null {
+  if (v == null) return null
+  if (v instanceof Date) {
+    const mm = String(v.getMonth() + 1).padStart(2, '0')
+    const dd = String(v.getDate()).padStart(2, '0')
+    return `${v.getFullYear()}-${mm}-${dd}`
+  }
+  return String(v).slice(0, 10)
+}
+
+/** End before start is a typo, not a career — reject it on create and on a partial PATCH. */
+function assertOrderedRange<T extends string | number>(start: T | null | undefined, end: T | null | undefined) {
+  if (start != null && end != null && end < start) {
+    throw badRequest('End cannot be before start', 'INVALID_DATE_RANGE')
+  }
+}
+
 function toExperience(r: Row): ProfileExperience {
   return {
     id: r.id as string,
@@ -69,8 +92,8 @@ function toExperience(r: Row): ProfileExperience {
     title: r.title as string,
     company: r.company as string,
     location: (r.location as string | null) ?? null,
-    startDate: r.start_date as string | Date,
-    endDate: (r.end_date as string | Date | null) ?? null,
+    startDate: toDateOnly(r.start_date) as string,
+    endDate: toDateOnly(r.end_date),
     description: (r.description as string | null) ?? null,
     createdAt: r.created_at as string | Date,
     updatedAt: r.updated_at as string | Date,
@@ -315,6 +338,8 @@ export class UsersService {
         includePhone: canSeeContact,
         includeContactInfo: canSeeContact,
       }),
+      // Email is contact info too — it was the one field the tier never covered.
+      email: canSeeContact ? user.email : null,
       stats: { connections, pendingReceived, posts, ...roleStats },
       connectionStatus,
       connectionId,
@@ -532,6 +557,7 @@ export class UsersService {
   }
 
   async createExperience(userId: string, universityId: string, input: ExperienceInput) {
+    assertOrderedRange(input.startDate, input.endDate)
     const [row] = await db('profile_experiences')
       .insert({
         user_id: userId,
@@ -550,6 +576,10 @@ export class UsersService {
   async updateExperience(userId: string, entryId: string, universityId: string, input: Partial<ExperienceInput>) {
     const existing = await db('profile_experiences').where({ id: entryId, user_id: userId, university_id: universityId }).first()
     if (!existing) throw notFound('Experience entry not found')
+    assertOrderedRange(
+      input.startDate ?? toDateOnly(existing.start_date),
+      input.endDate !== undefined ? input.endDate : toDateOnly(existing.end_date),
+    )
     const update: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.title !== undefined) update.title = input.title
     if (input.company !== undefined) update.company = input.company
@@ -589,6 +619,7 @@ export class UsersService {
   }
 
   async createEducation(userId: string, universityId: string, input: EducationInput) {
+    assertOrderedRange(input.startYear, input.endYear)
     const [row] = await db('profile_education')
       .insert({
         user_id: userId,
@@ -608,6 +639,10 @@ export class UsersService {
   async updateEducation(userId: string, entryId: string, universityId: string, input: Partial<EducationInput>) {
     const existing = await db('profile_education').where({ id: entryId, user_id: userId, university_id: universityId }).first()
     if (!existing) throw notFound('Education entry not found')
+    assertOrderedRange(
+      input.startYear ?? existing.start_year,
+      input.endYear !== undefined ? input.endYear : existing.end_year,
+    )
     const update: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.institution !== undefined) update.institution = input.institution
     if (input.degree !== undefined) update.degree = input.degree

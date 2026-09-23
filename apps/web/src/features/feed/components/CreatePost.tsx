@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { BarChart2, Bold, Image, Italic, Link, Sparkles, X } from 'lucide-react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { BarChart2, Bold, Image, Italic, Link, Smile, Sparkles, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import type { AttachmentInput, FeedPost, ProfileProgress } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
@@ -8,8 +9,17 @@ import { AttachmentPicker } from '@/components/AttachmentPicker'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { api } from '@/lib/axios'
+import { usePresignedUpload } from '@/hooks/usePresignedUpload'
+import { useEmojiInsert } from '@/hooks/useEmojiInsert'
 import { useCreatePost } from '@/features/feed/hooks/useCreatePost'
 import { useUpdatePost } from '@/features/feed/hooks/useUpdatePost'
+
+const EmojiPicker = lazy(() =>
+  import('@/components/emoji/EmojiPicker').then((m) => ({ default: m.EmojiPicker })),
+)
+
+/** emoji-mart's rendered width; used to keep the popover on-screen. */
+const EMOJI_PICKER_WIDTH = 352
 
 const FIRST_POST_HINT_KEY = 'uc:onboard:first-post-dismissed'
 
@@ -25,6 +35,8 @@ interface PhotoItem {
   file: File
   previewUrl: string
   s3Url?: string
+  /** The presign or S3 PUT failed — the tile says so and submit is blocked until it's removed. */
+  failed?: boolean
 }
 
 interface Props {
@@ -47,6 +59,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
   // Photo state
   const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [uploading, setUploading] = useState(false)
+  const { upload: uploadPhoto } = usePresignedUpload('posts')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // File attachments (documents/images shown as download chips, separate from the gallery)
@@ -67,6 +80,34 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
   const [scheduleAt, setScheduleAt] = useState('')
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const insertEmoji = useEmojiInsert(textareaRef, text, setText)
+
+  // Emoji picker — portalled to <body> because the panel's `overflow: hidden` would clip
+  // a 435px popover; anchored above the toolbar button from its viewport rect.
+  const emojiBtnRef = useRef<HTMLSpanElement>(null)
+  const [emojiAnchor, setEmojiAnchor] = useState<{ left: number; bottom: number } | null>(null)
+
+  function toggleEmoji() {
+    if (emojiAnchor) return setEmojiAnchor(null)
+    const rect = emojiBtnRef.current?.getBoundingClientRect()
+    if (!rect) return
+    setEmojiAnchor({
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - EMOJI_PICKER_WIDTH - 8)),
+      bottom: window.innerHeight - rect.top + 8,
+    })
+  }
+
+  useEffect(() => {
+    if (!emojiAnchor) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setEmojiAnchor(null)
+      }
+    }
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
+  }, [emojiAnchor])
   const createPost = useCreatePost()
   const updatePost = useUpdatePost()
 
@@ -178,6 +219,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
   }
 
   function resetForm() {
+    setEmojiAnchor(null)
     setText('')
     setPostType('post')
     setActiveTab(null)
@@ -210,28 +252,15 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
     if (fileInputRef.current) fileInputRef.current.value = ''
 
     setUploading(true)
-    const results = await Promise.allSettled(
-      newItems.map(async (item) => {
-        const { data } = await api.post<{ data: { uploadUrl: string; fileUrl: string } }>(
-          '/upload/presign',
-          { filename: item.file.name, contentType: item.file.type },
-        )
-        await fetch(data.data.uploadUrl, {
-          method: 'PUT',
-          body: item.file,
-          headers: { 'Content-Type': item.file.type },
-        })
-        return { previewUrl: item.previewUrl, s3Url: data.data.fileUrl }
-      }),
-    )
+    const results = await Promise.allSettled(newItems.map((item) => uploadPhoto(item.file)))
     setUploading(false)
 
     setPhotos((prev) =>
       prev.map((p) => {
-        const match = results.find(
-          (r) => r.status === 'fulfilled' && r.value.previewUrl === p.previewUrl,
-        )
-        return match?.status === 'fulfilled' ? { ...p, s3Url: match.value.s3Url } : p
+        const i = newItems.findIndex((item) => item.previewUrl === p.previewUrl)
+        if (i === -1) return p
+        const result = results[i]!
+        return result.status === 'fulfilled' ? { ...p, s3Url: result.value } : { ...p, failed: true }
       }),
     )
   }
@@ -277,6 +306,8 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
 
   function canSubmit() {
     if (uploading || attachmentsUploading || isSubmitting) return false
+    // Never publish with a photo silently missing — a failed upload must be removed first.
+    if (photos.some((p) => !p.s3Url)) return false
     if (activeTab === 'poll') {
       if (!pollQuestion.trim()) return false
       if (pollOptions.filter((o) => o.text.trim()).length < 2) return false
@@ -660,7 +691,9 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                                 justifyContent: 'center',
                               }}
                             >
-                              <span style={{ color: 'var(--text-primary)', fontSize: 12 }}>Uploading…</span>
+                              <span style={{ color: 'var(--text-primary)', fontSize: 12 }}>
+                                {p.failed ? 'Upload failed — remove and try again' : 'Uploading…'}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -871,6 +904,20 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                 >
                   <BarChart2 size={15} strokeWidth={1.5} />
                 </TabBtn>
+                {/* Stop mousedown so the picker's outside-click handler doesn't close it
+                    just before this click toggles it back open. */}
+                <span ref={emojiBtnRef} onMouseDown={(e) => e.stopPropagation()}>
+                  <TabBtn
+                    active={emojiAnchor !== null}
+                    disabled={false}
+                    title="Emoji"
+                    activeColor="var(--uc-indigo-l)"
+                    activeBg="var(--uc-indigo-bg)"
+                    onClick={toggleEmoji}
+                  >
+                    <Smile size={15} strokeWidth={1.5} />
+                  </TabBtn>
+                </span>
               </div>
 
               <div className="composer-footer-actions" style={{ display: 'flex', gap: 8 }}>
@@ -900,6 +947,16 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
           </div>
         </div>
       )}
+
+      {open && emojiAnchor &&
+        createPortal(
+          <div style={{ position: 'fixed', left: emojiAnchor.left, bottom: emojiAnchor.bottom, zIndex: 210 }}>
+            <Suspense fallback={null}>
+              <EmojiPicker onSelect={insertEmoji} onClose={() => setEmojiAnchor(null)} />
+            </Suspense>
+          </div>,
+          document.body,
+        )}
     </>
   )
 }

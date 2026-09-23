@@ -2,20 +2,22 @@ import { useQuery } from '@tanstack/react-query'
 import { Lock, Pencil, Plus } from 'lucide-react'
 import type { ProfileEducation } from '@uniconnect/shared'
 import { getUserEducation } from '@/lib/api/users'
+import type { SectionLock } from '../sectionLock'
 
 interface Props {
   userId: string
   isOwnProfile: boolean
-  connectionStatus: string
+  lock: SectionLock
   onAdd: () => void
   onEdit: (entry: ProfileEducation) => void
 }
 
 function formatYearRange(startYear: number, endYear: number | null): string {
+  if (endYear === startYear) return String(startYear)
   return endYear ? `${startYear} – ${endYear}` : `${startYear} – Present`
 }
 
-function LockedCard() {
+function LockedCard({ lock }: { lock: Exclude<SectionLock, null> }) {
   return (
     <div
       style={{
@@ -30,16 +32,14 @@ function LockedCard() {
     >
       <Lock size={16} strokeWidth={1.5} color="var(--text-tertiary)" />
       <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-        Connect to see education history
+        {lock === 'private' ? 'Education history is private' : 'Connect to see education history'}
       </p>
     </div>
   )
 }
 
-export function ProfileEducation({ userId, isOwnProfile, connectionStatus, onAdd, onEdit }: Props) {
-  const isRestricted =
-    !isOwnProfile &&
-    (connectionStatus === 'none' || connectionStatus === 'pending_sent')
+export function ProfileEducation({ userId, isOwnProfile, lock, onAdd, onEdit }: Props) {
+  const isRestricted = lock !== null
 
   const { data: entries = [], isLoading } = useQuery<ProfileEducation[]>({
     queryKey: ['profile', 'education', userId],
@@ -47,8 +47,8 @@ export function ProfileEducation({ userId, isOwnProfile, connectionStatus, onAdd
     enabled: !isRestricted,
   })
 
-  if (isRestricted) {
-    return <LockedCard />
+  if (lock) {
+    return <LockedCard lock={lock} />
   }
 
   return (

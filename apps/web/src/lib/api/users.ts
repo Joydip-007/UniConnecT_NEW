@@ -40,7 +40,7 @@ export async function getMyAnalytics() {
 
 export async function getMyViewers(page = 1) {
   const { data } = await api.get<{
-    data: { items: ProfileViewer[]; total: number; page: number }
+    data: { items: ProfileViewer[]; total: number; page: number; hasMore: boolean }
   }>('/users/me/viewers', { params: { page } })
   return data.data
 }

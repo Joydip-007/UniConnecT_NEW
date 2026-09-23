@@ -25,6 +25,9 @@ import { ExperienceModal } from '@/features/profile/components/ExperienceModal'
 import { EducationModal } from '@/features/profile/components/EducationModal'
 import { FeaturedModal } from '@/features/profile/components/FeaturedModal'
 import { ResumeExportButton } from '@/features/profile/components/ResumeExportButton'
+import { sectionLock } from '@/features/profile/sectionLock'
+import { Modal } from '@/components/Modal'
+import { GhostBtn, PrimaryBtn } from '@/components/Button'
 
 // ── Skeleton ───────────────────────────────────────────────────────────────────
 
@@ -104,8 +107,65 @@ function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () =
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+async function fetchProfile(path: string): Promise<PublicUserProfile> {
+  const r = await api.get<{ data: unknown }>(path)
+  const parsed = publicUserProfileSchema.safeParse(r.data.data)
+  if (!parsed.success) throw new Error('Unexpected response shape from the server')
+  return parsed.data
+}
+
+/**
+ * The route param is a handle: a UUID (existing links) or a username (vanity URL, which
+ * is what Share hands out). Every mutation elsewhere invalidates `['user', <uuid>]`, so a
+ * username is resolved to its UUID first and the profile always lives under that key —
+ * otherwise Connect / Edit on a vanity-URL profile never refresh the page.
+ */
+function useProfile(handle: string | undefined) {
+  const qc = useQueryClient()
+  const isUuid = !!handle && UUID_RE.test(handle)
+
+  const resolved = useQuery({
+    queryKey: ['user', 'by-username', handle],
+    queryFn: async () => {
+      const profile = await fetchProfile(`/users/by-username/${handle}`)
+      qc.setQueryData(['user', profile.id], profile)
+      return profile.id
+    },
+    enabled: !!handle && !isUuid,
+    staleTime: Infinity,
+    retry: 1,
+  })
+
+  const userId = isUuid ? handle : resolved.data
+  const profile = useQuery<PublicUserProfile>({
+    queryKey: ['user', userId],
+    queryFn: () => fetchProfile(`/users/${userId}`),
+    enabled: !!userId,
+    // The resolver just seeded this key; don't refetch it on mount.
+    staleTime: 10_000,
+    retry: 1,
+  })
+
+  if (!isUuid && !resolved.isSuccess) {
+    return {
+      data: undefined,
+      isLoading: resolved.isLoading,
+      isError: resolved.isError,
+      error: resolved.error,
+      refetch: resolved.refetch,
+    }
+  }
+  return profile
+}
+
+// Keyed by the route handle so tab and modal state reset when you follow a link from
+// one profile to another (same route, so React would otherwise reuse the instance).
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
+  return <ProfileView key={id} handle={id} />
+}
+
+function ProfileView({ handle }: { handle: string | undefined }) {
   const authUser = useAuthStore((s) => s.user)
   const navigate = useNavigate()
   const location = useLocation()
@@ -131,20 +191,10 @@ export default function ProfilePage() {
   const [eduModal, setEduModal] = useState<{ open: boolean; entry?: ProfileEducation | null }>({ open: false })
   // Featured modal
   const [featuredModalOpen, setFeaturedModalOpen] = useState(false)
+  // Featured item awaiting delete confirmation (the trash icon is one click from gone).
+  const [featuredToDelete, setFeaturedToDelete] = useState<string | null>(null)
 
-  const { data: user, isLoading, isError, error, refetch } = useQuery<PublicUserProfile>({
-    queryKey: ['user', id],
-    queryFn: async () => {
-      // The route param is a handle: a UUID (existing links) or a username (vanity URL).
-      const path = id && UUID_RE.test(id) ? `/users/${id}` : `/users/by-username/${id}`
-      const r = await api.get<{ data: unknown }>(path)
-      const parsed = publicUserProfileSchema.safeParse(r.data.data)
-      if (!parsed.success) throw new Error('Unexpected response shape from the server')
-      return parsed.data
-    },
-    enabled: !!id,
-    retry: 1,
-  })
+  const { data: user, isLoading, isError, error, refetch } = useProfile(handle)
 
   const isOwnProfile = !!user && authUser?.id === user.id
 
@@ -153,6 +203,7 @@ export default function ProfilePage() {
     mutationFn: (entryId: string) => api.delete(`/users/me/featured/${entryId}`),
     onSuccess: () => {
       if (user) qc.invalidateQueries({ queryKey: ['profile', 'featured', user.id] })
+      setFeaturedToDelete(null)
     },
   })
 
@@ -222,7 +273,7 @@ export default function ProfilePage() {
             isOwnProfile={isOwnProfile}
             connectionStatus={connectionStatus}
             onAdd={() => setFeaturedModalOpen(true)}
-            onDelete={(entryId) => deleteFeatured.mutate(entryId)}
+            onDelete={(entryId) => setFeaturedToDelete(entryId)}
           />
 
           <ProfileSkills
@@ -235,7 +286,7 @@ export default function ProfilePage() {
           <ProfileContactInfo
             user={user}
             isOwnProfile={isOwnProfile}
-            connectionStatus={connectionStatus}
+            lock={sectionLock(user, 'contact_info', isOwnProfile)}
             onEdit={() => setEditOpen(true)}
           />
 
@@ -255,7 +306,7 @@ export default function ProfilePage() {
           <ProfileExperienceSection
             userId={user.id}
             isOwnProfile={isOwnProfile}
-            connectionStatus={connectionStatus}
+            lock={sectionLock(user, 'experience', isOwnProfile)}
             onAdd={() => setExpModal({ open: true, entry: null })}
             onEdit={(entry) => setExpModal({ open: true, entry })}
           />
@@ -263,7 +314,7 @@ export default function ProfilePage() {
           <ProfileEducationSection
             userId={user.id}
             isOwnProfile={isOwnProfile}
-            connectionStatus={connectionStatus}
+            lock={sectionLock(user, 'education', isOwnProfile)}
             onAdd={() => setEduModal({ open: true, entry: null })}
             onEdit={(entry) => setEduModal({ open: true, entry })}
           />
@@ -305,6 +356,32 @@ export default function ProfilePage() {
           onClose={() => setFeaturedModalOpen(false)}
         />
       )}
+
+      <Modal
+        isOpen={featuredToDelete !== null}
+        onClose={() => { setFeaturedToDelete(null); deleteFeatured.reset() }}
+        title="Remove this featured item?"
+      >
+        <p style={{ margin: '0 0 16px', fontSize: 13, fontWeight: 400, color: deleteFeatured.isError ? 'var(--uc-red)' : 'var(--text-secondary)', lineHeight: 1.6 }}>
+          {deleteFeatured.isError
+            ? "Couldn't remove it — try again."
+            : "It will no longer appear on your profile. This can't be undone."}
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <GhostBtn type="button" onClick={() => { setFeaturedToDelete(null); deleteFeatured.reset() }} disabled={deleteFeatured.isPending}>
+            Keep
+          </GhostBtn>
+          <PrimaryBtn
+            type="button"
+            autoFocus
+            disabled={deleteFeatured.isPending}
+            onClick={() => { if (featuredToDelete) deleteFeatured.mutate(featuredToDelete) }}
+            style={{ background: 'var(--uc-red)' }}
+          >
+            {deleteFeatured.isPending ? 'Removing…' : 'Remove'}
+          </PrimaryBtn>
+        </div>
+      </Modal>
     </div>
   )
 }

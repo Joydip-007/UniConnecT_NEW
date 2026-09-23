@@ -60,12 +60,31 @@ describe('Profile sections return camelCase', () => {
       .send({ title: 'Engineer', company: 'Acme', startDate: '2024-01-01', endDate: null })
     expect(res.status).toBe(201)
     created.experience.push(res.body.data.id)
-    expect(res.body.data).toMatchObject({ userId, title: 'Engineer', endDate: null })
-    expect(res.body.data.startDate).toBeTruthy()
+    // A calendar date, not a timestamp — a timestamp shifts the day per viewer timezone.
+    expect(res.body.data).toMatchObject({ userId, title: 'Engineer', startDate: '2024-01-01', endDate: null })
 
     const list = await api.get(`/api/v1/users/${userId}/experience`).set(auth())
     const entry = list.body.data.find((e: { id: string }) => e.id === res.body.data.id)
-    expect(entry.startDate).toBeTruthy()
+    expect(entry.startDate).toBe('2024-01-01')
+  })
+
+  it('rejects an end before the start, including via a partial PATCH', async () => {
+    const bad = await api
+      .post('/api/v1/users/me/education')
+      .set(auth())
+      .send({ institution: 'UIU', startYear: 2024, endYear: 2020 })
+    expect(bad.status).toBe(400)
+
+    const ok = await api
+      .post('/api/v1/users/me/experience')
+      .set(auth())
+      .send({ title: 'Intern', company: 'Acme', startDate: '2024-06-01' })
+    created.experience.push(ok.body.data.id)
+    const patch = await api
+      .patch(`/api/v1/users/me/experience/${ok.body.data.id}`)
+      .set(auth())
+      .send({ endDate: '2024-01-01' })
+    expect(patch.status).toBe(400)
   })
 
   it('featured create and list', async () => {
@@ -76,5 +95,32 @@ describe('Profile sections return camelCase', () => {
     expect(res.status).toBe(201)
     created.featured.push(res.body.data.id)
     expect(res.body.data).toMatchObject({ linkUrl: 'https://example.com', linkTitle: 'Site', displayOrder: expect.any(Number) })
+  })
+})
+
+describe('Public profile privacy', () => {
+  let studentToken: string
+
+  beforeAll(async () => {
+    const st = await loginAs(CREDENTIALS.student.email, CREDENTIALS.student.password)
+    studentToken = st.accessToken
+  })
+
+  afterAll(async () => {
+    await api.put('/api/v1/users/me/privacy').set(auth()).send({ sections: { contact_info: 'connections', education: 'everyone' } })
+  })
+
+  it('withholds email under the contact_info tier and reports section visibility', async () => {
+    await api.put('/api/v1/users/me/privacy').set(auth()).send({ sections: { contact_info: 'only_me', education: 'only_me' } })
+    const res = await api
+      .get(`/api/v1/users/${userId}`)
+      .set({ Authorization: `Bearer ${studentToken}`, 'x-university-domain': DOMAIN })
+    expect(res.status).toBe(200)
+    expect(res.body.data.email).toBeNull()
+    expect(res.body.data.visibility).toMatchObject({ contact_info: 'hidden', education: 'hidden', experience: 'visible' })
+
+    const own = await api.get(`/api/v1/users/${userId}`).set(auth())
+    expect(own.body.data.email).toBe(CREDENTIALS.alumni.email)
+    expect(own.body.data.visibility.education).toBe('visible')
   })
 })

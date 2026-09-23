@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { Eye, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getMyViewers } from '@/lib/api/users'
@@ -84,23 +83,20 @@ function ViewerRow({ viewer }: { viewer: ProfileViewer }) {
 }
 
 export function ProfileViewers() {
-  const [page, setPage] = useState(1)
-  // Wrap in try/catch — viewer data is non-critical; failures should be silent
-  const { data, isLoading } = useQuery({
-    queryKey: ['profile', 'viewers', page],
-    queryFn: async () => {
-      try {
-        return await getMyViewers(page)
-      } catch {
-        return null
-      }
-    },
+  // Pages accumulate: "Show more" appends, and stops once the server says there is no
+  // next page. (A single `page` state used to *replace* the list and never ran out.)
+  // Viewer data is non-critical, so a failed first page renders the nudge, not a toast.
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+    queryKey: ['profile', 'viewers'],
+    queryFn: ({ pageParam }) => getMyViewers(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
     staleTime: 2 * 60 * 1000,
+    retry: false,
   })
 
-  const viewers: ProfileViewer[] = data?.items ?? []
-  const total = data?.total ?? 0
-  const hasMore = data != null && viewers.length < total
+  const viewers: ProfileViewer[] = data?.pages.flatMap((p) => p.items) ?? []
+  const total = data?.pages[0]?.total ?? 0
 
   return (
     <div
@@ -142,7 +138,7 @@ export function ProfileViewers() {
         </div>
       ) : viewers.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-          {data == null
+          {isError
             ? 'Complete your profile to get the full experience.'
             : 'No one has viewed your profile yet. Share it to get discovered.'}
         </p>
@@ -150,16 +146,17 @@ export function ProfileViewers() {
         <>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {viewers.map((v, idx) => (
-              <div key={idx} style={{ borderBottom: idx < viewers.length - 1 ? '0.5px solid var(--border-default)' : 'none' }}>
+              <div key={`${v.id ?? 'anon'}-${String(v.viewedAt)}-${idx}`} style={{ borderBottom: idx < viewers.length - 1 ? '0.5px solid var(--border-default)' : 'none' }}>
                 <ViewerRow viewer={v} />
               </div>
             ))}
           </div>
 
-          {hasMore && (
+          {hasNextPage && (
             <button
               type="button"
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => void fetchNextPage()}
+              disabled={isFetchingNextPage}
               style={{
                 alignSelf: 'center',
                 marginTop: 4,
@@ -174,7 +171,7 @@ export function ProfileViewers() {
                 fontFamily: 'inherit',
               }}
             >
-              Show more
+              {isFetchingNextPage ? 'Loading…' : 'Show more'}
             </button>
           )}
         </>

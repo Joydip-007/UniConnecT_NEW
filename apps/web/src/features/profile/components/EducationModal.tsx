@@ -4,6 +4,7 @@ import type { ProfileEducation } from '@uniconnect/shared'
 import { createEducation, deleteEducation, updateEducation } from '@/lib/api/users'
 import { Modal } from '@/components/Modal'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { ConfirmDeleteFooter } from './ConfirmDeleteFooter'
 
 const inputBase: React.CSSProperties = {
   padding: '9px 12px',
@@ -60,6 +61,8 @@ export function EducationModal({ userId, entry, onClose }: Props) {
   const [grade, setGrade] = useState(entry?.grade ?? '')
   const [description, setDescription] = useState(entry?.description ?? '')
 
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['profile', 'education', userId] })
 
   const saveMutation = useMutation({
@@ -85,11 +88,15 @@ export function EducationModal({ userId, entry, onClose }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!institution.trim() || !startYear) return
+    if (!institution.trim() || !startYear || rangeError) return
     saveMutation.mutate()
   }
 
   const busy = saveMutation.isPending || deleteMutation.isPending
+  const rangeError =
+    !current && endYear && parseInt(endYear, 10) < parseInt(startYear, 10)
+      ? "End year can't be before the start year"
+      : null
 
   return (
     <Modal isOpen onClose={onClose} title={isEdit ? 'Edit education' : 'Add education'} maxWidth={480}>
@@ -120,7 +127,7 @@ export function EducationModal({ userId, entry, onClose }: Props) {
             </FieldRow>
             <FieldRow label="End year" optional htmlFor="edu-end-year">
               <input id="edu-end-year" type="number" value={current ? '' : endYear} onChange={(e) => setEndYear(e.target.value)}
-                min={1950} max={currentYear + 6} disabled={current}
+                min={startYear || 1950} max={currentYear + 6} disabled={current}
                 style={{ ...inputBase, opacity: current ? 0.5 : 1 }} onFocus={onFocus} onBlur={onBlur} />
             </FieldRow>
           </div>
@@ -146,21 +153,33 @@ export function EducationModal({ userId, entry, onClose }: Props) {
           <div style={{ height: 4, flexShrink: 0 }} />
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '14px 20px', borderTop: '0.5px solid var(--border-default)', flexShrink: 0 }}>
-          <div style={{ flex: 1 }}>
-            {isEdit && (
-              <button type="button" onClick={() => { if (!busy) deleteMutation.mutate() }} disabled={busy}
-                style={{ background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer', padding: '6px 0', fontSize: 13, fontWeight: 400, color: 'var(--uc-red)', fontFamily: 'inherit', opacity: busy ? 0.5 : 1 }}>
-                {deleteMutation.isPending ? 'Deleting…' : 'Delete education'}
-              </button>
-            )}
-            {saveMutation.isError && <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>Failed to save — try again</span>}
+        {confirmingDelete ? (
+          <ConfirmDeleteFooter
+            noun="education entry"
+            pending={deleteMutation.isPending}
+            failed={deleteMutation.isError}
+            onCancel={() => { setConfirmingDelete(false); deleteMutation.reset() }}
+            onConfirm={() => deleteMutation.mutate()}
+          />
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '14px 20px', borderTop: '0.5px solid var(--border-default)', flexShrink: 0 }}>
+            <div style={{ flex: 1 }}>
+              {isEdit && (
+                <button type="button" onClick={() => setConfirmingDelete(true)} disabled={busy}
+                  style={{ background: 'none', border: 'none', cursor: busy ? 'default' : 'pointer', padding: '6px 0', fontSize: 13, fontWeight: 400, color: 'var(--uc-red)', fontFamily: 'inherit', opacity: busy ? 0.5 : 1 }}>
+                  Delete education
+                </button>
+              )}
+              {rangeError ? (
+                <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>{rangeError}</span>
+              ) : saveMutation.isError && <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>Failed to save — try again</span>}
+            </div>
+            <GhostBtn type="button" onClick={onClose} disabled={busy}>Cancel</GhostBtn>
+            <PrimaryBtn type="submit" form="edu-form" disabled={!institution.trim() || !startYear || !!rangeError || busy}>
+              {saveMutation.isPending ? 'Saving…' : 'Save'}
+            </PrimaryBtn>
           </div>
-          <GhostBtn type="button" onClick={onClose} disabled={busy}>Cancel</GhostBtn>
-          <PrimaryBtn type="submit" form="edu-form" disabled={!institution.trim() || !startYear || busy}>
-            {saveMutation.isPending ? 'Saving…' : 'Save'}
-          </PrimaryBtn>
-        </div>
+        )}
     </Modal>
   )
 }

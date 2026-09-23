@@ -4,6 +4,7 @@ import type { ProfileExperience } from '@uniconnect/shared'
 import { createExperience, deleteExperience, updateExperience } from '@/lib/api/users'
 import { Modal } from '@/components/Modal'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { ConfirmDeleteFooter } from './ConfirmDeleteFooter'
 
 // ── Shared field styles ────────────────────────────────────────────────────────
 
@@ -60,6 +61,7 @@ function FieldRow({
 /** Convert a Date | string | null to the YYYY-MM-DD string an <input type="date"> expects */
 function toDateInput(v: string | Date | null | undefined): string {
   if (!v) return ''
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10)
   const d = typeof v === 'string' ? new Date(v) : v
   if (isNaN(d.getTime())) return ''
   return d.toISOString().slice(0, 10)
@@ -87,6 +89,11 @@ export function ExperienceModal({ userId, entry, onClose }: Props) {
   const [current, setCurrent] = useState(!entry?.endDate && !!entry)
   const [description, setDescription] = useState(entry?.description ?? '')
 
+  // YYYY-MM-DD strings compare correctly as strings.
+  const rangeError = !current && endDate && endDate < startDate ? "End date can't be before the start date" : null
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
   const invalidate = () => qc.invalidateQueries({ queryKey: ['profile', 'experience', userId] })
 
   const saveMutation = useMutation({
@@ -113,7 +120,7 @@ export function ExperienceModal({ userId, entry, onClose }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !company.trim() || !startDate) return
+    if (!title.trim() || !company.trim() || !startDate || rangeError) return
     saveMutation.mutate()
   }
 
@@ -149,7 +156,7 @@ export function ExperienceModal({ userId, entry, onClose }: Props) {
             </FieldRow>
 
             <FieldRow label="End date" optional htmlFor="exp-end-date">
-              <input id="exp-end-date" type="date" value={current ? '' : endDate} onChange={(e) => setEndDate(e.target.value)}
+              <input id="exp-end-date" type="date" value={current ? '' : endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate || undefined}
                 disabled={current} style={{ ...inputBase, opacity: current ? 0.5 : 1 }} onFocus={onFocus} onBlur={onBlur} />
             </FieldRow>
           </div>
@@ -181,52 +188,63 @@ export function ExperienceModal({ userId, entry, onClose }: Props) {
           <div style={{ height: 4, flexShrink: 0 }} />
         </form>
 
-        {/* Footer */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            padding: '14px 20px',
-            borderTop: '0.5px solid var(--border-default)',
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            {isEdit && (
-              <button
-                type="button"
-                onClick={() => { if (!busy) deleteMutation.mutate() }}
-                disabled={busy}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: busy ? 'default' : 'pointer',
-                  padding: '6px 0',
-                  fontSize: 13,
-                  fontWeight: 400,
-                  color: 'var(--uc-red)',
-                  fontFamily: 'inherit',
-                  opacity: busy ? 0.5 : 1,
-                }}
-              >
-                {deleteMutation.isPending ? 'Deleting…' : 'Delete experience'}
-              </button>
-            )}
-            {saveMutation.isError && (
-              <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>Failed to save — try again</span>
-            )}
-          </div>
-          <GhostBtn type="button" onClick={onClose} disabled={busy}>Cancel</GhostBtn>
-          <PrimaryBtn
-            type="submit"
-            form="exp-form"
-            disabled={!title.trim() || !company.trim() || !startDate || busy}
+        {confirmingDelete ? (
+          <ConfirmDeleteFooter
+            noun="experience entry"
+            pending={deleteMutation.isPending}
+            failed={deleteMutation.isError}
+            onCancel={() => { setConfirmingDelete(false); deleteMutation.reset() }}
+            onConfirm={() => deleteMutation.mutate()}
+          />
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              padding: '14px 20px',
+              borderTop: '0.5px solid var(--border-default)',
+              flexShrink: 0,
+            }}
           >
-            {saveMutation.isPending ? 'Saving…' : 'Save'}
-          </PrimaryBtn>
-        </div>
+            <div style={{ flex: 1 }}>
+              {isEdit && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(true)}
+                  disabled={busy}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: busy ? 'default' : 'pointer',
+                    padding: '6px 0',
+                    fontSize: 13,
+                    fontWeight: 400,
+                    color: 'var(--uc-red)',
+                    fontFamily: 'inherit',
+                    opacity: busy ? 0.5 : 1,
+                  }}
+                >
+                  Delete experience
+                </button>
+              )}
+              {rangeError ? (
+                <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>{rangeError}</span>
+              ) : saveMutation.isError && (
+                <span style={{ fontSize: 12, color: 'var(--uc-red)' }}>Failed to save — try again</span>
+              )}
+            </div>
+            <GhostBtn type="button" onClick={onClose} disabled={busy}>Cancel</GhostBtn>
+            <PrimaryBtn
+              type="submit"
+              form="exp-form"
+              disabled={!title.trim() || !company.trim() || !startDate || !!rangeError || busy}
+            >
+              {saveMutation.isPending ? 'Saving…' : 'Save'}
+            </PrimaryBtn>
+          </div>
+        )}
     </Modal>
   )
 }

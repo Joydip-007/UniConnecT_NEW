@@ -1,10 +1,11 @@
 import { Code2, ExternalLink, Globe, Link2, Lock, Mail, Pencil, Phone } from 'lucide-react'
 import type { PublicUserProfile } from '@uniconnect/shared'
+import type { SectionLock } from '../sectionLock'
 
 interface Props {
   user: PublicUserProfile
   isOwnProfile: boolean
-  connectionStatus: string
+  lock: SectionLock
   onEdit: () => void
 }
 
@@ -49,11 +50,8 @@ function InfoRow({
   )
 }
 
-export function ProfileContactInfo({ user, isOwnProfile, connectionStatus, onEdit }: Props) {
-  const isConnected = connectionStatus === 'connected'
-  const canSee = isOwnProfile || isConnected
-
-  if (!canSee) {
+export function ProfileContactInfo({ user, isOwnProfile, lock, onEdit }: Props) {
+  if (lock) {
     return (
       <div
         style={{
@@ -68,7 +66,7 @@ export function ProfileContactInfo({ user, isOwnProfile, connectionStatus, onEdi
       >
         <Lock size={16} strokeWidth={1.5} color="var(--text-tertiary)" />
         <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-          Connect to see contact information
+          {lock === 'private' ? 'Contact information is private' : 'Connect to see contact information'}
         </p>
       </div>
     )
@@ -77,7 +75,9 @@ export function ProfileContactInfo({ user, isOwnProfile, connectionStatus, onEdi
   const p = user.profile
   const rows: Array<{ icon: React.ReactNode; value: string; href?: string }> = []
 
-  rows.push({ icon: <Mail size={14} strokeWidth={1.5} />, value: user.email })
+  if (user.email) {
+    rows.push({ icon: <Mail size={14} strokeWidth={1.5} />, value: user.email })
+  }
 
   if (p.phone) {
     rows.push({ icon: <Phone size={14} strokeWidth={1.5} />, value: p.phone, href: `tel:${p.phone}` })

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { PublicUserProfile, ProfileExperience, ProfileEducation } from '@uniconnect/shared'
 import { getUserExperience, getUserEducation } from '@/lib/api/users'
 import { GhostBtn } from '@/components/Button'
+import { parseCalendarDate } from '../dates'
 import { AnimatedIcon } from '@/components/AnimatedIcon'
 import downloadCloudAnimation from '@/assets/lottie/icons8-download-from-the-cloud-50.json'
 
@@ -12,8 +13,7 @@ interface Props {
 
 function fmt(d: string | Date | null | undefined): string {
   if (!d) return ''
-  const dt = typeof d === 'string' ? new Date(d) : d
-  return dt.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+  return parseCalendarDate(d).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
 }
 
 // Profile fields are user-controlled — escape everything interpolated into the
@@ -135,7 +135,7 @@ function buildResumeHtml(
   ${p.headline ? `<div class="subtitle">${esc(p.headline)}</div>` : ''}
   <div class="meta">
     ${[
-      esc(user.email),
+      esc(user.email ?? ''),
       esc(p.phone ?? ''),
       esc(p.location ?? ''),
       links,

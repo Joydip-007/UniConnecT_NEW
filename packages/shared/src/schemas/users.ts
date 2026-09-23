@@ -1,5 +1,8 @@
 import { z } from 'zod'
 import type { ThemePreference } from '../types/user'
+import { PRIVACY_SECTIONS, type PrivacySection } from '../constants/privacy'
+
+const sectionVerdictSchema = z.enum(['visible', 'hidden'])
 
 export const userRoleSchema = z.enum(['student', 'alumni', 'faculty', 'admin', 'driver'])
 
@@ -79,7 +82,8 @@ export type ThemePreferenceInput = ThemePreference
 export const publicUserProfileSchema = z.object({
   id: z.string().uuid(),
   username: z.string(),
-  email: z.string(),
+  /** Null when the owner's `contact_info` tier hides it from this viewer. */
+  email: z.string().nullable(),
   role: userRoleSchema,
   universityId: z.string().uuid(),
   isVerified: z.boolean(),
@@ -93,6 +97,15 @@ export const publicUserProfileSchema = z.object({
   mutualConnections: z.number().int().nonnegative(),
   /** True when the viewer has muted this user's posts (false on own profile). */
   isMutedByViewer: z.boolean().optional(),
+  /** Per-section privacy verdict for this viewer, evaluated server-side. */
+  visibility: z
+    .object(
+      Object.fromEntries(PRIVACY_SECTIONS.map((k) => [k, sectionVerdictSchema])) as Record<
+        PrivacySection,
+        typeof sectionVerdictSchema
+      >,
+    )
+    .optional(),
   stats: z.object({
     connections: z.number().int().nonnegative(),
     pendingReceived: z.number().int().nonnegative(),

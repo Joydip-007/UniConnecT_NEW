@@ -46,6 +46,10 @@ export const AttachmentPicker = forwardRef<AttachmentPickerHandle, Props>(functi
   const { upload } = usePresignedUpload('attachments')
   const [busy, setBusy] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  // Latest staged list. Uploads resolve after awaits (and several may be in flight), so
+  // spreading the `value` captured by handleFiles would drop every file but the last.
+  const valueRef = useRef(value)
+  valueRef.current = value
 
   useImperativeHandle(ref, () => ({
     open: () => inputRef.current?.click(),
@@ -86,10 +90,12 @@ export const AttachmentPicker = forwardRef<AttachmentPickerHandle, Props>(functi
       setBusyDelta(1)
       try {
         const fileUrl = await upload(file)
-        onChange([
-          ...value,
+        const next = [
+          ...valueRef.current,
           { fileUrl, fileName: file.name, mimeType: file.type || undefined, sizeBytes: file.size },
-        ])
+        ]
+        valueRef.current = next
+        onChange(next)
       } catch {
         setError(`Failed to upload "${file.name}"`)
       } finally {

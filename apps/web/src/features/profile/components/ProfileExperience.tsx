@@ -2,11 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Lock, Pencil, Plus } from 'lucide-react'
 import type { ProfileExperience } from '@uniconnect/shared'
 import { getUserExperience } from '@/lib/api/users'
+import type { SectionLock } from '../sectionLock'
+import { parseCalendarDate } from '../dates'
 
 interface Props {
   userId: string
   isOwnProfile: boolean
-  connectionStatus: string
+  lock: SectionLock
   onAdd: () => void
   onEdit: (entry: ProfileExperience) => void
 }
@@ -15,16 +17,14 @@ function formatDateRange(
   startDate: string | Date,
   endDate: string | Date | null,
 ): string {
-  const fmt = (d: string | Date) => {
-    const dt = typeof d === 'string' ? new Date(d) : d
-    return dt.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-  }
+  const fmt = (d: string | Date) =>
+    parseCalendarDate(d).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
   const start = fmt(startDate)
   const end = endDate ? fmt(endDate) : 'Present'
   return `${start} – ${end}`
 }
 
-function LockedCard({ label }: { label: string }) {
+function LockedCard({ lock }: { lock: Exclude<SectionLock, null> }) {
   return (
     <div
       style={{
@@ -39,16 +39,14 @@ function LockedCard({ label }: { label: string }) {
     >
       <Lock size={16} strokeWidth={1.5} color="var(--text-tertiary)" />
       <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-        Connect to see {label}
+        {lock === 'private' ? 'Work experience is private' : 'Connect to see work experience'}
       </p>
     </div>
   )
 }
 
-export function ProfileExperience({ userId, isOwnProfile, connectionStatus, onAdd, onEdit }: Props) {
-  const isRestricted =
-    !isOwnProfile &&
-    (connectionStatus === 'none' || connectionStatus === 'pending_sent')
+export function ProfileExperience({ userId, isOwnProfile, lock, onAdd, onEdit }: Props) {
+  const isRestricted = lock !== null
 
   const { data: entries = [], isLoading } = useQuery<ProfileExperience[]>({
     queryKey: ['profile', 'experience', userId],
@@ -56,8 +54,8 @@ export function ProfileExperience({ userId, isOwnProfile, connectionStatus, onAd
     enabled: !isRestricted,
   })
 
-  if (isRestricted) {
-    return <LockedCard label="work experience" />
+  if (lock) {
+    return <LockedCard lock={lock} />
   }
 
   return (
