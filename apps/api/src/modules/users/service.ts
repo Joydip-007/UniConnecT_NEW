@@ -1,5 +1,5 @@
 import type { Knex } from 'knex'
-import type { UserRole } from '@uniconnect/shared'
+import type { ProfileEducation, ProfileExperience, ProfileFeatured, UserRole } from '@uniconnect/shared'
 import { normalizeUsername } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
@@ -56,6 +56,55 @@ interface UserProfileRow {
 
 interface CountRow {
   count: string | number
+}
+
+// Profile section rows come back from Knex in snake_case; the web reads the
+// camelCase shapes from @uniconnect/shared, so every response goes through these.
+type Row = Record<string, unknown>
+
+function toExperience(r: Row): ProfileExperience {
+  return {
+    id: r.id as string,
+    userId: r.user_id as string,
+    title: r.title as string,
+    company: r.company as string,
+    location: (r.location as string | null) ?? null,
+    startDate: r.start_date as string | Date,
+    endDate: (r.end_date as string | Date | null) ?? null,
+    description: (r.description as string | null) ?? null,
+    createdAt: r.created_at as string | Date,
+    updatedAt: r.updated_at as string | Date,
+  }
+}
+
+function toEducation(r: Row): ProfileEducation {
+  return {
+    id: r.id as string,
+    userId: r.user_id as string,
+    institution: r.institution as string,
+    degree: (r.degree as string | null) ?? null,
+    fieldOfStudy: (r.field_of_study as string | null) ?? null,
+    startYear: Number(r.start_year),
+    endYear: r.end_year == null ? null : Number(r.end_year),
+    grade: (r.grade as string | null) ?? null,
+    description: (r.description as string | null) ?? null,
+    createdAt: r.created_at as string | Date,
+    updatedAt: r.updated_at as string | Date,
+  }
+}
+
+function toFeatured(r: Row): ProfileFeatured {
+  return {
+    id: r.id as string,
+    userId: r.user_id as string,
+    type: r.type as ProfileFeatured['type'],
+    postId: (r.post_id as string | null) ?? null,
+    linkUrl: (r.link_url as string | null) ?? null,
+    linkTitle: (r.link_title as string | null) ?? null,
+    linkDescription: (r.link_description as string | null) ?? null,
+    displayOrder: Number(r.display_order),
+    createdAt: r.created_at as string | Date,
+  }
 }
 
 export class UsersService {
@@ -476,9 +525,10 @@ export class UsersService {
       const allowed = await canViewSection(currentUserId, targetUserId, 'experience', universityId)
       if (!allowed) return []
     }
-    return db('profile_experiences')
+    const rows: Row[] = await db('profile_experiences')
       .where({ user_id: targetUserId })
       .orderBy('start_date', 'desc')
+    return rows.map(toExperience)
   }
 
   async createExperience(userId: string, universityId: string, input: ExperienceInput) {
@@ -494,7 +544,7 @@ export class UsersService {
         description: input.description,
       })
       .returning('*')
-    return row
+    return toExperience(row)
   }
 
   async updateExperience(userId: string, entryId: string, universityId: string, input: Partial<ExperienceInput>) {
@@ -511,7 +561,7 @@ export class UsersService {
       .where({ id: entryId, user_id: userId, university_id: universityId })
       .update(update)
       .returning('*')
-    return row
+    return toExperience(row)
   }
 
   async deleteExperience(userId: string, entryId: string) {
@@ -532,9 +582,10 @@ export class UsersService {
       const allowed = await canViewSection(currentUserId, targetUserId, 'education', universityId)
       if (!allowed) return []
     }
-    return db('profile_education')
+    const rows: Row[] = await db('profile_education')
       .where({ user_id: targetUserId })
       .orderBy('start_year', 'desc')
+    return rows.map(toEducation)
   }
 
   async createEducation(userId: string, universityId: string, input: EducationInput) {
@@ -551,7 +602,7 @@ export class UsersService {
         description: input.description,
       })
       .returning('*')
-    return row
+    return toEducation(row)
   }
 
   async updateEducation(userId: string, entryId: string, universityId: string, input: Partial<EducationInput>) {
@@ -569,7 +620,7 @@ export class UsersService {
       .where({ id: entryId, user_id: userId, university_id: universityId })
       .update(update)
       .returning('*')
-    return row
+    return toEducation(row)
   }
 
   async deleteEducation(userId: string, entryId: string) {
@@ -588,9 +639,10 @@ export class UsersService {
       const connected = await isConnected(currentUserId, targetUserId, universityId)
       if (!connected) return []
     }
-    return db('profile_featured')
+    const rows: Row[] = await db('profile_featured')
       .where({ user_id: targetUserId })
       .orderBy('display_order', 'asc')
+    return rows.map(toFeatured)
   }
 
   async createFeatured(userId: string, universityId: string, input: FeaturedInput) {
@@ -612,7 +664,7 @@ export class UsersService {
         display_order: count,
       })
       .returning('*')
-    return row
+    return toFeatured(row)
   }
 
   async deleteFeatured(userId: string, entryId: string) {
@@ -630,7 +682,8 @@ export class UsersService {
           .update({ display_order: index, updated_at: db.fn.now() }),
       ),
     )
-    return db('profile_featured').where({ user_id: userId }).orderBy('display_order', 'asc')
+    const rows: Row[] = await db('profile_featured').where({ user_id: userId }).orderBy('display_order', 'asc')
+    return rows.map(toFeatured)
   }
 
   // ─── Analytics ──────────────────────────────────────────────────────────────
