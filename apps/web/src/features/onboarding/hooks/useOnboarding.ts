@@ -8,7 +8,7 @@ const DISMISS_KEY = 'uc.onboarding_dismissed'
 export interface SuggestedPerson {
   id: string
   role: UserRole
-  profile: { fullName: string; department: string | null; batchYear: string | null }
+  profile: { fullName: string; avatarUrl: string | null; department: string | null; batchYear: string | null }
   connectionStatus?: 'none' | 'pending_sent' | 'pending_received' | 'connected'
   connectionId?: string | null
 }

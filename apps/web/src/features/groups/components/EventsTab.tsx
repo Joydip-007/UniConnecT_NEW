@@ -382,15 +382,7 @@ function PostRow({ entry }: { entry: Extract<GroupEventEntry, { kind: 'post' }> 
         gap: 12,
       }}
     >
-      {entry.author.avatarUrl ? (
-        <img
-          src={entry.author.avatarUrl}
-          alt={entry.author.fullName}
-          style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-        />
-      ) : (
-        <Avatar initials={getInitials(entry.author.fullName)} color={seedColor(entry.author.id)} size={36} />
-      )}
+      <Avatar src={entry.author.avatarUrl} initials={getInitials(entry.author.fullName)} color={seedColor(entry.author.id)} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 5 }}>
           {entry.author.role && <RoleBadge role={entry.author.role} size={12} tipPlacement="below" />}

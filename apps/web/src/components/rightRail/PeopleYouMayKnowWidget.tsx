@@ -19,6 +19,7 @@ interface SuggestedUser {
   role: UserRole
   profile: {
     fullName: string
+    avatarUrl: string | null
     department: string | null
     batchYear: string | null
   }
@@ -61,7 +62,7 @@ function PersonRow({
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
           aria-label={`View ${user.profile.fullName}'s profile`}
         >
-          <Avatar initials={initials} color={color} size={36} />
+          <Avatar src={user.profile.avatarUrl} initials={initials} color={color} size={36} />
         </button>
 
         <div style={{ flex: 1, minWidth: 0 }}>

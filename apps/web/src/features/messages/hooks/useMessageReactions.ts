@@ -2,16 +2,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import type { MessageReactionKey } from '@/components/emoji/reactionConfig'
 
-export type MessageReactions = Record<string, { userId: string; fullName: string }[]>
+import type { MessageReactions } from '../types'
 
-export function useMessageReactions(convId: string, msgId: string) {
+export type { MessageReactions }
+
+/**
+ * Reactions arrive inline on each message (`GET …/messages`), so this is a cache
+ * slot seeded from the message rather than a fetch — the mutations below write
+ * the server's fresh tally into it.
+ */
+export function useMessageReactions(msgId: string, initial: MessageReactions | undefined) {
   return useQuery({
     queryKey: ['message-reactions', msgId],
-    queryFn: () =>
-      api
-        .get<{ data: MessageReactions }>(`/conversations/${convId}/messages/${msgId}/reactions`)
-        .then((r) => r.data.data),
-    staleTime: 30_000,
+    queryFn: () => initial ?? {},
+    initialData: initial ?? {},
+    enabled: false,
+    staleTime: Infinity,
   })
 }
 

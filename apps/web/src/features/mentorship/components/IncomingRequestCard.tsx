@@ -90,6 +90,7 @@ export function IncomingRequestCard({
     >
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <Avatar
+          src={request.student.avatarUrl}
           initials={getInitials(request.student.fullName)}
           color={avatarColor(request.student.id)}
           size={40}

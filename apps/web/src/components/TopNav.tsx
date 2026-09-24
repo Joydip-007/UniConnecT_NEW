@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bell, Check, ChevronDown, LogOut, MessageSquare, Monitor, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
@@ -94,6 +94,8 @@ function BadgeCount({ count, animate }: { count: number; animate: boolean }) {
 export function TopNav() {
   const reduced = useReducedMotion()
   const scrollDir = useScrollDirection()
+  // On /messages the icon marks where you are (Messages Page.dc.html), like a lit rail row.
+  const onMessages = useLocation().pathname.startsWith(PATHS.MESSAGES)
   const { user, clearAuth } = useAuthStore()
   const { messageCount, notificationCount } = useNotificationsStore()
   const themeMode = useThemeStore((s) => s.mode)
@@ -372,8 +374,10 @@ export function TopNav() {
             className="press-feedback row-hover-bg"
             style={{
               ...iconBtnStyle,
-              background: msgOpen ? 'var(--surface-raised)' : undefined,
+              background: msgOpen ? 'var(--surface-raised)' : onMessages ? 'var(--uc-indigo-bg)' : undefined,
+              color: onMessages && !msgOpen ? 'var(--uc-indigo-l)' : iconBtnStyle.color,
             }}
+            aria-current={onMessages ? 'page' : undefined}
             aria-label={messageCount > 0 ? `Messages (${messageCount} unread)` : 'Messages'}
             aria-expanded={msgOpen}
             aria-haspopup="dialog"

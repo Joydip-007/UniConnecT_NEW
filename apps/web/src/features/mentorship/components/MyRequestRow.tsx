@@ -49,6 +49,7 @@ export function MyRequestRow({ request }: MyRequestRowProps) {
       }}
     >
       <Avatar
+        src={request.alumni.avatarUrl}
         initials={getInitials(request.alumni.fullName)}
         color={avatarColor(request.alumni.id)}
         size={40}

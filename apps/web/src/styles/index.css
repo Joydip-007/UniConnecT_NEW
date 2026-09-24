@@ -50,7 +50,7 @@ textarea:focus-visible,
 select:focus-visible {
   outline: none !important;
   border-color: var(--uc-indigo) !important;
-  box-shadow: 0 0 0 3px var(--uc-indigo-bg);
+  box-shadow: none !important;
 }
 
 @keyframes shimmer {
@@ -314,50 +314,121 @@ select:focus-visible {
   }
 }
 
-/* ── Messages two-panel layout ────────────────────────────── */
+/* ── Messages (Messages Page.dc.html) ─────────────────────── */
+/* Desktop: icon rail · conversation list · thread · details rail.
+   Mobile (≤767px): the list and the thread are separate screens. */
 
-/* Sidebar on /messages (list view): 320px desktop, full-width mobile */
-.msg-sidebar-full-mobile {
-  width: 320px;
-  flex-shrink: 0;
-  border-right: 0.5px solid var(--border-default);
-  background: var(--surface-card);
+.msgx-page {
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--surface-page);
 }
-
-/* Sidebar on /messages/:id (conv view): 320px desktop, hidden mobile */
-.msg-sidebar-desktop-only {
-  width: 320px;
+.msgx-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.msgx-rail {
+  flex-shrink: 0;
+  display: flex;
+  border-right: 0.5px solid var(--border-default);
+}
+.msgx-list {
+  width: 344px;
   flex-shrink: 0;
   border-right: 0.5px solid var(--border-default);
-  background: var(--surface-card);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 0;
+  background: var(--surface-page);
+}
+.msgx-thread {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card);
+  border-right: 0.5px solid var(--border-default);
+}
+.msgx-details {
+  width: 288px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 20px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--surface-page);
 }
 
-/* Back button in ConversationPage: visible mobile, hidden desktop */
-/* !important needed to override the inline display:flex on the button element */
-.msg-back-mobile-only {
-  display: none !important;
+.msgx-hover:hover { background: var(--surface-hover) !important; }
+.msgx-dim:hover { opacity: 0.9; }
+.msgx-send:hover { opacity: 0.85; }
+.msgx-tool-btn:hover { color: var(--text-primary) !important; }
+.msgx-search:focus {
+  border-color: var(--uc-indigo-bdr) !important;
+}
+.msgx-scroll { scrollbar-width: thin; scrollbar-color: var(--border-hover) transparent; }
+.msgx-scroll::-webkit-scrollbar { width: 6px; }
+.msgx-scroll::-webkit-scrollbar-thumb { background-color: var(--border-default); border-radius: 999px; }
+.msgx-hide-bar { scrollbar-width: none; -ms-overflow-style: none; }
+.msgx-hide-bar::-webkit-scrollbar { display: none; }
+
+/* Hover tools beside a bubble: hidden until the row is hovered, focused, or its menu is open. */
+.msgx-tool { opacity: 0; transition: opacity var(--dur-fast) var(--ease-out-strong); }
+.msgx-row:hover .msgx-tool,
+.msgx-row:focus-within .msgx-tool,
+.msgx-row[data-hot='true'] .msgx-tool { opacity: 1; }
+
+@keyframes msgx-typing {
+  0%, 60%, 100% { opacity: 0.28; transform: translateY(0); }
+  30% { opacity: 0.9; transform: translateY(-3px); }
+}
+.msgx-dot1 { animation: msgx-typing 1.2s infinite; }
+.msgx-dot2 { animation: msgx-typing 1.2s infinite 0.15s; }
+.msgx-dot3 { animation: msgx-typing 1.2s infinite 0.3s; }
+@media (prefers-reduced-motion: reduce) {
+  .msgx-dot1, .msgx-dot2, .msgx-dot3 { animation: none; opacity: 0.6; }
 }
 
+/* Below 1280px the details rail stops sharing the row and slides over the thread. */
+@media (max-width: 1279px) {
+  .msgx-details {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 55;
+    border-left: 0.5px solid var(--border-default);
+  }
+}
+@media (max-width: 1023px) {
+  .msgx-rail { display: none; }
+  .msgx-list { width: 300px; }
+}
 @media (max-width: 767px) {
-  .msg-sidebar-full-mobile {
-    width: 100%;
-    border-right: none;
+  .msgx-topnav { display: none; }
+  .msgx-list { width: 100%; border-right: none; }
+  .msgx-thread { border-right: none; }
+  .msgx-page[data-screen='list'] .msgx-thread { display: none; }
+  .msgx-page[data-screen='thread'] .msgx-list { display: none; }
+  .msgx-page[data-screen='list'] .msgx-body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .msgx-details {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    z-index: 80;
+    border-left: none;
+    padding-top: 12px;
   }
-  .msg-right-desktop-only {
-    display: none !important;
-  }
-  .msg-sidebar-desktop-only {
-    display: none !important;
-  }
-  .msg-back-mobile-only {
-    display: flex !important;
-  }
+}
+/* Touch has no hover: a tapped bubble marks its row hot instead (see ThreadMessage). */
+@media (hover: none) {
+  .msgx-row:hover .msgx-tool { opacity: 0; }
+  .msgx-row[data-hot='true'] .msgx-tool { opacity: 1; }
 }
 
 /* ── Admin → Learning ─────────────────────────────────────── */

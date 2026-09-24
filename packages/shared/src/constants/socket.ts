@@ -41,3 +41,14 @@ export interface PresenceUpdate {
   status: PresenceStatus
   lastSeenAt: string | null
 }
+
+export const MESSAGE_EVENTS = {
+  /** A message was edited — sent to the `conv:{id}` room. */
+  UPDATED: 'conv:message:updated',
+  /** Someone started/stopped typing — sent to each other participant's `user:{id}` room so list rows can show it. */
+  LIST_TYPING: 'conv:list:typing',
+  /** A conversation received a new message — sent to each participant's `user:{id}` room so the list re-sorts. */
+  ACTIVITY: 'conv:activity',
+  /** A participant read a view-once photo — sent to the `conv:{id}` room. */
+  ONCE_OPENED: 'conv:message:once-opened',
+} as const

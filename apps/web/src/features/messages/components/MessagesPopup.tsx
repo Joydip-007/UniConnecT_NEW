@@ -163,6 +163,10 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                   ? (conv.otherParticipant?.fullName ?? 'Unknown')
                   : (conv.name ?? 'Group')
               const avatarInitials = initials(displayName)
+              const avatarSrc =
+                conv.type === 'direct' || isMentorship
+                  ? conv.otherParticipant?.profile.avatarUrl
+                  : conv.avatarUrl
               const color = seedColor(conv.id)
               const preview = conv.lastMessage?.body || 'No messages yet'
               const time = conv.lastMessage?.sentAt
@@ -191,7 +195,7 @@ export function MessagesPopup({ onClose }: MessagesPopupProps) {
                   }}
                 >
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <Avatar initials={avatarInitials} color={color} size={36} />
+                    <Avatar src={avatarSrc} initials={avatarInitials} color={color} size={36} />
                     {hasUnread && (
                       <span
                         style={{

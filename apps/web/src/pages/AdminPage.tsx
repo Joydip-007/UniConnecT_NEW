@@ -736,10 +736,7 @@ function ConfirmModal({ variant, user, isPending, onConfirm, onClose }: ConfirmM
           alignItems: 'center',
           gap: 10,
         }}>
-          {user.profile.avatarUrl
-            ? <img src={user.profile.avatarUrl} alt={user.profile.fullName}
-                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-            : <Avatar initials={getInitials(user.profile.fullName)} color={seedColor(user.id)} size={32} />}
+          <Avatar src={user.profile.avatarUrl} initials={getInitials(user.profile.fullName)} color={seedColor(user.id)} size={32} />
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
               <RoleBadge role={user.role} size={14} tipPlacement="below" />
@@ -963,19 +960,9 @@ function UsersTab({
               }}>
                 {/* Avatar */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  {u.profile.avatarUrl
-                    ? <img src={u.profile.avatarUrl} alt={u.profile.fullName}
-                        style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          opacity: u.isActive ? 1 : 0.45,
-                          transition: 'opacity 200ms',
-                        }} />
-                    : <div style={{ opacity: u.isActive ? 1 : 0.45, transition: 'opacity 200ms' }}>
-                        <Avatar initials={getInitials(u.profile.fullName)} color={seedColor(u.id)} size={38} />
-                      </div>}
+                  <div style={{ opacity: u.isActive ? 1 : 0.45, transition: 'opacity 200ms' }}>
+                    <Avatar src={u.profile.avatarUrl} initials={getInitials(u.profile.fullName)} color={seedColor(u.id)} size={38} />
+                  </div>
                 </div>
 
                 {/* Identity */}

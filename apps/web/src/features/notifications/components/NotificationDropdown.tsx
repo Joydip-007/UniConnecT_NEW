@@ -92,15 +92,7 @@ function NotificationRow({
       }}
     >
       <div style={{ flexShrink: 0, marginTop: 1 }}>
-        {actor.avatarUrl ? (
-          <img
-            src={actor.avatarUrl}
-            alt=""
-            style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
-          />
-        ) : (
-          <Avatar initials={initials} color={color} size={36} />
-        )}
+        <Avatar src={actor.avatarUrl} initials={initials} color={color} size={36} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>

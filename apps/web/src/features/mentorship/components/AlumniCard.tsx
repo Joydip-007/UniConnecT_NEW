@@ -26,7 +26,7 @@ export function AlumniCard({ alumnus, alreadySent, onAsk }: AlumniCardProps) {
           alignItems: 'flex-start',
         }}
       >
-        <Avatar initials={getInitials(alumnus.fullName)} color={avatarColor(alumnus.id)} size={44} />
+        <Avatar src={alumnus.avatarUrl} initials={getInitials(alumnus.fullName)} color={avatarColor(alumnus.id)} size={44} />
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>

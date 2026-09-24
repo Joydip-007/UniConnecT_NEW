@@ -1,6 +1,7 @@
 import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import type { PublicUserProfile } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
+import { resolveMessagesMock } from '@/lib/devMessagesMocks'
 
 /**
  * DEV-ONLY backend stub for the `?dev-auth=1` design-verification flow.
@@ -160,6 +161,8 @@ const DEV_GROUP_STATS = {
 
 /** Returns the HTTP body to fake for a GET, or null to defer to the real adapter. */
 function resolveMockBody(url: string): unknown | null {
+  const messaging = resolveMessagesMock(url)
+  if (messaging !== null) return messaging
   const DEV_GROUP = currentDevGroup()
   if (url === '/groups') return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
   if (url.startsWith('/groups/my')) return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }

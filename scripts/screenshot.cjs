@@ -51,6 +51,11 @@ const ROUTES = {
   // so this captures the admin "Manage this group" shell instead of the plain member view.
   'group-detail-admin': { path: `/groups/${DEV_GROUP_ID}`, auth: true, role: 'faculty', w: 1440, h: 900 },
   'groups-mobile': { path: `/groups/${DEV_GROUP_ID}`, auth: true,  w: 390,  h: 844  },
+  // devMessagesMocks.ts — desktop /messages lands on the pinned Nusrat Jahan thread.
+  'messages':    { path: '/messages',                 auth: true,  w: 1440, h: 900  },
+  'messages-group': { path: '/messages/dev-conv-batch', auth: true, w: 1440, h: 900  },
+  'messages-mobile': { path: '/messages',             auth: true,  w: 390,  h: 844  },
+  'messages-thread-mobile': { path: '/messages/dev-conv-nusrat', auth: true, w: 390, h: 844 },
 };
 
 async function capture(name, route) {

@@ -205,25 +205,12 @@ function AttendeeRow({ attendee }: { attendee: AttendeeItem }) {
         borderBottom: '0.5px solid var(--border-default)',
       }}
     >
-      {attendee.avatarUrl ? (
-        <img
-          src={attendee.avatarUrl}
-          alt={attendee.fullName}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            objectFit: 'cover',
-            flexShrink: 0,
-          }}
-        />
-      ) : (
-        <Avatar
-          initials={toInitials(attendee.fullName)}
-          color={avatarColor(attendee.id)}
-          size={36}
-        />
-      )}
+      <Avatar
+        src={attendee.avatarUrl}
+        initials={toInitials(attendee.fullName)}
+        color={avatarColor(attendee.id)}
+        size={36}
+      />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           {attendee.user?.role && <RoleBadge role={attendee.user.role} size={14} tipPlacement="below" />}
@@ -756,25 +743,12 @@ export default function EventDetailPage() {
           Organized by
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {event.organizer.avatarUrl ? (
-            <img
-              src={event.organizer.avatarUrl}
-              alt={event.organizer.fullName}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: '50%',
-                objectFit: 'cover',
-                flexShrink: 0,
-              }}
-            />
-          ) : (
-            <Avatar
-              initials={toInitials(event.organizer.fullName)}
-              color={avatarColor(event.organizer.id)}
-              size={40}
-            />
-          )}
+          <Avatar
+            src={event.organizer.avatarUrl}
+            initials={toInitials(event.organizer.fullName)}
+            color={avatarColor(event.organizer.id)}
+            size={40}
+          />
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {event.organizer.role && <RoleBadge role={event.organizer.role} size={15} />}
             <span
