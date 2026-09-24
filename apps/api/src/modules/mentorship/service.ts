@@ -87,12 +87,14 @@ interface RequestRow {
   alumni_headline?: string | null
   alumni_department?: string | null
   alumni_batch_year?: string | null
+  alumni_role?: UserRole
   // student fields (for incoming)
   student_full_name?: string
   student_avatar_url?: string | null
   student_headline?: string | null
   student_department?: string | null
   student_batch_year?: string | null
+  student_role?: UserRole
 }
 
 interface RequestDetailRow extends RequestRow {
@@ -282,6 +284,7 @@ export class MentorshipService {
         'alumni_profile.headline as alumni_headline',
         'alumni_profile.department as alumni_department',
         'alumni_profile.batch_year as alumni_batch_year',
+        'alumni_user.role as alumni_role',
       )
       .orderBy('mentorship_requests.created_at', 'desc')
       .limit(query.limit)
@@ -329,6 +332,7 @@ export class MentorshipService {
         'student_profile.headline as student_headline',
         'student_profile.department as student_department',
         'student_profile.batch_year as student_batch_year',
+        'student_user.role as student_role',
       )
       .orderBy('mentorship_requests.created_at', 'desc')
       .limit(query.limit)
@@ -865,6 +869,8 @@ function toAlumni(row: AlumniRow) {
     id: row.id,
     universityId: row.university_id,
     fullName: row.full_name,
+    // Mentor listings only ever select `users.role = 'alumni'`.
+    role: 'alumni' as const,
     headline: row.headline,
     department: row.department,
     batchYear: row.batch_year,
@@ -891,6 +897,7 @@ function toMyRequest(row: RequestRow) {
       headline: row.alumni_headline ?? null,
       department: row.alumni_department ?? null,
       batchYear: row.alumni_batch_year ?? null,
+      role: row.alumni_role ?? null,
     },
   }
 }
@@ -911,6 +918,7 @@ function toIncomingRequest(row: RequestRow) {
       headline: row.student_headline ?? null,
       department: row.student_department ?? null,
       batchYear: row.student_batch_year ?? null,
+      role: row.student_role ?? null,
     },
   }
 }

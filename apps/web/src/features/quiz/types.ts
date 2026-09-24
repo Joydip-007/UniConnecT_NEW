@@ -1,3 +1,5 @@
+import type { UserRole } from '@uniconnect/shared'
+
 export interface ClientQuestion { q: string; options: string[] }
 
 export interface QuizReviewItem {
@@ -35,6 +37,7 @@ export interface LeaderboardEntry {
   rank: number
   userId: string
   fullName: string
+  role?: UserRole
   avatarUrl: string | null
   score: number
   correctCount: number

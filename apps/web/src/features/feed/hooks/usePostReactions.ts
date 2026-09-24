@@ -1,11 +1,13 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
+import type { UserRole } from '@uniconnect/shared'
 import type { ReactionKey } from '@/components/emoji/reactionConfig'
 
 export interface ReactionUser {
   userId: string
   fullName: string
   avatarUrl: string | null
+  role: UserRole
   reactionType: ReactionKey
   connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
   connectionId: string | null

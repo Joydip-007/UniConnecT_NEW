@@ -9,12 +9,12 @@ import type { TagPostsQuery } from './schema'
 function getAuthContext(req: Request) {
   if (!req.user) throw unauthorized()
   if (!req.university) throw new AppError('University not resolved', 500, 'UNIVERSITY_NOT_RESOLVED')
-  return { userId: req.user.userId, universityId: req.university.id }
+  return { userId: req.user.userId, universityId: req.university.id, role: req.user.role }
 }
 
 export const discoveryController = asyncHandler(async (req: Request, res: Response) => {
-  const { userId, universityId } = getAuthContext(req)
-  const result = await getDiscovery(universityId, userId)
+  const { userId, universityId, role } = getAuthContext(req)
+  const result = await getDiscovery(universityId, userId, role)
   sendSuccess(res, result)
 })
 

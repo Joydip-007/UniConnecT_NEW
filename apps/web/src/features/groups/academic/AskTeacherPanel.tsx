@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { Lock, Plus } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { ChatView, MessageInput, useConversationSocket } from '@/features/messages'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useAskTeacher, useAskTeacherQueue, useConsultationSlots, useCreateSlot } from '../hooks/useGroupExtended'
@@ -60,6 +61,7 @@ function StudentView({ groupId }: { groupId: string }) {
         )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {teacher?.role && <RoleBadge role={teacher.role} size={15} tipPlacement="below" />}
             <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{isLoading ? 'Loading…' : teacherName}</span>
             <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 'var(--r-pill)', background: 'var(--uc-indigo-bg)', border: '0.5px solid var(--uc-indigo-bdr)', color: 'var(--uc-indigo-l)' }}>
               Course teacher

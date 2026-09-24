@@ -10,6 +10,7 @@ import { formatDate } from '../constants'
 import type { MyRequest } from '../types'
 import { FeedbackSection } from './FeedbackSection'
 import { StatusBadge } from './StatusBadge'
+import { RoleBadge } from '@/components/RoleBadge'
 
 interface MyRequestRowProps {
   request: MyRequest
@@ -55,6 +56,7 @@ export function MyRequestRow({ request }: MyRequestRowProps) {
 
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {request.alumni.role && <RoleBadge role={request.alumni.role} size={15} tipPlacement="below" />}
           <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
             {request.alumni.fullName}
           </p>

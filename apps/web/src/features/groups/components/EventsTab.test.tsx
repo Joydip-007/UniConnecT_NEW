@@ -74,7 +74,8 @@ describe('EventsTab pending event approval queue', () => {
     expect(await screen.findByText('1 event awaiting approval')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument()
-    expect(screen.getByText(/Submitted by Tanvir Hasan/)).toBeInTheDocument()
+    expect(screen.getByText('Submitted by')).toBeInTheDocument()
+    expect(screen.getByText('Tanvir Hasan')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Create event/ })).toBeInTheDocument()
   })
 

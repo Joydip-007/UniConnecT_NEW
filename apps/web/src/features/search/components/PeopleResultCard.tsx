@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { highlightMatch } from '@/utils/highlightMatch'
 import { ConnectButton } from '@/features/connections'
 import type { UserSearchResult } from '../types'
@@ -51,8 +52,9 @@ export function PeopleResultCard({ person, query }: Props) {
       >
         <Avatar initials={initials} color={color} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-            {highlightMatch(person.fullName, query)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+            <RoleBadge role={person.role} size={14} tipPlacement="below" />
+            <span>{highlightMatch(person.fullName, query)}</span>
           </div>
           {(person.headline || person.department) && (
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>

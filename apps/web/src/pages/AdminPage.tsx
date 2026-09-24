@@ -11,6 +11,7 @@ import type { AccountDeletionRequest } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
@@ -740,9 +741,12 @@ function ConfirmModal({ variant, user, isPending, onConfirm, onClose }: ConfirmM
                 style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
             : <Avatar initials={getInitials(user.profile.fullName)} color={seedColor(user.id)} size={32} />}
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user.profile.fullName}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <RoleBadge role={user.role} size={14} tipPlacement="below" />
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                {user.profile.fullName}
+              </p>
+            </div>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {user.email}
             </p>
@@ -977,6 +981,7 @@ function UsersTab({
                 {/* Identity */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <RoleBadge role={u.role} size={14} tipPlacement="below" />
                     <span style={{
                       fontSize: 14,
                       fontWeight: 500,

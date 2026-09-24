@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bell, Check, ChevronDown, LogOut, MessageSquare, Monitor, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useThemeStore } from '@/stores/themeStore'
@@ -466,7 +467,8 @@ export function TopNav() {
                     marginBottom: 4,
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                    <RoleBadge role={user.role} size={14} tipPlacement="below" />
                     {user.profile.fullName}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>

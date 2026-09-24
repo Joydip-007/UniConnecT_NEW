@@ -284,6 +284,8 @@ function resolveMockBody(url: string): unknown | null {
   }
   if (/\/admin\/learning\/analytics/.test(url)) return { data: { windowDays: 14, paths: [], quizzes: [] } }
   if (url === '/admin/stats') return { data: DEV_ADMIN_STATS }
+  if (url === '/explore/discovery') return { data: DEV_DISCOVERY }
+  if (url === '/search') return { data: DEV_SEARCH_ALL }
 
   return null
 }
@@ -325,6 +327,94 @@ const DEV_ADMIN_QUIZZES = [
 const DEV_ADMIN_STATS = {
   totalUsers: 1240, activeUsers: 812, pendingReports: 3, totalPosts: 5210, totalJobs: 48, totalEvents: 22,
   usersByRole: { student: 1100, alumni: 90, faculty: 40, admin: 10 }, moderationHealth: { openReports: 3, resolvedLast7d: 12, avgResolutionHours: 6 },
+}
+
+const inDays = (days: number, hour: number, minute = 0) => {
+  const d = new Date(Date.now() + days * 24 * 3600_000)
+  d.setHours(hour, minute, 0, 0)
+  return d.toISOString()
+}
+
+const devPerson = (
+  id: string, fullName: string, role: string, headline: string | null, department: string, batchYear: string,
+  mutualCount: number, connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected' = 'none',
+) => ({
+  id, role, fullName, headline, department, batchYear, avatarUrl: null, followerCount: 40 + mutualCount * 7, mutualCount,
+  connectionStatus, connectionId: connectionStatus === 'none' ? null : `conn-${id}`,
+})
+
+const devFace = (id: string, fullName: string) => ({ id, fullName, avatarUrl: null })
+
+const devGroupSummary = (
+  id: string, name: string, type: string, memberCount: number, recentPostCount: number, isPrivate: boolean,
+  faces: { id: string; fullName: string; avatarUrl: null }[], knownCount = faces.length,
+) => ({ id, name, type, avatarUrl: null, memberCount, recentPostCount, isPrivate, requestPending: false, knownCount, knownFaces: faces })
+
+const FACE_SR = devFace('dev-u1', 'Sadia Rahman')
+const FACE_IH = devFace('dev-u2', 'Imran Hossain')
+const FACE_SA = devFace('dev-u3', 'Shamsul Alam')
+const FACE_FA = devFace('dev-u4', 'Farhana Akter')
+
+/** Explore discovery payload, mirroring the Explore design reference. */
+const DEV_DISCOVERY = {
+  trendingPosts: [
+    ['dev-p1', 'Anyone else notice the CSE lab machines got new GPUs? Ran a full ResNet fine-tune in twenty minutes.', 'Tanvir Ahmed', 3, 48, 12],
+    ['dev-p2', 'Registration for the Fall trimester opens Sunday 9am. Last time the portal crawled, so log in early.', 'Nusrat Jahan', 5, 132, 41],
+    ['dev-p3', "Sharing my notes from Dr. Alam's algorithms midterm review session. Link in the comments.", 'Sadia Rahman', 8, 76, 19],
+    ['dev-p4', 'IUT beat us by four runs. Still proud of the team. That last over was brutal.', 'Imran Hossain', 26, 210, 63],
+  ].map(([id, content, authorName, hours, reactionCount, commentCount]) => ({
+    id, content, authorName, createdAt: ago(0, hours as number), authorId: `${id}-author`, authorAvatarUrl: null,
+    authorRole: 'student', reactionCount, commentCount,
+  })),
+  peopleSuggestions: [
+    devPerson('dev-u1', 'Sadia Rahman', 'alumni', 'Junior SWE at Optimizely', 'CSE', '2026', 3),
+    devPerson('dev-u2', 'Imran Hossain', 'student', null, 'CSE', '2026', 11),
+    devPerson('dev-u3', 'Dr. Shamsul Alam', 'faculty', 'Assistant Professor, CSE', 'CSE', '2012', 0, 'pending_sent'),
+    devPerson('dev-u4', 'Farhana Akter', 'student', null, 'EEE', '2027', 2, 'connected'),
+    devPerson('dev-u5', 'Rakib Chowdhury', 'student', 'ML research assistant', 'CSE', '2025', 4),
+    devPerson('dev-u6', 'Nusrat Jahan', 'alumni', 'Analyst at BRAC Bank', 'BBA', '2021', 1),
+  ],
+  activeGroups: [
+    devGroupSummary('dev-g1', 'CSE Study Circle', 'department', 1204, 38, false, [FACE_IH, FACE_SA, FACE_FA]),
+    devGroupSummary('dev-g2', 'UIU Robotics Club', 'club', 486, 12, false, [FACE_SR, FACE_IH]),
+    devGroupSummary('dev-g3', 'Photography Society', 'club', 932, 21, false, [FACE_FA]),
+    devGroupSummary('dev-g4', 'Competitive Programming', 'club', 674, 55, true, [FACE_IH, FACE_SR]),
+    devGroupSummary('dev-g5', 'Debate Club', 'club', 312, 7, false, []),
+    devGroupSummary('dev-g6', 'CSE 2026 batch', 'batch', 318, 9, false, [FACE_SR, FACE_IH, FACE_FA], 4),
+  ],
+  upcomingEvents: [
+    { id: 'dev-e1', title: 'Career Fair 2026', startsAt: inDays(3, 10), location: 'Auditorium', rsvpCount: 412, myRsvp: null },
+    { id: 'dev-e2', title: 'Robotics workshop: ROS2 basics', startsAt: inDays(6, 14, 30), location: 'Lab 602', rsvpCount: 88, myRsvp: 'going' },
+    { id: 'dev-e3', title: 'Alumni meetup, Dhaka', startsAt: inDays(15, 18), location: 'Gulshan', rsvpCount: 156, myRsvp: null },
+    { id: 'dev-e4', title: 'Intra-university hackathon: 24 hour build sprint', startsAt: inDays(23, 9), location: 'Multipurpose hall', rsvpCount: 240, myRsvp: null },
+  ].map((e) => ({ ...e, coverUrl: null })),
+  featuredAlumni: [
+    devPerson('dev-a1', 'Rafiul Karim', 'alumni', 'Senior Engineer at Grameenphone', 'CSE', '2019', 5),
+    devPerson('dev-a2', 'Mahbub Hasan', 'alumni', 'Product Manager at bKash', 'BBA', '2017', 1),
+    devPerson('dev-a3', 'Ayesha Siddika', 'alumni', 'Data Scientist at Pathao', 'CSE', '2020', 2),
+  ],
+}
+
+/** Explore "All" search payload — note the empty Groups count, so that tab renders dimmed. */
+const DEV_SEARCH_ALL = {
+  people: [
+    { ...devPerson('dev-a3', 'Ayesha Siddika', 'alumni', 'Data Scientist at Pathao', 'CSE', '2020', 2) },
+    { ...devPerson('dev-u3', 'Dr. Shamsul Alam', 'faculty', 'Assistant Professor, CSE', 'CSE', '2012', 0) },
+    { ...devPerson('dev-u5', 'Rakib Chowdhury', 'student', 'ML research assistant', 'CSE', '2025', 4) },
+  ],
+  posts: [
+    { id: 'dev-sp1', content: 'Machine learning reading group, week 4 notes', createdAt: ago(0, 8), reactionCount: 24, commentCount: 6, author: { id: 'dev-u2', fullName: 'Imran Hossain', avatarUrl: null, role: 'student' } },
+    { id: 'dev-sp2', content: 'Free GPU credits for final-year machine learning projects', createdAt: ago(2), reactionCount: 88, commentCount: 17, author: { id: 'dev-u6', fullName: 'Nusrat Jahan', avatarUrl: null, role: 'alumni' } },
+  ],
+  jobs: [
+    { id: 'dev-j1', title: 'Machine Learning Intern', company: 'Pathao', type: 'internship', location: 'Dhaka', deadline: null },
+    { id: 'dev-j2', title: 'Junior Data Scientist', company: 'bKash', type: 'full_time', location: 'Dhaka', deadline: null },
+  ],
+  events: [
+    { id: 'dev-se1', title: 'Applied machine learning bootcamp', startsAt: inDays(9, 10), location: 'Room 401', coverUrl: null, myRsvp: null },
+  ],
+  groups: [],
+  counts: { people: 8, posts: 11, jobs: 3, events: 2, groups: 0 },
 }
 
 let installed = false

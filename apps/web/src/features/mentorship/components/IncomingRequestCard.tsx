@@ -13,6 +13,7 @@ import { formatDate } from '../constants'
 import type { AddToast, IncomingRequest, RequestStatus } from '../types'
 import { FeedbackSection } from './FeedbackSection'
 import { StatusBadge } from './StatusBadge'
+import { RoleBadge } from '@/components/RoleBadge'
 
 interface IncomingRequestCardProps {
   request: IncomingRequest
@@ -95,6 +96,7 @@ export function IncomingRequestCard({
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {request.student.role && <RoleBadge role={request.student.role} size={15} tipPlacement="below" />}
             <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
               {request.student.fullName}
             </p>

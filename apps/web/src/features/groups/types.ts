@@ -1,3 +1,5 @@
+import type { UserRole } from '@uniconnect/shared'
+
 export type GroupType = 'department' | 'club' | 'batch' | 'research' | 'interest' | 'other' | 'academic'
 export type AllowedRole = 'student' | 'alumni' | 'faculty' | 'admin'
 export type MemberRole = 'owner' | 'admin' | 'moderator' | 'member'
@@ -69,7 +71,8 @@ export interface GroupMember {
   role: MemberRole
   headline: string | null
   department: string | null
-  user?: { role?: string | null }
+  /** The member's platform role (student, alumni…) — distinct from `role`, their tier in the group. */
+  user?: { role?: UserRole | null }
 }
 
 export interface GroupEventItem {
@@ -87,7 +90,7 @@ export interface GroupEventItem {
   previewAttendees: { id: string; fullName: string; avatarUrl: string | null }[]
   totalAttendees: number
   capacity: number | null
-  organizer: { id: string; fullName: string; avatarUrl?: string | null }
+  organizer: { id: string; fullName: string; avatarUrl?: string | null; role?: UserRole }
 }
 
 export interface GroupEventPost {
@@ -96,7 +99,7 @@ export interface GroupEventPost {
   content: string
   mediaUrls: string[]
   createdAt: string
-  author: { id: string; fullName: string; avatarUrl: string | null }
+  author: { id: string; fullName: string; avatarUrl: string | null; role?: UserRole }
 }
 
 export type GroupEventEntry = GroupEventItem | GroupEventPost
@@ -117,6 +120,7 @@ export interface GroupCollabJob {
     fullName: string
     avatarUrl: string | null
     department: string | null
+    role?: UserRole
   }
 }
 
@@ -379,7 +383,7 @@ export interface Announcement {
   kind: AnnouncementKind
   isPinned: boolean
   attachments: Attachment[]
-  author: { id: string; fullName: string }
+  author: { id: string; fullName: string; role?: UserRole | null }
   createdAt: string
 }
 
@@ -395,7 +399,7 @@ export interface CreateAnnouncementInput {
 
 export interface AskTeacherResult {
   conversationId: string
-  teacher: { id: string; fullName: string | null; avatarUrl: string | null; department: string | null }
+  teacher: { id: string; fullName: string | null; avatarUrl: string | null; department: string | null; role?: UserRole | null }
 }
 
 export interface AskTeacherQueueItem {
@@ -414,7 +418,7 @@ export interface ConsultationBooking {
   bookedFor: string
   topic: string
   status: BookingStatus
-  student: { id: string; fullName: string }
+  student: { id: string; fullName: string; role?: UserRole | null }
 }
 
 export interface ConsultationSlot {

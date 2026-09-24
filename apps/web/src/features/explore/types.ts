@@ -1,3 +1,5 @@
+import type { UserRole } from '@uniconnect/shared'
+
 export interface TrendingPost {
   id: string
   content: string
@@ -5,20 +7,22 @@ export interface TrendingPost {
   authorId: string
   authorName: string
   authorAvatarUrl: string | null
-  authorRole: string
+  authorRole: UserRole
   reactionCount: number
   commentCount: number
 }
 
 export interface UserSuggestion {
   id: string
-  role: string
+  role: UserRole
   fullName: string
   headline: string | null
   department: string | null
   batchYear: string | null
   avatarUrl: string | null
   followerCount: number
+  /** Accepted connections the viewer and this person share. */
+  mutualCount: number
   connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
   connectionId: string | null
 }
@@ -30,6 +34,18 @@ export interface GroupSummary {
   avatarUrl: string | null
   memberCount: number
   recentPostCount: number
+  isPrivate: boolean
+  /** The viewer already has a pending join request (private groups only). */
+  requestPending: boolean
+  /** How many of the viewer's connections are members. */
+  knownCount: number
+  /** Up to three of those connections, for the avatar stack. */
+  knownFaces: { id: string; fullName: string; avatarUrl: string | null }[]
+  /**
+   * Client-only: set optimistically after a join from Explore. Discovery never
+   * returns groups the viewer belongs to, so the server never sends this.
+   */
+  joined?: boolean
 }
 
 export interface EventSummary {
@@ -57,7 +73,7 @@ export interface TagPost {
   authorId: string
   authorName: string
   authorAvatarUrl: string | null
-  authorRole: string
+  authorRole: UserRole
   reactionCount: number
   commentCount: number
 }

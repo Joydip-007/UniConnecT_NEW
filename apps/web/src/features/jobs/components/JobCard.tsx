@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { UserRole } from '@uniconnect/shared'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { differenceInDays, format, parseISO } from 'date-fns'
@@ -16,6 +17,7 @@ import { ApplyModal } from './ApplyModal'
 export interface JobPoster {
   id: string
   fullName: string
+  role?: UserRole
   profile: {
     avatarUrl: string | null
     headline: string | null

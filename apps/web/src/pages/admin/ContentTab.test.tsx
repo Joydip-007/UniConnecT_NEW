@@ -215,8 +215,9 @@ describe('ContentTab (admin content moderation)', () => {
     await user.click(screen.getByRole('button', { name: 'Close menu' }))
     await user.click(screen.getByText('Collapse'))
     expect(screen.queryByText('Collapse')).not.toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: 'Student' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Ishrat Binte Kabir/ })).toBeInTheDocument()
+    // Back to the collapsed row, which carries the author's role badge like every name does.
+    const collapsedRow = screen.getByRole('button', { name: /Ishrat Binte Kabir/ })
+    expect(within(collapsedRow).getByRole('img', { name: 'Student' })).toBeInTheDocument()
   })
 
   it('pinned rows show the pin in the collapsed row and the Pinned pill + Unpin when expanded', async () => {

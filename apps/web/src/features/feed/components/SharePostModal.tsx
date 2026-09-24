@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import type { FeedPost } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { Modal } from '@/components/Modal'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useAuthStore } from '@/stores/authStore'
@@ -57,8 +58,11 @@ export function SharePostModal({ post, onClose, onShared }: Props) {
                 color={avatarColor(user.id)}
                 size={36}
               />
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                {user.profile.fullName}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <RoleBadge role={user.role} size={15} tipPlacement="below" />
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+                  {user.profile.fullName}
+                </span>
               </span>
             </div>
           )}

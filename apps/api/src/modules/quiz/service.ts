@@ -128,6 +128,7 @@ export async function getTodayLeaderboard(context: AuthContext) {
 
   return db('daily_quiz_attempts as a')
     .join('profiles as p', 'p.user_id', 'a.user_id')
+    .join('users as u', 'u.id', 'a.user_id')
     .where({ 'a.slot_id': slot.id })
     .orderBy('a.score', 'desc')
     .orderBy('a.completed_at', 'asc')
@@ -137,6 +138,7 @@ export async function getTodayLeaderboard(context: AuthContext) {
       'a.user_id as userId',
       'p.full_name as fullName',
       'p.avatar_url as avatarUrl',
+      'u.role as role',
       'a.score',
       'a.correct_count as correctCount',
     )

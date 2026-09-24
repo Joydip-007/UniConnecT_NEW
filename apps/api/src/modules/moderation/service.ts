@@ -1,4 +1,4 @@
-import type { ModeratedUser } from '@uniconnect/shared'
+import type { ModeratedUser, UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { badRequest, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
@@ -7,6 +7,7 @@ import type { CreateReportInput, ModerationListQuery } from './schema'
 interface ModeratedUserRow {
   id: string
   full_name: string
+  role: UserRole
   username: string | null
   avatar_url: string | null
   headline: string | null
@@ -16,6 +17,7 @@ interface ModeratedUserRow {
 const PROFILE_COLUMNS = [
   'users.id as id',
   'profiles.full_name as full_name',
+  'users.role as role',
   'users.username as username',
   'profiles.avatar_url as avatar_url',
   'profiles.headline as headline',
@@ -25,6 +27,7 @@ function toModeratedUser(row: ModeratedUserRow): ModeratedUser {
   return {
     id: row.id,
     fullName: row.full_name,
+    role: row.role,
     username: row.username,
     avatarUrl: row.avatar_url,
     headline: row.headline,

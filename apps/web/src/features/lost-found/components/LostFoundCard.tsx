@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CheckCircle2, MapPin, Phone } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { ShareMenu } from '@/components/ShareMenu'
 import { getInitials, relativeTime, seedColor } from '../constants'
 import { useResolveItem } from '../hooks/useResolveItem'
@@ -41,19 +42,23 @@ export function LostFoundCard({ item, currentUserId }: LostFoundCardProps) {
             size={36}
           />
           <div style={{ minWidth: 0 }}>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                fontWeight: 500,
-                color: 'var(--text-primary)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {item.author.fullName}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              {item.author.role && <RoleBadge role={item.author.role} size={14} tipPlacement="below" />}
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: 'var(--text-primary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  minWidth: 0,
+                }}
+              >
+                {item.author.fullName}
+              </p>
+            </div>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
               {relativeTime(item.createdAt)}
             </p>

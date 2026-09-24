@@ -21,7 +21,7 @@ export interface PostSearchResult {
   createdAt: string
   reactionCount: number
   commentCount: number
-  author: { id: string; fullName: string; avatarUrl: string | null }
+  author: { id: string; fullName: string; avatarUrl: string | null; role: string }
 }
 
 export interface JobSearchResult {
@@ -49,6 +49,8 @@ export interface GroupSearchResult {
   avatarUrl: string | null
   memberCount: number
   isMember: boolean
+  /** Lets the client explain up front that a non-member cannot open the group. */
+  isPrivate: boolean
 }
 
 export interface SearchPagedResult<T> {
@@ -257,6 +259,7 @@ export async function searchPosts(
       'u.id as authorId',
       'p.full_name as authorName',
       'p.avatar_url as authorAvatarUrl',
+      'u.role as authorRole',
     )
     .limit(limit)
     .offset((page - 1) * limit)
@@ -297,7 +300,7 @@ export async function searchPosts(
     createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
     reactionCount: rcMap[r.id] ?? 0,
     commentCount: ccMap[r.id] ?? 0,
-    author: { id: r.authorId, fullName: r.authorName, avatarUrl: r.authorAvatarUrl },
+    author: { id: r.authorId, fullName: r.authorName, avatarUrl: r.authorAvatarUrl, role: r.authorRole },
   }))
 
   return paginate(items, Number(count), page, limit)
@@ -413,6 +416,7 @@ export async function searchGroups(
       'g.type',
       'g.avatar_url as avatarUrl',
       'g.member_count as memberCount',
+      'g.is_private as isPrivate',
       db.raw('gm.user_id IS NOT NULL as "isMember"'),
     )
     .limit(limit)
@@ -428,6 +432,7 @@ export async function searchGroups(
     avatarUrl: r.avatarUrl,
     memberCount: r.memberCount,
     isMember: Boolean(r.isMember),
+    isPrivate: Boolean(r.isPrivate),
   }))
 
   return paginate(items, Number(count), page, limit)
@@ -455,5 +460,13 @@ export async function searchAll(
     jobs: jobs.items,
     events: events.items,
     groups: groups.items,
+    // Per-category totals so the tab strip can show counts and dim empty tabs.
+    counts: {
+      people: people.total,
+      posts: posts.total,
+      jobs: jobs.total,
+      events: events.total,
+      groups: groups.total,
+    },
   }
 }

@@ -1206,16 +1206,16 @@ export class GroupsService {
         [groupId],
       ),
       db.raw<{
-        rows: { id: string; full_name: string | null; avatar_url: string | null; posts: number; replies: number }[]
+        rows: { id: string; role: string; full_name: string | null; avatar_url: string | null; posts: number; replies: number }[]
       }>(
-        `SELECT u.id, pr.full_name, pr.avatar_url,
+        `SELECT u.id, u.role, pr.full_name, pr.avatar_url,
                 COUNT(DISTINCT p.id)::int AS posts, COUNT(DISTINCT c.id)::int AS replies
            FROM users u JOIN profiles pr ON pr.user_id = u.id
            LEFT JOIN posts p ON p.author_id = u.id AND p.group_id = ? AND p.created_at >= now() - interval '30 days'
            LEFT JOIN comments c ON c.author_id = u.id AND c.post_id IN (SELECT id FROM posts WHERE group_id = ?)
              AND c.created_at >= now() - interval '30 days'
           WHERE u.id IN (SELECT user_id FROM group_members WHERE group_id = ?)
-          GROUP BY u.id, pr.full_name, pr.avatar_url
+          GROUP BY u.id, u.role, pr.full_name, pr.avatar_url
           HAVING COUNT(DISTINCT p.id) + COUNT(DISTINCT c.id) > 0
           ORDER BY posts DESC, replies DESC LIMIT 3`,
         [groupId, groupId, groupId],
@@ -1237,6 +1237,7 @@ export class GroupsService {
       postsPerWeek: weeks.rows.map((r, i) => ({ label: labels[i] ?? `Week ${i + 1}`, count: r.count })),
       topMembers: top.rows.map((r) => ({
         id: r.id,
+        role: r.role,
         fullName: r.full_name,
         avatarUrl: r.avatar_url,
         posts: r.posts,
@@ -1363,12 +1364,14 @@ export class GroupsService {
     const conversationId = await messagesService.getOrCreateDirect(context, teacherId)
 
     const teacherProfile = await db('profiles')
-      .select<{ full_name: string | null; avatar_url: string | null; department: string | null }[]>(
-        'full_name',
-        'avatar_url',
-        'department',
+      .join('users', 'users.id', 'profiles.user_id')
+      .select<{ full_name: string | null; avatar_url: string | null; department: string | null; role: string }[]>(
+        'profiles.full_name',
+        'profiles.avatar_url',
+        'profiles.department',
+        'users.role',
       )
-      .where('user_id', teacherId)
+      .where('profiles.user_id', teacherId)
       .first()
 
     return {
@@ -1378,6 +1381,7 @@ export class GroupsService {
         fullName: teacherProfile?.full_name ?? null,
         avatarUrl: teacherProfile?.avatar_url ?? null,
         department: teacherProfile?.department ?? null,
+        role: teacherProfile?.role ?? null,
       },
     }
   }
@@ -1598,6 +1602,7 @@ export class GroupsService {
         'events.created_at',
         'profiles.full_name as organizer_full_name',
         'profiles.avatar_url as organizer_avatar_url',
+        'users.role as organizer_role',
         db.raw(
           "(SELECT COUNT(*)::int FROM event_rsvps WHERE event_rsvps.event_id = events.id AND status = 'going') AS going_count",
         ),
@@ -1621,6 +1626,7 @@ export class GroupsService {
         'posts.author_id',
         'profiles.full_name as author_full_name',
         'profiles.avatar_url as author_avatar_url',
+        'users.role as author_role',
       )
       .where({
         'posts.group_id': groupId,
@@ -1682,6 +1688,7 @@ export class GroupsService {
         'profiles.full_name as poster_full_name',
         'profiles.avatar_url as poster_avatar_url',
         'profiles.department as poster_department',
+        'users.role as poster_role',
       )
       .where({ 'jobs.university_id': context.universityId, 'jobs.is_active': true })
       .andWhere('jobs.deadline', '>=', db.fn.now())
@@ -2845,6 +2852,7 @@ export class GroupsService {
 
     const rows = await db('group_announcements')
       .leftJoin('profiles as p', 'p.user_id', 'group_announcements.author_id')
+      .leftJoin('users as au', 'au.id', 'group_announcements.author_id')
       .select<AnnouncementRow[]>(
         'group_announcements.id',
         'group_announcements.title',
@@ -2855,6 +2863,7 @@ export class GroupsService {
         'group_announcements.author_id',
         'group_announcements.created_at',
         'p.full_name as author_full_name',
+        'au.role as author_role',
       )
       .where({
         'group_announcements.group_id': groupId,
@@ -2914,7 +2923,7 @@ export class GroupsService {
     }
 
     const authorFullName = await getMemberFullName(context.userId)
-    return toAnnouncement({ ...row, author_full_name: authorFullName })
+    return toAnnouncement({ ...row, author_full_name: authorFullName, author_role: context.role })
   }
 
   async updateAnnouncement(
@@ -2949,7 +2958,8 @@ export class GroupsService {
     if (!row) throw notFound('Announcement not found', 'ANNOUNCEMENT_NOT_FOUND')
 
     const authorFullName = await getMemberFullName(row.author_id)
-    return toAnnouncement({ ...row, author_full_name: authorFullName })
+    const author = await db('users').where({ id: row.author_id }).first<{ role: string } | undefined>('role')
+    return toAnnouncement({ ...row, author_full_name: authorFullName, author_role: author?.role ?? null })
   }
 
   async deleteAnnouncement(context: AuthContext, groupId: string, announcementId: string) {
@@ -3001,6 +3011,7 @@ export class GroupsService {
       const bookingRows = await db('group_consultation_bookings as b')
         .join('group_consultation_slots as s', 's.id', 'b.slot_id')
         .leftJoin('profiles as p', 'p.user_id', 'b.student_id')
+        .leftJoin('users as su', 'su.id', 'b.student_id')
         .where('s.group_id', groupId)
         .select<
           {
@@ -3011,6 +3022,7 @@ export class GroupsService {
             topic: string
             status: string
             student_full_name: string | null
+            student_role: string | null
           }[]
         >(
           'b.id',
@@ -3020,6 +3032,7 @@ export class GroupsService {
           'b.topic',
           'b.status',
           'p.full_name as student_full_name',
+          'su.role as student_role',
         )
         .orderBy('b.created_at', 'desc')
 
@@ -3030,7 +3043,7 @@ export class GroupsService {
           bookedFor: toDateString(row.booked_for),
           topic: row.topic,
           status: row.status as 'requested' | 'confirmed' | 'declined',
-          student: { id: row.student_id, fullName: row.student_full_name ?? 'A member' },
+          student: { id: row.student_id, fullName: row.student_full_name ?? 'A member', role: row.student_role },
         }
         const list = bookingsBySlot.get(row.slot_id) ?? []
         list.push(booking)
@@ -3404,6 +3417,7 @@ interface EventListRow {
   created_at: Date
   organizer_full_name: string
   organizer_avatar_url: string | null
+  organizer_role: string
   going_count: string | number
   own_rsvp: 'going' | 'maybe' | 'not_going' | null
 }
@@ -3416,6 +3430,7 @@ interface EventPromoPostRow {
   author_id: string
   author_full_name: string
   author_avatar_url: string | null
+  author_role: string
 }
 
 interface CollabJobRow {
@@ -3432,6 +3447,7 @@ interface CollabJobRow {
   poster_full_name: string
   poster_avatar_url: string | null
   poster_department: string | null
+  poster_role: string
 }
 
 // ── Query builders ───────────────────────────────────────────────────────────
@@ -3829,6 +3845,7 @@ interface AnnouncementRow {
   author_id: string
   created_at: Date
   author_full_name?: string | null
+  author_role?: string | null
 }
 
 function toAnnouncement(row: AnnouncementRow) {
@@ -3839,7 +3856,7 @@ function toAnnouncement(row: AnnouncementRow) {
     kind: row.kind,
     isPinned: row.is_pinned,
     attachments: row.attachments,
-    author: { id: row.author_id, fullName: row.author_full_name ?? 'A member' },
+    author: { id: row.author_id, fullName: row.author_full_name ?? 'A member', role: row.author_role ?? null },
     createdAt: row.created_at,
   }
 }
@@ -3860,7 +3877,7 @@ interface BookingWithStudent {
   bookedFor: string
   topic: string
   status: 'requested' | 'confirmed' | 'declined'
-  student: { id: string; fullName: string }
+  student: { id: string; fullName: string; role: string | null }
 }
 
 function toDateString(value: Date | string): string {
@@ -4197,6 +4214,7 @@ function toMiniEvent(row: EventListRow) {
       id: row.organizer_id,
       fullName: row.organizer_full_name,
       avatarUrl: row.organizer_avatar_url,
+      role: row.organizer_role,
     },
     rsvpCounts: { going: Number(row.going_count), maybe: 0 },
     myRsvp: row.own_rsvp,
@@ -4216,6 +4234,7 @@ function toMiniPost(row: EventPromoPostRow) {
       id: row.author_id,
       fullName: row.author_full_name,
       avatarUrl: row.author_avatar_url,
+      role: row.author_role,
     },
   }
 }
@@ -4236,6 +4255,7 @@ function toMiniJob(row: CollabJobRow) {
       fullName: row.poster_full_name,
       avatarUrl: row.poster_avatar_url,
       department: row.poster_department,
+      role: row.poster_role,
     },
   }
 }

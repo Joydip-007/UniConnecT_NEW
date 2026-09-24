@@ -135,7 +135,16 @@ describe('admin content moderation (feed posts)', () => {
     expect(before.status).toBe(200)
     const removedBefore = before.body.data.removed as number
     const postBefore = before.body.data.byType.post as number
-    expect(before.body.data.byType.job_promo).toBeGreaterThanOrEqual(1)
+    // "Posts" counts exactly what the Posts tab lists (type = 'post', not removed), so the
+    // job_promo share created in beforeAll must not inflate it. Jobs/News/Events count
+    // their own tables instead — a promo post is a share of one of those, not the item.
+    const [{ count: postRows }] = await db('posts')
+      .where({ university_id: TEST_UNIVERSITY_ID, type: 'post' })
+      .whereNull('removed_at')
+      .count<{ count: string }[]>({ count: '*' })
+    expect(postBefore).toBe(Number(postRows))
+    const [{ count: jobRows }] = await db('jobs').where({ university_id: TEST_UNIVERSITY_ID }).count<{ count: string }[]>({ count: '*' })
+    expect(before.body.data.byType.job_promo).toBe(Number(jobRows))
 
     const remove = await api
       .patch(`/api/v1/admin/content/posts/${postId}/removed`)

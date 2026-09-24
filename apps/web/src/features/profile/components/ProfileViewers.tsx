@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { getMyViewers } from '@/lib/api/users'
 import type { ProfileViewer } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { avatarColor, getInitials } from '@/utils/avatar'
 
 function timeAgo(dateInput: string | Date): string {
@@ -56,14 +57,17 @@ function ViewerRow({ viewer }: { viewer: ProfileViewer }) {
     >
       <Avatar src={viewer.avatarUrl ?? undefined} initials={initials} color={color} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p
-          style={{
-            margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)',
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}
-        >
-          {viewer.fullName}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          {viewer.role && <RoleBadge role={viewer.role} size={14} tipPlacement="below" />}
+          <p
+            style={{
+              margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
+            }}
+          >
+            {viewer.fullName}
+          </p>
+        </div>
         {(viewer.headline || viewer.department) && (
           <p
             style={{

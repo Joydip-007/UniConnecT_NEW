@@ -5,6 +5,7 @@ import type { AttachmentInput } from '@uniconnect/shared'
 import { AttachmentPicker } from '@/components/AttachmentPicker'
 import { Toggle } from '@/features/settings/components/Toggle'
 import { useAnnouncements, useCreateAnnouncement } from '../hooks/useGroupExtended'
+import { RoleBadge } from '@/components/RoleBadge'
 import type { Announcement, AnnouncementKind, Attachment } from '../types'
 
 interface Props {
@@ -117,9 +118,10 @@ function AnnouncementRow({ item, last }: { item: Announcement; last: boolean }) 
             ))}
           </div>
         )}
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Posted {formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true })} · {item.author.fullName}, course
-          teacher
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+          Posted {formatDistanceToNow(parseISO(item.createdAt), { addSuffix: true })} ·
+          {item.author.role && <RoleBadge role={item.author.role} size={12} />}
+          {item.author.fullName}, course teacher
         </p>
       </div>
     </div>

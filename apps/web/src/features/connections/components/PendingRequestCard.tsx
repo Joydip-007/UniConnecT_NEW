@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { PATHS } from '@/router/paths'
 import type { ConnectionRequest } from '@uniconnect/shared'
@@ -56,16 +57,20 @@ export function PendingRequestCard({ request }: Props) {
         >
           <div
             style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
               fontSize: 14,
               fontWeight: 500,
               color: 'var(--text-primary)',
               lineHeight: 1.3,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              minWidth: 0,
             }}
           >
-            {fullName}
+            {requester?.role && <RoleBadge role={requester.role} size={14} tipPlacement="below" />}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+              {fullName}
+            </span>
           </div>
         </Link>
         {(requester?.headline || requester?.department) && (

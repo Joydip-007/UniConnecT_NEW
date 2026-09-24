@@ -4,6 +4,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { differenceInDays, format, parseISO } from 'date-fns'
 import { Briefcase, Clock, MapPin } from 'lucide-react'
 import { api } from '@/lib/axios'
+import { RoleBadge } from '@/components/RoleBadge'
 import type { Group, GroupCollabJob } from '../types'
 
 interface CollabPage {
@@ -162,7 +163,11 @@ function JobRow({ job, onClick }: { job: GroupCollabJob; onClick: () => void }) 
             <Clock size={11} strokeWidth={1.5} />
             {deadlineLabel}
           </span>
-          <span style={{ color: 'var(--text-tertiary)' }}>by {job.postedBy.fullName}</span>
+          <span style={{ color: 'var(--text-tertiary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            by
+            {job.postedBy.role && <RoleBadge role={job.postedBy.role} size={11} />}
+            {job.postedBy.fullName}
+          </span>
         </div>
       </div>
     </div>

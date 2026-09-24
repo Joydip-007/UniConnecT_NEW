@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
@@ -129,9 +129,13 @@ function PersonRow({
   )
 }
 
-/** Hides entirely once every suggestion is dismissed or the endpoint returns none. */
+/**
+ * Hides entirely once every suggestion is dismissed or the endpoint returns none — and on
+ * Explore, whose discovery view already leads with its own "People you may know" carousel.
+ */
 export function PeopleYouMayKnowWidget() {
   const showToast = useToastStore((s) => s.show)
+  const onExplore = useLocation().pathname === PATHS.EXPLORE
 
   // Dismissals are client-side only — there is no server-side "hide this suggestion".
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
@@ -142,6 +146,7 @@ export function PeopleYouMayKnowWidget() {
       api
         .get<{ data: SuggestedUser[] }>('/users/suggestions', { params: { limit: 3 } })
         .then((r) => r.data.data),
+    enabled: !onExplore,
   })
 
   const visible = (suggestions ?? []).filter((u) => !dismissed.has(u.id))
@@ -159,7 +164,7 @@ export function PeopleYouMayKnowWidget() {
     })
   }
 
-  if (!isLoading && visible.length === 0) return null
+  if (onExplore || (!isLoading && visible.length === 0)) return null
 
   return (
     <WidgetShell>

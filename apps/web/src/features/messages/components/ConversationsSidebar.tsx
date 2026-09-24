@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { MessageCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { PresenceDot, usePresence } from '@/features/presence'
 import { api } from '@/lib/axios'
 import { SkeletonConvRow } from '@/components/skeletons/SkeletonConvRow'
@@ -70,6 +71,9 @@ function SidebarRow({
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {(conversation.type === 'direct' || isMentorship) && conversation.otherParticipant?.role && (
+            <RoleBadge role={conversation.otherParticipant.role} size={13} tipPlacement="below" />
+          )}
           <span
             style={{
               flex: 1,

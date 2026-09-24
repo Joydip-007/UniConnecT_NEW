@@ -2,7 +2,9 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { Loader2, RotateCcw } from 'lucide-react'
+import type { UserRole } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { usePendingMsgsStore, type PendingMsg } from '@/stores/pendingMsgsStore'
@@ -18,6 +20,8 @@ import { useUpsertMessageReaction, useRemoveMessageReaction, useMessageReactions
 export interface MessageSender {
   id: string
   fullName: string
+  /** Absent on optimistic (pending) messages, which are always the viewer's own. */
+  role?: UserRole
   profile: { avatarUrl: string | null }
 }
 
@@ -261,7 +265,8 @@ function MessageBubble({
       >
         {/* Sender name — first message of a run only */}
         {!isOwn && showName && (
-          <span style={senderNameStyle}>
+          <span style={{ ...senderNameStyle, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            {message.sender.role && <RoleBadge role={message.sender.role} size={12} tipPlacement="below" />}
             {message.sender.fullName}
           </span>
         )}

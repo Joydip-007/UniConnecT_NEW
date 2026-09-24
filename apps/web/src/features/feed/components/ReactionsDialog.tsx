@@ -3,7 +3,9 @@ import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, MessageCircle, X } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
+import type { UserRole } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { TwemojiIcon } from '@/components/emoji/TwemojiIcon'
 import { REACTIONS, totalReactions } from '@/components/emoji/reactionConfig'
@@ -26,12 +28,14 @@ function UserRow({
   userId,
   fullName,
   avatarUrl,
+  role,
   connectionStatus,
   connectionId,
 }: {
   userId: string
   fullName: string
   avatarUrl: string | null
+  role: UserRole
   connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
   connectionId: string | null
 }) {
@@ -69,6 +73,7 @@ function UserRow({
           size={36}
         />
       </Link>
+      <RoleBadge role={role} size={14} tipPlacement="below" />
       <Link
         to={profileUrl}
         style={{
@@ -215,6 +220,7 @@ function TabPanel({ postId, type }: { postId: string; type: TabKey }) {
           userId={item.userId}
           fullName={item.fullName}
           avatarUrl={item.avatarUrl}
+          role={item.role}
           connectionStatus={item.connectionStatus}
           connectionId={item.connectionId}
         />

@@ -9,10 +9,11 @@ import {
   Layers, MoreVertical, Newspaper, Pin, PinOff, Power, PowerOff, RotateCcw, Rss, Trash2, User,
   type LucideIcon,
 } from 'lucide-react'
-import type { AdminContentType, FeedPost } from '@uniconnect/shared'
+import type { AdminContentType, FeedPost, UserRole } from '@uniconnect/shared'
 import { useContentSummary } from './useContentSummary'
 import { api } from '@/lib/axios'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GhostBtn } from '@/components/Button'
 import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
@@ -48,6 +49,7 @@ interface AdminPerson {
   id: string
   fullName: string | null
   avatarUrl: string | null
+  role?: UserRole | null
 }
 
 interface AdminNewsItem {
@@ -478,7 +480,10 @@ function TableRow({ kind, item, queryKey }: { kind: 'news' | 'events' | 'jobs'; 
       />
       <div style={{ flex: 1, minWidth: 0 }}>
         <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{item.title}</span>
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>{person.fullName}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 6, verticalAlign: 'middle' }}>
+          {person.role && <RoleBadge role={person.role} size={12} tipPlacement="below" />}
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{person.fullName}</span>
+        </span>
         <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
           {meta}
         </div>
@@ -527,7 +532,10 @@ function ContentRow({ post, queryKey, expanded, onToggle }: ContentRowProps) {
           size={30}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{post.author.fullName}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'middle' }}>
+            <RoleBadge role={post.author.role} size={13} tipPlacement="below" />
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{post.author.fullName}</span>
+          </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>{relativeTime(post.createdAt)}</span>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>
             {snippet(post)}
@@ -871,7 +879,8 @@ function RemovedTray() {
       </button>
       {open && data.items.map((post) => (
         <div key={post.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderTop: '0.5px solid var(--border-default)' }}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <RoleBadge role={post.author.role} size={13} tipPlacement="below" />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginLeft: -6 }}>
             {post.author.fullName} · {post.content ? post.content.slice(0, 60) : post.author.profile.headline}
           </span>
           <button

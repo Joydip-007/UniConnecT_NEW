@@ -468,6 +468,9 @@ node scripts/screenshot.cjs all      # all pages
 | `groups` | `/groups` | yes |
 | `groups-people` | `/groups?section=people` | yes |
 | `saved` | `/saved` | yes |
+| `explore` | `/explore` (discovery carousels) | yes |
+| `explore-search` | `/explore?q=machine+learning` (search tabs with counts) | yes |
+| `explore-see-all` | `/explore?see=groups` (in-page See all view) | yes |
 | `admin-learning` | `/admin?tab=learning` (admin role via `dev-role=admin`) | yes |
 | `group-detail` | `/groups/:devGroupId` (member view) | yes |
 | `group-detail-admin` | `/groups/:devGroupId` (owner view via `dev-role=faculty`) | yes |

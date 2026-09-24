@@ -1,3 +1,5 @@
+import type { UserRole } from '@uniconnect/shared'
+
 export interface UserSearchResult {
   id: string
   fullName: string
@@ -5,7 +7,7 @@ export interface UserSearchResult {
   department: string | null
   batchYear: string | null
   avatarUrl: string | null
-  role: string
+  role: UserRole
   connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
   connectionId: string | null
 }
@@ -16,7 +18,7 @@ export interface PostSearchResult {
   createdAt: string
   reactionCount: number
   commentCount: number
-  author: { id: string; fullName: string; avatarUrl: string | null }
+  author: { id: string; fullName: string; avatarUrl: string | null; role: UserRole }
 }
 
 export interface JobSearchResult {
@@ -44,6 +46,7 @@ export interface GroupSearchResult {
   avatarUrl: string | null
   memberCount: number
   isMember: boolean
+  isPrivate: boolean
 }
 
 export interface SearchPagedResult<T> {
@@ -59,4 +62,6 @@ export interface SearchAllResult {
   jobs: JobSearchResult[]
   events: EventSearchResult[]
   groups: GroupSearchResult[]
+  /** Per-category totals, used for the tab-strip counts. */
+  counts: Record<'people' | 'posts' | 'jobs' | 'events' | 'groups', number>
 }

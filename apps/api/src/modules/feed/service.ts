@@ -976,8 +976,9 @@ export class FeedService {
   }
 
   /**
-   * Stat strip + Insights "Content mix". Posts are the feed queue (admin-removed rows
-   * excluded); News, Events and Jobs count their own tables, since that is what the
+   * Stat strip + Insights "Content mix". Posts count exactly what the Posts tab lists —
+   * `type = 'post'`, admin-removed rows excluded — so the number and the tab it links to
+   * agree; News, Events and Jobs count their own tables, since that is what the
    * matching Content tab lists — a `news`/`event_promo`/`job_promo` feed post is a
    * member's share of one of those, not the item itself.
    */
@@ -985,7 +986,7 @@ export class FeedService {
     const countTable = (table: string, extra: Record<string, unknown> = {}) =>
       db(table).where({ university_id: universityId, ...extra }).count<CountRow[]>({ count: '*' }).first()
     const [posts, pinnedPosts, removed, reportsOpen, news, pinnedNews, events, jobs] = await Promise.all([
-      db('posts').where({ university_id: universityId }).whereNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
+      db('posts').where({ university_id: universityId, type: 'post' }).whereNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
       db('posts').where({ university_id: universityId, is_pinned: true }).whereNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
       db('posts').where({ university_id: universityId }).whereNotNull('removed_at').count<CountRow[]>({ count: '*' }).first(),
       db('reports')
@@ -1196,6 +1197,7 @@ export class FeedService {
         user_id: string
         full_name: string
         avatar_url: string | null
+        role: string
         reaction_type: ReactionType
         created_at: Date
         connection_id: string | null
@@ -1204,6 +1206,7 @@ export class FeedService {
         'reactions.user_id',
         'profiles.full_name',
         'profiles.avatar_url',
+        'users.role',
         'reactions.reaction_type',
         'reactions.created_at',
         'c.id as connection_id',
@@ -1229,6 +1232,7 @@ export class FeedService {
       userId: r.user_id,
       fullName: r.full_name,
       avatarUrl: r.avatar_url,
+      role: r.role,
       reactionType: r.reaction_type,
       connectionStatus: r.connection_status ?? 'none',
       connectionId: r.connection_id ?? null,

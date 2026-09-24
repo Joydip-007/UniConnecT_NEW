@@ -13,7 +13,9 @@ import { GhostBtn, MintBtn } from '@/components/Button'
 import { ApplyModal } from '@/features/jobs/components/ApplyModal'
 import { ApplicationsList } from '@/features/jobs/components/ApplicationsList'
 import type { Job } from '@/features/jobs/components/JobCard'
+import { RoleBadge } from '@/components/RoleBadge'
 import { AttachmentList } from '@/features/content-sync'
+import { useBackLink } from '@/hooks/useBackLink'
 
 const TYPE_LABELS: Record<Job['type'], string> = {
   full_time: 'Full-time',
@@ -26,6 +28,7 @@ const TYPE_LABELS: Record<Job['type'], string> = {
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const back = useBackLink({ path: '/jobs', label: 'Back to jobs' })
   const user = useAuthStore((s) => s.user)
   const [applyOpen, setApplyOpen] = useState(false)
 
@@ -85,7 +88,7 @@ export default function JobDetailPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <button
         type="button"
-        onClick={() => navigate('/jobs')}
+        onClick={back.goBack}
         style={{
           alignSelf: 'flex-start',
           display: 'inline-flex',
@@ -101,7 +104,7 @@ export default function JobDetailPage() {
         }}
       >
         <ArrowLeft size={15} strokeWidth={1.5} />
-        Back to jobs
+        {back.label}
       </button>
 
       <article
@@ -208,7 +211,11 @@ export default function JobDetailPage() {
             fontWeight: 400,
           }}
         >
-          Posted by {job.postedBy.fullName}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle' }}>
+            Posted by
+            {job.postedBy.role && <RoleBadge role={job.postedBy.role} size={12} />}
+            {job.postedBy.fullName}
+          </span>
           {job.postedBy.profile.headline ? `, ${job.postedBy.profile.headline}` : ''}
         </section>
       </article>

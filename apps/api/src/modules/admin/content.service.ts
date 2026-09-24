@@ -11,6 +11,7 @@ type AuthorJoinRow = {
   author_id: string
   author_name: string | null
   author_avatar: string | null
+  author_role: string | null
 }
 
 interface PostRow extends AuthorJoinRow {
@@ -41,6 +42,7 @@ interface EventRow {
   organizer_id: string
   organizer_name: string | null
   organizer_avatar: string | null
+  organizer_role: string | null
   rsvp_count: string | number
 }
 
@@ -58,6 +60,7 @@ interface JobRow {
   posted_by: string
   poster_name: string | null
   poster_avatar: string | null
+  poster_role: string | null
   application_count: string | number
 }
 
@@ -75,6 +78,7 @@ interface NewsRow {
   author_id: string
   author_name: string | null
   author_avatar: string | null
+  author_role: string | null
 }
 
 const PIN_KINDS = new Set<ContentKind>(['posts', 'news'])
@@ -93,6 +97,7 @@ export class AdminContentService {
     const rows = await base
       .clone()
       .leftJoin('profiles', 'profiles.user_id', 'posts.author_id')
+      .leftJoin('users as person_user', 'person_user.id', 'posts.author_id')
       .leftJoin(
         db('reactions')
           .select('target_id')
@@ -121,6 +126,7 @@ export class AdminContentService {
         'posts.author_id',
         'profiles.full_name as author_name',
         'profiles.avatar_url as author_avatar',
+        'person_user.role as author_role',
         db.raw('COALESCE(r.count, 0) as reaction_count'),
         db.raw('COALESCE(c.count, 0) as comment_count'),
       )
@@ -148,6 +154,7 @@ export class AdminContentService {
     const rows = await base
       .clone()
       .leftJoin('profiles', 'profiles.user_id', 'events.organizer_id')
+      .leftJoin('users as person_user', 'person_user.id', 'events.organizer_id')
       .leftJoin(
         db('event_rsvps').select('event_id').count<{ event_id: string; count: string }[]>({ count: '*' }).groupBy('event_id').as('rs'),
         'rs.event_id',
@@ -167,6 +174,7 @@ export class AdminContentService {
         'events.organizer_id',
         'profiles.full_name as organizer_name',
         'profiles.avatar_url as organizer_avatar',
+        'person_user.role as organizer_role',
         db.raw('COALESCE(rs.count, 0) as rsvp_count'),
       )
       .orderBy('events.starts_at', 'desc')
@@ -192,6 +200,7 @@ export class AdminContentService {
     const rows = await base
       .clone()
       .leftJoin('profiles', 'profiles.user_id', 'jobs.posted_by')
+      .leftJoin('users as person_user', 'person_user.id', 'jobs.posted_by')
       .leftJoin(
         db('job_applications').select('job_id').count<{ job_id: string; count: string }[]>({ count: '*' }).groupBy('job_id').as('ap'),
         'ap.job_id',
@@ -211,6 +220,7 @@ export class AdminContentService {
         'jobs.posted_by',
         'profiles.full_name as poster_name',
         'profiles.avatar_url as poster_avatar',
+        'person_user.role as poster_role',
         db.raw('COALESCE(ap.count, 0) as application_count'),
       )
       .orderBy('jobs.created_at', 'desc')
@@ -237,6 +247,7 @@ export class AdminContentService {
     const rows = await base
       .clone()
       .leftJoin('profiles', 'profiles.user_id', 'news.author_id')
+      .leftJoin('users as person_user', 'person_user.id', 'news.author_id')
       .select<NewsRow[]>(
         'news.id',
         'news.title',
@@ -251,6 +262,7 @@ export class AdminContentService {
         'news.author_id',
         'profiles.full_name as author_name',
         'profiles.avatar_url as author_avatar',
+        'person_user.role as author_role',
       )
       .orderBy('news.is_pinned', 'desc')
       .orderBy('news.published_at', 'desc')
@@ -336,6 +348,7 @@ function toAdminPost(row: PostRow) {
       id: row.author_id,
       fullName: row.author_name,
       avatarUrl: row.author_avatar,
+      role: row.author_role,
     },
   }
 }
@@ -357,6 +370,7 @@ function toAdminEvent(row: EventRow) {
       id: row.organizer_id,
       fullName: row.organizer_name,
       avatarUrl: row.organizer_avatar,
+      role: row.organizer_role,
     },
   }
 }
@@ -378,6 +392,7 @@ function toAdminJob(row: JobRow) {
       id: row.posted_by,
       fullName: row.poster_name,
       avatarUrl: row.poster_avatar,
+      role: row.poster_role,
     },
   }
 }
@@ -398,6 +413,7 @@ function toAdminNews(row: NewsRow) {
       id: row.author_id,
       fullName: row.author_name,
       avatarUrl: row.author_avatar,
+      role: row.author_role,
     },
   }
 }

@@ -156,14 +156,14 @@ describe('GroupsPage people section', () => {
 })
 
 describe('ExplorePage lost & found section', () => {
-  it('absorbs lost & found as a section without losing discovery', async () => {
-    const user = userEvent.setup()
+  it('shows discovery by default, with no section switcher in the centre column', () => {
+    // The Explore design has no switcher; the rail's "Lost & found" campus tool is the
+    // section's home (see leftSidebar.config.ts).
     renderPage(<ExplorePage />, '/explore')
 
     expect(screen.queryByText('lost and found panel')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Lost & found' }))
-    expect(screen.getByText('lost and found panel')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Lost & found' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /search people, posts, groups, events/i })).toBeInTheDocument()
   })
 
   it('honours a deep link to the lost & found section', () => {

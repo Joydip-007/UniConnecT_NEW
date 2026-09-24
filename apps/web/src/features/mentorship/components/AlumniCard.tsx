@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { avatarColor, getInitials } from '@/utils/avatar'
@@ -28,9 +29,12 @@ export function AlumniCard({ alumnus, alreadySent, onAsk }: AlumniCardProps) {
         <Avatar initials={getInitials(alumnus.fullName)} color={avatarColor(alumnus.id)} size={44} />
 
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-            {alumnus.fullName}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            {alumnus.role && <RoleBadge role={alumnus.role} size={15} tipPlacement="below" />}
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+              {alumnus.fullName}
+            </p>
+          </div>
           {alumnus.headline && (
             <p
               style={{

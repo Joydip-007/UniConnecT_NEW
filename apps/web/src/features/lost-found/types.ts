@@ -1,8 +1,11 @@
+import type { UserRole } from '@uniconnect/shared'
+
 export type LostFoundType = 'lost' | 'found'
 export type FilterTab = 'all' | 'lost' | 'found'
 
 export interface LFAuthor {
   fullName: string
+  role?: UserRole
   avatarUrl: string | null
   department: string | null
   batchYear: string | null

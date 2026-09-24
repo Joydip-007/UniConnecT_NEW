@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { UserRole } from '@uniconnect/shared'
 import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import type { FeedPost } from '@uniconnect/shared'
@@ -50,6 +51,7 @@ export interface JoinRequest {
     avatarUrl: string | null
     department: string | null
     batch: string | null
+    role?: UserRole | null
   }
 }
 
@@ -107,7 +109,7 @@ export interface PendingGroupEvent {
   title: string
   startDate: string
   location: string
-  organizer: { id: string; fullName: string }
+  organizer: { id: string; fullName: string; role?: UserRole }
 }
 
 export interface GroupAnalytics {
@@ -118,7 +120,7 @@ export interface GroupAnalytics {
   activePct: number
   reportsOpen: number
   postsPerWeek: { label: string; count: number }[]
-  topMembers: { id: string; fullName: string | null; avatarUrl: string | null; posts: number; replies: number }[]
+  topMembers: { id: string; role?: UserRole; fullName: string | null; avatarUrl: string | null; posts: number; replies: number }[]
 }
 
 export type ModLogKind = 'post' | 'member' | 'settings'

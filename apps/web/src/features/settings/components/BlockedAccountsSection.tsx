@@ -1,4 +1,6 @@
+import type { UserRole } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GhostBtn } from '@/components/Button'
 import { useBlockedUsers, useUserModeration } from '@/features/moderation'
 import { avatarColor, getInitials } from '@/utils/avatar'
@@ -23,7 +25,7 @@ export default function BlockedAccountsSection() {
       ) : (
         <div>
           {data.items.map((u) => (
-            <BlockedRow key={u.id} userId={u.id} fullName={u.fullName} headline={u.headline} avatarUrl={u.avatarUrl} />
+            <BlockedRow key={u.id} userId={u.id} fullName={u.fullName} role={u.role} headline={u.headline} avatarUrl={u.avatarUrl} />
           ))}
         </div>
       )}
@@ -34,11 +36,13 @@ export default function BlockedAccountsSection() {
 function BlockedRow({
   userId,
   fullName,
+  role,
   headline,
   avatarUrl,
 }: {
   userId: string
   fullName: string
+  role: UserRole
   headline: string | null
   avatarUrl: string | null
 }) {
@@ -58,7 +62,10 @@ function BlockedRow({
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
         <Avatar src={avatarUrl} initials={getInitials(fullName)} color={avatarColor(userId)} size={40} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{fullName}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RoleBadge role={role} size={15} tipPlacement="below" />
+            <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{fullName}</span>
+          </div>
           {headline && (
             <div
               style={{

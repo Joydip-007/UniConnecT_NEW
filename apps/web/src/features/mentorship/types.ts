@@ -1,9 +1,12 @@
+import type { UserRole } from '@uniconnect/shared'
+
 export type RequestStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'expired'
 
 export interface AlumniMentor {
   id: string
   universityId: string
   fullName: string
+  role?: UserRole
   headline: string | null
   department: string | null
   batchYear: string | null
@@ -34,6 +37,7 @@ export interface MyRequest {
     headline: string | null
     department: string | null
     batchYear: string | null
+    role?: UserRole | null
   }
 }
 
@@ -51,6 +55,7 @@ export interface IncomingRequest {
     headline: string | null
     department: string | null
     batchYear: string | null
+    role?: UserRole | null
   }
 }
 

@@ -9,6 +9,7 @@ import { PanelLeftClose, PanelLeftOpen, ExternalLink, MoreHorizontal, type Lucid
 import { publicUserProfileSchema, type PublicUserProfile } from '@uniconnect/shared'
 import type { User } from '@uniconnect/shared/types'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
@@ -405,7 +406,8 @@ function ProfileMiniCard({
                 <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
               </div>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+              {user?.role && <RoleBadge role={user.role} size={15} tipPlacement="below" />}
               {user?.profile.fullName ?? 'Loading…'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, minHeight: 16 }}>

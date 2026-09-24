@@ -4,6 +4,7 @@ import { ArrowLeft, Hash, AlertCircle } from 'lucide-react'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { useTagPosts } from '@/features/explore/hooks/useTagPosts'
 import { PATHS } from '@/router/paths'
+import { RoleBadge } from '@/components/RoleBadge'
 
 function SkeletonCard() {
   return (
@@ -122,8 +123,11 @@ export default function TagPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-              {post.authorName}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <RoleBadge role={post.authorRole} size={14} tipPlacement="below" />
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                {post.authorName}
+              </span>
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
               {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}

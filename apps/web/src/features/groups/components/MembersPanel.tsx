@@ -8,6 +8,7 @@ import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
 import { GroupPanel } from './GroupPanel'
@@ -205,19 +206,23 @@ function MemberRow({
     >
       <Avatar src={member.avatarUrl} initials={getInitials(member.fullName)} color={seedColor(member.id)} size={32} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {member.fullName}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          {member.user?.role && <RoleBadge role={member.user.role} size={14} tipPlacement="below" />}
+          <p
+            style={{
+              margin: 0,
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}
+          >
+            {member.fullName}
+          </p>
+        </div>
         {(member.headline ?? member.department) && (
           <p
             style={{

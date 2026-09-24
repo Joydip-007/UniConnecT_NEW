@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Users } from 'lucide-react'
 import { TopNav } from '@/components/TopNav'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { ChatView } from '@/features/messages/components/ChatView'
 import { MessageInput } from '@/features/messages/components/MessageInput'
 import { ConversationsSidebar } from '@/features/messages/components/ConversationsSidebar'
@@ -137,6 +138,9 @@ export default function ConversationPage() {
             {/* Name + mentorship subtitle / typing indicator */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                {(conv?.type === 'direct' || isMentorship) && conv?.otherParticipant?.role && (
+                  <RoleBadge role={conv.otherParticipant.role} size={15} tipPlacement="below" />
+                )}
                 <p
                   style={{
                     margin: 0,

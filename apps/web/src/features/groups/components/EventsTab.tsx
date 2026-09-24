@@ -11,6 +11,7 @@ import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { CreateEventForm } from '@/features/events/components/CreateEventForm'
+import { RoleBadge } from '@/components/RoleBadge'
 import type { GroupEventEntry, MemberRole } from '../types'
 import { pendingEventsKey, usePendingEvents, useReviewEvent, type PendingGroupEvent } from '../hooks/useGroupExtended'
 
@@ -255,8 +256,10 @@ function PendingEventCard({
               {event.location}
             </span>
           </div>
-          <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-            Submitted by {event.organizer.fullName}
+          <p style={{ margin: '4px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span>Submitted by</span>
+            {event.organizer.role && <RoleBadge role={event.organizer.role} size={12} />}
+            <span>{event.organizer.fullName}</span>
           </p>
         </div>
       </div>
@@ -389,7 +392,8 @@ function PostRow({ entry }: { entry: Extract<GroupEventEntry, { kind: 'post' }> 
         <Avatar initials={getInitials(entry.author.fullName)} color={seedColor(entry.author.id)} size={36} />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          {entry.author.role && <RoleBadge role={entry.author.role} size={12} tipPlacement="below" />}
           {entry.author.fullName} · event post
         </p>
         <p

@@ -11,6 +11,7 @@ import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
 import { CreatePost } from '@/features/feed/components/CreatePost'
 import type { FeedPost } from '@uniconnect/shared'
+import { RoleBadge } from '@/components/RoleBadge'
 import { pendingPostsKey, usePendingPosts, useReviewPost } from '../hooks/useGroupExtended'
 import type { MemberRole } from '../types'
 
@@ -204,7 +205,10 @@ function PendingPostCard({
           size={40}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{author.fullName}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <RoleBadge role={author.role} size={15} tipPlacement="below" />
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{author.fullName}</p>
+          </div>
           <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
             {formatDistanceToNow(parseISO(post.createdAt), { addSuffix: true })}
           </p>

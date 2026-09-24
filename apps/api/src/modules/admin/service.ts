@@ -31,6 +31,7 @@ interface RedemptionListRow {
   fulfilled_at: Date | null
   user_id: string
   user_full_name: string
+  user_role: string
   user_avatar_url: string | null
   user_email: string
   gift_card_id: string
@@ -1011,6 +1012,7 @@ export class AdminService {
         'users.email as user_email',
         'profiles.full_name as user_full_name',
         'profiles.avatar_url as user_avatar_url',
+        'users.role as user_role',
         'gift_cards.id as gift_card_id',
         'gift_cards.vendor as gift_card_vendor',
         'gift_cards.title as gift_card_title',
@@ -1091,6 +1093,7 @@ export class AdminService {
 
     interface MentorRow {
       id: string
+      role: string
       full_name: string
       avatar_url: string | null
       department: string | null
@@ -1106,9 +1109,10 @@ export class AdminService {
       .where({ 'mentorship_requests.university_id': universityId, 'mentorship_requests.is_deleted': false })
       .join('users as u', 'u.id', 'mentorship_requests.alumni_id')
       .join('profiles as p', 'p.user_id', 'u.id')
-      .groupBy('u.id', 'p.user_id', 'p.full_name', 'p.avatar_url', 'p.department', 'p.batch_year', 'p.mentorship_points', 'p.max_mentees')
+      .groupBy('u.id', 'u.role', 'p.user_id', 'p.full_name', 'p.avatar_url', 'p.department', 'p.batch_year', 'p.mentorship_points', 'p.max_mentees')
       .select<MentorRow[]>(
         'u.id',
+        'u.role',
         'p.full_name',
         'p.avatar_url',
         'p.department',
@@ -1133,6 +1137,7 @@ export class AdminService {
     return {
       items: rows.map((r) => ({
         id: r.id,
+        role: r.role,
         fullName: r.full_name,
         avatarUrl: r.avatar_url,
         department: r.department,
@@ -1158,6 +1163,7 @@ export class AdminService {
       updated_at: Date
       student_id: string
       student_full_name: string
+      student_role: string
       student_avatar_url: string | null
       student_department: string | null
       student_batch_year: string | null
@@ -1180,6 +1186,7 @@ export class AdminService {
         'mentorship_requests.updated_at',
         'su.id as student_id',
         'sp.full_name as student_full_name',
+        'su.role as student_role',
         'sp.avatar_url as student_avatar_url',
         'sp.department as student_department',
         'sp.batch_year as student_batch_year',
@@ -1235,6 +1242,7 @@ export class AdminService {
       student: {
         id: r.student_id,
         fullName: r.student_full_name,
+        role: r.student_role,
         avatarUrl: r.student_avatar_url,
         department: r.student_department,
         batchYear: r.student_batch_year,
@@ -1504,6 +1512,7 @@ function toAdminRedemption(row: RedemptionListRow) {
       email: row.user_email,
       fullName: row.user_full_name,
       avatarUrl: row.user_avatar_url,
+      role: row.user_role,
     },
     giftCard: {
       id: row.gift_card_id,

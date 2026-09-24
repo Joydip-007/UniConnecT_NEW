@@ -40,6 +40,9 @@ const ROUTES = {
   'groups':      { path: '/groups',                   auth: true,  w: 1440, h: 900  },
   'groups-people': { path: '/groups?section=people',  auth: true,  w: 1440, h: 900  },
   'saved':       { path: '/saved',                    auth: true,  w: 1440, h: 900  },
+  'explore':     { path: '/explore',                  auth: true,  w: 1440, h: 900  },
+  'explore-search': { path: '/explore?q=machine+learning&tab=all', auth: true, w: 1440, h: 900 },
+  'explore-see-all': { path: '/explore?see=groups',   auth: true,  w: 1440, h: 900  },
   // `role` seeds the dev-auth mock user with that role so role-gated shells can be captured.
   'admin-learning': { path: '/admin?tab=learning',    auth: true,  role: 'admin', w: 1440, h: 900 },
   // DEV_GROUP.id from devMocks.ts — member view (userRole: 'member').

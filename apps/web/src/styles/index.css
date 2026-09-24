@@ -1256,3 +1256,29 @@ select:focus-visible {
     flex-shrink: 0;
   }
 }
+
+/* Discovery carousels (Explore): prev/next arrows appear on hover so a
+   trackpad-less desktop can still page the rail. Touch devices swipe. */
+.car-wrap .car-arrow {
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out-strong, ease-out);
+}
+.car-wrap:hover .car-arrow,
+.car-wrap .car-arrow:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .car-wrap .car-arrow {
+    display: none !important;
+  }
+}
+
+/* Explore card hovers, from the Explore design: rail cards (groups, events) lift to the
+   raised surface; See-all grid items only brighten their border. */
+.explore-rail-card:hover {
+  border-color: var(--border-hover) !important;
+  background: var(--surface-raised) !important;
+}
+.explore-grid-item:hover {
+  border-color: var(--border-hover) !important;
+}

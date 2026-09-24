@@ -7,6 +7,7 @@ import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
 import { usePost } from '@/features/feed/hooks/usePost'
 import { PATHS } from '@/router/paths'
+import { useBackLink } from '@/hooks/useBackLink'
 
 const STATE_LABEL: Record<string, string> = {
   draft: 'Draft — only you can see this',
@@ -17,6 +18,7 @@ const STATE_LABEL: Record<string, string> = {
 export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const back = useBackLink({ path: PATHS.FEED, label: 'Back to feed' })
   const { data: post, isLoading, isError } = usePost(id)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -27,7 +29,7 @@ export default function PostDetailPage() {
     <div>
       <button
         type="button"
-        onClick={() => navigate(PATHS.FEED)}
+        onClick={back.goBack}
         className="row-hover-bg"
         style={{
           display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16,
@@ -35,7 +37,7 @@ export default function PostDetailPage() {
           fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', padding: '4px 8px', borderRadius: 'var(--r-sm)',
         }}
       >
-        <ArrowLeft size={15} strokeWidth={1.5} /> Back to feed
+        <ArrowLeft size={15} strokeWidth={1.5} /> {back.label}
       </button>
 
       {isLoading ? (

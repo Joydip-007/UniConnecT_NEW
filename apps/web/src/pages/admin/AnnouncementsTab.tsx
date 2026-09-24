@@ -2,13 +2,16 @@ import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { Megaphone, Pin, PinOff, Trash2, AlertTriangle } from 'lucide-react'
 import { api } from '@/lib/axios'
+import type { UserRole } from '@uniconnect/shared'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { RoleBadge } from '@/components/RoleBadge'
 import { announcementStatus, type AnnouncementStatus } from './announcementStatus'
 
 interface AuthorMeta {
   id: string
   fullName: string | null
   avatarUrl: string | null
+  role?: UserRole | null
 }
 
 interface AnnouncementItem {
@@ -270,7 +273,10 @@ function AnnouncementRow({ item, queryKey, activeUsers }: { item: AnnouncementIt
           <span style={{ flexShrink: 0 }}><StatusPill status={status} /></span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--text-tertiary)' }}>
-          <span>{item.author.fullName ?? 'Unknown'}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            {item.author.role && <RoleBadge role={item.author.role} size={12} tipPlacement="below" />}
+            {item.author.fullName ?? 'Unknown'}
+          </span>
           <span>· {relativeTime(item.createdAt)}</span>
           {status === 'published' ? (
             <span>· ≈{(activeUsers ?? 0).toLocaleString()} members reached · {item.reactionCount + item.commentCount} engagement</span>

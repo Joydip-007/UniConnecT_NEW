@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Avatar } from '@/components/Avatar'
 import { highlightMatch } from '@/utils/highlightMatch'
 import type { PostSearchResult } from '../types'
+import { RoleBadge } from '@/components/RoleBadge'
 
 const AVATAR_PALETTE = ['var(--uc-indigo)', 'var(--uc-orange)', 'var(--uc-cyan)', 'var(--uc-mint)']
 
@@ -54,10 +55,11 @@ export function PostResultCard({ post, query }: Props) {
           style={{
             display: 'flex',
             gap: 6,
-            alignItems: 'baseline',
+            alignItems: 'center',
             marginBottom: 2,
           }}
         >
+          <RoleBadge role={post.author.role} size={13} tipPlacement="below" />
           <span style={{ fontWeight: 500, fontSize: 13, color: 'var(--text-primary)' }}>
             {post.author.fullName}
           </span>

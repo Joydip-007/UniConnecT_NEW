@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { ChevronRight, Info } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import type { UserRole } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
+import { RoleBadge } from '@/components/RoleBadge'
 import { Avatar } from '@/components/Avatar'
 import { GhostBtn } from '@/components/Button'
 import { RewardRequestsPanel } from '@/pages/admin/RewardRequestsPanel'
@@ -12,6 +14,7 @@ import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 interface MentorSummary {
   id: string
   fullName: string
+  role?: UserRole
   avatarUrl: string | null
   department: string | null
   batchYear: string | null
@@ -41,6 +44,7 @@ interface MentorRequest {
   student: {
     id: string
     fullName: string
+    role?: UserRole
     avatarUrl: string | null
     department: string | null
     batchYear: string | null
@@ -160,8 +164,11 @@ function MentorRequestList({ alumniId }: { alumniId: string }) {
                 <Avatar initials={getInitials(req.student.fullName)} color={seedColor(req.student.id)} size={28} />
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {req.student.fullName}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'middle' }}>
+                  {req.student.role && <RoleBadge role={req.student.role} size={13} tipPlacement="below" />}
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {req.student.fullName}
+                  </span>
                 </span>
                 {req.student.department && (
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>
@@ -281,9 +288,12 @@ function MentorRow({ mentor }: { mentor: MentorSummary }) {
 
         {/* Identity */}
         <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {mentor.fullName}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            {mentor.role && <RoleBadge role={mentor.role} size={14} tipPlacement="below" />}
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+              {mentor.fullName}
+            </p>
+          </div>
           {(mentor.department || mentor.batchYear) && (
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)' }}>
               {[mentor.department, mentor.batchYear ? `Batch ${mentor.batchYear}` : null].filter(Boolean).join(' · ')}

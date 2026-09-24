@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { userRoleSchema } from './users'
 
 /**
  * Targets a user can report. Mirrors `reports.target_type` on the API. `user`
@@ -32,6 +33,7 @@ export type CreateReportInput = z.infer<typeof createReportSchema>
 export const moderatedUserSchema = z.object({
   id: z.string().uuid(),
   fullName: z.string(),
+  role: userRoleSchema,
   username: z.string().nullable(),
   avatarUrl: z.string().nullable(),
   headline: z.string().nullable(),

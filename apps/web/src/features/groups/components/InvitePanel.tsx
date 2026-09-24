@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { api } from '@/lib/axios'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { PrimaryBtn } from '@/components/Button'
 import { PATHS } from '@/router/paths'
 import { GroupPanel } from './GroupPanel'
@@ -247,9 +248,12 @@ export function InvitePanel({ group, onClose }: { group: Group; onClose: () => v
               >
                 <Avatar src={c.profile.avatarUrl} initials={getInitials(c.profile.fullName)} color={seedColor(c.id)} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {c.profile.fullName}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <RoleBadge role={c.role} size={14} tipPlacement="below" />
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                      {c.profile.fullName}
+                    </p>
+                  </div>
                   <p style={{ margin: '1px 0 0', fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
                     {candidateMeta(c)}
                   </p>

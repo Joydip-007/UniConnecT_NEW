@@ -23,6 +23,8 @@ export interface UserSuggestion {
   batchYear: string | null
   avatarUrl: string | null
   followerCount: number
+  /** Accepted connections the requester and this person share. */
+  mutualCount: number
   connectionStatus: 'none' | 'pending_sent' | 'pending_received' | 'connected'
   connectionId: string | null
 }
@@ -34,6 +36,13 @@ export interface GroupSummary {
   avatarUrl: string | null
   memberCount: number
   recentPostCount: number
+  isPrivate: boolean
+  /** The requester already has a pending join request (private groups only). */
+  requestPending: boolean
+  /** How many of the requester's connections are members. */
+  knownCount: number
+  /** Up to three of those connections, for the avatar stack. */
+  knownFaces: { id: string; fullName: string; avatarUrl: string | null }[]
 }
 
 export interface EventSummary {
@@ -81,6 +90,25 @@ function toIso(v: unknown): string {
   return String(v)
 }
 
+// Accepted connections shared by `u.id` and the requester. Binds the requester id three times.
+const MUTUAL_COUNT_SQL = `(
+  SELECT COUNT(*)::int FROM connections c1
+  JOIN connections c2
+    ON c2.status = 'accepted'
+   AND (c2.requester_id = ? OR c2.addressee_id = ?)
+   AND (CASE WHEN c1.requester_id = u.id THEN c1.addressee_id ELSE c1.requester_id END)
+     = (CASE WHEN c2.requester_id = ? THEN c2.addressee_id ELSE c2.requester_id END)
+  WHERE c1.status = 'accepted'
+    AND (c1.requester_id = u.id OR c1.addressee_id = u.id)
+) AS mutual_count`
+
+// The requester's accepted connections, as a subquery of user ids. Binds the requester id three times.
+const MY_CONNECTION_IDS_SQL = `
+  SELECT CASE WHEN c.requester_id = ? THEN c.addressee_id ELSE c.requester_id END
+  FROM connections c
+  WHERE c.status = 'accepted' AND (c.requester_id = ? OR c.addressee_id = ?)
+`
+
 // ── Discovery queries ─────────────────────────────────────────────────────────
 
 async function getTrendingPosts(universityId: string, requesterId: string): Promise<TrendingPost[]> {
@@ -111,7 +139,7 @@ async function getTrendingPosts(universityId: string, requesterId: string): Prom
       `),
     )
     .orderBy('score', 'desc')
-    .limit(5)
+    .limit(10)
 
   return rows.map((r) => ({
     id: r.id,
@@ -165,6 +193,7 @@ async function getPeopleSuggestions(universityId: string, requesterId: string): 
         WHERE status = 'accepted'
         AND (requester_id = u.id OR addressee_id = u.id)
       ) AS connection_count`),
+      db.raw(MUTUAL_COUNT_SQL, [requesterId, requesterId, requesterId]),
     )
     .orderByRaw(
       `(
@@ -196,7 +225,7 @@ async function getPeopleSuggestions(universityId: string, requesterId: string): 
       (SELECT COUNT(*)::int FROM connections WHERE status = 'accepted' AND (requester_id = u.id OR addressee_id = u.id)) DESC`,
       [dept, batch, dept, batch, requesterId, requesterId],
     )
-    .limit(6)
+    .limit(12)
 
   if (rows.length === 0) return []
 
@@ -242,19 +271,34 @@ async function getPeopleSuggestions(universityId: string, requesterId: string): 
       batchYear: (r.batchYear as string | null) ?? null,
       avatarUrl: (r.avatarUrl as string | null) ?? null,
       followerCount: Number(r.connection_count),
+      mutualCount: Number(r.mutual_count ?? 0),
       connectionStatus,
       connectionId,
     }
   })
 }
 
-async function getActiveGroups(universityId: string, requesterId: string): Promise<GroupSummary[]> {
+async function getActiveGroups(
+  universityId: string,
+  requesterId: string,
+  requesterRole: string,
+): Promise<GroupSummary[]> {
+  const myConnections = [requesterId, requesterId, requesterId]
+  const requesterProfile = await db('profiles')
+    .where('user_id', requesterId)
+    .select<{ department: string | null; batch_year: string | null }>('department', 'batch_year')
+    .first()
+  const dept = requesterProfile?.department ?? ''
+  const batch = requesterProfile?.batch_year ?? ''
+
   const rows = await db('groups as g')
     .leftJoin('group_members as gm', function () {
       this.on('gm.group_id', 'g.id').andOn('gm.user_id', db.raw('?', [requesterId]))
     })
     .where('g.university_id', universityId)
-    .whereNot('g.type', 'secret')
+    // System groups are auto-managed and reject joins; role-locked groups would 400.
+    .where('g.is_system', false)
+    .where((q) => q.whereNull('g.allowed_role').orWhere('g.allowed_role', requesterRole))
     .whereNull('gm.user_id')
     .select(
       'g.id',
@@ -262,6 +306,21 @@ async function getActiveGroups(universityId: string, requesterId: string): Promi
       'g.type',
       'g.avatar_url as avatarUrl',
       'g.member_count as memberCount',
+      'g.is_private as isPrivate',
+      db.raw(
+        `EXISTS (
+          SELECT 1 FROM group_join_requests jr
+          WHERE jr.group_id = g.id AND jr.user_id = ? AND jr.status = 'pending'
+        ) AS request_pending`,
+        [requesterId],
+      ),
+      db.raw(
+        `(
+          SELECT COUNT(*)::int FROM group_members km
+          WHERE km.group_id = g.id AND km.user_id IN (${MY_CONNECTION_IDS_SQL})
+        ) AS known_count`,
+        myConnections,
+      ),
       db.raw(`
         COALESCE((
           SELECT COUNT(*)::int FROM posts
@@ -271,8 +330,46 @@ async function getActiveGroups(universityId: string, requesterId: string): Promi
         ), 0) AS recent_post_count
       `),
     )
+    // Your department's groups and your batch's group first, then the most active.
+    .orderByRaw(
+      `(CASE WHEN g.department IS NOT NULL AND g.department = ? THEN 1 ELSE 0 END
+        + CASE WHEN g.type = 'batch' AND ? <> '' AND g.name ILIKE '%' || ? || '%' THEN 1 ELSE 0 END) DESC`,
+      [dept, batch, batch],
+    )
     .orderBy('recent_post_count', 'desc')
-    .limit(4)
+    .orderBy('g.member_count', 'desc')
+    .limit(12)
+
+  if (rows.length === 0) return []
+
+  // Up to three known members per group for the avatar stack.
+  const groupIds = rows.map((r: { id: string }) => r.id)
+  const faceRows = await db
+    .select<{ group_id: string; id: string; fullName: string; avatarUrl: string | null }[]>(
+      'k.group_id', 'k.id', 'k.fullName', 'k.avatarUrl',
+    )
+    .from(
+      db('group_members as km')
+        .join('profiles as p', 'p.user_id', 'km.user_id')
+        .whereIn('km.group_id', groupIds)
+        .whereRaw(`km.user_id IN (${MY_CONNECTION_IDS_SQL})`, myConnections)
+        .select(
+          'km.group_id',
+          'km.user_id as id',
+          'p.full_name as fullName',
+          'p.avatar_url as avatarUrl',
+          db.raw('ROW_NUMBER() OVER (PARTITION BY km.group_id ORDER BY km.joined_at DESC) AS rn'),
+        )
+        .as('k'),
+    )
+    .where('k.rn', '<=', 3)
+
+  const facesByGroup = new Map<string, GroupSummary['knownFaces']>()
+  for (const f of faceRows) {
+    const list = facesByGroup.get(f.group_id) ?? []
+    list.push({ id: f.id, fullName: f.fullName, avatarUrl: f.avatarUrl ?? null })
+    facesByGroup.set(f.group_id, list)
+  }
 
   return rows.map((r) => ({
     id: r.id,
@@ -281,6 +378,10 @@ async function getActiveGroups(universityId: string, requesterId: string): Promi
     avatarUrl: r.avatarUrl,
     memberCount: Number(r.memberCount),
     recentPostCount: Number(r.recent_post_count),
+    isPrivate: Boolean(r.isPrivate),
+    requestPending: Boolean(r.request_pending),
+    knownCount: Number(r.known_count),
+    knownFaces: facesByGroup.get(r.id) ?? [],
   }))
 }
 
@@ -303,8 +404,8 @@ async function getUpcomingEvents(universityId: string, requesterId: string): Pro
         COALESCE((SELECT COUNT(*)::int FROM event_rsvps WHERE event_id = e.id AND status = 'going'), 0) AS rsvp_count
       `),
     )
-    .orderBy('rsvp_count', 'desc')
-    .limit(4)
+    .orderBy('e.starts_at', 'asc')
+    .limit(8)
 
   return rows.map((r) => ({
     id: r.id,
@@ -349,9 +450,10 @@ async function getFeaturedAlumni(universityId: string, requesterId: string): Pro
         WHERE status = 'accepted'
         AND (requester_id = u.id OR addressee_id = u.id)
       ) AS connection_count`),
+      db.raw(MUTUAL_COUNT_SQL, [requesterId, requesterId, requesterId]),
     )
     .orderBy('connection_count', 'desc')
-    .limit(4)
+    .limit(8)
 
   if (rows.length === 0) return []
 
@@ -397,6 +499,7 @@ async function getFeaturedAlumni(universityId: string, requesterId: string): Pro
       batchYear: (r.batchYear as string | null) ?? null,
       avatarUrl: (r.avatarUrl as string | null) ?? null,
       followerCount: Number(r.connection_count),
+      mutualCount: Number(r.mutual_count ?? 0),
       connectionStatus,
       connectionId,
     }
@@ -405,12 +508,16 @@ async function getFeaturedAlumni(universityId: string, requesterId: string): Pro
 
 // ── Public service functions ──────────────────────────────────────────────────
 
-export async function getDiscovery(universityId: string, requesterId: string): Promise<DiscoveryResult> {
+export async function getDiscovery(
+  universityId: string,
+  requesterId: string,
+  requesterRole: string,
+): Promise<DiscoveryResult> {
   const [trendingPosts, peopleSuggestions, activeGroups, upcomingEvents, featuredAlumni] =
     await Promise.all([
       getTrendingPosts(universityId, requesterId),
       getPeopleSuggestions(universityId, requesterId),
-      getActiveGroups(universityId, requesterId),
+      getActiveGroups(universityId, requesterId, requesterRole),
       getUpcomingEvents(universityId, requesterId),
       getFeaturedAlumni(universityId, requesterId),
     ])

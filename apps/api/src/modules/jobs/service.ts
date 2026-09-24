@@ -546,6 +546,7 @@ function toJob(row: JobRow) {
     postedBy: {
       id: row.posted_by,
       fullName: row.poster_full_name,
+      role: row.poster_role,
       profile: {
         avatarUrl: row.poster_avatar_url,
         headline: row.poster_headline,

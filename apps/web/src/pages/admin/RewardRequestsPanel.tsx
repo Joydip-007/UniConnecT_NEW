@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { UserRole } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
@@ -17,7 +19,7 @@ interface Redemption {
   adminNote: string | null
   requestedAt: string
   fulfilledAt: string | null
-  user: { id: string; email: string; fullName: string; avatarUrl: string | null }
+  user: { id: string; email: string; fullName: string; avatarUrl: string | null; role?: UserRole }
   giftCard: { id: string; vendor: string; title: string; valueUsdCents: number }
 }
 
@@ -113,7 +115,8 @@ function RedemptionRow({ redemption }: { redemption: Redemption }) {
           size={36}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+            {redemption.user.role && <RoleBadge role={redemption.user.role} size={14} tipPlacement="below" />}
             {redemption.user.fullName}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>

@@ -22,6 +22,7 @@ import {
   Flag,
   Mail,
   Radio,
+  PackageSearch,
   type LucideIcon,
 } from 'lucide-react'
 import { PATHS } from '@/router/paths'
@@ -116,7 +117,8 @@ export const TOPNAV_ICON_ROUTES: readonly string[] = [PATHS.MESSAGES, PATHS.NOTI
  * Shared by every member role; drivers deliberately get none of it.
  *
  * Deliberately absent: "Lost & found" and "My network". Both pages were absorbed into
- * another page as a section tab (`/explore?section=lost-found`, `/groups?section=people`)
+ * another page as a section (`/explore?section=lost-found` — reached from the campus-tools
+ * tile — and `/groups?section=people`)
  * and each renders the very same component the standalone route does. Keeping a row here
  * as well gave one feature two homes in one zone — the thing the shell rule forbids — and
  * the row was the weaker control, since the section sits next to the content it belongs
@@ -158,6 +160,13 @@ const MEMBER_SECONDARY: RailRow[] = [
  * there, which now exempts the surfaces listed above for this role only.
  */
 const ADMIN_SECONDARY_KEYS = new Set(['messages', 'notifications'])
+
+/**
+ * Lost & found lives as a section of Explore. Explore's centre column no longer carries
+ * a section switcher (it follows the Explore design exactly), so the campus-tools tile
+ * is the section's one home in the shell — as in the design's rail.
+ */
+const LOST_FOUND_SECTION = `${PATHS.EXPLORE}?section=lost-found`
 
 const NEWS_ROW: RailRow = { key: 'news', label: 'News', icon: Newspaper, to: PATHS.NEWS }
 const JOBS_ROW: RailRow = { key: 'jobs', label: 'Jobs', icon: Briefcase, to: PATHS.JOBS }
@@ -336,6 +345,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
     secondary: [...MEMBER_SECONDARY, NEWS_ROW],
     tools: [
       { key: 'shuttle', label: 'Shuttle live', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
+      { key: 'lost-found', label: 'Lost & found', icon: PackageSearch, iconColor: 'var(--uc-amber-l)', iconBg: 'var(--uc-amber-bg)', to: LOST_FOUND_SECTION },
       { key: 'elms', label: 'eLMS', icon: BookOpen, iconColor: 'var(--uc-orange-l)', iconBg: 'var(--uc-orange-bg)', externalUrl: 'https://elms.uiu.ac.bd' },
       { key: 'cgpa', label: 'CGPA calculator', icon: BarChart2, iconColor: 'var(--uc-mint)', iconBg: 'var(--uc-mint-bg)', externalUrl: 'https://cgpa.uiu.ac.bd' },
     ],
@@ -355,6 +365,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
     // action its label promised. Shuttle is the one utility no other zone offers.
     tools: [
       { key: 'shuttle', label: 'Shuttle', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
+      { key: 'lost-found', label: 'Lost & found', icon: PackageSearch, iconColor: 'var(--uc-amber-l)', iconBg: 'var(--uc-amber-bg)', to: LOST_FOUND_SECTION },
     ],
   },
   faculty: {
@@ -376,6 +387,7 @@ export const RAILS: Record<UserRole, RoleRail> = {
       // it would honestly be renamed to is reached through the "Sections" chip on Groups —
       // a tile pointing there would just be that row under a second name.
       { key: 'shuttle', label: 'Shuttle', icon: Bus, iconColor: 'var(--uc-cyan)', iconBg: 'var(--uc-cyan-bg)', to: PATHS.SHUTTLE },
+      { key: 'lost-found', label: 'Lost & found', icon: PackageSearch, iconColor: 'var(--uc-amber-l)', iconBg: 'var(--uc-amber-bg)', to: LOST_FOUND_SECTION },
     ],
   },
   driver: {

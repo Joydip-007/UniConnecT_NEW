@@ -38,6 +38,7 @@ interface LostFoundRow {
   updated_at: Date
   posted_by_name: string
   posted_by_avatar_url: string | null
+  posted_by_role: string
 }
 
 interface ShuttleRouteRow {
@@ -372,6 +373,7 @@ export const campusService = new CampusService()
 function lostFoundSelectQuery() {
   return db('lost_and_found')
     .join('profiles', 'profiles.user_id', 'lost_and_found.posted_by')
+    .join('users as poster_user', 'poster_user.id', 'lost_and_found.posted_by')
     .select<LostFoundRow[]>(
       'lost_and_found.id',
       'lost_and_found.university_id',
@@ -387,6 +389,7 @@ function lostFoundSelectQuery() {
       'lost_and_found.updated_at',
       'profiles.full_name as posted_by_name',
       'profiles.avatar_url as posted_by_avatar_url',
+      'poster_user.role as posted_by_role',
     )
 }
 
@@ -429,6 +432,7 @@ function toLostFound(row: LostFoundRow) {
     author: {
       fullName: row.posted_by_name,
       avatarUrl: row.posted_by_avatar_url,
+      role: row.posted_by_role,
       department: null,
       batchYear: null,
     },

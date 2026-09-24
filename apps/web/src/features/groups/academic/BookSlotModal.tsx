@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Calendar, MapPin, User } from 'lucide-react'
 import { Modal } from '@/components/Modal'
+import { RoleBadge } from '@/components/RoleBadge'
 import { useBookSlot, useReviewBooking } from '../hooks/useGroupExtended'
 import type { ConsultationSlot } from '../types'
 
@@ -138,6 +139,7 @@ function BookingsBody({ groupId, slot, onClose }: { groupId: string; slot: Consu
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {b.student.role && <RoleBadge role={b.student.role} size={14} tipPlacement="below" />}
                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{b.student.fullName}</span>
                     <span style={{ fontSize: 11, padding: '1px 8px', borderRadius: 'var(--r-pill)', background: status.bg, border: `0.5px solid ${status.bdr}`, color: status.color }}>
                       {status.label}

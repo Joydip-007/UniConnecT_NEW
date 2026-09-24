@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, CheckCircle2, Circle, FileText, PenLine, UserPlus, X, type LucideIcon } from 'lucide-react'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { Badge } from '@/components/Badge'
 import { useAuthStore } from '@/stores/authStore'
 import { PATHS } from '@/router/paths'
@@ -228,8 +229,11 @@ function SuggestionRow({ person, isLast }: { person: SuggestedPerson; isLast: bo
         <Avatar initials={getInitials(person.profile.fullName)} color={avatarColor(person.id)} size={36} />
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {person.profile.fullName}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <RoleBadge role={person.role} size={14} tipPlacement="below" />
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+            {person.profile.fullName}
+          </span>
         </div>
         {person.profile.department && (
           <Badge variant="dept" className="mt-0.5">{person.profile.department}</Badge>

@@ -1,5 +1,6 @@
 import { BarChart2 } from 'lucide-react'
 import { getInitials } from '@/utils/avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GroupPanel } from './GroupPanel'
 import { useGroupAnalytics } from '../hooks/useGroupExtended'
 
@@ -133,6 +134,7 @@ export function AnalyticsPanel({ groupId, onClose }: { groupId: string; onClose:
                     >
                       {m.avatarUrl ? '' : getInitials(m.fullName ?? '?')}
                     </span>
+                    {m.role && <RoleBadge role={m.role} size={13} tipPlacement="below" />}
                     <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {m.fullName ?? 'Member'}
                     </span>

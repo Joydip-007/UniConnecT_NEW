@@ -9,6 +9,7 @@ import {
   type JoinRequestStatus,
 } from '@/features/groups'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { avatarColor as seedColor, getInitials } from '@/utils/avatar'
 
 interface Props {
@@ -146,9 +147,12 @@ function RequestRow({ request, isLast, onApprove, onDecline, onUndo, isPending }
       />
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: '0 0 1px', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-          {request.requester.fullName ?? 'Unknown'}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 1px' }}>
+          {request.requester.role && <RoleBadge role={request.requester.role} size={14} tipPlacement="below" />}
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+            {request.requester.fullName ?? 'Unknown'}
+          </p>
+        </div>
         <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 400, color: 'var(--text-tertiary)' }}>{meta}</p>
         {request.message && (
           <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', fontStyle: 'italic' }}>

@@ -39,18 +39,19 @@ afterAll(async () => {
   await db('users').where({ id: unverifiedUserId }).delete()
 })
 
-describe('GET /api/v1/admin/stats — verificationsByRole', () => {
-  it('includes the unverified test user under its role', async () => {
+describe('GET /api/v1/admin/stats — no verification counters', () => {
+  // Registration is OTP-gated, so nothing ever waits on an admin to verify; the stats
+  // counters were removed in 0bac35cc. Unverified users stay reachable via the users
+  // list filter and the mark-verified action below.
+  it('does not report verification counts, even with an unverified user present', async () => {
     const res = await api
       .get('/api/v1/admin/stats')
       .set(UNI)
       .set('Authorization', `Bearer ${adminToken}`)
 
     expect(res.status).toBe(200)
-    expect(res.body.data).toHaveProperty('verificationsByRole')
-    const studentRow = res.body.data.verificationsByRole.find((r: { role: string }) => r.role === 'student')
-    expect(studentRow).toBeDefined()
-    expect(studentRow.count).toBeGreaterThanOrEqual(1)
+    expect(res.body.data).not.toHaveProperty('verificationsByRole')
+    expect(res.body.data).not.toHaveProperty('verificationRequests')
   })
 })
 

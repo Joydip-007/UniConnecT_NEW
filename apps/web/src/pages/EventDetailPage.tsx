@@ -14,15 +14,17 @@ import {
   ChevronRight,
   Pencil,
 } from 'lucide-react'
-import type { ContentAttachment } from '@uniconnect/shared'
+import type { ContentAttachment, UserRole } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { queryClient } from '@/lib/queryClient'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
+import { RoleBadge } from '@/components/RoleBadge'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { CreateEventForm } from '@/features/events/components/CreateEventForm'
 import { AttachmentList } from '@/features/content-sync'
+import { useBackLink } from '@/hooks/useBackLink'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,7 +44,7 @@ interface EventDetail {
   endsAt: string | null
   capacity: number | null
   isPublished: boolean
-  organizer: { id: string; fullName: string; avatarUrl: string | null }
+  organizer: { id: string; fullName: string; avatarUrl: string | null; role?: UserRole }
   rsvpCounts: { going: number; maybe: number; not_going: number }
   myRsvp: RsvpStatus
   attachments?: ContentAttachment[]
@@ -53,6 +55,7 @@ interface AttendeeItem {
   fullName: string
   avatarUrl: string | null
   profile: { headline: string | null; department: string | null }
+  user?: { role?: UserRole }
 }
 
 interface AttendeesPage {
@@ -222,19 +225,23 @@ function AttendeeRow({ attendee }: { attendee: AttendeeItem }) {
         />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p
-          style={{
-            margin: 0,
-            fontSize: 13,
-            fontWeight: 500,
-            color: 'var(--text-primary)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {attendee.fullName}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          {attendee.user?.role && <RoleBadge role={attendee.user.role} size={14} tipPlacement="below" />}
+          <p
+            style={{
+              margin: 0,
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'var(--text-primary)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}
+          >
+            {attendee.fullName}
+          </p>
+        </div>
         {(attendee.profile.headline || attendee.profile.department) && (
           <p
             style={{
@@ -321,6 +328,7 @@ function RsvpButton({
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const back = useBackLink({ path: '/events', label: 'Back to events' }, { preferHistory: true })
   const user = useAuthStore((s) => s.user)
 
   const [localRsvp, setLocalRsvp] = useState<RsvpStatus>(null)
@@ -463,7 +471,7 @@ export default function EventDetailPage() {
       {/* ── Back button ─────────────────────────────────────────────────── */}
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={back.goBack}
         style={{
           alignSelf: 'flex-start',
           display: 'inline-flex',
@@ -481,7 +489,7 @@ export default function EventDetailPage() {
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
       >
         <ArrowLeft size={14} strokeWidth={1.5} />
-        Back to events
+        {back.label}
       </button>
 
       {/* ── Hero cover ──────────────────────────────────────────────────── */}
@@ -767,14 +775,17 @@ export default function EventDetailPage() {
               size={40}
             />
           )}
-          <span
-            style={{
-              fontSize: 14,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-            }}
-          >
-            {event.organizer.fullName}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {event.organizer.role && <RoleBadge role={event.organizer.role} size={15} />}
+            <span
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                color: 'var(--text-primary)',
+              }}
+            >
+              {event.organizer.fullName}
+            </span>
           </span>
         </div>
       </div>

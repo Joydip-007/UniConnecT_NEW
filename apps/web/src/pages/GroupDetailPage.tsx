@@ -14,10 +14,12 @@ import {
   useJoinRequests,
 } from '@/features/groups'
 import type { Group, GroupTab } from '@/features/groups'
+import { useBackLink } from '@/hooks/useBackLink'
 
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const back = useBackLink({ path: '/groups', label: 'Groups' })
   const [searchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
 
@@ -79,7 +81,7 @@ export default function GroupDetailPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <button
         type="button"
-        onClick={() => navigate('/groups')}
+        onClick={back.goBack}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -98,7 +100,7 @@ export default function GroupDetailPage() {
         onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
       >
         <ArrowLeft size={14} strokeWidth={1.5} />
-        Groups
+        {back.label}
       </button>
 
       {groupLoading ? <SkeletonHeader /> : group && <GroupHeader group={group} />}

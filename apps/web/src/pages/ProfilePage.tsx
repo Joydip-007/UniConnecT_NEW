@@ -28,6 +28,7 @@ import { ResumeExportButton } from '@/features/profile/components/ResumeExportBu
 import { sectionLock } from '@/features/profile/sectionLock'
 import { Modal } from '@/components/Modal'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import type { BackLinkState } from '@/hooks/useBackLink'
 
 // ── Skeleton ───────────────────────────────────────────────────────────────────
 
@@ -173,8 +174,12 @@ function ProfileView({ handle }: { handle: string | undefined }) {
   // admin content queue, a message), none of which is a rail row — so the page needs
   // its own way back. `location.key === 'default'` means this is the first entry in
   // the history stack (opened by URL), where -1 would leave the app.
+  // A page that passes `{ from }` (Explore) gets an exact return address instead: -1
+  // would land on a profile tab change rather than where the visitor came from.
+  const [from] = useState(() => (location.state as BackLinkState | null)?.from)
   const goBack = () => {
-    if (location.key !== 'default') navigate(-1)
+    if (from) navigate(from.path)
+    else if (location.key !== 'default') navigate(-1)
     else navigate(authUser ? ROLE_SHELL[authUser.role].home : PATHS.FEED)
   }
   const qc = useQueryClient()
@@ -239,7 +244,7 @@ function ProfileView({ handle }: { handle: string | undefined }) {
         onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
       >
         <ArrowLeft size={14} strokeWidth={1.5} />
-        Back
+        {from?.label ?? 'Back'}
       </button>
 
       <ProfileHeader user={user} isOwnProfile={isOwnProfile} onEdit={() => setEditOpen(true)} />
