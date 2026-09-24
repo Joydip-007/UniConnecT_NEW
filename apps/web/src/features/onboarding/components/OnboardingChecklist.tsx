@@ -226,7 +226,7 @@ function SuggestionRow({ person, isLast }: { person: SuggestedPerson; isLast: bo
         aria-label={`View ${person.profile.fullName}'s profile`}
         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}
       >
-        <Avatar initials={getInitials(person.profile.fullName)} color={avatarColor(person.id)} size={36} />
+        <Avatar src={person.profile.avatarUrl} initials={getInitials(person.profile.fullName)} color={avatarColor(person.id)} size={36} />
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>

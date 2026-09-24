@@ -1,11 +1,11 @@
 import { useLayoutEffect, useRef } from 'react'
 
 /**
- * Inserts an emoji string at the textarea's current cursor position.
+ * Inserts an emoji string at the textarea's (or input's) current cursor position.
  * Returns a stable `insert` function — call it from an emoji picker's onSelect.
  */
 export function useEmojiInsert(
-  ref: React.RefObject<HTMLTextAreaElement>,
+  ref: React.RefObject<HTMLTextAreaElement | HTMLInputElement>,
   value: string,
   onChange: (next: string) => void,
 ) {

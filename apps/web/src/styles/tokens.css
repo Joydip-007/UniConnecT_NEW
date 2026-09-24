@@ -97,6 +97,9 @@
   /* Foreground for filled saturated buttons. Theme-STABLE — never inverts,
      so labels stay legible on indigo/orange/mint fills in both themes. */
   --on-accent:        #EBEBEB;
+  /* Label on a filled indigo / red surface (unread counts, send, badges). */
+  --on-indigo:        #F5F7FE;
+  --on-red:           #FFFFFF;
 
   /* ── Borders ──────────────────────────────────────── */
   --border-default:   rgba(255, 255, 255, 0.07);
@@ -189,6 +192,8 @@
   /* Filled buttons keep saturated fills in light mode too — labels flip to
      white here since the new accent set is dark/muted enough for AA. */
   --on-accent:        #FFFFFF;
+  --on-indigo:        #FFFFFF;
+  --on-red:           #FFFFFF;
 
   --border-default:   rgba(38, 38, 38, 0.09);
   --border-hover:     rgba(38, 38, 38, 0.16);

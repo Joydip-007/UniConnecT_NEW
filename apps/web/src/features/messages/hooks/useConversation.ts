@@ -14,5 +14,6 @@ export function useConversation(convId: string) {
     initialData: () =>
       queryClient.getQueryData<Conversation[]>(['conversations'])?.find((c) => c.id === convId),
     staleTime: 60_000,
+    enabled: !!convId,
   })
 }

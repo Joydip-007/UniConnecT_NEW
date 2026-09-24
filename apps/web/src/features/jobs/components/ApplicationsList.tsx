@@ -122,7 +122,7 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
         borderBottom: '0.5px solid var(--border-default)',
       }}
     >
-      <Avatar initials={initials(name)} color={avatarColor(name)} size={36} />
+      <Avatar src={applicant.profile.avatarUrl} initials={initials(name)} color={avatarColor(name)} size={36} />
 
       {/* Main content */}
       <div style={{ flex: 1, minWidth: 0 }}>

@@ -2,7 +2,7 @@ import type { Server as HttpServer } from 'node:http'
 import { createAdapter } from '@socket.io/redis-adapter'
 import type Redis from 'ioredis'
 import { Server } from 'socket.io'
-import { PRESENCE_EVENTS } from '@uniconnect/shared'
+import { MESSAGE_EVENTS, PRESENCE_EVENTS } from '@uniconnect/shared'
 import { db } from '../config/db'
 import { env } from '../config/env'
 import {
@@ -16,6 +16,28 @@ import { AppError } from '../utils/errors'
 import { logger } from '../utils/logger'
 
 let io: Server | null = null
+
+/**
+ * Mirrors a typing signal to the other participants' personal rooms, so a
+ * conversation-list row can show "Typing…" for a thread that is not open. The
+ * participant lookup doubles as the membership check: a non-member's signal
+ * goes nowhere.
+ */
+async function emitListTyping(convId: string, userId: string, isTyping: boolean) {
+  if (!io) return
+  try {
+    const rows = (await db('conversation_participants')
+      .where({ conversation_id: convId })
+      .select('user_id')) as { user_id: string }[]
+    if (!rows.some((row) => row.user_id === userId)) return
+    for (const row of rows) {
+      if (row.user_id === userId) continue
+      io.to(`user:${row.user_id}`).emit(MESSAGE_EVENTS.LIST_TYPING, { conversationId: convId, userId, isTyping })
+    }
+  } catch (error) {
+    logger.warn('list typing emit failed', { error })
+  }
+}
 
 export function setupSocket(httpServer: HttpServer, redisClient: Redis) {
   const pubClient = redisClient.duplicate()
@@ -97,12 +119,14 @@ export function setupSocket(httpServer: HttpServer, redisClient: Redis) {
       const convId = getConversationId(payload)
       if (!convId) return
       socket.to(`conv:${convId}`).emit('conv:typing', { conversationId: convId, userId: user.userId, isTyping: true })
+      void emitListTyping(convId, user.userId, true)
     })
 
     socket.on('conv:typing:stop', (payload: unknown) => {
       const convId = getConversationId(payload)
       if (!convId) return
       socket.to(`conv:${convId}`).emit('conv:typing', { conversationId: convId, userId: user.userId, isTyping: false })
+      void emitListTyping(convId, user.userId, false)
     })
 
     socket.on('join:conversation', (convId: unknown) => {

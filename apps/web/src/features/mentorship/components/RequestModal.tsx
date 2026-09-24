@@ -35,7 +35,7 @@ export function RequestModal({ alumni, onClose, onSuccess }: RequestModalProps) 
     <Modal isOpen onClose={handleClose} title={alumni.fullName} maxWidth={480}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar initials={getInitials(alumni.fullName)} color={avatarColor(alumni.id)} size={40} />
+          <Avatar src={alumni.avatarUrl} initials={getInitials(alumni.fullName)} color={avatarColor(alumni.id)} size={40} />
           {alumni.headline && (
             <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)' }}>
               {alumni.headline}

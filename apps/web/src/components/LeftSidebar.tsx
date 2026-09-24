@@ -372,13 +372,16 @@ function ProfileMiniCard({
           <div
             style={{
               height: 60,
-              background: user?.profile.coverUrl
-                ? `center / cover no-repeat url(${user.profile.coverUrl})`
-                : [
-                    'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
-                    'var(--surface-raised)',
-                  ].join(', '),
-              backgroundSize: user?.profile.coverUrl ? undefined : '14px 14px',
+              // Longhands only: mixing the `background` shorthand with
+              // `backgroundSize` lets React reset the size when the cover
+              // changes, so a fresh upload renders unscaled until reload.
+              backgroundColor: 'var(--surface-raised)',
+              backgroundImage: user?.profile.coverUrl
+                ? `url("${user.profile.coverUrl}")`
+                : 'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
+              backgroundSize: user?.profile.coverUrl ? 'cover' : '14px 14px',
+              backgroundPosition: 'center',
+              backgroundRepeat: user?.profile.coverUrl ? 'no-repeat' : 'repeat',
             }}
           />
 

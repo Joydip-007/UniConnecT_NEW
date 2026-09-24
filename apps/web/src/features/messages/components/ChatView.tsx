@@ -2,7 +2,6 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { Loader2, RotateCcw } from 'lucide-react'
-import type { UserRole } from '@uniconnect/shared'
 import { Avatar } from '@/components/Avatar'
 import { RoleBadge } from '@/components/RoleBadge'
 import { api } from '@/lib/axios'
@@ -14,40 +13,11 @@ import { MessageReactionGroup } from '@/components/emoji/ReactionChip'
 import { StickerMessage } from '@/components/emoji/StickerDrawer'
 import type { MessageReactionKey } from '@/components/emoji/reactionConfig'
 import { useUpsertMessageReaction, useRemoveMessageReaction, useMessageReactions } from '../hooks/useMessageReactions'
+import type { Message } from '../types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface MessageSender {
-  id: string
-  fullName: string
-  /** Absent on optimistic (pending) messages, which are always the viewer's own. */
-  role?: UserRole
-  profile: { avatarUrl: string | null }
-}
-
-export interface ReplyContext {
-  id: string
-  body: string
-  senderName: string
-}
-
-export interface Message {
-  id: string
-  conversationId: string
-  senderId: string
-  sender: MessageSender
-  body: string
-  sentAt: string
-  isDeleted: boolean
-  replyTo: ReplyContext | null
-  contentType?: 'text' | 'sticker'
-  stickerUrl?: string | null
-}
-
-export interface MessagesPage {
-  items: Message[]
-  nextCursor: string | null
-}
+export type { Message, MessageSender, MessagesPage, ReplyContext } from '../types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -174,7 +144,7 @@ function MessageBubble({
   const timeLabel = format(safeParse(message.sentAt), 'HH:mm')
   const isPending = !message.id || message.id.startsWith('pending-')
 
-  const { data: reactions } = useMessageReactions(convId, message.id)
+  const { data: reactions } = useMessageReactions(message.id, message.reactions)
   const upsertReaction = useUpsertMessageReaction(convId, message.id)
   const removeReaction = useRemoveMessageReaction(convId, message.id)
 

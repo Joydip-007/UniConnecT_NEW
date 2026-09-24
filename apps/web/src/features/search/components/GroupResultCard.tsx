@@ -69,7 +69,7 @@ export function GroupResultCard({ group }: Props) {
           textDecoration: 'none',
         }}
       >
-        <Avatar initials={initials} color={color} size={36} />
+        <Avatar src={group.avatarUrl} initials={initials} color={color} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.3 }}>
             {group.name}

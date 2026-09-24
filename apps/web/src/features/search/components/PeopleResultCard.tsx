@@ -50,7 +50,7 @@ export function PeopleResultCard({ person, query }: Props) {
           textDecoration: 'none',
         }}
       >
-        <Avatar initials={initials} color={color} size={36} />
+        <Avatar src={person.avatarUrl} initials={initials} color={color} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.3 }}>
             <RoleBadge role={person.role} size={14} tipPlacement="below" />

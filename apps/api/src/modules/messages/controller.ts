@@ -4,10 +4,12 @@ import { sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import { messagesService } from './service'
 import type {
+  ConversationPreferencesInput,
   CreateConversationInput,
   CreateMessageInput,
   MessageListQuery,
   MessageReactionInput,
+  SharedFilesQuery,
   UpdateConversationInput,
   UpdateMessageInput,
 } from './schema'
@@ -77,6 +79,45 @@ export const deleteMessage = asyncHandler(async (req: Request, res: Response) =>
 export const markRead = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await messagesService.markRead(context, getConversationIdParam(req)))
+})
+
+export const updatePreferences = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await messagesService.updatePreferences(
+      context,
+      getConversationIdParam(req),
+      req.body as ConversationPreferencesInput,
+    ),
+  )
+})
+
+export const listCommonGroups = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await messagesService.listCommonGroups(context, getConversationIdParam(req)))
+})
+
+export const listSharedFiles = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await messagesService.listSharedFiles(
+      context,
+      getConversationIdParam(req),
+      req.query as unknown as SharedFilesQuery,
+    ),
+  )
+})
+
+export const hideMessage = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await messagesService.hideMessage(context, getConversationIdParam(req), getMessageIdParam(req)))
+})
+
+export const openViewOnce = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await messagesService.openViewOnce(context, getConversationIdParam(req), getMessageIdParam(req)))
 })
 
 function getAuthContext(req: Request) {

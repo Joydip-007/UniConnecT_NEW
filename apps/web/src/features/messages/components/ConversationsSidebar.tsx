@@ -30,6 +30,10 @@ function SidebarRow({
       : (conversation.name ?? 'Group')
 
   const avatarInitials = initials(displayName)
+  const avatarSrc =
+    conversation.type === 'direct' || isMentorship
+      ? conversation.otherParticipant?.profile.avatarUrl
+      : conversation.avatarUrl
   const avatarColor = seedColor(conversation.id)
   const preview = conversation.lastMessage?.body || 'No messages yet'
   const time = conversation.lastMessage?.sentAt
@@ -63,7 +67,7 @@ function SidebarRow({
       }}
     >
       <div style={{ flexShrink: 0, position: 'relative' }}>
-        <Avatar initials={avatarInitials} color={avatarColor} size={38} />
+        <Avatar src={avatarSrc} initials={avatarInitials} color={avatarColor} size={38} />
         {(conversation.type === 'direct' || isMentorship) && (
           <PresenceDot userId={conversation.otherParticipant?.id} overlay />
         )}

@@ -49,7 +49,7 @@ export function PostResultCard({ post, query }: Props) {
         textDecoration: 'none',
       }}
     >
-      <Avatar initials={initials} color={color} size={32} />
+      <Avatar src={post.author.avatarUrl} initials={initials} color={color} size={32} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{

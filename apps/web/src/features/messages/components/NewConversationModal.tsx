@@ -91,7 +91,7 @@ function UserResultRow({
         transition: 'background 120ms',
       }}
     >
-      <Avatar initials={initials(user.fullName)} color={seedColor(user.id)} size={34} />
+      <Avatar src={user.profile.avatarUrl} initials={initials(user.fullName)} color={seedColor(user.id)} size={34} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -148,7 +148,7 @@ function SelectedChip({ user, onRemove }: { user: UserResult; onRemove: () => vo
         maxWidth: 160,
       }}
     >
-      <Avatar initials={initials(user.fullName)} color={seedColor(user.id)} size={18} />
+      <Avatar src={user.profile.avatarUrl} initials={initials(user.fullName)} color={seedColor(user.id)} size={18} />
       <span
         style={{
           overflow: 'hidden',
@@ -183,9 +183,11 @@ function SelectedChip({ user, onRemove }: { user: UserResult; onRemove: () => vo
 
 interface Props {
   onClose: () => void
+  /** `group` starts a named group chat even with one person picked; `direct` infers it from the count. */
+  mode?: 'direct' | 'group'
 }
 
-export function NewConversationModal({ onClose }: Props) {
+export function NewConversationModal({ onClose, mode = 'direct' }: Props) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -195,7 +197,7 @@ export function NewConversationModal({ onClose }: Props) {
   const [groupName, setGroupName] = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const isGroup = selectedUsers.length > 1
+  const isGroup = mode === 'group' || selectedUsers.length > 1
 
   // Focus the search input when the modal opens
   useEffect(() => {
@@ -277,7 +279,7 @@ export function NewConversationModal({ onClose }: Props) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <Modal isOpen onClose={onClose} title="New conversation" maxWidth={440}>
+    <Modal isOpen onClose={onClose} title={mode === 'group' ? 'New group chat' : 'New conversation'} maxWidth={440}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* ── Selected chips ────────────────────────────────────────────────── */}
         {selectedUsers.length > 0 && (

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { conversationPreferencesSchema, messageAttachmentsSchema } from '@uniconnect/shared'
 
 export const MessageTypeSchema = z.enum(['text', 'image', 'file', 'system', 'sticker'])
 export const MessageReactionTypeSchema = z.enum(['like', 'love', 'care', 'haha', 'wow', 'angry'])
@@ -53,21 +54,34 @@ export const CreateMessageSchema = z
     replyToId: z.string().uuid().nullable().optional(),
     type: MessageTypeSchema.default('text'),
     sticker_url: z.string().url().nullable().optional(),
+    stickerUrl: z.string().url().nullable().optional(),
+    attachments: messageAttachmentsSchema.optional(),
+    view_once: z.boolean().optional(),
+    viewOnce: z.boolean().optional(),
   })
   .transform((value) => ({
     content: value.content ?? value.body,
     media_urls: value.media_urls.length > 0 ? value.media_urls : (value.mediaUrls ?? []),
     reply_to_id: value.reply_to_id ?? value.replyToId,
     type: value.type,
-    sticker_url: value.sticker_url ?? null,
+    sticker_url: value.sticker_url ?? value.stickerUrl ?? null,
+    attachments: value.attachments ?? [],
+    view_once: value.view_once ?? value.viewOnce ?? false,
   }))
   .refine(
     (value) =>
       Boolean(value.content) ||
       value.media_urls.length > 0 ||
+      value.attachments.length > 0 ||
       value.type === 'system' ||
-      value.type === 'sticker',
+      (value.type === 'sticker' && Boolean(value.sticker_url)),
     { message: 'Message content or media is required' },
+  )
+  .refine(
+    (value) =>
+      !value.view_once ||
+      (value.attachments.length === 1 && value.attachments[0]!.mimeType.startsWith('image/')),
+    { message: 'View once is only available for a single photo', path: ['view_once'] },
   )
 
 export const UpdateMessageSchema = z
@@ -80,6 +94,14 @@ export const UpdateMessageSchema = z
     message: 'content is required',
   })
 
+export const ConversationPreferencesSchema = conversationPreferencesSchema
+
+export const SharedFilesQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(50).default(20),
+})
+
+export type ConversationPreferencesInput = z.infer<typeof ConversationPreferencesSchema>
+export type SharedFilesQuery = z.infer<typeof SharedFilesQuerySchema>
 export type CreateConversationInput = z.infer<typeof CreateConversationSchema>
 export type UpdateConversationInput = z.infer<typeof UpdateConversationSchema>
 export type MessageListQuery = z.infer<typeof MessageListQuerySchema>

@@ -11,3 +11,6 @@ export { NewConversationModal } from './components/NewConversationModal'
 
 export { useConversationSocket } from './hooks/useConversationSocket'
 export { useConversation } from './hooks/useConversation'
+
+export { MessagesWorkspace } from './components/MessagesWorkspace'
+export { useConversationListSocket } from './hooks/useConversationListSocket'

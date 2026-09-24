@@ -462,15 +462,7 @@ export function EditProfileModal({ onClose }: Props) {
               aria-label="Change avatar"
             >
               <div style={{ position: 'relative', borderRadius: '50%', overflow: 'hidden' }}>
-                {avatarPreview ? (
-                  <img
-                    src={avatarPreview}
-                    alt="Avatar preview"
-                    style={{ width: 64, height: 64, objectFit: 'cover', display: 'block' }}
-                  />
-                ) : (
-                  <Avatar initials={initials} color={avatarColor} size={64} />
-                )}
+                <Avatar src={avatarPreview} initials={initials} color={avatarColor} size={64} />
                 <div
                   style={{
                     position: 'absolute',

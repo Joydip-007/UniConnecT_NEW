@@ -17,9 +17,15 @@ export interface PendingMsg {
   status: 'sending' | 'error'
 }
 
+/** Receives the server's copy of the message so the caller can land it in its cache. */
+type OnSent = (message: unknown) => void
+
+// Kept outside the store: callbacks are not state and must survive a retry.
+const sentCallbacks = new Map<string, OnSent>()
+
 interface PendingMsgsState {
   msgs: PendingMsg[]
-  send: (convId: string, body: string, sender: MsgSender) => void
+  send: (convId: string, body: string, sender: MsgSender, onSent?: OnSent) => void
   retry: (tempId: string) => void
   clear: () => void
 }
@@ -27,8 +33,9 @@ interface PendingMsgsState {
 export const usePendingMsgsStore = create<PendingMsgsState>((set, get) => ({
   msgs: [],
 
-  send(convId, body, sender) {
+  send(convId, body, sender, onSent) {
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    if (onSent) sentCallbacks.set(tempId, onSent)
     set((s) => ({
       msgs: [
         ...s.msgs,
@@ -45,7 +52,11 @@ export const usePendingMsgsStore = create<PendingMsgsState>((set, get) => ({
     }))
     api
       .post(`/conversations/${convId}/messages`, { body })
-      .then(() => set((s) => ({ msgs: s.msgs.filter((m) => m.tempId !== tempId) })))
+      .then((res: { data: { data: unknown } }) => {
+        sentCallbacks.get(tempId)?.(res.data.data)
+        sentCallbacks.delete(tempId)
+        set((s) => ({ msgs: s.msgs.filter((m) => m.tempId !== tempId) }))
+      })
       .catch(() =>
         set((s) => ({
           msgs: s.msgs.map((m) =>
@@ -67,7 +78,11 @@ export const usePendingMsgsStore = create<PendingMsgsState>((set, get) => ({
     }))
     api
       .post(`/conversations/${msg.convId}/messages`, { body: msg.body })
-      .then(() => set((s) => ({ msgs: s.msgs.filter((m) => m.tempId !== tempId) })))
+      .then((res: { data: { data: unknown } }) => {
+        sentCallbacks.get(tempId)?.(res.data.data)
+        sentCallbacks.delete(tempId)
+        set((s) => ({ msgs: s.msgs.filter((m) => m.tempId !== tempId) }))
+      })
       .catch(() =>
         set((s) => ({
           msgs: s.msgs.map((m) =>
@@ -77,5 +92,8 @@ export const usePendingMsgsStore = create<PendingMsgsState>((set, get) => ({
       )
   },
 
-  clear: () => set({ msgs: [] }),
+  clear: () => {
+    sentCallbacks.clear()
+    set({ msgs: [] })
+  },
 }))

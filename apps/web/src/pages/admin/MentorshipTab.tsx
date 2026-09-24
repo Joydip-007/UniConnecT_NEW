@@ -154,15 +154,7 @@ function MentorRequestList({ alumniId }: { alumniId: string }) {
           >
             {/* Request header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {req.student.avatarUrl ? (
-                <img
-                  src={req.student.avatarUrl}
-                  alt={req.student.fullName}
-                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                />
-              ) : (
-                <Avatar initials={getInitials(req.student.fullName)} color={seedColor(req.student.id)} size={28} />
-              )}
+              <Avatar src={req.student.avatarUrl} initials={getInitials(req.student.fullName)} color={seedColor(req.student.id)} size={28} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'middle' }}>
                   {req.student.role && <RoleBadge role={req.student.role} size={13} tipPlacement="below" />}
@@ -276,15 +268,7 @@ function MentorRow({ mentor }: { mentor: MentorSummary }) {
         }}
       >
         {/* Avatar */}
-        {mentor.avatarUrl ? (
-          <img
-            src={mentor.avatarUrl}
-            alt={mentor.fullName}
-            style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-          />
-        ) : (
-          <Avatar initials={getInitials(mentor.fullName)} color={seedColor(mentor.id)} size={36} />
-        )}
+        <Avatar src={mentor.avatarUrl} initials={getInitials(mentor.fullName)} color={seedColor(mentor.id)} size={36} />
 
         {/* Identity */}
         <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>

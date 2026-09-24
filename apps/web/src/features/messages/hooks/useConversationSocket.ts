@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import type { InfiniteData } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
+import { MESSAGE_EVENTS } from '@uniconnect/shared'
+import { api } from '@/lib/axios'
 import { socket } from '@/lib/socket'
 import { useAuthStore } from '@/stores/authStore'
-import type { Message, MessagesPage } from '../components/ChatView'
-import type { Conversation } from '../types'
+import { bumpLastMessage, patchConversation, patchMessage, setMemberReadAt, upsertMessage } from '../messageCache'
+import type { Message, MessageReactions } from '../types'
 
 // ── Payload shapes (docs/socket-events.md#messaging-events) ──────────────────
 
-interface ConvMessageNewPayload {
+interface ConvMessagePayload {
   conversationId: string
   message: Message
 }
@@ -30,6 +31,22 @@ interface ConvReadAckPayload {
   readAt: string
 }
 
+interface ReactionPayload {
+  messageId: string
+  reactions: MessageReactions
+}
+
+interface OnceOpenedPayload {
+  conversationId: string
+  messageId: string
+  userId: string
+}
+
+/** Marks the thread read server-side; the API answers with `conv:read:ack` to the room. */
+function markRead(convId: string) {
+  void api.post(`/conversations/${convId}/read`).catch(() => {})
+}
+
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useConversationSocket(convId: string) {
@@ -44,66 +61,44 @@ export function useConversationSocket(convId: string) {
     const timers = new Map<string, ReturnType<typeof setTimeout>>()
 
     socket.emit('conv:join', { conversationId: convId })
-    // Mark messages as read on open
-    socket.emit('conv:read', { conversationId: convId })
+    markRead(convId)
 
-    // ── conv:message:new ──────────────────────────────────────────────────────
-    function onMessageNew({ conversationId, message }: ConvMessageNewPayload) {
+    function onMessageNew({ conversationId, message }: ConvMessagePayload) {
       if (conversationId !== convId) return
-
-      // Append to the most-recent page (pages[0], ascending items)
-      queryClient.setQueryData<InfiniteData<MessagesPage>>(
-        ['messages', convId],
-        (old) => {
-          if (!old || old.pages.length === 0) return old
-          const [first, ...rest] = old.pages as [MessagesPage, ...MessagesPage[]]
-          return {
-            ...old,
-            pages: [{ ...first, items: [...first.items, message] }, ...rest],
-          }
-        },
-      )
-
-      // Refresh last-message preview in the conversation list
-      queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
-        if (!old) return old
-        return old.map((conv) =>
-          conv.id === conversationId
-            ? {
-                ...conv,
-                lastMessage: {
-                  body: message.body,
-                  sentAt: message.sentAt,
-                  senderId: message.senderId,
-                },
-              }
-            : conv,
-        )
-      })
+      upsertMessage(queryClient, convId, message)
+      bumpLastMessage(queryClient, convId, message)
+      // The thread is open, so anything that arrives is read the moment it lands.
+      if (message.senderId !== myUserId) markRead(convId)
     }
 
-    // ── conv:message:deleted ──────────────────────────────────────────────────
+    function onMessageUpdated({ conversationId, message }: ConvMessagePayload) {
+      if (conversationId !== convId) return
+      upsertMessage(queryClient, convId, message)
+    }
+
     function onMessageDeleted({ conversationId, messageId }: ConvMessageDeletedPayload) {
       if (conversationId !== convId) return
+      patchMessage(queryClient, convId, messageId, (m) => ({
+        ...m,
+        isDeleted: true,
+        attachments: [],
+        mediaUrls: [],
+        stickerUrl: null,
+      }))
+    }
 
-      queryClient.setQueryData<InfiniteData<MessagesPage>>(
-        ['messages', convId],
-        (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            pages: old.pages.map((page) => ({
-              ...page,
-              items: page.items.map((msg) =>
-                msg.id === messageId ? { ...msg, isDeleted: true } : msg,
-              ),
-            })),
-          }
-        },
+    function onReaction({ messageId, reactions }: ReactionPayload) {
+      patchMessage(queryClient, convId, messageId, (m) => ({ ...m, reactions }))
+    }
+
+    function onOnceOpened({ conversationId, messageId, userId }: OnceOpenedPayload) {
+      if (conversationId !== convId || userId === myUserId) return
+      // Someone else opened my view-once photo — flip the sender's copy to "Opened".
+      patchMessage(queryClient, convId, messageId, (m) =>
+        m.senderId === myUserId ? { ...m, viewOnce: { opened: true } } : m,
       )
     }
 
-    // ── conv:typing ───────────────────────────────────────────────────────────
     function onTyping({ conversationId, userId, isTyping }: ConvTypingPayload) {
       if (conversationId !== convId || userId === myUserId) return
 
@@ -124,27 +119,31 @@ export function useConversationSocket(convId: string) {
       }
     }
 
-    // ── conv:read:ack ─────────────────────────────────────────────────────────
-    function onReadAck({ conversationId, userId }: ConvReadAckPayload) {
-      // Only reset our own unread count
-      if (userId !== myUserId) return
-      queryClient.setQueryData<Conversation[]>(['conversations'], (old) => {
-        if (!old) return old
-        return old.map((conv) =>
-          conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv,
-        )
-      })
+    function onReadAck({ conversationId, userId, readAt }: ConvReadAckPayload) {
+      if (conversationId !== convId) return
+      if (userId === myUserId) {
+        patchConversation(queryClient, conversationId, (c) => ({ ...c, unreadCount: 0 }))
+      } else {
+        // Another participant caught up — drives the "Seen" check on my bubbles.
+        setMemberReadAt(queryClient, conversationId, userId, readAt)
+      }
     }
 
     socket.on('conv:message:new', onMessageNew)
+    socket.on(MESSAGE_EVENTS.UPDATED, onMessageUpdated)
     socket.on('conv:message:deleted', onMessageDeleted)
+    socket.on('message:reaction', onReaction)
+    socket.on(MESSAGE_EVENTS.ONCE_OPENED, onOnceOpened)
     socket.on('conv:typing', onTyping)
     socket.on('conv:read:ack', onReadAck)
 
     return () => {
       socket.emit('conv:leave', { conversationId: convId })
       socket.off('conv:message:new', onMessageNew)
+      socket.off(MESSAGE_EVENTS.UPDATED, onMessageUpdated)
       socket.off('conv:message:deleted', onMessageDeleted)
+      socket.off('message:reaction', onReaction)
+      socket.off(MESSAGE_EVENTS.ONCE_OPENED, onOnceOpened)
       socket.off('conv:typing', onTyping)
       socket.off('conv:read:ack', onReadAck)
       timers.forEach((t) => clearTimeout(t))
