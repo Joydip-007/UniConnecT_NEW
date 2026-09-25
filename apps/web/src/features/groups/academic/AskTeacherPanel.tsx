@@ -8,7 +8,8 @@ import { ChatView, MessageInput, useConversationSocket } from '@/features/messag
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { useAskTeacher, useAskTeacherQueue, useConsultationSlots, useCreateSlot } from '../hooks/useGroupExtended'
 import type { AskTeacherQueueItem, ConsultationSlot, CreateSlotInput } from '../types'
-import { BookSlotModal, WEEKDAYS, slotWhen, slotWhere } from './BookSlotModal'
+import { BookSlotModal } from './BookSlotModal'
+import { WEEKDAYS, slotWhen, slotWhere } from './consultationSlot'
 
 interface Props {
   groupId: string

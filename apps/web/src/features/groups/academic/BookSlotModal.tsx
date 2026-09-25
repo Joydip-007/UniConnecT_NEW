@@ -4,16 +4,7 @@ import { Modal } from '@/components/Modal'
 import { RoleBadge } from '@/components/RoleBadge'
 import { useBookSlot, useReviewBooking } from '../hooks/useGroupExtended'
 import type { ConsultationSlot } from '../types'
-
-export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
-
-export function slotWhen(slot: ConsultationSlot) {
-  return `${WEEKDAYS[slot.weekday]}, ${slot.startTime} – ${slot.endTime}`
-}
-
-export function slotWhere(slot: ConsultationSlot) {
-  return slot.walkIn ? `${slot.location}, walk in` : slot.location
-}
+import { slotWhen, slotWhere } from './consultationSlot'
 
 interface Props {
   groupId: string

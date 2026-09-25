@@ -1,24 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { EyebrowLabel, RailSlot, WidgetShell } from './primitives'
-
-interface TrendingTag {
-  name: string
-  postCount: number
-}
-
-export function useTrendingTags() {
-  return useQuery({
-    queryKey: ['feed', 'trending'],
-    queryFn: () =>
-      api
-        .get<{ data: { trendingTags: TrendingTag[] } }>('/posts/trending')
-        .then((r) => r.data.data.trendingTags),
-    staleTime: 60_000,
-  })
-}
+import { useTrendingTags, type TrendingTag } from './useTrendingTags'
 
 /** The chip list on its own, so a page-scoped rail can place it under its own header. */
 export function TrendingTagsList({ tags }: { tags: TrendingTag[] }) {

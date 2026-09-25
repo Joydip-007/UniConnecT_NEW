@@ -14,7 +14,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
-import { RAILS, TONE_TOKENS, isRailRowActive } from './leftSidebar.config'
+import { RAILS, TONE_TOKENS, activeRailIndex } from './leftSidebar.config'
 import { useRailContext } from './useRailContext'
 import { ROLE_SHELL } from '@/config/roleShell'
 import { usePageRailStore } from '@/stores/pageRailStore'
@@ -483,11 +483,15 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
   const secondShown = useCountUp(profileData?.stats[secondStat.key] ?? 0)
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose
 
-  const isActive = (to: string) => isRailRowActive(to, pathname, search)
-
   // Guarantees a single active row: `layoutId` must never be mounted twice at once,
-  // and two highlighted rows would be wrong regardless of the animation.
-  const activeFixedIndex = rail.fixed.findIndex((row) => isActive(row.to))
+  // and two highlighted rows would be wrong regardless of the animation. The campus
+  // tools join the match so a tool's URL (Lost & found is `/explore?section=…`) does
+  // not also light the bare row it shares a path with.
+  const activeFixedIndex = activeRailIndex(
+    [...rail.fixed.map((row) => row.to), ...rail.tools.map((tool) => tool.to ?? null)],
+    pathname,
+    search,
+  )
 
   const active = rail.contextual
     .map((rule) => {

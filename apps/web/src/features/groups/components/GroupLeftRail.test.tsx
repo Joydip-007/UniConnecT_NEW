@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/tests/msw/server'
-import { GroupLeftRail, defaultTabFor } from './GroupLeftRail'
+import { GroupLeftRail } from './GroupLeftRail'
+import { defaultTabFor } from '../groupTabs'
 import type { Group } from '../types'
 
 const navigate = vi.fn()

@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { PATHS } from '@/router/paths'
-import { RAILS, isRailRowActive } from './leftSidebar.config'
+import { RAILS, activeRailIndex } from './leftSidebar.config'
 
 interface MoreItem {
   icon: LucideIcon
@@ -62,10 +62,15 @@ export function MobileBottomNav() {
 
   // The same matcher the desktop rail uses, so the two navigations can never disagree
   // about which row is lit.
-  const isActive = (to: string) => isRailRowActive(to, pathname, search)
-
-  const activeBarIndex = items.findIndex((item) => isActive(item.path))
-  const moreActive = activeBarIndex === -1 && moreItems.some((m) => !m.external && isActive(m.path))
+  // Bar and sheet are matched together so exactly one destination is lit across both.
+  const activeIndex = activeRailIndex(
+    [...items.map((item) => item.path), ...moreItems.map((m) => (m.external ? null : m.path))],
+    pathname,
+    search,
+  )
+  const activeBarIndex = activeIndex < items.length ? activeIndex : -1
+  const activeMoreIndex = activeIndex >= items.length ? activeIndex - items.length : -1
+  const moreActive = activeMoreIndex !== -1
   const moreBadge = moreItems.reduce((sum, item) => sum + (item.badge ?? 0), 0)
 
   const closeMore = useCallback(({ restoreFocus = false }: { restoreFocus?: boolean } = {}) => {
@@ -299,9 +304,9 @@ export function MobileBottomNav() {
               gap: 4,
             }}
           >
-            {moreItems.map((item) => {
+            {moreItems.map((item, index) => {
               const Icon = item.icon
-              const active = !item.external && isActive(item.path)
+              const active = index === activeMoreIndex
               return (
                 <button
                   key={item.label}

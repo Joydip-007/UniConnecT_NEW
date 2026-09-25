@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { defaultTabFor, groupTabsFor } from './GroupLeftRail'
-import type { GroupTab } from './GroupLeftRail'
+import { defaultTabFor, groupTabsFor } from '../groupTabs'
+import type { GroupTab } from '../groupTabs'
 import type { Group } from '../types'
 
 /**

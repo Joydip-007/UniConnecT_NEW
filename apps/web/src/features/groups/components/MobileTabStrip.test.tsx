@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MobileTabStrip } from './MobileTabStrip'
-import { defaultTabFor } from './GroupLeftRail'
+import { defaultTabFor } from '../groupTabs'
 import type { Group } from '../types'
 
 const navigate = vi.fn()

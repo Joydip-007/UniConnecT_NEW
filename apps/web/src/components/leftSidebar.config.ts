@@ -195,6 +195,32 @@ export function isRailRowActive(to: string, pathname: string, search: string): b
   )
 }
 
+/**
+ * Index of the one destination in `tos` the current URL is on, or -1. Several can match
+ * at once — the bare `/explore` row also matches `/explore?section=lost-found`, which the
+ * Lost & found tool owns — so the row pinning the most params the URL actually carries
+ * wins, and ties go to the first (a bare `/admin` still lights the first admin row).
+ *
+ * Callers pass every destination in the shell, not just the rows they highlight, so a
+ * row is never lit for a URL a more specific destination owns. `null` holds the place of
+ * a destination that can never be current (an external campus tool).
+ */
+export function activeRailIndex(tos: readonly (string | null)[], pathname: string, search: string): number {
+  const current = new URLSearchParams(search)
+  let best = -1
+  let bestScore = -1
+  tos.forEach((to, index) => {
+    if (to == null || !isRailRowActive(to, pathname, search)) return
+    const pinned = [...new URLSearchParams(to.split('?')[1] ?? '')]
+    const score = pinned.filter(([key, value]) => current.get(key) === value).length
+    if (score > bestScore) {
+      best = index
+      bestScore = score
+    }
+  })
+  return best
+}
+
 /** live > action > deadline > network > self, per the rank-order rule. */
 export const TONE_RANK: Record<ContextualTone, number> = {
   live: 4,
