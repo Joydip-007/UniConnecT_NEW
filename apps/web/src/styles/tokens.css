@@ -142,8 +142,8 @@
 :root[data-theme='light'] {
   /* ── Surfaces — Graphite Ledger Light ──────────────── */
   --surface-page:     #EBEBEB;
-  --surface-card:     #FAFAFA;
-  --surface-raised:   #E2E2E2;
+  --surface-card:     #FFFFFF;
+  --surface-raised:   #FFFFFF;
   --surface-hover:    #D8D8D8;
 
   /* ── Brand — darkened for AA contrast on light surfaces ─

@@ -258,7 +258,7 @@ export function TopNav() {
         top: 0,
         zIndex: 'var(--z-nav)',
         height: 60,
-        background: 'var(--overlay-bg-strong)',
+        background: '#FFFFFF',
         borderBottom: '0.5px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
