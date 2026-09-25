@@ -1,115 +1,124 @@
-import { List, Map as MapIcon, Radio, Layers } from 'lucide-react'
-import { SORT_OPTIONS, type SortKey } from '../lib/sortRoutes'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowUpDown, Check, ChevronDown, List, Map as MapIcon, Radio } from 'lucide-react'
+import { STOP_SORT_OPTIONS, type StopSort } from '../lib/stopSort'
+
 
 interface ShuttleControlsProps {
-  sortKey: SortKey
-  onSortChange: (key: SortKey) => void
   view: 'map' | 'list'
   onViewChange: (view: 'map' | 'list') => void
   liveOnly: boolean
   onLiveOnlyChange: (value: boolean) => void
-  focusMode: boolean
-  onFocusModeChange: (value: boolean) => void
+  sort: StopSort
+  onSortChange: (sort: StopSort) => void
 }
 
-const pill = (active: boolean): React.CSSProperties => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '7px 12px',
-  fontSize: 13,
-  fontWeight: active ? 500 : 400,
-  borderRadius: 'var(--r-pill)',
-  border: 'none',
-  cursor: 'pointer',
-  background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-  color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-  transition: 'background 150ms, color 150ms',
-  whiteSpace: 'nowrap',
-})
+/**
+ * The view switch leads, filters sit right. Sort only orders the stop list, so it only
+ * appears in List view; following the bus is a map camera control and lives on the map.
+ */
+export function ShuttleControls({ view, onViewChange, liveOnly, onLiveOnlyChange, sort, onSortChange }: ShuttleControlsProps) {
+  const [sortOpen, setSortOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const current = STOP_SORT_OPTIONS.find((o) => o.key === sort) ?? STOP_SORT_OPTIONS[0]
 
-export function ShuttleControls({
-  sortKey,
-  onSortChange,
-  view,
-  onViewChange,
-  liveOnly,
-  onLiveOnlyChange,
-  focusMode,
-  onFocusModeChange,
-}: ShuttleControlsProps) {
+  useEffect(() => {
+    if (!sortOpen) return
+    function onDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setSortOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSortOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [sortOpen])
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        gap: 8,
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '8px 10px',
-      }}
-    >
-      {/* Sort */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>Sort</span>
-        <select
-          value={sortKey}
-          onChange={(e) => onSortChange(e.target.value as SortKey)}
-          style={{
-            fontSize: 13,
-            fontWeight: 400,
-            color: 'var(--text-primary)',
-            background: 'var(--surface-raised)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-pill)',
-            padding: '6px 10px',
-            cursor: 'pointer',
-          }}
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.key} value={o.key}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
+    <div className="shuttle-controls" data-view={view}>
+      <div className="shuttle-segment" role="tablist" aria-label="View">
+        {(
+          [
+            { v: 'map', label: 'Map', Icon: MapIcon },
+            { v: 'list', label: 'List', Icon: List },
+          ] as const
+        ).map(({ v, label, Icon }) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            data-on={view === v || undefined}
+            className="shuttle-segment-btn"
+            onClick={() => {
+              onViewChange(v)
+              setSortOpen(false)
+            }}
+          >
+            <Icon size={13} />
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div style={{ flex: 1 }} />
 
-      {/* View toggle: map ⇄ list */}
-      <div style={{ display: 'flex', gap: 2, background: 'var(--surface-raised)', borderRadius: 'var(--r-pill)', padding: 2 }}>
-        <button type="button" style={pill(view === 'map')} onClick={() => onViewChange('map')}>
-          <MapIcon size={14} strokeWidth={1.5} /> Map
-        </button>
-        <button type="button" style={pill(view === 'list')} onClick={() => onViewChange('list')}>
-          <List size={14} strokeWidth={1.5} /> List
-        </button>
-      </div>
-
-      {/* Live only */}
       <button
         type="button"
-        style={pill(liveOnly)}
-        onClick={() => onLiveOnlyChange(!liveOnly)}
-        title="Show only buses with a live GPS signal — hides buses on estimated positions"
         aria-pressed={liveOnly}
+        title="Live only"
+        data-on={liveOnly || undefined}
+        className="shuttle-pill shuttle-pill--live"
+        onClick={() => onLiveOnlyChange(!liveOnly)}
       >
-        <Radio size={14} strokeWidth={1.5} /> Live only
+        <Radio size={13} />
+        <span className="shuttle-liveonly-label">Live only</span>
       </button>
 
-      {/* Dim others (only meaningful in map view) */}
-      {view === 'map' && (
-        <button
-          type="button"
-          style={pill(focusMode)}
-          onClick={() => onFocusModeChange(!focusMode)}
-          title="Dim all routes except the selected one"
-          aria-pressed={focusMode}
-        >
-          <Layers size={14} strokeWidth={1.5} /> Dim others
-        </button>
+      {view === 'list' && (
+        <div ref={menuRef} style={{ position: 'relative' }}>
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={sortOpen}
+            data-open={sortOpen || undefined}
+            className="shuttle-pill shuttle-pill--sort"
+            onClick={() => setSortOpen((o) => !o)}
+          >
+            <ArrowUpDown size={13} color="var(--text-tertiary)" />
+            {current.short}
+            <ChevronDown
+              size={13}
+              color="var(--text-tertiary)"
+              style={{ transition: 'transform 200ms var(--ease-out-strong)', transform: sortOpen ? 'rotate(180deg)' : 'none' }}
+            />
+          </button>
+          {sortOpen && (
+            <div role="menu" className="shuttle-sort-menu">
+              <span className="shuttle-sort-eyebrow">Sort stops by</span>
+              {STOP_SORT_OPTIONS.map((o) => (
+                <button
+                  key={o.key}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={o.key === sort}
+                  className="shuttle-sort-item"
+                  data-on={o.key === sort || undefined}
+                  onClick={() => {
+                    onSortChange(o.key)
+                    setSortOpen(false)
+                  }}
+                >
+                  {o.label}
+                  {o.key === sort && <Check size={14} color="var(--uc-indigo-l)" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

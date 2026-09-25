@@ -1,4 +1,6 @@
 import { CheckCircle2 } from 'lucide-react'
+import { haversineKm } from '../utils'
+import type { StopSort } from '../lib/stopSort'
 import type { ProgressResult, ShuttleRoute } from '../types'
 
 interface StopListProps {
@@ -6,9 +8,31 @@ interface StopListProps {
   hasLocation: boolean
   derived: ProgressResult
   atFinalStop: boolean
+  sort: StopSort
+  userLocation: { lat: number; lng: number } | null
 }
 
-export function StopList({ route, hasLocation, derived, atFinalStop }: StopListProps) {
+/**
+ * Orders the stops without losing their route index (the passed/here/next state is
+ * positional). "Live first" puts the stops still ahead of the bus on top; "Nearest"
+ * needs the rider's location and otherwise keeps route order.
+ */
+function orderStops(route: ShuttleRoute, sort: StopSort, derived: ProgressResult, hasLocation: boolean, user: StopListProps['userLocation']) {
+  const indexed = route.stops.map((stop, index) => ({ stop, index }))
+  if (sort === 'name') return indexed.sort((a, b) => a.stop.name.localeCompare(b.stop.name))
+  if (sort === 'nearest' && user) {
+    const d = (s: (typeof indexed)[number]) => haversineKm(user.lat, user.lng, s.stop.lat, s.stop.lng)
+    return indexed.sort((a, b) => d(a) - d(b))
+  }
+  if (sort === 'live' && hasLocation) {
+    const ahead = (i: number) => (i >= derived.nearestStopIdx ? 0 : 1)
+    return indexed.sort((a, b) => ahead(a.index) - ahead(b.index) || a.index - b.index)
+  }
+  return indexed
+}
+
+export function StopList({ route, hasLocation, derived, atFinalStop, sort, userLocation }: StopListProps) {
+  const rows = orderStops(route, sort, derived, hasLocation, userLocation)
   return (
     <div
       style={{
@@ -28,12 +52,12 @@ export function StopList({ route, hasLocation, derived, atFinalStop }: StopListP
       </div>
 
       <div>
-        {route.stops.map((stop, i) => {
+        {rows.map(({ stop, index: i }, row) => {
           const passed = hasLocation && i < derived.nearestStopIdx
           const nearest = hasLocation && i === derived.nearestStopIdx
           const isNext =
             hasLocation && i === derived.nextStopIdx && i !== derived.nearestStopIdx && !atFinalStop
-          const isLast = i === route.stops.length - 1
+          const isLast = row === rows.length - 1
 
           return (
             <div

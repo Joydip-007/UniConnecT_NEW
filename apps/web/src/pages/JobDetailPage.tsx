@@ -8,7 +8,8 @@ import { api } from '@/lib/axios'
 import { queryClient } from '@/lib/queryClient'
 import { useAuthStore } from '@/stores/authStore'
 import { Badge } from '@/components/Badge'
-import { EmptyState } from '@/components/EmptyState'
+import { DetailUnavailable } from '@/components/DetailUnavailable'
+import { isMissingError } from '@/lib/httpErrors'
 import { GhostBtn, MintBtn } from '@/components/Button'
 import { ApplyModal } from '@/features/jobs/components/ApplyModal'
 import { ApplicationsList } from '@/features/jobs/components/ApplicationsList'
@@ -33,7 +34,7 @@ export default function JobDetailPage() {
   const [applyOpen, setApplyOpen] = useState(false)
 
   const queryKey = ['jobs', 'detail', id]
-  const { data: job, isPending, isError } = useQuery({
+  const { data: job, isPending, isError, error, refetch } = useQuery({
     queryKey,
     enabled: Boolean(id),
     queryFn: () => api.get<{ data: Job }>(`/jobs/${id}`).then((r) => r.data.data),
@@ -56,12 +57,21 @@ export default function JobDetailPage() {
   }
 
   if (isError || !job) {
-    return (
-      <EmptyState
+    return isError && !isMissingError(error) ? (
+      <DetailUnavailable
+        kind="failed"
+        title="We couldn't load this job"
+        body="Check your connection and try again. If it keeps happening, the job may be temporarily unavailable."
+        onRetry={() => void refetch()}
+      />
+    ) : (
+      <DetailUnavailable
+        kind="not-found"
         icon={Briefcase}
         title="Job not found"
-        description="This opportunity may have expired or been removed."
-        action={{ label: 'Back to jobs', onClick: () => navigate('/jobs') }}
+        body="This opportunity may have expired or been removed."
+        backLabel="Back to jobs"
+        onBack={() => navigate('/jobs')}
       />
     )
   }

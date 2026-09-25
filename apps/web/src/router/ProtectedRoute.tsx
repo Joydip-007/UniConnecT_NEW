@@ -2,6 +2,8 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { ROLE_SHELL, isRouteAllowedForRole } from '@/config/roleShell'
 import { PATHS } from './paths'
+import { RedirectWithNotice } from './RedirectWithNotice'
+import { roleHome } from '@/config/roleHome'
 
 export default function ProtectedRoute() {
   const accessToken = useAuthStore((s) => s.accessToken)
@@ -28,7 +30,13 @@ export default function ProtectedRoute() {
   // account kept to the handful of routes its rail offers) lands on the duty board, the
   // admin (kept out of the member feed) on the admin dashboard.
   if (user && !isRouteAllowedForRole(user.role, location.pathname)) {
-    return <Navigate to={ROLE_SHELL[user.role].home} replace />
+    const home = roleHome(user.role)
+    return (
+      <RedirectWithNotice
+        to={ROLE_SHELL[user.role].home}
+        message={`That page isn't part of the ${user.role} view, so we brought you to your ${home.name}.`}
+      />
+    )
   }
 
   return <Outlet />

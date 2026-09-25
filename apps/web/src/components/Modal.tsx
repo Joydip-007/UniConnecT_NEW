@@ -23,6 +23,8 @@ interface ModalProps {
    * top corners only) via the `.modal--sheet` CSS class — desktop is unaffected.
    */
   sheet?: boolean
+  /** Width cap for `frame="panel"`. */
+  panelWidth?: number
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -36,6 +38,7 @@ export function Modal({
   triggerRef,
   frame = 'default',
   sheet = false,
+  panelWidth = 560,
 }: ModalProps) {
   const isPanel = frame === 'panel'
   const panelRef = useRef<HTMLDivElement>(null)
@@ -126,7 +129,7 @@ export function Modal({
             style={
               isPanel
                 ? {
-                    width: 'min(560px, 100%)',
+                    width: `min(${panelWidth}px, 100%)`,
                     maxHeight: '80vh',
                     display: 'flex',
                     flexDirection: 'column',

@@ -129,6 +129,33 @@ export const ShuttleLocationSchema = z
     message: 'route_id is required',
   })
 
+export const ShuttleShiftStartSchema = z.object({
+  route_id: z.string().uuid(),
+})
+
+export const ShuttleRidersSchema = z.object({
+  delta: z.union([z.literal(1), z.literal(-1)]),
+})
+
+export const ShuttleDutyQuerySchema = z.object({
+  /** The client's local midnight, so "today" follows the rider's clock, not the server's. */
+  since: z.string().datetime({ offset: true }),
+})
+
+export const ShuttleRiderPrefsSchema = z.object({
+  route_id: z.string().uuid().nullable(),
+  stop_id: z.string().trim().min(1).max(100).nullable(),
+  alert_enabled: z.boolean(),
+})
+
+export const ShuttleNoticeSchema = z.object({
+  route_id: z.string().uuid().nullable().optional(),
+  tone: z.enum(['disruption', 'info']),
+  title: z.string().trim().min(1).max(160),
+  detail: z.string().trim().max(240).nullable().optional(),
+  expires_at: z.string().datetime({ offset: true }).nullable().optional(),
+})
+
 export const CourseSchema = z
   .object({
     code: z.string().trim().min(1).max(50),
@@ -165,6 +192,11 @@ export type CreateLostFoundInput = z.infer<typeof CreateLostFoundSchema>
 export type UpdateLostFoundInput = z.infer<typeof UpdateLostFoundSchema>
 export type ShuttleRouteInput = z.infer<typeof ShuttleRouteSchema>
 export type ShuttleLocationInput = z.infer<typeof ShuttleLocationSchema>
+export type ShuttleShiftStartInput = z.infer<typeof ShuttleShiftStartSchema>
+export type ShuttleRidersInput = z.infer<typeof ShuttleRidersSchema>
+export type ShuttleDutyQuery = z.infer<typeof ShuttleDutyQuerySchema>
+export type ShuttleRiderPrefsInput = z.infer<typeof ShuttleRiderPrefsSchema>
+export type ShuttleNoticeInput = z.infer<typeof ShuttleNoticeSchema>
 export type CourseInput = z.infer<typeof CourseSchema>
 export type CourseListQuery = z.infer<typeof CourseListQuerySchema>
 export type EnrollCourseInput = z.infer<typeof EnrollCourseSchema>

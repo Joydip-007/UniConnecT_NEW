@@ -140,8 +140,8 @@ describe('RAILS', () => {
     })
   })
 
-  it('driver has exactly 4 fixed rows and no feed/composer routes', () => {
-    expect(RAILS.driver.fixed.length).toBe(4)
+  it('driver has exactly 5 fixed rows — its duty tabs — and no feed/composer routes', () => {
+    expect(RAILS.driver.fixed.length).toBe(5)
     const to = RAILS.driver.fixed.map((r) => r.to)
     expect(to).not.toContain(PATHS.FEED)
   })

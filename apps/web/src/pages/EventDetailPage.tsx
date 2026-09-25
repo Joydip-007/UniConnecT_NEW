@@ -7,6 +7,7 @@ import {
   MapPin,
   Monitor,
   Calendar,
+  CalendarX,
   Clock,
   Users,
   ExternalLink,
@@ -20,6 +21,8 @@ import { queryClient } from '@/lib/queryClient'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
 import { RoleBadge } from '@/components/RoleBadge'
+import { DetailUnavailable } from '@/components/DetailUnavailable'
+import { isMissingError } from '@/lib/httpErrors'
 import { GhostBtn, OrangeBtn } from '@/components/Button'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { CreateEventForm } from '@/features/events/components/CreateEventForm'
@@ -407,24 +410,22 @@ export default function EventDetailPage() {
   // ── Error / not found ──────────────────────────────────────────────────────
 
   if (eventQuery.isError || !eventQuery.data) {
-    return (
-      <div
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '48px 24px',
-          textAlign: 'center',
-        }}
-      >
-        <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-          Event not found
-        </p>
-        <p style={{ margin: '0 0 20px', fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-          This event may have been removed or the link is invalid.
-        </p>
-        <GhostBtn onClick={() => navigate('/events')}>Back to events</GhostBtn>
-      </div>
+    return eventQuery.isError && !isMissingError(eventQuery.error) ? (
+      <DetailUnavailable
+        kind="failed"
+        title="We couldn't load this event"
+        body="Check your connection and try again. If it keeps happening, the event may be temporarily unavailable."
+        onRetry={() => void eventQuery.refetch()}
+      />
+    ) : (
+      <DetailUnavailable
+        kind="not-found"
+        icon={CalendarX}
+        title="Event not found"
+        body="This event may have been removed, or the link is wrong."
+        backLabel="Back to events"
+        onBack={() => navigate('/events')}
+      />
     )
   }
 

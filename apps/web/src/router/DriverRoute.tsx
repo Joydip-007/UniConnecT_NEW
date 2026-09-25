@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { PATHS } from './paths'
+import { RedirectWithNotice } from './RedirectWithNotice'
 
 // Guards the driver broadcast shell. Only the least-privilege `driver` role
 // (and `admin`, for testing) may reach it; everyone else is sent to the feed.
@@ -9,7 +10,9 @@ export default function DriverRoute() {
   const accessToken = useAuthStore((s) => s.accessToken)
 
   if (!accessToken || !user) return <Navigate to={PATHS.LOGIN} replace />
-  if (user.role !== 'driver' && user.role !== 'admin') return <Navigate to={PATHS.FEED} replace />
+  if (user.role !== 'driver' && user.role !== 'admin') {
+    return <RedirectWithNotice to={PATHS.FEED} message="That page is for shuttle drivers, so we brought you to your feed." />
+  }
 
   return <Outlet />
 }

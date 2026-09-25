@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Flag, Trash2, X,
@@ -14,6 +14,8 @@ import { Avatar } from '@/components/Avatar'
 import { RoleBadge } from '@/components/RoleBadge'
 import { Badge } from '@/components/Badge'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
+import { ProblemReportsPanel } from '@/features/problem-reports'
+import { RedirectWithNotice } from '@/router/RedirectWithNotice'
 import { PATHS } from '@/router/paths'
 import type { AdminContentType } from '@uniconnect/shared'
 import { ContentTab } from '@/pages/admin/ContentTab'
@@ -111,7 +113,7 @@ type Tab = 'insights' | 'moderation' | 'groups' | 'members' | 'announcements' | 
  */
 const TAB_META: Record<Tab, { label: string; subtitle: string }> = {
   insights: { label: 'Insights', subtitle: 'Activity and membership across the last seven days.' },
-  moderation: { label: 'Moderation', subtitle: 'Reports, verification and deletion requests from across campus.' },
+  moderation: { label: 'Moderation', subtitle: 'Content reports, problem reports and deletion requests from across campus.' },
   groups: { label: 'Groups', subtitle: 'Every campus group, its privacy setting and pending join requests.' },
   members: { label: 'Members & invites', subtitle: 'Manage members and roles, and track the invite batches you send.' },
   announcements: { label: 'Announcements', subtitle: 'Published, scheduled and draft announcements in one place.' },
@@ -1405,6 +1407,7 @@ function ModerationTab() {
         </div>
       )}
       <ReportedContentPanel />
+      <ProblemReportsPanel />
       <DeletionRequestsTab />
     </div>
   )
@@ -1582,7 +1585,7 @@ export default function AdminPage() {
   }, [rawTab, setSearchParams])
 
   if (user && user.role !== 'admin') {
-    return <Navigate to={PATHS.FEED} replace />
+    return <RedirectWithNotice to={PATHS.FEED} message="That page is for admins, so we brought you to your feed." />
   }
 
   return (

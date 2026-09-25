@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { Check } from 'lucide-react'
 import { TopNav } from '@/components/TopNav'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { RightSidebar } from '@/components/RightSidebar'
 import { MobileBottomNav } from '@/components/MobileBottomNav'
 import { ToastHost } from '@/components/ToastHost'
+import { OfflineBanner } from '@/components/OfflineBanner'
+import { DriverBroadcastHost } from '@/features/shuttle/components/DriverBroadcastHost'
 import { useAuthStore } from '@/stores/authStore'
 import { useSocketStore } from '@/stores/socketStore'
+import { useShellStore } from '@/stores/shellStore'
 import { useNotificationsSocket } from '@/features/notifications'
 import { usePresenceHeartbeat } from '@/features/presence'
 import { useAchievementSocket } from '@/features/learning'
@@ -15,19 +19,24 @@ import { useSidebarRailPreference } from '@/hooks/useSidebarRailPreference'
 import { ROLE_SHELL } from '@/config/roleShell'
 import { DUR, EASE_OUT_EXPO } from '@/lib/motion'
 
-const bannerStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 'var(--z-banner)',
+const statusCardStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 14,
+  padding: '24px 32px',
   background: 'var(--surface-raised)',
-  borderBottom: '0.5px solid var(--border-default)',
-  padding: '7px 16px',
-  textAlign: 'center',
-  fontSize: 12,
-  fontWeight: 400,
-  color: 'var(--text-secondary)',
+  border: '0.5px solid var(--border-hover)',
+  borderRadius: 'var(--r-xl)',
+}
+
+const overlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 'var(--z-banner)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 }
 
 export function FeedLayout() {
@@ -65,54 +74,96 @@ export function FeedLayout() {
   // A role whose manifest lists no widgets (driver) drops the third column rather than
   // holding an empty one, and the centre gets that width instead.
   const wide = ROLE_SHELL[role ?? 'student'].rightRail.length === 0
+  // An error or not-found surface is showing: top nav and one 560px centre column only.
+  const bare = useShellStore((s) => s.bareCount > 0)
 
   return (
     <div style={{ background: 'var(--surface-page)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+      {/* Only after a first successful connect, so a cold load never flashes it. */}
       <AnimatePresence>
         {showReconnecting && (
           <motion.div
             key="reconnecting"
-            role="alert"
-            aria-live="polite"
-            initial={reduced ? false : { y: '-100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? undefined : { y: '-100%' }}
+            initial={reduced ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduced ? undefined : { opacity: 0 }}
             transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
-            style={bannerStyle}
+            style={{ ...overlayStyle, background: 'var(--overlay-bg-strong)' }}
           >
-            Reconnecting…
+            <motion.div
+              role="alert"
+              aria-live="polite"
+              initial={reduced ? false : { opacity: 0, scale: 0.96, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
+              style={statusCardStyle}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  animation: 'spin 800ms linear infinite',
+                  width: 28,
+                  height: 28,
+                  boxSizing: 'border-box',
+                  borderRadius: '50%',
+                  border: '2px solid var(--border-hover)',
+                  borderTopColor: 'var(--uc-indigo-l)',
+                }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Reconnecting…</span>
+            </motion.div>
           </motion.div>
         )}
         {!showReconnecting && justReconnected && (
           <motion.div
             key="connected"
-            role="status"
-            aria-live="polite"
-            initial={reduced ? false : { y: '-100%' }}
-            animate={{ y: 0 }}
-            exit={reduced ? undefined : { y: '-100%' }}
+            initial={reduced ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduced ? undefined : { opacity: 0 }}
             transition={{ duration: DUR.med, ease: EASE_OUT_EXPO }}
-            style={{ ...bannerStyle, color: 'var(--uc-mint)' }}
+            style={{ ...overlayStyle, pointerEvents: 'none' }}
           >
-            Connected
+            <div role="status" aria-live="polite" style={statusCardStyle}>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--uc-mint-bg)',
+                  color: 'var(--uc-mint)',
+                }}
+              >
+                <Check size={16} strokeWidth={2} />
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--uc-mint)' }}>Connected</span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
       <TopNav />
+      <OfflineBanner />
       <MobileBottomNav />
       <ToastHost />
+      <DriverBroadcastHost />
       <div
         className="feed-layout-grid"
         data-left-sidebar={isCollapsed ? 'collapsed' : 'expanded'}
         data-wide={wide || undefined}
+        data-bare={bare || undefined}
       >
-        <div className="feed-layout-left">
-          <LeftSidebar collapsed={isCollapsed} onToggleCollapsed={toggleCollapsed} />
-        </div>
+        {!bare && (
+          <div className="feed-layout-left">
+            <LeftSidebar collapsed={isCollapsed} onToggleCollapsed={toggleCollapsed} />
+          </div>
+        )}
         <main className="feed-layout-main" style={{ minWidth: 0, paddingTop: 18 }}>
           <Outlet />
         </main>
-        {!wide && (
+        {!wide && !bare && (
           <div className="feed-layout-right">
             <RightSidebar />
           </div>

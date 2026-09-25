@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import type { SignOptions } from 'jsonwebtoken'
-import type { UserRole } from '@uniconnect/shared'
+import { userRoleSchema, type UserRole } from '@uniconnect/shared'
 import { db } from '../config/db'
 import { env } from '../config/env'
 
@@ -209,5 +209,7 @@ function isRefreshTokenPayload(value: unknown): value is RefreshTokenPayload {
 }
 
 function isUserRole(value: unknown): value is UserRole {
-  return value === 'student' || value === 'alumni' || value === 'faculty' || value === 'admin'
+  // Must stay in step with `userRoleSchema` — a role missing here signs in and then
+  // has every request rejected (this is how the driver role was locked out).
+  return userRoleSchema.safeParse(value).success
 }

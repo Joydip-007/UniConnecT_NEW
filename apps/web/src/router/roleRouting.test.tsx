@@ -6,6 +6,7 @@ import ProtectedRoute from './ProtectedRoute'
 import { PATHS } from './paths'
 import { RAILS } from '@/components/leftSidebar.config'
 import { isRouteAllowedForRole } from '@/config/roleShell'
+import { useRedirectNoticeStore } from '@/stores/redirectNoticeStore'
 
 let mockUser: { id: string; role: UserRole; isVerified: boolean } | null = null
 
@@ -85,6 +86,22 @@ describe('admin route access', () => {
     mockUser = { id: 'a1', role: 'admin', isVerified: true }
     renderAt(PATHS.FEED)
     expect(screen.getByText('admin dashboard')).toBeInTheDocument()
+  })
+
+  it('says why it redirected, naming the home it landed on', () => {
+    useRedirectNoticeStore.getState().dismiss()
+    mockUser = { id: 'a1', role: 'admin', isVerified: true }
+    renderAt(PATHS.FEED)
+    expect(useRedirectNoticeStore.getState().notice?.message).toBe(
+      "That page isn't part of the admin view, so we brought you to your dashboard.",
+    )
+  })
+
+  it('raises no notice when nothing was redirected', () => {
+    useRedirectNoticeStore.getState().dismiss()
+    mockUser = { id: 's1', role: 'student', isVerified: true }
+    renderAt(PATHS.FEED)
+    expect(useRedirectNoticeStore.getState().notice).toBeNull()
   })
 
   it('a member still reaches the feed', () => {

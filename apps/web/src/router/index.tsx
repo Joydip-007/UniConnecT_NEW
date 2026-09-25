@@ -5,17 +5,17 @@ import AdminRoute from './AdminRoute'
 import DriverRoute from './DriverRoute'
 import GuestRoute from './GuestRoute'
 import { FeedLayout } from '@/components/FeedLayout'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { RouteErrorBoundary } from './RouteErrorBoundary'
 import { PATHS } from './paths'
 
 function page(load: () => Promise<{ default: ComponentType }>) {
   const Comp = lazy(load)
   return (
-    <ErrorBoundary>
+    <RouteErrorBoundary>
       <Suspense fallback={null}>
         <Comp />
       </Suspense>
-    </ErrorBoundary>
+    </RouteErrorBoundary>
   )
 }
 
@@ -76,6 +76,15 @@ export const router = createBrowserRouter([
 
           { path: PATHS.SHUTTLE, element: page(() => import('@/pages/ShuttlePage')) },
 
+          // Driver mode runs in the shell too (Shuttle Tracker.dc.html): the driver's
+          // rail and mobile bar are its five duty tabs, the centre is the broadcast screen.
+          {
+            element: <DriverRoute />,
+            children: [
+              { path: PATHS.SHUTTLE_DRIVE, element: page(() => import('@/pages/ShuttleDrivePage')) },
+            ],
+          },
+
           { path: PATHS.EXPLORE, element: page(() => import('@/pages/ExplorePage')) },
           { path: PATHS.TAG, element: page(() => import('@/pages/TagPage')) },
 
@@ -130,13 +139,6 @@ export const router = createBrowserRouter([
       { path: PATHS.MESSAGES, element: page(() => import('@/pages/MessagesPage')) },
       { path: PATHS.CONVERSATION, element: page(() => import('@/pages/ConversationPage')) },
 
-    ],
-  },
-
-  {
-    element: <DriverRoute />,
-    children: [
-      { path: PATHS.SHUTTLE_DRIVE, element: page(() => import('@/pages/ShuttleDrivePage')) },
     ],
   },
 

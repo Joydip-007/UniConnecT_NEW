@@ -1,11 +1,12 @@
 import type { Request, Response } from 'express'
-import type { ResolveAccountDeletionRequestInput } from '@uniconnect/shared'
+import type { ProblemReportListQuery, ResolveAccountDeletionRequestInput, ResolveProblemReportInput } from '@uniconnect/shared'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { AppError } from '../../utils/errors'
 import { adminService } from './service'
 import { adminContentService } from './content.service'
 import { adminShuttleService } from './shuttle.service'
+import { adminProblemReportsService } from './problem-reports.service'
 import { feedService } from '../feed/service'
 import type {
   AdminFeedListQuery,
@@ -143,6 +144,25 @@ export const resolveDeletionRequest = asyncHandler(async (req: Request, res: Res
       userId,
       requestId,
       req.body as ResolveAccountDeletionRequestInput,
+    ),
+  )
+})
+
+export const listProblemReports = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId } = getAdminContext(req)
+  const result = await adminProblemReportsService.list(universityId, req.query as unknown as ProblemReportListQuery)
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const setProblemReportStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { universityId, userId } = getAdminContext(req)
+  sendSuccess(
+    res,
+    await adminProblemReportsService.setStatus(
+      universityId,
+      userId,
+      req.params.reportId as string,
+      req.body as ResolveProblemReportInput,
     ),
   )
 })

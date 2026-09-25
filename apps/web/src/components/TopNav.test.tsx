@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserRole } from '@uniconnect/shared'
 import { TopNav } from './TopNav'
+import { PATHS } from '@/router/paths'
 import { RAILS, TOPNAV_ICON_ROUTES } from './leftSidebar.config'
 
 const navigate = vi.fn()
@@ -82,9 +83,17 @@ describe('TopNav avatar menu', () => {
   it.each(roles)('still reaches the icon routes from the mobile More sheet for %s', (role) => {
     // The sheet renders `secondary` verbatim and mobile hides both top-bar icons, so the
     // filter above must live in TopNav, never in the manifest.
-    const sheet = RAILS[role].secondary.map((row) => row.to)
+    const rail = RAILS[role]
+    // An all-fixed bar (driver) has no sheet: the bell stays on its phone top bar and
+    // Messages is one of its five tabs.
+    if (rail.mobileBar === 'all-fixed') {
+      expect(rail.secondary.some((row) => row.to === PATHS.NOTIFICATIONS)).toBe(true)
+      expect(rail.fixed.some((row) => row.key === 'messages')).toBe(true)
+      return
+    }
+    const sheet = rail.secondary.map((row) => row.to)
     TOPNAV_ICON_ROUTES.forEach((path) => {
-      const reachable = sheet.includes(path) || RAILS[role].fixed.some((row) => row.to === path)
+      const reachable = sheet.includes(path) || rail.fixed.some((row) => row.to === path)
       expect(reachable, `${role} cannot reach ${path} on a phone`).toBe(true)
     })
   })

@@ -1,5 +1,9 @@
 import { Router, type NextFunction, type Request, type Response } from 'express'
-import { resolveAccountDeletionRequestSchema } from '@uniconnect/shared'
+import {
+  problemReportListQuerySchema,
+  resolveAccountDeletionRequestSchema,
+  resolveProblemReportSchema,
+} from '@uniconnect/shared'
 import { requireAuth, requireRole } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
@@ -24,6 +28,8 @@ import {
   listAdminRedemptions,
   listContent,
   listDeletionRequests,
+  listProblemReports,
+  setProblemReportStatus,
   resolveDeletionRequest,
   listGroups,
   listInvitations,
@@ -113,6 +119,18 @@ adminRouter.patch(
   resolveDeletionRequest,
 )
 
+adminRouter.get(
+  '/problem-reports',
+  requireRole('admin'),
+  validateRequest({ query: problemReportListQuerySchema }),
+  listProblemReports,
+)
+adminRouter.patch(
+  '/problem-reports/:reportId',
+  requireRole('admin'),
+  validate(resolveProblemReportSchema),
+  setProblemReportStatus,
+)
 adminRouter.post('/invitations/bulk', requireRole('admin'), validate(CreateBulkInvitationsSchema), createBulkInvitations)
 adminRouter.post('/invitations', validate(CreateInvitationSchema), createInvitation)
 adminRouter.get('/invitations', validateRequest({ query: PaginationQuerySchema }), listInvitations)

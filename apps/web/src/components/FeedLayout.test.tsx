@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { act } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserRole } from '@uniconnect/shared'
 import { FeedLayout } from './FeedLayout'
 import { PATHS } from '@/router/paths'
+import { useShellStore } from '@/stores/shellStore'
 
 vi.mock('@/components/TopNav', () => ({ TopNav: () => <div>top nav</div> }))
 vi.mock('@/components/LeftSidebar', () => ({
@@ -43,6 +45,7 @@ function renderLayout(route: string, role: UserRole = 'student') {
 
 beforeEach(() => {
   currentRole = 'student'
+  useShellStore.setState({ bareCount: 0 })
 })
 
 describe('FeedLayout', () => {
@@ -76,5 +79,31 @@ describe('FeedLayout', () => {
   it('drops the column by role, not by route — the same driver rail is absent on shuttle too', () => {
     renderLayout(PATHS.FEED, 'driver')
     expect(screen.queryByText('right rail')).not.toBeInTheDocument()
+  })
+
+  it('drops both rails while an error surface holds the shell bare', () => {
+    const { container } = renderLayout(PATHS.FEED)
+    act(() => useShellStore.getState().acquireBare())
+    expect(screen.queryByText('left rail')).not.toBeInTheDocument()
+    expect(screen.queryByText('right rail')).not.toBeInTheDocument()
+    expect(screen.getByText('top nav')).toBeInTheDocument()
+    expect(container.querySelector('.feed-layout-grid')).toHaveAttribute('data-bare')
+
+    act(() => useShellStore.getState().releaseBare())
+    expect(screen.getByText('left rail')).toBeInTheDocument()
+    expect(screen.getByText('right rail')).toBeInTheDocument()
+  })
+
+  it('shows the offline strip only while the browser is offline', () => {
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    renderLayout(PATHS.FEED)
+    expect(screen.getByText(/You're offline/)).toBeInTheDocument()
+
+    onLine.mockReturnValue(true)
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+    expect(screen.queryByText(/You're offline/)).not.toBeInTheDocument()
+    onLine.mockRestore()
   })
 })

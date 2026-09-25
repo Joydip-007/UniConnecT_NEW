@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PATHS } from '@/router/paths'
+import { ROLE_SHELL } from '@/config/roleShell'
 import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import type { User } from '@uniconnect/shared/types'
 
@@ -28,8 +29,8 @@ export default function OtpPage() {
   const purpose = (searchParams.get('purpose') ?? 'verify') as OtpPurpose
   const email = (location.state as { email?: string } | null)?.email ?? ''
 
-  // Already fully authenticated — send to feed
-  if (authUser?.isVerified) return <Navigate to={PATHS.FEED} replace />
+  // Already fully authenticated — send to the role's home
+  if (authUser?.isVerified) return <Navigate to={ROLE_SHELL[authUser.role].home} replace />
 
   // No email passed → back to login
   if (!email) return <Navigate to={PATHS.LOGIN} replace />
@@ -40,7 +41,7 @@ export default function OtpPage() {
       purpose={purpose}
       onVerified={(user, token) => {
         setAuth(user, token)
-        navigate(PATHS.FEED, { replace: true })
+        navigate(ROLE_SHELL[user.role].home, { replace: true })
       }}
     />
   )

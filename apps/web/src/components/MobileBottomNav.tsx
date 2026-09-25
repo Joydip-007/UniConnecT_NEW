@@ -6,6 +6,7 @@ import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useViewTransitionNavigate } from '@/hooks/useViewTransitionNavigate'
 import { PATHS } from '@/router/paths'
 import { RAILS, activeRailIndex } from './leftSidebar.config'
+import { useDriverBroadcastStore } from '@/stores/driverBroadcastStore'
 
 interface MoreItem {
   icon: LucideIcon
@@ -29,12 +30,23 @@ export function MobileBottomNav() {
 
   // Five slots: the role's first four fixed rail rows, then More. The bar mirrors the
   // rail so the two navigations agree; More carries exactly what the rail demoted.
-  const barRows = rail.fixed.slice(0, 4)
+  // An `all-fixed` role (driver) fills all five slots with its rows and has no More.
+  const allFixed = rail.mobileBar === 'all-fixed'
+  const barRows = allFixed ? rail.fixed.slice(0, 5) : rail.fixed.slice(0, 4)
+  // The store, not a query: the bar is chrome on every page and must stay request-free.
+  const broadcasting = useDriverBroadcastStore((s) => s.active)
+  const accent = rail.activeTone === 'self' ? 'var(--uc-orange-l)' : 'var(--uc-indigo-xl)'
   const items = barRows.map((row) => ({
     icon: row.icon,
-    label: row.label,
+    label: row.mobileLabel ?? row.label,
     path: row.to,
     badge: row.to === PATHS.MESSAGES ? messageCount : 0,
+    dot:
+      row.dot === 'on-duty'
+        ? broadcasting ? 'var(--uc-orange-l)' : null
+        : row.dot === 'unread-messages'
+          ? messageCount > 0 ? 'var(--uc-indigo)' : null
+          : null,
   }))
 
   // The sheet carries exactly what the bar demoted: the remaining fixed rows, every
@@ -44,14 +56,14 @@ export function MobileBottomNav() {
   const badgeFor = (path: string) =>
     path === PATHS.MESSAGES ? messageCount : path === PATHS.NOTIFICATIONS ? notificationCount : undefined
 
-  const moreItems: MoreItem[] = [
+  const moreItems: MoreItem[] = allFixed ? [] : [
     ...rail.fixed.slice(4),
     ...rail.secondary,
   ]
     .filter((row) => !barPaths.has(row.to))
     .map((row) => ({ icon: row.icon, label: row.label, path: row.to, badge: badgeFor(row.to) }))
     .concat(
-      rail.tools.map((tool) => ({
+      (allFixed ? [] : rail.tools).map((tool) => ({
         icon: tool.icon,
         label: tool.label,
         path: tool.externalUrl ?? tool.to ?? PATHS.FEED,
@@ -131,7 +143,7 @@ export function MobileBottomNav() {
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {items.map(({ icon: Icon, label, path, badge }, index) => {
+        {items.map(({ icon: Icon, label, path, badge, dot }, index) => {
           const active = index === activeBarIndex
           return (
             <button
@@ -152,7 +164,7 @@ export function MobileBottomNav() {
                 cursor: 'pointer',
                 // Same indigo the desktop rail's active pill uses — one navigation should
                 // not change identity colour just because the viewport narrowed.
-                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-tertiary)',
+                color: active ? accent : 'var(--text-tertiary)',
                 transition: 'transform 120ms var(--ease-out-strong), color 120ms ease',
                 position: 'relative',
                 padding: '6px 0',
@@ -162,7 +174,22 @@ export function MobileBottomNav() {
             >
               <div style={{ position: 'relative' }}>
                 <Icon size={22} strokeWidth={active ? 2 : 1.5} />
-                {badge > 0 && (
+                {dot && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      top: -2,
+                      right: -5,
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: dot,
+                      border: '1.5px solid var(--surface-card)',
+                    }}
+                  />
+                )}
+                {badge > 0 && !dot && (
                   <span
                     style={{
                       position: 'absolute',
@@ -195,6 +222,7 @@ export function MobileBottomNav() {
         })}
 
         {/* More — everything the rail demoted: the rest of the fixed rows plus campus tools */}
+        {!allFixed && (
         <button
           ref={moreButtonRef}
           onClick={() => setMoreOpen(true)}
@@ -251,6 +279,7 @@ export function MobileBottomNav() {
             More
           </span>
         </button>
+        )}
       </nav>
 
       <dialog

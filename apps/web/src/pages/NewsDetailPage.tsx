@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Newspaper, Pencil, Send, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
+import { DetailUnavailable } from '@/components/DetailUnavailable'
+import { isMissingError } from '@/lib/httpErrors'
 import { ImageLightbox } from '@/components/ImageLightbox'
 import { ShareMenu } from '@/components/ShareMenu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -30,12 +32,30 @@ export default function NewsDetailPage() {
   const rightRail = useMemo(() => <NewsRightRail />, [])
   usePageRails(null, rightRail)
 
-  const { data, isLoading } = useNewsDetail(id)
+  const { data, isLoading, isError, error, refetch } = useNewsDetail(id)
   const { data: latest } = useNewsList({ limit: 4 })
   const publish = useSetNewsPublished(id ?? '')
 
   if (isLoading) return <p style={mutedStyle}>Loading news…</p>
-  if (!data) return <p style={mutedStyle}>News not found.</p>
+  if (!data) {
+    return isError && !isMissingError(error) ? (
+      <DetailUnavailable
+        kind="failed"
+        title="We couldn't load this news item"
+        body="Check your connection and try again. If it keeps happening, the news item may be temporarily unavailable."
+        onRetry={() => void refetch()}
+      />
+    ) : (
+      <DetailUnavailable
+        kind="not-found"
+        icon={Newspaper}
+        title="News item not found"
+        body="It may have been unpublished or moved to the archive."
+        backLabel="Back to news"
+        onBack={() => navigate('/news')}
+      />
+    )
+  }
 
   // The author edits their own article; an admin can edit any.
   const canEdit = Boolean(user && (user.id === data.authorId || user.role === 'admin'))

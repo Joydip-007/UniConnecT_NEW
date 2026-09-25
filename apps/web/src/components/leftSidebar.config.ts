@@ -11,7 +11,7 @@ import {
   BookOpen,
   BarChart2,
   FileText,
-  Map,
+  MapPin,
   RefreshCw,
   MessageSquare,
   GraduationCap,
@@ -27,11 +27,23 @@ import {
 } from 'lucide-react'
 import { PATHS } from '@/router/paths'
 
+/**
+ * A live signal a row can carry as a small dot. Named rather than computed in the row
+ * so the manifest stays data: `LeftSidebar` and `MobileBottomNav` resolve each name
+ * against `RailContext` / the unread store, the same way for every role.
+ *  - `on-duty`          orange (your own activity): the driver is broadcasting
+ *  - `unread-messages`  indigo (other people): a conversation has unread messages
+ */
+export type RailDot = 'on-duty' | 'unread-messages'
+
 export interface RailRow {
   key: string
   label: string
   icon: LucideIcon
   to: string
+  /** Shorter label for the five-slot mobile bar, where "Duty board" will not fit. */
+  mobileLabel?: string
+  dot?: RailDot
 }
 
 /**
@@ -56,8 +68,10 @@ export interface RailContext {
   inviteExpiryDays: number | null
   /** Admin: unresolved content reports. */
   pendingReports: number
-  /** Driver: their own GPS beacon is currently fresh. */
+  /** Driver: a broadcast shift is open right now. */
   onDuty: boolean
+  /** Driver: "Route 3" — the open shift's route, else the last one driven. */
+  assignedRoute: string | null
 }
 
 export type ContextualTone = 'self' | 'network' | 'live' | 'deadline' | 'action'
@@ -100,6 +114,33 @@ export interface RoleRail {
    * asserts these two zones together cover every navigable route — nothing is orphaned.
    */
   secondary: RailRow[]
+  /**
+   * Accent of the lit row. Indigo (the default) is the interactive colour; a role whose
+   * rows are all *its own* duty surfaces uses orange, the self colour.
+   */
+  activeTone?: 'self'
+  /**
+   * `all-fixed` puts every fixed row in the mobile bar with no More slot. Only for a
+   * role with exactly five rows and nothing a phone needs from the More sheet that the
+   * top bar does not already carry.
+   */
+  mobileBar?: 'all-fixed'
+  /** Replaces the profile card's department line, cover and stat pair. */
+  card?: RailCard
+}
+
+export interface RailCardStat {
+  label: string
+  value: string
+  tone?: 'self'
+}
+
+export interface RailCard {
+  /** Dot colour of the cover pattern. */
+  coverDot: string
+  avatarColor: string
+  subtitle: string
+  stats: (ctx: RailContext) => [RailCardStat, RailCardStat]
 }
 
 /**
@@ -344,19 +385,6 @@ const inviteExpiringRule: CtxRule = {
       : false,
 }
 
-/**
- * Driver — pinned, because a shift is not a glanceable notification: it holds for as
- * long as the driver's own beacon stays fresh and must never be hidden behind overflow.
- */
-const onDutyRule: CtxRule = {
-  key: 'on-duty',
-  label: 'On duty now',
-  icon: Radio,
-  to: PATHS.SHUTTLE_DRIVE,
-  tone: 'live',
-  pinned: true,
-  when: (ctx) => (ctx.onDuty ? { meta: 'Live', rank: TONE_RANK.live } : false),
-}
 
 export const RAILS: Record<UserRole, RoleRail> = {
   student: {
@@ -417,25 +445,36 @@ export const RAILS: Record<UserRole, RoleRail> = {
     ],
   },
   driver: {
+    // Driver mode (Shuttle Tracker.dc.html): five duty surfaces, all tabs of the
+    // broadcast screen. News and Messages are the driver's own compact views; each
+    // row inside them opens the full /news/:id or /messages/:id page.
     fixed: [
-      { key: 'duty', label: 'Duty board', icon: Home, to: PATHS.SHUTTLE_DRIVE },
-      { key: 'route', label: 'Route & stops', icon: Map, to: PATHS.SHUTTLE },
-      { key: 'messages', label: 'Messages', icon: MessageSquare, to: PATHS.MESSAGES },
-      { key: 'notices', label: 'Notices', icon: Newspaper, to: PATHS.NEWS },
+      { key: 'drive', label: 'Drive', icon: Radio, to: PATHS.SHUTTLE_DRIVE, dot: 'on-duty' },
+      { key: 'duty', label: 'Duty board', mobileLabel: 'Duty', icon: Bus, to: `${PATHS.SHUTTLE_DRIVE}?tab=duty` },
+      { key: 'live', label: 'Shuttle live', mobileLabel: 'Live', icon: MapPin, to: `${PATHS.SHUTTLE_DRIVE}?tab=live` },
+      { key: 'news', label: 'News', icon: Newspaper, to: `${PATHS.SHUTTLE_DRIVE}?tab=news` },
+      { key: 'messages', label: 'Messages', icon: MessageSquare, to: `${PATHS.SHUTTLE_DRIVE}?tab=messages`, dot: 'unread-messages' },
     ],
-    // Drivers author nothing, so no drafts row; duty is their one real signal and
-    // it is pinned for the length of the shift.
-    contextual: [onDutyRule],
-    // A driver is walled off from the social app; only its own duty surfaces.
+    // Duty is shown on the Drive row's dot and the card's Status, so no contextual row
+    // repeats it — the design's rail has none.
+    contextual: [],
+    // A driver is walled off from the social app; only its own duty surfaces. The
+    // mobile top bar keeps the bell for this role, since its bar has no More sheet.
     secondary: [
       { key: 'notifications', label: 'Notifications', icon: Bell, to: PATHS.NOTIFICATIONS },
     ],
-    // Empty for the same reason `rightRail` is: a driver's whole surface is two routes,
-    // and both are fixed rows above. The three tiles that used to sit here resolved to
-    // exactly those two — "Trip log" and "Report issue" both to the duty board, "Live
-    // map" to Route & stops — and the first two named features the API has never had
-    // (`POST /shuttle/locations` is a driver's only write). Three names, no new places.
     tools: [],
+    activeTone: 'self',
+    mobileBar: 'all-fixed',
+    card: {
+      coverDot: 'var(--uc-orange-bg)',
+      avatarColor: 'var(--role-driver)',
+      subtitle: 'Transport',
+      stats: (ctx) => [
+        { label: 'Assigned', value: ctx.assignedRoute ?? 'None yet' },
+        { label: 'Status', value: ctx.onDuty ? 'Live' : 'On duty', tone: 'self' },
+      ],
+    },
   },
   admin: {
     // Six fixed rows: five admin tabs plus Mentorship. There is deliberately no

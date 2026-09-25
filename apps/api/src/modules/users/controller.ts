@@ -2,10 +2,11 @@ import type { Request, Response } from 'express'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
-import type { CreateAccountDeletionRequestInput, PrivacyPreferencesInput } from '@uniconnect/shared'
+import type { CreateAccountDeletionRequestInput, CreateProblemReportInput, PrivacyPreferencesInput } from '@uniconnect/shared'
 import { RESERVED_USERNAMES, normalizeUsername, usernameSchema } from '@uniconnect/shared'
 import { usersService } from './service'
 import * as accountService from './account.service'
+import { createProblemReport as fileProblemReport } from './problem-reports.service'
 import { loadPrivacy, updatePrivacy } from './privacy.service'
 import type {
   EducationInput,
@@ -52,6 +53,15 @@ export const requestAccountDeletion = asyncHandler(async (req: Request, res: Res
   const context = getAuthContext(req)
   const { reason } = req.body as CreateAccountDeletionRequestInput
   sendSuccess(res, await accountService.requestAccountDeletion(context.userId, context.universityId, reason), 201)
+})
+
+export const createProblemReport = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(
+    res,
+    await fileProblemReport(context.userId, context.universityId, req.body as CreateProblemReportInput),
+    201,
+  )
 })
 
 export const getMyDeletionRequest = asyncHandler(async (req: Request, res: Response) => {

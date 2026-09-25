@@ -1,14 +1,20 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import { requireAuth, requireRole } from '../../middleware/auth'
 import { resolveUniversity } from '../../middleware/university'
 import { validate, validateRequest } from '../../middleware/validate'
 import {
   createCourse,
   createLostFound,
+  adjustShuttleRiders,
   createShuttleLocation,
+  createShuttleNotice,
   createShuttleRoute,
   deleteLostFound,
+  deleteShuttleNotice,
   deleteShuttleRoute,
+  getShuttleDuty,
+  getShuttleRiderPrefs,
   enrollCourse,
   getLostFound,
   getLostFoundStats,
@@ -18,6 +24,8 @@ import {
   listSavedLostFound,
   pinLostFound,
   listShuttleLocations,
+  listShuttleNotices,
+  putShuttleRiderPrefs,
   listShuttleRoutes,
   resolveLostFound,
   saveLostFound,
@@ -25,6 +33,8 @@ import {
   updateCourse,
   updateLostFoundDesk,
   updateLostFound,
+  startShuttleShift,
+  stopShuttleShift,
   updateShuttleRoute,
 } from './controller'
 import {
@@ -36,8 +46,13 @@ import {
   LostFoundListQuerySchema,
   LostFoundPinSchema,
   LostFoundResolveSchema,
+  ShuttleDutyQuerySchema,
   ShuttleLocationSchema,
+  ShuttleNoticeSchema,
+  ShuttleRiderPrefsSchema,
+  ShuttleRidersSchema,
   ShuttleRouteSchema,
+  ShuttleShiftStartSchema,
   UpdateLostFoundSchema,
 } from './schema'
 
@@ -67,6 +82,27 @@ campusRouter.patch('/shuttle/routes/:routeId', requireRole('faculty', 'admin'), 
 campusRouter.delete('/shuttle/routes/:routeId', requireRole('faculty', 'admin'), deleteShuttleRoute)
 campusRouter.get('/shuttle/locations', listShuttleLocations)
 campusRouter.post('/shuttle/locations', requireRole('driver', 'admin'), validate(ShuttleLocationSchema), createShuttleLocation)
+
+// Driver duty: a shift is one broadcast session, opened by Start and closed by Stop.
+const DRIVERS = requireRole('driver', 'admin')
+campusRouter.get('/shuttle/duty', DRIVERS, validateRequest({ query: ShuttleDutyQuerySchema }), getShuttleDuty)
+campusRouter.post('/shuttle/shifts/start', DRIVERS, validate(ShuttleShiftStartSchema), startShuttleShift)
+campusRouter.post('/shuttle/shifts/stop', DRIVERS, stopShuttleShift)
+campusRouter.post('/shuttle/shifts/riders', DRIVERS, validate(ShuttleRidersSchema), adjustShuttleRiders)
+
+// A rider's own stop and arrival alert.
+campusRouter.get('/shuttle/me/stop', getShuttleRiderPrefs)
+campusRouter.put('/shuttle/me/stop', validate(ShuttleRiderPrefsSchema), putShuttleRiderPrefs)
+
+// Service notices: every account reads them; route managers write them.
+campusRouter.get('/shuttle/notices', listShuttleNotices)
+campusRouter.post('/shuttle/notices', requireRole('faculty', 'admin'), validate(ShuttleNoticeSchema), createShuttleNotice)
+campusRouter.delete(
+  '/shuttle/notices/:noticeId',
+  requireRole('faculty', 'admin'),
+  validateRequest({ params: z.object({ noticeId: z.string().uuid() }) }),
+  deleteShuttleNotice,
+)
 
 campusRouter.get('/courses', validateRequest({ query: CourseListQuerySchema }), listCourses)
 campusRouter.post('/courses', requireRole('faculty', 'admin'), validate(CourseSchema), createCourse)

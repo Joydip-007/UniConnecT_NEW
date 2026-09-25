@@ -14,7 +14,16 @@ import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { avatarColor, getInitials } from '@/utils/avatar'
-import { RAILS, TONE_TOKENS, activeRailIndex } from './leftSidebar.config'
+import {
+  RAILS,
+  TONE_TOKENS,
+  activeRailIndex,
+  type RailCard,
+  type RailCardStat,
+  type RailContext,
+  type RailDot,
+} from './leftSidebar.config'
+import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useRailContext } from './useRailContext'
 import { ROLE_SHELL } from '@/config/roleShell'
 import { usePageRailStore } from '@/stores/pageRailStore'
@@ -27,12 +36,39 @@ interface NavItemProps {
   badge?: number
   isActive?: boolean
   hasDot?: boolean
+  /** A live signal dot at the row's end (on the icon when collapsed). */
+  signalDot?: string | null
+  /** `self` lights the row orange — a role whose rows are all its own duty surfaces. */
+  tone?: 'self'
   collapsed?: boolean
   onClick: () => void
 }
 
-function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, collapsed = false, onClick }: NavItemProps) {
+const ACTIVE_TONES = {
+  network: { fg: 'var(--uc-indigo-xl)', bg: 'var(--uc-indigo-bg)', bar: 'var(--uc-indigo)' },
+  self: { fg: 'var(--uc-orange-l)', bg: 'var(--uc-orange-bg)', bar: 'var(--uc-orange)' },
+} as const
+
+/** Resolves a manifest row's named dot to its colour, or null while the signal is off. */
+function dotColor(dot: RailDot | undefined, ctx: RailContext, unreadMessages: number): string | null {
+  if (dot === 'on-duty') return ctx.onDuty ? 'var(--uc-orange-l)' : null
+  if (dot === 'unread-messages') return unreadMessages > 0 ? 'var(--uc-indigo)' : null
+  return null
+}
+
+function NavItem({
+  icon: Icon,
+  label,
+  badge,
+  isActive = false,
+  hasDot = false,
+  signalDot = null,
+  tone,
+  collapsed = false,
+  onClick,
+}: NavItemProps) {
   const reduced = useReducedMotion()
+  const accent = ACTIVE_TONES[tone ?? 'network']
   return (
     <button
       type="button"
@@ -56,7 +92,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
         cursor: 'pointer',
         fontSize: 13,
         fontWeight: 500,
-        color: isActive ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+        color: isActive ? accent.fg : 'var(--text-secondary)',
         textAlign: 'left',
       }}
     >
@@ -67,7 +103,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'var(--uc-indigo-bg)',
+            background: accent.bg,
             borderRadius: 'var(--r-sm)',
             zIndex: 0,
           }}
@@ -80,7 +116,7 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
               bottom: 6,
               width: 2,
               borderRadius: 'var(--r-pill)',
-              background: 'var(--uc-indigo)',
+              background: accent.bar,
             }}
           />
         </motion.div>
@@ -99,6 +135,21 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
       >
         <div className="nav-item-icon" style={{ position: 'relative', flexShrink: 0, lineHeight: 0 }}>
           <Icon size={17} />
+          {collapsed && signalDot && (
+            <span
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                top: -2,
+                right: -3,
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: signalDot,
+                border: '1.5px solid var(--surface-page)',
+              }}
+            />
+          )}
           {hasDot && (
             <div
               style={{
@@ -146,6 +197,10 @@ function NavItem({ icon: Icon, label, badge, isActive = false, hasDot = false, c
         >
           {label}
         </span>
+
+        {!collapsed && signalDot && (
+          <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: signalDot, flexShrink: 0 }} />
+        )}
 
         {!collapsed && badge != null && badge > 0 && (
           <span
@@ -294,6 +349,9 @@ interface ProfileMiniCardProps {
   secondStat: { label: string }
   firstShown: number
   secondShown: number
+  /** A role's own card payload (driver: Transport, assigned route, duty status). */
+  card?: RailCard
+  cardStats?: [RailCardStat, RailCardStat]
 }
 
 function ProfileMiniCard({
@@ -308,7 +366,14 @@ function ProfileMiniCard({
   secondStat,
   firstShown,
   secondShown,
+  card,
+  cardStats,
 }: ProfileMiniCardProps) {
+  const color = card?.avatarColor ?? avatarBg
+  const stats: RailCardStat[] = cardStats ?? [
+    { label: firstStat.label, value: String(firstShown) },
+    { label: secondStat.label, value: String(secondShown) },
+  ]
   return (
     <button
       type="button"
@@ -353,7 +418,7 @@ function ProfileMiniCard({
                 lineHeight: 0,
               }}
             >
-              <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
+              <Avatar src={user?.profile.avatarUrl} initials={initials} color={color} size={40} online />
             </div>
           </div>
         </div>
@@ -378,7 +443,7 @@ function ProfileMiniCard({
               backgroundColor: 'var(--surface-raised)',
               backgroundImage: user?.profile.coverUrl
                 ? `url("${user.profile.coverUrl}")`
-                : 'radial-gradient(circle, var(--uc-indigo-dot) 1px, transparent 1px)',
+                : `radial-gradient(circle, ${card?.coverDot ?? 'var(--uc-indigo-dot)'} 1px, transparent 1px)`,
               backgroundSize: user?.profile.coverUrl ? 'cover' : '14px 14px',
               backgroundPosition: 'center',
               backgroundRepeat: user?.profile.coverUrl ? 'no-repeat' : 'repeat',
@@ -406,7 +471,7 @@ function ProfileMiniCard({
                   lineHeight: 0,
                 }}
               >
-                <Avatar src={user?.profile.avatarUrl} initials={initials} color={avatarBg} size={40} online />
+                <Avatar src={user?.profile.avatarUrl} initials={initials} color={color} size={40} online />
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
@@ -414,17 +479,21 @@ function ProfileMiniCard({
               {user?.profile.fullName ?? 'Loading…'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, minHeight: 16 }}>
-              {deptLabel}
+              {card?.subtitle ?? deptLabel}
             </div>
 
             {/* Role stats pair — labels and sources both from the manifest */}
             <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
-              {[
-                { label: firstStat.label, value: firstShown },
-                { label: secondStat.label, value: secondShown },
-              ].map(({ label, value }) => (
+              {stats.map(({ label, value, tone }) => (
                 <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: tone === 'self' ? 'var(--uc-orange-l)' : 'var(--text-primary)',
+                      lineHeight: 1,
+                    }}
+                  >
                     {value}
                   </span>
                   <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{label}</span>
@@ -466,7 +535,8 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
 
   // Every contextual signal, gated per role so no request 403s for a role that
   // cannot see it. Verifications reuse the profile query already fetched above.
-  const ctx = useRailContext(role, user?.id)
+  const ctx = useRailContext(role)
+  const messageCount = useNotificationsStore((s) => s.messageCount)
 
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const avatarBg = user ? avatarColor(user.id) : 'var(--uc-indigo)'
@@ -534,6 +604,8 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
       secondStat={secondStat}
       firstShown={firstShown}
       secondShown={secondShown}
+      card={rail.card}
+      cardStats={rail.card?.stats(ctx)}
     />
   )
 
@@ -602,6 +674,8 @@ export function LeftSidebar({ collapsed, onToggleCollapsed }: LeftSidebarProps) 
             icon={item.icon}
             label={item.label}
             isActive={index === activeFixedIndex}
+            signalDot={dotColor(item.dot, ctx, messageCount)}
+            tone={rail.activeTone}
             collapsed={collapsed}
             onClick={() => navigate(item.to)}
           />

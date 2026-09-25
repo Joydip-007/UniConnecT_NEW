@@ -18,6 +18,8 @@ import { popoverIn } from '@/lib/motion'
 import { useScrollDirection } from '@/hooks/useScrollDirection'
 import { ROLE_SHELL, SEARCH_PLACEHOLDER } from '@/config/roleShell'
 import { RAILS, TOPNAV_ICON_ROUTES } from '@/components/leftSidebar.config'
+import { useDriverBroadcastStore } from '@/stores/driverBroadcastStore'
+import { DriverSignOutDialog } from '@/features/shuttle/components/DriverSignOutDialog'
 
 const iconBtnStyle: React.CSSProperties = {
   position: 'relative',
@@ -205,10 +207,21 @@ export function TopNav() {
     window.requestAnimationFrame(() => firstMenuItemRef.current?.focus())
   }, [menuOpen])
 
+  // Signing out mid-broadcast asks first: it stops the GPS watch and closes the shift.
+  const broadcasting = useDriverBroadcastStore((s) => s.active)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
+
   function handleSignOut() {
+    if (broadcasting) {
+      setMenuOpen(false)
+      setConfirmSignOut(true)
+      return
+    }
     clearAuth()
     navigate(PATHS.LOGIN)
   }
+
+
 
   const initials = user?.profile.fullName ? getInitials(user.profile.fullName) : '?'
   const color = user ? avatarColor(user.id) : 'var(--uc-indigo)'
@@ -390,7 +403,13 @@ export function TopNav() {
           </AnimatePresence>
         </div>
 
-        <div className="topnav-mobile-hidden" style={{ position: 'relative' }} ref={notifRef}>
+        {/* A role whose mobile bar has no More sheet keeps the bell on a phone — it is
+            the only way to reach notifications there. */}
+        <div
+          className={RAILS[user?.role ?? 'student'].mobileBar === 'all-fixed' ? undefined : 'topnav-mobile-hidden'}
+          style={{ position: 'relative' }}
+          ref={notifRef}
+        >
           <button
             onClick={() => setNotifOpen((o) => !o)}
             className="press-feedback row-hover-bg"
@@ -570,6 +589,16 @@ export function TopNav() {
           </AnimatePresence>
         </div>
       </div>
+      {confirmSignOut && (
+        <DriverSignOutDialog
+          onCancel={() => setConfirmSignOut(false)}
+          onSignedOut={() => {
+            setConfirmSignOut(false)
+            clearAuth()
+            navigate(PATHS.LOGIN)
+          }}
+        />
+      )}
     </header>
   )
 }

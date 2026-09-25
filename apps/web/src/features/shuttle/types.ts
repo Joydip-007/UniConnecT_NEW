@@ -59,3 +59,38 @@ export interface BusState {
   source: 'live' | 'estimated'
   updatedAt: string | null
 }
+
+/** One broadcast session — opened by Start broadcast, closed by Stop. */
+export interface ShuttleShift {
+  id: string
+  routeId: string
+  startedAt: string
+  endedAt: string | null
+  ridersCount: number
+}
+
+export interface ShuttleDuty {
+  activeShift: ShuttleShift | null
+  /** The open shift's route, else the last route this driver drove. */
+  assignedRouteId: string | null
+  /** Today's shifts, oldest first. */
+  shifts: ShuttleShift[]
+}
+
+export interface ShuttleRiderPrefs {
+  routeId: string | null
+  stopId: string | null
+  alertEnabled: boolean
+}
+
+export interface ShuttleNotice {
+  id: string
+  routeId: string | null
+  routeName: string | null
+  routeColor: string | null
+  tone: 'disruption' | 'info'
+  title: string
+  detail: string | null
+  expiresAt: string | null
+  createdAt: string
+}

@@ -33,7 +33,7 @@ describe('ShuttleMap', () => {
             routes={[route]}
             busStates={busStates}
             selectedRouteId="r1"
-            focusMode={false}
+            follow={false}
             liveOnly={false}
             userLocation={null}
             onSelectRoute={() => {}}

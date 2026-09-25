@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { Crosshair, LocateFixed, Minus, Plus } from 'lucide-react'
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
 import { BusMarker } from './BusMarker'
 import { bearingDeg } from '../lib/estimatePosition'
@@ -12,10 +13,16 @@ interface ShuttleMapProps {
   routes: ShuttleRoute[]
   busStates: Record<string, BusState>
   selectedRouteId: string | null
-  focusMode: boolean
+  /** Keep the camera on the selected route's bus as it moves. */
+  follow: boolean
+  onToggleFollow?: () => void
   liveOnly: boolean
   userLocation: { lat: number; lng: number } | null
   onSelectRoute: (routeId: string) => void
+  /** The corner buttons: zoom, follow the bus, locate me. */
+  controls?: boolean
+  /** Pinned top-left over the map — the legend, or the driver's "What students see". */
+  overlay?: ReactNode
 }
 
 function geoStops(route: ShuttleRoute): ShuttleStop[] {
@@ -39,6 +46,22 @@ function FitBounds({ routes }: { routes: ShuttleRoute[] }) {
     map.fitBounds(L.latLngBounds(points as L.LatLngExpression[]).pad(0.2))
     fitted.current = true
   }, [routes, map])
+  return null
+}
+
+/** Pans to the selected bus on every position update while follow is on. */
+function FollowBus({ bus }: { bus: BusState | undefined }) {
+  const map = useMap()
+  useEffect(() => {
+    if (bus) map.panTo([bus.lat, bus.lng], { animate: true })
+  }, [bus, map])
+  return null
+}
+
+/** Hands the Leaflet instance out, so controls can live outside the map pane. */
+function MapRef({ onMap }: { onMap: (map: L.Map) => void }) {
+  const map = useMap()
+  useEffect(() => onMap(map), [map, onMap])
   return null
 }
 
@@ -157,7 +180,7 @@ function RouteLayer({ route, isFocused, onSelect, bus, showBus }: RouteLayerProp
         pathOptions={{
           color: route.color,
           weight: isFocused ? 5 : 3,
-          opacity: isFocused ? 0.9 : 0.2,
+          opacity: isFocused ? 0.9 : 0.35,
         }}
         eventHandlers={{ click: () => onSelect(route.id) }}
       />
@@ -182,13 +205,18 @@ export function ShuttleMap({
   routes,
   busStates,
   selectedRouteId,
-  focusMode,
+  follow,
+  onToggleFollow,
   liveOnly,
   userLocation,
   onSelectRoute,
+  controls = true,
+  overlay,
 }: ShuttleMapProps) {
   const [tileMode, setTileMode] = useState<TileMode>('street')
+  const [map, setMap] = useState<L.Map | null>(null)
   const tile = TILE_LAYERS[tileMode]
+  const selectedBus = selectedRouteId ? busStates[selectedRouteId] : undefined
 
   const tenantAccent =
     typeof window !== 'undefined'
@@ -216,12 +244,49 @@ export function ShuttleMap({
         {tile.label} view
       </button>
 
+      {overlay && <div className="shuttle-map-overlay">{overlay}</div>}
+
+      {controls && (
+        <div className="shuttle-map-controls">
+          <button type="button" aria-label="Zoom in" className="shuttle-map-btn shuttle-map-btn--zoom" onClick={() => map?.zoomIn()}>
+            <Plus size={15} />
+          </button>
+          <button type="button" aria-label="Zoom out" className="shuttle-map-btn shuttle-map-btn--zoom" onClick={() => map?.zoomOut()}>
+            <Minus size={15} />
+          </button>
+          <button
+            type="button"
+            title="Follow the bus"
+            aria-label="Follow the bus"
+            aria-pressed={follow}
+            className="shuttle-map-btn"
+            data-on={follow || undefined}
+            onClick={onToggleFollow}
+          >
+            <Crosshair size={15} />
+          </button>
+          <button
+            type="button"
+            title="Show my location"
+            aria-label="Show my location"
+            disabled={!userLocation}
+            className="shuttle-map-btn shuttle-map-btn--self shuttle-map-btn--zoom"
+            onClick={() => userLocation && map?.flyTo([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 15))}
+          >
+            <LocateFixed size={15} />
+          </button>
+        </div>
+      )}
+
       <MapContainer
         center={DHAKA}
         zoom={13}
         scrollWheelZoom
+        zoomControl={false}
         style={{ height: '100%', width: '100%', borderRadius: 'var(--r-lg)' }}
       >
+        <MapRef onMap={setMap} />
+        {follow && <FollowBus bus={selectedBus} />}
         <TileLayer
           key={tileMode}
           attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -232,7 +297,8 @@ export function ShuttleMap({
         <FitBounds routes={routes} />
 
         {routes.map((route) => {
-          const isFocused = !focusMode || route.id === selectedRouteId
+          // The selected route carries the geometry; every other route sits back.
+          const isFocused = route.id === selectedRouteId
           const bus = busStates[route.id]
           const showBus = Boolean(bus && isFocused && (!liveOnly || bus.source === 'live'))
           return (

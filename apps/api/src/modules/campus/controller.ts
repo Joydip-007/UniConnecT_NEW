@@ -3,6 +3,7 @@ import { asyncHandler } from '../../utils/asyncHandler'
 import { sendPaginated, sendSuccess } from '../../utils/response'
 import { unauthorized } from '../../utils/errors'
 import { campusService } from './service'
+import { shuttleService } from './shuttle.service'
 import type {
   CourseInput,
   CourseListQuery,
@@ -12,8 +13,13 @@ import type {
   LostFoundListQuery,
   LostFoundPinInput,
   LostFoundResolveInput,
+  ShuttleDutyQuery,
   ShuttleLocationInput,
+  ShuttleNoticeInput,
+  ShuttleRiderPrefsInput,
+  ShuttleRidersInput,
   ShuttleRouteInput,
+  ShuttleShiftStartInput,
   UpdateLostFoundInput,
 } from './schema'
 
@@ -113,6 +119,46 @@ export const listShuttleLocations = asyncHandler(async (req: Request, res: Respo
 export const createShuttleLocation = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await campusService.createShuttleLocation(context, req.body as ShuttleLocationInput), 201)
+})
+
+export const startShuttleShift = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await shuttleService.startShift(context, (req.body as ShuttleShiftStartInput).route_id), 201)
+})
+
+export const stopShuttleShift = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await shuttleService.stopShift(getAuthContext(req)))
+})
+
+export const adjustShuttleRiders = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await shuttleService.adjustRiders(getAuthContext(req), (req.body as ShuttleRidersInput).delta))
+})
+
+export const getShuttleDuty = asyncHandler(async (req: Request, res: Response) => {
+  const { since } = req.query as unknown as ShuttleDutyQuery
+  sendSuccess(res, await shuttleService.getDuty(getAuthContext(req), since))
+})
+
+export const getShuttleRiderPrefs = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await shuttleService.getRiderPrefs(getAuthContext(req)))
+})
+
+export const putShuttleRiderPrefs = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await shuttleService.putRiderPrefs(getAuthContext(req), req.body as ShuttleRiderPrefsInput))
+})
+
+export const listShuttleNotices = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await shuttleService.listNotices(getAuthContext(req).universityId))
+})
+
+export const createShuttleNotice = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await shuttleService.createNotice(getAuthContext(req), req.body as ShuttleNoticeInput), 201)
+})
+
+export const deleteShuttleNotice = asyncHandler(async (req: Request, res: Response) => {
+  const value = req.params.noticeId
+  await shuttleService.deleteNotice(getAuthContext(req), Array.isArray(value) ? value[0] : value)
+  res.status(204).end()
 })
 
 export const listCourses = asyncHandler(async (req: Request, res: Response) => {

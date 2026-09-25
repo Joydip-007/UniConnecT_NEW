@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Users } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
-import { GhostBtn } from '@/components/Button'
+import { DetailUnavailable } from '@/components/DetailUnavailable'
+import { isMissingError } from '@/lib/httpErrors'
 import { usePageRails } from '@/stores/pageRailStore'
 import {
   EventsTab, FeedTab, GroupHeader,
@@ -23,7 +24,7 @@ export default function GroupDetailPage() {
   const [searchParams] = useSearchParams()
   const user = useAuthStore((s) => s.user)
 
-  const { data: group, isLoading: groupLoading, isError } = useQuery<Group>({
+  const { data: group, isLoading: groupLoading, isError, error: groupError, refetch: refetchGroup } = useQuery<Group>({
     queryKey: ['groups', 'detail', id],
     queryFn: () => api.get<{ data: Group }>(`/groups/${id}`).then((r) => r.data.data),
     enabled: !!id,
@@ -68,12 +69,22 @@ export default function GroupDetailPage() {
   usePageRails(leftRail, rightRail)
 
   if (isError) {
-    return (
-      <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '48px 24px', textAlign: 'center' }}>
-        <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>Group not found</p>
-        <p style={{ margin: '0 0 16px', fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>This group may have been removed or you don't have access.</p>
-        <GhostBtn onClick={() => navigate('/groups')}>Back to groups</GhostBtn>
-      </div>
+    return isMissingError(groupError) ? (
+      <DetailUnavailable
+        kind="not-found"
+        icon={Users}
+        title="Group not found"
+        body="This group may have been removed, or it is private and you are not a member."
+        backLabel="Back to groups"
+        onBack={() => navigate('/groups')}
+      />
+    ) : (
+      <DetailUnavailable
+        kind="failed"
+        title="We couldn't load this group"
+        body="Check your connection and try again. If it keeps happening, the group may be temporarily unavailable."
+        onRetry={() => void refetchGroup()}
+      />
     )
   }
 

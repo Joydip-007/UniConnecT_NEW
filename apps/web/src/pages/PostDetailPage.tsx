@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, FileQuestion } from 'lucide-react'
+import { ArrowLeft, FileX } from 'lucide-react'
 import { getPostLifecycleState } from '@uniconnect/shared'
-import { GhostBtn } from '@/components/Button'
+import { DetailUnavailable } from '@/components/DetailUnavailable'
+import { isMissingError } from '@/lib/httpErrors'
 import { PostCard } from '@/features/feed/components/PostCard'
 import { CommentDrawer } from '@/features/feed/components/CommentDrawer'
 import { usePost } from '@/features/feed/hooks/usePost'
@@ -19,11 +20,31 @@ export default function PostDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const back = useBackLink({ path: PATHS.FEED, label: 'Back to feed' })
-  const { data: post, isLoading, isError } = usePost(id)
+  const { data: post, isLoading, isError, error, refetch } = usePost(id)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const lifecycle = post ? getPostLifecycleState(post) : null
   const stateNote = lifecycle && lifecycle !== 'published' ? STATE_LABEL[lifecycle] : null
+
+  if (!isLoading && (isError || !post)) {
+    return isError && !isMissingError(error) ? (
+      <DetailUnavailable
+        kind="failed"
+        title="We couldn't load this post"
+        body="Check your connection and try again. If it keeps happening, the post may be temporarily unavailable."
+        onRetry={() => void refetch()}
+      />
+    ) : (
+      <DetailUnavailable
+        kind="not-found"
+        icon={FileX}
+        title="Post not available"
+        body="It was deleted, or the author only shares it with their connections."
+        backLabel="Back to feed"
+        onBack={() => navigate(PATHS.FEED)}
+      />
+    )
+  }
 
   return (
     <div>
@@ -40,20 +61,8 @@ export default function PostDetailPage() {
         <ArrowLeft size={15} strokeWidth={1.5} /> {back.label}
       </button>
 
-      {isLoading ? (
+      {isLoading || !post ? (
         <p style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Loading…</p>
-      ) : isError || !post ? (
-        <div
-          style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-            padding: '48px 16px', background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', color: 'var(--text-tertiary)',
-          }}
-        >
-          <FileQuestion size={24} strokeWidth={1.5} />
-          <p style={{ margin: 0, fontSize: 14 }}>This post isn't available.</p>
-          <GhostBtn onClick={() => navigate(PATHS.FEED)}>Go to feed</GhostBtn>
-        </div>
       ) : (
         <>
           {stateNote && (

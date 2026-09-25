@@ -4,6 +4,8 @@ import type { UserRole } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useMyDrafts } from '@/features/drafts/hooks/useMyDrafts'
 import { calcProgressAndEta } from '@/features/shuttle/utils'
+import { useShuttleDuty } from '@/features/shuttle/hooks/useShuttleDuty'
+import { routeNumberLabel } from '@/features/shuttle/lib/schedule'
 import type { LiveLocation, ShuttleRoute } from '@/features/shuttle/types'
 import type { RailContext } from './leftSidebar.config'
 
@@ -60,8 +62,7 @@ interface AdminStats {
   reports: number
 }
 
-/** Beacons carry their driver so a driver can recognise its own broadcast. */
-type RailLocation = LiveLocation & { driverId: string; speedKmh: number | null }
+type RailLocation = LiveLocation & { speedKmh: number | null }
 
 /**
  * Re-renders on an interval so time-window rules (shuttle ETA, event countdown) go
@@ -83,7 +84,7 @@ function minutesUntil(iso: string, now: number): number {
 /**
  * Builds the signal bag the contextual rules read.
  */
-export function useRailContext(role: UserRole, userId: string | undefined): RailContext {
+export function useRailContext(role: UserRole): RailContext {
   const isStudent = role === 'student'
   const isAlumni = role === 'alumni'
   const isAdmin = role === 'admin'
@@ -99,16 +100,19 @@ export function useRailContext(role: UserRole, userId: string | undefined): Rail
   const { data: routes } = useQuery<ShuttleRoute[]>({
     queryKey: ['shuttle', 'routes'],
     queryFn: () => api.get<{ data: ShuttleRoute[] }>('/shuttle/routes').then((r) => r.data.data),
-    enabled: isStudent,
+    enabled: isStudent || isDriver,
     staleTime: RAIL_STALE,
   })
 
   const { data: locations } = useQuery<RailLocation[]>({
     queryKey: ['shuttle', 'locations'],
     queryFn: () => api.get<{ data: RailLocation[] }>('/shuttle/locations').then((r) => r.data.data),
-    enabled: needsBeacons,
+    enabled: isStudent,
     staleTime: RAIL_STALE,
   })
+
+  // ── Driver: the open shift and assigned route (same key as the duty board) ─
+  const { data: duty } = useShuttleDuty(isDriver)
 
   // ── Student: application status changes ───────────────────────────────────
   const { data: myApplications } = useQuery<Page<MyApplication>>({
@@ -208,14 +212,11 @@ export function useRailContext(role: UserRole, userId: string | undefined): Rail
     if (inviteExpiryDays === null || days < inviteExpiryDays) inviteExpiryDays = days
   }
 
-  // A driver is on duty exactly while its own beacon is fresh — the beacon carries
-  // `driverId`, so this survives navigating away from the broadcast screen and needs
-  // no client-side duty flag to go stale.
-  const onDuty =
-    isDriver &&
-    (locations ?? []).some(
-      (l) => l.driverId === userId && now - Date.parse(l.updatedAt) < BEACON_FRESH_MS,
-    )
+  // A driver is on duty exactly while a shift is open server-side, so this survives a
+  // reload or navigating away from the broadcast screen.
+  const onDuty = isDriver && Boolean(duty?.activeShift)
+  const assignedRoute =
+    isDriver && duty?.assignedRouteId && routes ? routeNumberLabel(routes, duty.assignedRouteId) : null
 
   return {
     draftCount: canAuthor ? (drafts?.items.length ?? 0) : 0,
@@ -227,5 +228,6 @@ export function useRailContext(role: UserRole, userId: string | undefined): Rail
     inviteExpiryDays,
     pendingReports: adminStats?.reports ?? 0,
     onDuty,
+    assignedRoute,
   }
 }

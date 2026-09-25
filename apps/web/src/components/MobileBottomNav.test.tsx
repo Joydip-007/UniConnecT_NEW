@@ -35,7 +35,9 @@ describe('MobileBottomNav', () => {
 
   const roles: UserRole[] = ['student', 'alumni', 'faculty', 'driver', 'admin']
 
-  it.each(roles)('mirrors the first four fixed rail rows for %s, plus More', (role) => {
+  const moreRoles = roles.filter((role) => RAILS[role].mobileBar !== 'all-fixed')
+
+  it.each(moreRoles)('mirrors the first four fixed rail rows for %s, plus More', (role) => {
     mockRole = role
     renderNav()
 
@@ -44,6 +46,16 @@ describe('MobileBottomNav', () => {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     })
     expect(screen.getByRole('button', { name: 'More' })).toBeInTheDocument()
+  })
+
+  it('gives the driver all five duty tabs with their short labels and no More', () => {
+    mockRole = 'driver'
+    renderNav('/shuttle/drive?tab=duty')
+    ;['Drive', 'Duty', 'Live', 'News', 'Messages'].forEach((label) => {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Duty' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('never marks two slots active when rows share a base path', () => {

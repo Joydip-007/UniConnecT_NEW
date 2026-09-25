@@ -8,6 +8,7 @@ import { PrimaryBtn } from '@/components/Button'
 import { BrandLogo } from '@/components/BrandLogo'
 import { PasswordInput } from '@/components/PasswordInput'
 import { PATHS } from '@/router/paths'
+import { ROLE_SHELL } from '@/config/roleShell'
 import { MinimalPageFooter } from '@/components/MinimalPageFooter'
 import type { User } from '@uniconnect/shared/types'
 
@@ -22,7 +23,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const redirectTo = (location.state as { redirect?: string } | null)?.redirect ?? PATHS.FEED
+  const redirectTo = (location.state as { redirect?: string } | null)?.redirect
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -37,7 +38,9 @@ export default function LoginPage() {
     try {
       const { data } = await api.post<LoginResponse>('/auth/login', { email, password })
       setAuth(data.data.user, data.data.accessToken)
-      navigate(redirectTo, { replace: true })
+      // No deep link to return to: each role's own home, so an admin or driver is not
+      // bounced through the feed guard (and its redirect notice) on every sign-in.
+      navigate(redirectTo ?? ROLE_SHELL[data.data.user.role].home, { replace: true })
     } catch (err) {
       if (isAxiosError(err)) {
         const status = err.response?.status

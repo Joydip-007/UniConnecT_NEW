@@ -24,6 +24,7 @@ function emptyCtx(): RailContext {
     inviteExpiryDays: null,
     pendingReports: 0,
     onDuty: false,
+    assignedRoute: null,
   }
 }
 
@@ -187,10 +188,22 @@ describe('LeftSidebar', () => {
     expect(activeRowNames()).toEqual(['Members & invites'])
   })
 
-  it('driver rail has no more than 4 fixed rows and no student-only routes', () => {
+  it('driver rail is its five duty tabs, all on the broadcast screen', () => {
     const rail = RAILS.driver
-    expect(rail.fixed.length).toBe(4)
-    expect(rail.fixed.some((row) => row.to === '/jobs' || row.to === '/mentorship')).toBe(false)
+    expect(rail.fixed.map((row) => row.label)).toEqual(['Drive', 'Duty board', 'Shuttle live', 'News', 'Messages'])
+    expect(rail.fixed.every((row) => row.to.startsWith('/shuttle/drive'))).toBe(true)
+  })
+
+  it('lights exactly the driver tab in the URL, in the orange self tone', () => {
+    mockRole = 'driver'
+    renderSidebar(false, vi.fn(), '/shuttle/drive?tab=duty')
+    expect(activeRowNames()).toEqual(['Duty board'])
+  })
+
+  it('lights Drive on the bare broadcast screen', () => {
+    mockRole = 'driver'
+    renderSidebar(false, vi.fn(), '/shuttle/drive')
+    expect(activeRowNames()).toEqual(['Drive'])
   })
 })
 
@@ -200,7 +213,9 @@ describe('LeftSidebar profile stats pair', () => {
     alumni: ['connections', 'mentees'],
     faculty: ['sections', 'students'],
     admin: ['members', 'groups'],
-    driver: ['connections', 'posts'],
+    // The driver card is manifest-driven too, but from `RAILS.driver.card`: its
+    // assigned route and duty status, not two profile counts.
+    driver: ['Assigned', 'Status'],
   }
 
   it.each(Object.keys(expected) as UserRole[])(
@@ -246,7 +261,6 @@ describe('LeftSidebar contextual zone', () => {
     ['alumni', 'Mentee requests', { menteeRequests: 1 }],
     ['admin', 'Escalated report', { pendingReports: 3 }],
     ['admin', 'Invite batch expiring', { inviteExpiryDays: 2 }],
-    ['driver', 'On duty now', { onDuty: true }],
   ]
 
   it.each(rules)('%s: shows "%s" only while its condition holds', (role, label, signal) => {
@@ -280,13 +294,13 @@ describe('LeftSidebar contextual zone', () => {
     expect(labels[1]).toContain('Event starting')
   })
 
-  it('keeps the driver pinned row visible past the cap and a higher-ranked competitor', () => {
+  it('shows a driver on duty on the card and the Drive row, not as a contextual row', () => {
     mockRole = 'driver'
-    // Drivers only have the one rule, so prove pinning at the config level too.
-    mockCtx = { ...emptyCtx(), onDuty: true }
+    mockCtx = { ...emptyCtx(), onDuty: true, assignedRoute: 'Route 3' }
     renderSidebar(false)
-    expect(zoneLabels()[0]).toContain('On duty now')
-    expect(RAILS.driver.contextual.find((r) => r.key === 'on-duty')?.pinned).toBe(true)
+    expect(screen.queryByLabelText('Contextual shortcuts')).not.toBeInTheDocument()
+    expect(screen.getByText('Route 3')).toBeInTheDocument()
+    expect(screen.getByText('Live')).toBeInTheDocument()
   })
 
   it('renders no zone at all for faculty beyond drafts', () => {
@@ -302,6 +316,7 @@ describe('LeftSidebar contextual zone', () => {
       inviteExpiryDays: 0,
       pendingReports: 9,
       onDuty: true,
+      assignedRoute: 'Route 1',
     }
     renderSidebar(false)
     expect(screen.queryByLabelText('Contextual shortcuts')).not.toBeInTheDocument()

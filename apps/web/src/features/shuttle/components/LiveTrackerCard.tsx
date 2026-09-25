@@ -1,5 +1,6 @@
 import { Bus, Clock, Gauge, MapPin } from 'lucide-react'
 import { relativeTime } from '../utils'
+import { scheduleSummary } from '../lib/schedule'
 import type { LiveLocation, ProgressResult, ShuttleRoute } from '../types'
 import { LiveBadge } from './LiveBadge'
 import { ProgressTrack } from './ProgressTrack'
@@ -24,7 +25,7 @@ export function LiveTrackerCard({
   const isEstimated = source === 'estimated'
 
   const etaText = !currentLocation
-    ? '—'
+    ? 'No data'
     : isEstimated
       ? 'Estimated'
       : atFinalStop
@@ -33,17 +34,17 @@ export function LiveTrackerCard({
           ? 'Stopped'
           : derived.etaMinutes !== null
             ? `~${derived.etaMinutes} min`
-            : '—'
+            : 'No data'
 
-  const speedText = !currentLocation || isEstimated ? '—' : `${Math.round(currentLocation.speedKmh)} km/h`
+  const speedText = !currentLocation || isEstimated ? 'No data' : `${Math.round(currentLocation.speedKmh)} km/h`
 
   return (
     <div
+      className="shuttle-tracker-card"
       style={{
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
-        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
         gap: 18,
@@ -67,11 +68,9 @@ export function LiveTrackerCard({
               {route.name}
             </h2>
           </div>
-          {(route.frequency || route.operatingHours) && (
-            <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-              {[route.frequency, route.operatingHours].filter(Boolean).join(' · ')}
-            </p>
-          )}
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+            {scheduleSummary(route)}
+          </p>
         </div>
         {isEstimated ? (
           <span
@@ -88,8 +87,23 @@ export function LiveTrackerCard({
           >
             Estimated
           </span>
+        ) : currentLocation ? (
+          <LiveBadge updatedAt={currentLocation.updatedAt || null} />
         ) : (
-          <LiveBadge updatedAt={currentLocation?.updatedAt ?? null} />
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--text-tertiary)',
+              background: 'var(--surface-raised)',
+              border: '0.5px solid var(--border-default)',
+              borderRadius: 'var(--r-pill)',
+              padding: '3px 9px',
+            }}
+          >
+            Offline
+          </span>
         )}
       </div>
 
@@ -103,7 +117,7 @@ export function LiveTrackerCard({
           }}
         >
           <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-            Location unavailable — shuttle may be offline
+            Location unavailable, shuttle may be offline
           </p>
         </div>
       )}
@@ -118,7 +132,7 @@ export function LiveTrackerCard({
       )}
 
       {currentLocation && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        <div className="shuttle-stat-grid">
           <StatBox
             icon={<Gauge size={12} strokeWidth={1.5} color="var(--text-tertiary)" />}
             label="Speed"

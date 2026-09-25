@@ -1,11 +1,14 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, ArrowLeft } from 'lucide-react'
+import { ArrowLeft, UserX } from 'lucide-react'
 import { useState } from 'react'
 import { publicUserProfileSchema } from '@uniconnect/shared'
 import type { PublicUserProfile, ProfileExperience, ProfileEducation } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
+import { roleHome } from '@/config/roleHome'
+import { DetailUnavailable } from '@/components/DetailUnavailable'
+import { isMissingError } from '@/lib/httpErrors'
 import { ROLE_SHELL } from '@/config/roleShell'
 import { PATHS } from '@/router/paths'
 import { EditProfileModal, ProfileHeader } from '@/features/profile'
@@ -54,52 +57,6 @@ function SkeletonProfile() {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-// ── Error card ─────────────────────────────────────────────────────────────────
-
-function ProfileErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div
-      style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: '32px 24px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 10,
-        textAlign: 'center',
-      }}
-    >
-      <AlertCircle size={28} strokeWidth={1.5} color="var(--uc-red)" />
-      <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-        We couldn't load this profile
-      </p>
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)', maxWidth: 360, lineHeight: 1.6 }}>
-        {message}
-      </p>
-      <button
-        type="button"
-        onClick={onRetry}
-        style={{
-          marginTop: 6,
-          padding: '7px 14px',
-          background: 'transparent',
-          border: '0.5px solid var(--border-hover)',
-          borderRadius: 'var(--r-pill)',
-          color: 'var(--text-primary)',
-          fontSize: 13,
-          fontWeight: 400,
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-        }}
-      >
-        Try again
-      </button>
     </div>
   )
 }
@@ -215,9 +172,23 @@ function ProfileView({ handle }: { handle: string | undefined }) {
   if (isLoading) return <SkeletonProfile />
 
   if (isError || !user) {
-    const message =
-      error instanceof Error ? error.message : 'Something went wrong while loading this profile.'
-    return <ProfileErrorCard message={message} onRetry={() => refetch()} />
+    return isError && !isMissingError(error) ? (
+      <DetailUnavailable
+        kind="failed"
+        title="We couldn't load this profile"
+        body="Check your connection and try again. If it keeps happening, the profile may be temporarily unavailable."
+        onRetry={() => void refetch()}
+      />
+    ) : (
+      <DetailUnavailable
+        kind="not-found"
+        icon={UserX}
+        title="Profile not found"
+        body="This account may have been deactivated, or the link is wrong."
+        backLabel={`Back to ${roleHome(authUser?.role).name}`}
+        onBack={() => navigate(roleHome(authUser?.role).path)}
+      />
+    )
   }
 
   const connectionStatus = user.connectionStatus

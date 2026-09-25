@@ -6,92 +6,47 @@ interface ProgressTrackProps {
 }
 
 export function ProgressTrack({ progress, hasLocation, firstStop, lastStop }: ProgressTrackProps) {
-  const pct = Math.max(0, Math.min(100, progress))
+  const pct = hasLocation ? Math.max(0, Math.min(100, progress)) : 0
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ position: 'relative', padding: '7px 0' }}>
+      <div
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+        aria-label="Trip progress"
+        style={{ position: 'relative', height: 4, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)' }}
+      >
         <div
           style={{
-            height: 5,
-            background: 'var(--surface-raised)',
+            height: '100%',
+            width: `${pct}%`,
             borderRadius: 'var(--r-pill)',
-            overflow: 'hidden',
+            background: 'var(--uc-indigo)',
+            transition: 'width 1200ms var(--ease-out-strong)',
           }}
-        >
-          <div
-            style={{
-              height: '100%',
-              width: '100%',
-              background: 'var(--uc-indigo)',
-              borderRadius: 'var(--r-pill)',
-              transform: `scaleX(${pct / 100})`,
-              transformOrigin: 'left center',
-              transition: 'transform 1200ms cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-          />
-        </div>
+        />
         {hasLocation && (
-          <div
+          <span
+            className="shuttle-progress-dot"
             style={{
               position: 'absolute',
-              left: `${pct}%`,
               top: '50%',
+              left: `${pct}%`,
               transform: 'translate(-50%, -50%)',
-              width: 14,
-              height: 14,
+              width: 11,
+              height: 11,
               borderRadius: '50%',
-              background: 'var(--surface-card)',
-              border: '0.5px solid var(--uc-indigo)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'none',
-              zIndex: 1,
+              background: 'var(--uc-indigo-l)',
+              border: '2px solid var(--surface-card)',
+              transition: 'left 1200ms var(--ease-out-strong)',
             }}
-          >
-            <div
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: 'var(--uc-indigo-l)',
-                animation: 'livePulse 2s ease-in-out infinite',
-              }}
-            />
-          </div>
+          />
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 400,
-            color: 'var(--text-secondary)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            maxWidth: '38%',
-          }}
-        >
-          {firstStop}
-        </span>
-        <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
-          {Math.round(pct)}% complete
-        </span>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 400,
-            color: 'var(--text-secondary)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            maxWidth: '38%',
-            textAlign: 'right',
-          }}
-        >
-          {lastStop}
-        </span>
+        <span className="shuttle-track-end">{firstStop}</span>
+        <span className="shuttle-track-end" style={{ textAlign: 'right' }}>{lastStop}</span>
       </div>
     </div>
   )

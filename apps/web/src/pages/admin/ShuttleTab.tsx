@@ -8,6 +8,7 @@ import { api } from '@/lib/axios'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { Modal } from '@/components/Modal'
 import { useRouteGeometry } from '@/features/shuttle/hooks/useRouteGeometry'
+import { ServiceNoticesPanel } from '@/features/shuttle/components/admin/ServiceNoticesPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1117,6 +1118,8 @@ export function ShuttleTab() {
           />
         </div>
       </div>
+
+      <ServiceNoticesPanel />
     </div>
   )
 }
