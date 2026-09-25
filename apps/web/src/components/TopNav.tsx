@@ -101,6 +101,7 @@ export function TopNav() {
   const { user, clearAuth } = useAuthStore()
   const { messageCount, notificationCount } = useNotificationsStore()
   const themeMode = useThemeStore((s) => s.mode)
+  const resolvedTheme = useThemeStore((s) => s.resolved)
   const setThemeMode = useThemeStore((s) => s.setMode)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -258,7 +259,7 @@ export function TopNav() {
         top: 0,
         zIndex: 'var(--z-nav)',
         height: 60,
-        background: '#FFFFFF',
+        background: resolvedTheme === 'light' ? '#FFFFFF' : 'var(--overlay-bg-strong)',
         borderBottom: '0.5px solid var(--border-default)',
         display: 'flex',
         alignItems: 'center',
