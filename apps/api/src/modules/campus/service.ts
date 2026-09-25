@@ -9,6 +9,7 @@ import type {
   EnrollCourseInput,
   LostFoundListQuery,
   ShuttleLocationInput,
+  LostFoundDeskInput,
   ShuttleRouteInput,
   UpdateLostFoundInput,
 } from './schema'
@@ -39,7 +40,21 @@ interface LostFoundRow {
   posted_by_name: string
   posted_by_avatar_url: string | null
   posted_by_role: string
+  posted_by_department: string | null
+  posted_by_batch_year: number | string | null
+  is_pinned: boolean
+  is_saved: boolean
+  resolved_at: Date | null
 }
+
+interface LostFoundDesk {
+  location: string
+  hours: string
+  holdPolicy: string
+}
+
+/** How far back the lost & found rail's resolve rate and hotspots look. */
+const LOST_FOUND_STATS_WINDOW_DAYS = 90
 
 interface ShuttleRouteRow {
   id: string
@@ -88,25 +103,51 @@ interface MyCourseRow extends CourseRow {
 }
 
 export class CampusService {
-  async listLostFound(universityId: string, query: LostFoundListQuery) {
-    const countQuery = db('lost_and_found').where({ university_id: universityId })
+  async listLostFound(context: AuthContext, query: LostFoundListQuery) {
+    const countQuery = db('lost_and_found').where({ university_id: context.universityId })
     if (query.type) countQuery.andWhere('type', query.type)
     if (query.isResolved !== undefined) countQuery.andWhere('is_resolved', query.isResolved)
 
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
 
-    const rows = (await lostFoundSelectQuery()
-      .where('lost_and_found.university_id', universityId)
+    const rows = (await lostFoundSelectQuery(context.userId)
+      .where('lost_and_found.university_id', context.universityId)
       .modify((builder) => {
         if (query.type) builder.andWhere('lost_and_found.type', query.type)
         if (query.isResolved !== undefined) builder.andWhere('lost_and_found.is_resolved', query.isResolved)
       })
-      .orderBy('lost_and_found.created_at', 'desc')
+      // An admin-pinned item heads the board; resolved items are listed by when they
+      // were returned, open ones by when they were posted.
+      .orderBy('lost_and_found.is_pinned', 'desc')
+      .orderByRaw(
+        query.isResolved
+          ? 'COALESCE(lost_and_found.resolved_at, lost_and_found.updated_at) DESC'
+          : 'lost_and_found.created_at DESC',
+      )
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as LostFoundRow[]
 
     return { items: rows.map(toLostFound), total, page: query.page, limit: query.limit }
+  }
+
+  /** The caller's own saved items, newest save first — backs the Saved page's tab. */
+  async listSavedLostFound(context: AuthContext, query: { page: number; limit: number }) {
+    const [{ count }] = await db('lost_found_saves as s')
+      .join('lost_and_found as lf', 'lf.id', 's.item_id')
+      .where({ 's.user_id': context.userId, 'lf.university_id': context.universityId })
+      .count<CountRow[]>({ count: '*' })
+
+    const rows = (await lostFoundSelectQuery(context.userId)
+      .join('lost_found_saves as mine', function () {
+        this.on('mine.item_id', '=', 'lost_and_found.id').andOn('mine.user_id', '=', db.raw('?', [context.userId]))
+      })
+      .where('lost_and_found.university_id', context.universityId)
+      .orderBy('mine.created_at', 'desc')
+      .limit(query.limit)
+      .offset((query.page - 1) * query.limit)) as LostFoundRow[]
+
+    return { items: rows.map(toLostFound), total: Number(count), page: query.page, limit: query.limit }
   }
 
   async createLostFound(context: AuthContext, input: CreateLostFoundInput) {
@@ -124,12 +165,12 @@ export class CampusService {
       .returning<{ id: string }[]>('id')
 
     if (!row) throw notFound('Lost and found item not found', 'LOST_FOUND_NOT_FOUND')
-    return this.getLostFound(context.universityId, row.id)
+    return this.getLostFound(context, row.id)
   }
 
-  async getLostFound(universityId: string, itemId: string) {
-    const row = await lostFoundSelectQuery()
-      .where({ 'lost_and_found.id': itemId, 'lost_and_found.university_id': universityId })
+  async getLostFound(context: AuthContext, itemId: string) {
+    const row = await lostFoundSelectQuery(context.userId)
+      .where({ 'lost_and_found.id': itemId, 'lost_and_found.university_id': context.universityId })
       .first<LostFoundRow>()
 
     if (!row) throw notFound('Lost and found item not found', 'LOST_FOUND_NOT_FOUND')
@@ -150,21 +191,108 @@ export class CampusService {
           location_detail: input.location_detail,
           contact_info: input.contact_info,
           is_resolved: input.is_resolved,
+          resolved_at: input.is_resolved === undefined ? undefined : input.is_resolved ? db.fn.now() : null,
         }),
         updated_at: db.fn.now(),
       })
 
-    return this.getLostFound(context.universityId, itemId)
+    return this.getLostFound(context, itemId)
   }
 
-  async resolveLostFound(context: AuthContext, itemId: string) {
+  /** Resolve (default) or reopen. The poster or an admin; reopening is how an admin undoes a mistaken resolve. */
+  async resolveLostFound(context: AuthContext, itemId: string, isResolved = true) {
     const item = await assertLostFoundOwner(context, itemId)
     assertCanModify(context, item.posted_by)
 
     await db('lost_and_found')
       .where({ id: itemId, university_id: context.universityId })
-      .update({ is_resolved: true, updated_at: db.fn.now() })
-    return this.getLostFound(context.universityId, itemId)
+      .update({ is_resolved: isResolved, resolved_at: isResolved ? db.fn.now() : null, updated_at: db.fn.now() })
+    return this.getLostFound(context, itemId)
+  }
+
+  /** Admin only (enforced at the route): keeps an item at the top of the board. */
+  async pinLostFound(context: AuthContext, itemId: string, isPinned: boolean) {
+    await assertLostFoundOwner(context, itemId)
+    await db('lost_and_found')
+      .where({ id: itemId, university_id: context.universityId })
+      .update({ is_pinned: isPinned, updated_at: db.fn.now() })
+    return this.getLostFound(context, itemId)
+  }
+
+  async deleteLostFound(context: AuthContext, itemId: string) {
+    const item = await assertLostFoundOwner(context, itemId)
+    assertCanModify(context, item.posted_by)
+    await db('lost_and_found').where({ id: itemId, university_id: context.universityId }).delete()
+    return { deleted: true }
+  }
+
+  async setLostFoundSaved(context: AuthContext, itemId: string, saved: boolean) {
+    await assertLostFoundOwner(context, itemId)
+    if (saved) {
+      await db('lost_found_saves').insert({ user_id: context.userId, item_id: itemId }).onConflict(['user_id', 'item_id']).ignore()
+    } else {
+      await db('lost_found_saves').where({ user_id: context.userId, item_id: itemId }).delete()
+    }
+    return { itemId, isSaved: saved }
+  }
+
+  /**
+   * The lost & found right rail: how many items went home this month, the resolve rate
+   * and average time to resolve over the last 90 days, the places things go missing
+   * most, and the university's physical desk (if an admin has set one).
+   */
+  async getLostFoundStats(universityId: string) {
+    const windowStart = db.raw(`now() - interval '${LOST_FOUND_STATS_WINDOW_DAYS} days'`)
+
+    const [reunited, rate, hotspots, settings] = await Promise.all([
+      db('lost_and_found')
+        .where({ university_id: universityId, is_resolved: true })
+        .andWhere('resolved_at', '>=', db.raw("date_trunc('month', now())"))
+        .count<CountRow[]>({ count: '*' })
+        .first(),
+      db('lost_and_found')
+        .where({ university_id: universityId })
+        .andWhere('created_at', '>=', windowStart)
+        .select<{ total: string; resolved: string; avg_days: string | null }[]>(
+          db.raw('count(*) as total'),
+          db.raw('count(*) FILTER (WHERE is_resolved) as resolved'),
+          db.raw(
+            'avg(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 86400) FILTER (WHERE is_resolved AND resolved_at IS NOT NULL) as avg_days',
+          ),
+        )
+        .first(),
+      db('lost_and_found')
+        .where({ university_id: universityId })
+        .andWhere('created_at', '>=', windowStart)
+        // Group case- and space-insensitively, but show the spelling people used most.
+        .select<{ place: string; count: string }[]>(
+          db.raw('mode() WITHIN GROUP (ORDER BY location_detail) as place'),
+          db.raw('count(*) as count'),
+        )
+        .groupByRaw('lower(trim(location_detail))')
+        .orderBy('count', 'desc')
+        .limit(4),
+      db('university_settings').where({ university_id: universityId }).first<{ lost_found_desk: LostFoundDesk | null } | undefined>('lost_found_desk'),
+    ])
+
+    const total = Number(rate?.total ?? 0)
+    const resolved = Number(rate?.resolved ?? 0)
+    return {
+      reunitedThisMonth: Number(reunited?.count ?? 0),
+      resolvedPct: total > 0 ? Math.round((resolved / total) * 100) : null,
+      avgResolveDays: rate?.avg_days != null ? Math.round(Number(rate.avg_days) * 10) / 10 : null,
+      hotspots: hotspots.map((row) => ({ place: row.place, count: Number(row.count) })),
+      desk: settings?.lost_found_desk ?? null,
+    }
+  }
+
+  async updateLostFoundDesk(universityId: string, desk: LostFoundDeskInput['desk']) {
+    const value = desk ? JSON.stringify(desk) : null
+    await db('university_settings')
+      .insert({ university_id: universityId, lost_found_desk: value })
+      .onConflict('university_id')
+      .merge({ lost_found_desk: value, updated_at: db.fn.now() })
+    return { desk }
   }
 
   async listShuttleRoutes(universityId: string, includeInactive = false) {
@@ -370,11 +498,18 @@ export class CampusService {
 
 export const campusService = new CampusService()
 
-function lostFoundSelectQuery() {
+/** `viewerId` fills `is_saved` for the caller; everything else is viewer-independent. */
+function lostFoundSelectQuery(viewerId: string) {
   return db('lost_and_found')
     .join('profiles', 'profiles.user_id', 'lost_and_found.posted_by')
     .join('users as poster_user', 'poster_user.id', 'lost_and_found.posted_by')
     .select<LostFoundRow[]>(
+      db.raw(
+        'EXISTS (SELECT 1 FROM lost_found_saves s WHERE s.item_id = lost_and_found.id AND s.user_id = ?) as is_saved',
+        [viewerId],
+      ),
+      'lost_and_found.is_pinned',
+      'lost_and_found.resolved_at',
       'lost_and_found.id',
       'lost_and_found.university_id',
       'lost_and_found.posted_by',
@@ -389,6 +524,8 @@ function lostFoundSelectQuery() {
       'lost_and_found.updated_at',
       'profiles.full_name as posted_by_name',
       'profiles.avatar_url as posted_by_avatar_url',
+      'profiles.department as posted_by_department',
+      'profiles.batch_year as posted_by_batch_year',
       'poster_user.role as posted_by_role',
     )
 }
@@ -421,6 +558,9 @@ function toLostFound(row: LostFoundRow) {
     locationDetail: row.location_detail,
     contactInfo: row.contact_info,
     isResolved: row.is_resolved,
+    resolvedAt: row.resolved_at,
+    isPinned: row.is_pinned,
+    isSaved: row.is_saved,
     authorId: row.posted_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -433,8 +573,8 @@ function toLostFound(row: LostFoundRow) {
       fullName: row.posted_by_name,
       avatarUrl: row.posted_by_avatar_url,
       role: row.posted_by_role,
-      department: null,
-      batchYear: null,
+      department: row.posted_by_department,
+      batchYear: row.posted_by_batch_year == null ? null : String(row.posted_by_batch_year),
     },
   }
 }

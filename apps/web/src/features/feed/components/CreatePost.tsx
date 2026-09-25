@@ -1,11 +1,27 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { BarChart2, Bold, Image, Italic, Link, Smile, Sparkles, X } from 'lucide-react'
+import {
+  BarChart2,
+  Bold,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Clock,
+  Image,
+  Italic,
+  Link,
+  Paperclip,
+  Send,
+  Smile,
+  Sparkles,
+  X,
+} from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { MAX_ATTACHMENTS_PER_ENTITY } from '@uniconnect/shared'
 import type { AttachmentInput, FeedPost, ProfileProgress } from '@uniconnect/shared'
 import { useAuthStore } from '@/stores/authStore'
 import { Avatar } from '@/components/Avatar'
-import { AttachmentPicker } from '@/components/AttachmentPicker'
+import { AttachmentPicker, type AttachmentPickerHandle } from '@/components/AttachmentPicker'
 import { GhostBtn, PrimaryBtn } from '@/components/Button'
 import { avatarColor, getInitials } from '@/utils/avatar'
 import { api } from '@/lib/axios'
@@ -22,6 +38,27 @@ const EmojiPicker = lazy(() =>
 const EMOJI_PICKER_WIDTH = 352
 
 const FIRST_POST_HINT_KEY = 'uc:onboard:first-post-dismissed'
+
+/** `YYYY-MM-DDTHH:mm` in local time — the value format of `<input type="datetime-local">`. */
+function toLocalInput(d: Date) {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** The next top of the hour, at least an hour out — the schedule picker's starting value. */
+function defaultScheduleSlot() {
+  const d = new Date(Date.now() + 3_600_000)
+  d.setMinutes(0, 0, 0)
+  return toLocalInput(d)
+}
+
+/** "25 Sep, 4:00 pm" */
+function formatSchedule(value: string) {
+  const d = new Date(value)
+  return `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}, ${d
+    .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    .toLowerCase()}`
+}
 
 type TabMode = 'photo' | 'poll' | null
 type PostType = 'post' | 'announcement'
@@ -67,6 +104,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
   const [existingAttachments, setExistingAttachments] = useState<FeedPost['attachments']>([])
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>([])
   const [attachmentsUploading, setAttachmentsUploading] = useState(false)
+  const attachmentPickerRef = useRef<AttachmentPickerHandle>(null)
 
   // Poll state
   const [pollQuestion, setPollQuestion] = useState('')
@@ -78,6 +116,30 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
 
   // Scheduling: a future local datetime publishes the post later (posts only).
   const [scheduleAt, setScheduleAt] = useState('')
+  // Split-button menu next to Post: "Post now" / "Schedule for later" (with an inline picker).
+  const [postMenuOpen, setPostMenuOpen] = useState(false)
+  const [schedPickerOpen, setSchedPickerOpen] = useState(false)
+  const [schedDraft, setSchedDraft] = useState('')
+  const postMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!postMenuOpen) return
+    function onDown(e: MouseEvent) {
+      if (!postMenuRef.current?.contains(e.target as Node)) setPostMenuOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setPostMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey, true)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey, true)
+    }
+  }, [postMenuOpen])
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const insertEmoji = useEmojiInsert(textareaRef, text, setText)
@@ -231,6 +293,9 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
     ])
     setPollExpiresAt('')
     setScheduleAt('')
+    setPostMenuOpen(false)
+    setSchedPickerOpen(false)
+    setSchedDraft('')
     setAttachments([])
     setExistingAttachments([])
     setRemovedAttachmentIds([])
@@ -316,7 +381,8 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
     return text.trim().length > 0
   }
 
-  async function handleSubmit(asDraft = false) {
+  /** `ignoreSchedule` backs the menu's "Post now", which publishes even if a time is set. */
+  async function handleSubmit(asDraft = false, ignoreSchedule = false) {
     if (!canSubmit()) return
     const mediaUrls = photos.filter((p) => p.s3Url).map((p) => p.s3Url!)
     const pollData =
@@ -341,7 +407,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
       })
     } else {
       // A future schedule time keeps the post unpublished until it fires.
-      const publishAt = scheduleAt ? new Date(scheduleAt) : null
+      const publishAt = scheduleAt && !ignoreSchedule ? new Date(scheduleAt) : null
       const isScheduled = publishAt !== null && publishAt.getTime() > Date.now()
       await createPost.mutateAsync({
         type: postType,
@@ -355,6 +421,19 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
       })
     }
     handleClose(true)
+  }
+
+  const attachmentCount =
+    (existingAttachments ?? []).filter((a) => !removedAttachmentIds.includes(a.id)).length +
+    attachments.length
+  const attachmentsFull = attachmentCount >= MAX_ATTACHMENTS_PER_ENTITY
+  const schedDraftPast = !!schedDraft && new Date(schedDraft).getTime() <= Date.now()
+  const hasSchedule = !!scheduleAt && !isEditMode
+
+  function togglePostMenu() {
+    setPostMenuOpen((o) => !o)
+    setSchedPickerOpen(false)
+    setSchedDraft(scheduleAt)
   }
 
   return (
@@ -491,7 +570,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
               borderRadius: 'var(--r-lg)',
               display: 'flex',
               flexDirection: 'column',
-              overflow: 'hidden',
+              overflow: 'visible',
             }}
           >
             {/* Header */}
@@ -510,7 +589,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                 color={avatarColor(user.id)}
                 size={40}
               />
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <p
                   style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}
                 >
@@ -523,6 +602,9 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                       fontSize: 12,
                       fontWeight: 400,
                       color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
                     }}
                   >
                     {user.profile.headline}
@@ -539,6 +621,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                     border: '0.5px solid var(--border-default)',
                     borderRadius: 'var(--r-pill)',
                     overflow: 'hidden',
+                    flexShrink: 0,
                   }}
                 >
                   {(['post', 'announcement'] as PostType[]).map((t) => (
@@ -633,6 +716,8 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                   fontFamily: 'inherit',
                   lineHeight: 1.6,
                   boxSizing: 'border-box',
+                  display: 'block',
+                  outline: 'none',
                 }}
               />
 
@@ -685,10 +770,11 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                               style={{
                                 position: 'absolute',
                                 inset: 0,
-                                background: 'var(--overlay-bg-soft)',
+                                background: 'var(--overlay-media)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
+                                pointerEvents: 'none',
                               }}
                             >
                               <span style={{ color: 'var(--text-primary)', fontSize: 12 }}>
@@ -741,9 +827,11 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                 </div>
               )}
 
-              {/* File attachments */}
-              <div style={{ marginTop: 12 }}>
+              {/* File attachments — opened from the paperclip in the footer; chips only once staged */}
+              <div style={{ marginTop: attachmentCount > 0 ? 12 : 0 }}>
                 <AttachmentPicker
+                  ref={attachmentPickerRef}
+                  hideButton
                   value={attachments}
                   onChange={setAttachments}
                   existing={existingAttachments}
@@ -839,35 +927,42 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
               )}
             </div>
 
-            {/* Schedule (posts only, not while editing) */}
-            {!isEditMode && (
-              <div style={{ padding: '0 16px 10px' }}>
-                <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  Schedule for later (optional)
-                  <input
-                    type="datetime-local"
-                    value={scheduleAt}
-                    onChange={(e) => setScheduleAt(e.target.value)}
+            {/* Schedule chip (posts only, not while editing) */}
+            {hasSchedule && (
+              <div style={{ padding: '0 16px 10px', display: 'flex' }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 6px 5px 10px',
+                    background: 'var(--uc-indigo-bg)',
+                    border: '0.5px solid var(--uc-indigo-bdr)',
+                    borderRadius: 'var(--r-pill)',
+                    color: 'var(--uc-indigo-xl)',
+                    fontSize: 12,
+                  }}
+                >
+                  <Clock size={12} strokeWidth={1.5} />
+                  Scheduled for {formatSchedule(scheduleAt)}
+                  <button
+                    type="button"
+                    aria-label="Clear schedule"
+                    onClick={() => setScheduleAt('')}
+                    className="press-feedback"
                     style={{
-                      background: 'var(--surface-raised)',
-                      border: '0.5px solid var(--border-default)',
-                      borderRadius: 'var(--r-sm)',
-                      padding: '6px 10px',
-                      fontSize: 13,
-                      color: 'var(--text-primary)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--uc-indigo-xl)',
+                      padding: 2,
+                      lineHeight: 0,
+                      borderRadius: '50%',
                     }}
-                  />
-                  {scheduleAt && (
-                    <button
-                      type="button"
-                      onClick={() => setScheduleAt('')}
-                      className="row-hover-bg"
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-tertiary)', padding: '2px 6px', borderRadius: 'var(--r-sm)' }}
-                    >
-                      Clear
-                    </button>
-                  )}
-                </label>
+                  >
+                    <X size={12} strokeWidth={1.5} />
+                  </button>
+                </span>
               </div>
             )}
 
@@ -881,6 +976,7 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 8,
+                flexWrap: 'wrap',
               }}
             >
               <div style={{ display: 'flex', gap: 6 }}>
@@ -893,6 +989,20 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                   onClick={() => toggleTab('photo')}
                 >
                   <Image size={15} strokeWidth={1.5} />
+                </TabBtn>
+                <TabBtn
+                  active={attachmentCount > 0}
+                  disabled={attachmentsFull || attachmentsUploading || isSubmitting}
+                  title={
+                    attachmentCount === 0
+                      ? 'Add attachments'
+                      : `Add more (${MAX_ATTACHMENTS_PER_ENTITY - attachmentCount} left)`
+                  }
+                  activeColor="var(--uc-cyan)"
+                  activeBg="var(--uc-cyan-bg)"
+                  onClick={() => attachmentPickerRef.current?.open()}
+                >
+                  <Paperclip size={15} strokeWidth={1.5} />
                 </TabBtn>
                 <TabBtn
                   active={activeTab === 'poll'}
@@ -929,19 +1039,173 @@ export function CreatePost({ editPost, onDismissEdit, groupId }: Props) {
                 <GhostBtn onClick={() => handleClose()} disabled={isSubmitting}>
                   Cancel
                 </GhostBtn>
-                <PrimaryBtn onClick={() => handleSubmit(false)} disabled={!canSubmit()}>
-                  {isSubmitting
-                    ? isEditMode
-                      ? 'Saving…'
-                      : scheduleAt
-                        ? 'Scheduling…'
-                        : 'Posting…'
-                    : isEditMode
-                      ? 'Save'
-                      : scheduleAt
-                        ? 'Schedule'
-                        : 'Post'}
-                </PrimaryBtn>
+                <div ref={postMenuRef} style={{ position: 'relative', display: 'flex' }}>
+                  <PrimaryBtn
+                    onClick={() => handleSubmit(false)}
+                    disabled={!canSubmit()}
+                    style={
+                      isEditMode
+                        ? undefined
+                        : { borderRadius: 'var(--r-pill) 0 0 var(--r-pill)', paddingRight: 16 }
+                    }
+                  >
+                    {isSubmitting
+                      ? isEditMode
+                        ? 'Saving…'
+                        : scheduleAt
+                          ? 'Scheduling…'
+                          : 'Posting…'
+                      : isEditMode
+                        ? 'Save'
+                        : scheduleAt
+                          ? 'Schedule'
+                          : 'Post'}
+                  </PrimaryBtn>
+                  {!isEditMode && (
+                    <button
+                      type="button"
+                      aria-label="More post options"
+                      aria-haspopup="menu"
+                      aria-expanded={postMenuOpen}
+                      onClick={togglePostMenu}
+                      disabled={isSubmitting}
+                      className="press-feedback"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 12px 0 10px',
+                        background: 'var(--uc-indigo)',
+                        border: 'none',
+                        borderLeft: '0.5px solid var(--border-strong)',
+                        borderRadius: '0 var(--r-pill) var(--r-pill) 0',
+                        color: 'var(--on-accent)',
+                        cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                        opacity: isSubmitting ? 0.4 : 1,
+                      }}
+                    >
+                      <ChevronDown size={14} strokeWidth={1.5} />
+                    </button>
+                  )}
+                  {postMenuOpen && !isEditMode && (
+                    <div
+                      role="menu"
+                      className="modal-panel-enter"
+                      style={{
+                        position: 'absolute',
+                        bottom: 'calc(100% + 6px)',
+                        right: 0,
+                        zIndex: 220,
+                        width: 260,
+                        background: 'var(--surface-card)',
+                        border: '0.5px solid var(--border-hover)',
+                        borderRadius: 'var(--r-md)',
+                        padding: 4,
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={!canSubmit()}
+                        onClick={() => {
+                          setPostMenuOpen(false)
+                          setScheduleAt('')
+                          void handleSubmit(false, true)
+                        }}
+                        className="row-hover-bg"
+                        style={{
+                          ...menuItemStyle,
+                          cursor: canSubmit() ? 'pointer' : 'not-allowed',
+                          opacity: canSubmit() ? 1 : 0.4,
+                        }}
+                      >
+                        <Send size={15} strokeWidth={1.5} />
+                        <span style={{ flex: 1 }}>Post now</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        aria-expanded={schedPickerOpen}
+                        onClick={() => {
+                          setSchedPickerOpen((o) => !o)
+                          setSchedDraft((d) => d || defaultScheduleSlot())
+                        }}
+                        className="row-hover-bg"
+                        style={{
+                          ...menuItemStyle,
+                          background: schedPickerOpen ? 'var(--surface-raised)' : 'transparent',
+                        }}
+                      >
+                        <Clock size={15} strokeWidth={1.5} />
+                        <span style={{ flex: 1 }}>Schedule for later</span>
+                        {schedPickerOpen ? (
+                          <ChevronUp size={14} strokeWidth={1.5} />
+                        ) : (
+                          <ChevronRight size={14} strokeWidth={1.5} />
+                        )}
+                      </button>
+                      {schedPickerOpen && (
+                        <div
+                          style={{
+                            padding: '8px 10px 10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            borderTop: '0.5px solid var(--border-default)',
+                            marginTop: 4,
+                          }}
+                        >
+                          <label
+                            style={{
+                              fontSize: 12,
+                              color: 'var(--text-secondary)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4,
+                            }}
+                          >
+                            Date and time
+                            <input
+                              type="datetime-local"
+                              value={schedDraft}
+                              min={toLocalInput(new Date())}
+                              onChange={(e) => setSchedDraft(e.target.value)}
+                              style={{
+                                background: 'var(--surface-raised)',
+                                border: '0.5px solid var(--border-default)',
+                                borderRadius: 'var(--r-sm)',
+                                padding: '7px 10px',
+                                fontSize: 13,
+                                fontFamily: 'inherit',
+                                color: 'var(--text-primary)',
+                                width: '100%',
+                                boxSizing: 'border-box',
+                              }}
+                            />
+                          </label>
+                          {schedDraftPast && (
+                            <p style={{ margin: 0, fontSize: 12, color: 'var(--uc-red)' }}>
+                              Pick a time in the future.
+                            </p>
+                          )}
+                          <PrimaryBtn
+                            onClick={() => {
+                              setScheduleAt(schedDraft)
+                              setPostMenuOpen(false)
+                              setSchedPickerOpen(false)
+                            }}
+                            disabled={!schedDraft || schedDraftPast}
+                            style={{ alignSelf: 'flex-end', padding: '7px 16px' }}
+                          >
+                            Set schedule
+                          </PrimaryBtn>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -998,6 +1262,21 @@ function TabBtn({ active, disabled, title, activeColor, activeBg, onClick, child
       {children}
     </button>
   )
+}
+
+const menuItemStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  padding: '9px 10px',
+  background: 'transparent',
+  border: 'none',
+  borderRadius: 'var(--r-sm)',
+  color: 'var(--text-primary)',
+  fontSize: 13,
+  fontFamily: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
 }
 
 const pollInputStyle: React.CSSProperties = {

@@ -7,10 +7,13 @@ import type {
   AlumniListQuery,
   CreateRequestInput,
   CreateSessionInput,
+  CreateSessionRequestInput,
+  EndMentorshipInput,
   IncomingRequestsQuery,
   PaginationQuery,
   RedeemGiftCardInput,
   SubmitFeedbackInput,
+  UpdateMentorSettingsInput,
   UpdateRequestInput,
   UpdateSessionInput,
 } from './schema'
@@ -30,9 +33,9 @@ function sendPage<T>(res: Response, result: { items: T[]; total: number; page: n
 }
 
 export const listAlumni = asyncHandler(async (req: Request, res: Response) => {
-  const { universityId } = getAuthContext(req)
+  const { universityId, userId } = getAuthContext(req)
   const query = req.query as unknown as AlumniListQuery
-  sendPage(res, await mentorshipService.listAlumni(universityId, query))
+  sendPage(res, await mentorshipService.listAlumni(universityId, userId, query))
 })
 
 export const createRequest = asyncHandler(async (req: Request, res: Response) => {
@@ -120,4 +123,62 @@ export const getRequestFeedback = asyncHandler(async (req: Request, res: Respons
   const context = getAuthContext(req)
   const requestId = req.params.id as string
   sendSuccess(res, await mentorshipService.getRequestFeedback(context, requestId))
+})
+
+// ── END / REOPEN ──────────────────────────────────────────────────────────────
+
+export const endMentorship = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  sendSuccess(res, await mentorshipService.endMentorship(context, requestId, req.body as EndMentorshipInput))
+})
+
+export const reopenMentorship = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  sendSuccess(res, await mentorshipService.reopenMentorship(context, requestId))
+})
+
+// ── SESSION REQUESTS ──────────────────────────────────────────────────────────
+
+export const createSessionRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const requestId = req.params.id as string
+  sendSuccess(
+    res,
+    await mentorshipService.createSessionRequest(context, requestId, req.body as CreateSessionRequestInput),
+    201,
+  )
+})
+
+export const withdrawSessionRequest = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  await mentorshipService.withdrawSessionRequest(context, req.params.id as string, req.params.srid as string)
+  res.status(204).end()
+})
+
+// ── MENTOR SETTINGS / WAITLIST / HISTORY ──────────────────────────────────────
+
+export const getMentorSettings = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await mentorshipService.getMentorSettings(getAuthContext(req)))
+})
+
+export const updateMentorSettings = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await mentorshipService.updateMentorSettings(context, req.body as UpdateMentorSettingsInput))
+})
+
+export const joinWaitlist = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await mentorshipService.joinWaitlist(context, req.params.alumniId as string), 201)
+})
+
+export const leaveWaitlist = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  await mentorshipService.leaveWaitlist(context, req.params.alumniId as string)
+  res.status(204).end()
+})
+
+export const listMySessions = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccess(res, await mentorshipService.listMySessions(getAuthContext(req)))
 })

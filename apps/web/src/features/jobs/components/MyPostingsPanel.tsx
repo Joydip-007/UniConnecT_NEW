@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { Briefcase, ChevronDown, Users } from 'lucide-react'
+import { Briefcase, CalendarClock, ChevronDown, FileText, Users } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { PATHS } from '@/router/paths'
 import { EmptyState } from '@/components/EmptyState'
 import { SkeletonJobCard } from '@/components/skeletons/SkeletonJobCard'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { formatWhen } from '../jobMeta'
 import { ApplicationsList } from './ApplicationsList'
 import type { Job } from './JobCard'
 
@@ -24,6 +26,24 @@ function deadlineLabel(deadline: string | null): { text: string; expired: boolea
   return { text: expired ? `Closed ${text}` : `Open until ${text}`, expired }
 }
 
+function chipStyle(tone: 'indigo' | 'neutral'): React.CSSProperties {
+  const indigo = tone === 'indigo'
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+    marginRight: 6,
+    fontSize: 11,
+    fontWeight: 500,
+    padding: '2px 8px',
+    borderRadius: 'var(--r-pill)',
+    background: indigo ? 'var(--uc-indigo-bg)' : 'var(--surface-raised)',
+    border: `0.5px solid ${indigo ? 'var(--uc-indigo-bdr)' : 'var(--border-default)'}`,
+    color: indigo ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+  }
+}
+
 /**
  * The authoring view of `/jobs`: what this user posted, and who applied. Alumni land
  * here by default because posting is why they open the page — browsing is the other
@@ -32,6 +52,7 @@ function deadlineLabel(deadline: string | null): { text: string; expired: boolea
 export function MyPostingsPanel() {
   const navigate = useNavigate()
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const isMobile = useMediaQuery('(max-width: 767px)')
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery<MyJobsPage>({
@@ -78,7 +99,7 @@ export function MyPostingsPanel() {
               background: 'var(--surface-card)',
               border: '0.5px solid var(--border-default)',
               borderRadius: 'var(--r-lg)',
-              padding: 16,
+              padding: isMobile ? 14 : 16,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -92,7 +113,7 @@ export function MyPostingsPanel() {
                     padding: 0,
                     cursor: 'pointer',
                     textAlign: 'left',
-                    fontSize: 15,
+                    fontSize: isMobile ? 14 : 15,
                     fontWeight: 500,
                     color: 'var(--text-primary)',
                     lineHeight: 1.35,
@@ -112,6 +133,18 @@ export function MyPostingsPanel() {
                 >
                   {deadlineText} · {job.viewCount} {job.viewCount === 1 ? 'view' : 'views'}
                 </div>
+                {job.isScheduled && job.publishAt && (
+                  <span style={chipStyle('indigo')}>
+                    <CalendarClock size={11} />
+                    Scheduled · {formatWhen(new Date(job.publishAt))}
+                  </span>
+                )}
+                {job.isPublished === false && (
+                  <span style={chipStyle('neutral')}>
+                    <FileText size={11} />
+                    Draft
+                  </span>
+                )}
               </div>
 
               <button

@@ -8,7 +8,10 @@ import type {
   CourseListQuery,
   CreateLostFoundInput,
   EnrollCourseInput,
+  LostFoundDeskInput,
   LostFoundListQuery,
+  LostFoundPinInput,
+  LostFoundResolveInput,
   ShuttleLocationInput,
   ShuttleRouteInput,
   UpdateLostFoundInput,
@@ -16,7 +19,7 @@ import type {
 
 export const listLostFound = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  const result = await campusService.listLostFound(context.universityId, req.query as unknown as LostFoundListQuery)
+  const result = await campusService.listLostFound(context, req.query as unknown as LostFoundListQuery)
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
 
@@ -27,7 +30,7 @@ export const createLostFound = asyncHandler(async (req: Request, res: Response) 
 
 export const getLostFound = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  sendSuccess(res, await campusService.getLostFound(context.universityId, getItemIdParam(req)))
+  sendSuccess(res, await campusService.getLostFound(context, getItemIdParam(req)))
 })
 
 export const updateLostFound = asyncHandler(async (req: Request, res: Response) => {
@@ -37,7 +40,46 @@ export const updateLostFound = asyncHandler(async (req: Request, res: Response) 
 
 export const resolveLostFound = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  sendSuccess(res, await campusService.resolveLostFound(context, getItemIdParam(req)))
+  const { is_resolved } = req.body as LostFoundResolveInput
+  sendSuccess(res, await campusService.resolveLostFound(context, getItemIdParam(req), is_resolved))
+})
+
+export const listSavedLostFound = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { page, limit } = req.query as unknown as LostFoundListQuery
+  const result = await campusService.listSavedLostFound(context, { page, limit })
+  sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const pinLostFound = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { is_pinned } = req.body as LostFoundPinInput
+  sendSuccess(res, await campusService.pinLostFound(context, getItemIdParam(req), is_pinned))
+})
+
+export const deleteLostFound = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await campusService.deleteLostFound(context, getItemIdParam(req)))
+})
+
+export const saveLostFound = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await campusService.setLostFoundSaved(context, getItemIdParam(req), true))
+})
+
+export const unsaveLostFound = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await campusService.setLostFoundSaved(context, getItemIdParam(req), false))
+})
+
+export const getLostFoundStats = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await campusService.getLostFoundStats(context.universityId))
+})
+
+export const updateLostFoundDesk = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await campusService.updateLostFoundDesk(context.universityId, (req.body as LostFoundDeskInput).desk))
 })
 
 export const listShuttleRoutes = asyncHandler(async (req: Request, res: Response) => {

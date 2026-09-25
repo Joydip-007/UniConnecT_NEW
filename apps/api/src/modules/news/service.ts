@@ -25,6 +25,9 @@ interface NewsRow {
   body: string
   cover_url: string | null
   category: string
+  summary: string | null
+  tags: string[] | null
+  key_date: string | Date | null
   is_published: boolean
   is_pinned: boolean
   is_announcement: boolean
@@ -37,7 +40,12 @@ interface NewsRow {
   author_full_name: string
   author_avatar_url: string | null
   author_headline: string | null
+  author_department: string | null
+  author_role: UserRole
 }
+
+/** How many days back the rail's "official sources" and "trending now" look. */
+const RAIL_WINDOW_DAYS = 90
 
 export class NewsService {
   async listNews(context: AuthContext, query: NewsListQuery) {
@@ -45,6 +53,7 @@ export class NewsService {
     // author's "Drafts" view (and, for imported items, the admin content-sync review).
     const countQuery = db('news').where('university_id', context.universityId).andWhere('is_published', true)
     if (query.category) countQuery.andWhere('category', query.category)
+    if (query.tag) countQuery.andWhereRaw('? = ANY(tags)', [query.tag.toLowerCase()])
 
     const [{ count }] = await countQuery.count<CountRow[]>({ count: '*' })
     const total = Number(count)
@@ -54,6 +63,7 @@ export class NewsService {
       .andWhere('news.is_published', true)
       .modify((builder) => {
         if (query.category) builder.andWhere('news.category', query.category)
+        if (query.tag) builder.andWhereRaw('? = ANY(news.tags)', [query.tag.toLowerCase()])
       })
       .orderBy('news.is_pinned', 'desc')
       .orderBy('news.published_at', 'desc')
@@ -76,6 +86,9 @@ export class NewsService {
           body: input.body,
           cover_url: input.cover_url ?? null,
           category: input.category,
+          summary: input.summary ?? null,
+          tags: input.tags ?? [],
+          key_date: input.key_date ?? null,
           is_published: input.is_published,
           is_pinned: input.is_pinned,
           published_at: input.is_published ? db.fn.now() : null,
@@ -168,6 +181,9 @@ export class NewsService {
             body: input.body,
             cover_url: input.cover_url,
             category: input.category,
+            summary: input.summary,
+            tags: input.tags,
+            key_date: input.key_date,
             is_published: input.is_published,
             is_pinned: input.is_pinned,
             published_at: publishedAtValue,
@@ -235,6 +251,52 @@ export class NewsService {
     })
   }
 
+  /**
+   * Everything the news right rail shows, in one round trip:
+   *  - sources: who has published in the last 90 days, busiest first
+   *  - keyDates: upcoming dates articles flagged, soonest first, each linking back
+   *  - trendingTags: the most used tags across recent articles
+   */
+  async getRail(context: AuthContext) {
+    const since = db.raw(`now() - interval '${RAIL_WINDOW_DAYS} days'`)
+
+    const [sources, keyDates, tags] = await Promise.all([
+      db('news')
+        .join('profiles', 'profiles.user_id', 'news.author_id')
+        .join('users', 'users.id', 'news.author_id')
+        .where('news.university_id', context.universityId)
+        .andWhere('news.is_published', true)
+        .andWhere('news.published_at', '>=', since)
+        .select<{ name: string; kind: string; count: string }[]>(
+          db.raw(`${SOURCE_LABEL_SQL} as name`),
+          db.raw(`CASE WHEN news.is_imported THEN 'website' WHEN users.role = 'admin' THEN 'admin' ELSE 'department' END as kind`),
+          db.raw('count(*) as count'),
+        )
+        .groupByRaw('1, 2')
+        .orderBy('count', 'desc')
+        .limit(4),
+      db('news')
+        .where({ university_id: context.universityId, is_published: true })
+        .andWhere('key_date', '>=', db.raw('CURRENT_DATE'))
+        .select<{ id: string; title: string; key_date: string | Date }[]>('id', 'title', 'key_date')
+        .orderBy('key_date', 'asc')
+        .limit(3),
+      db('news')
+        .where({ university_id: context.universityId, is_published: true })
+        .andWhere('published_at', '>=', since)
+        .select<{ tag: string; count: string }[]>(db.raw('unnest(tags) as tag'), db.raw('count(*) as count'))
+        .groupBy('tag')
+        .orderBy([{ column: 'count', order: 'desc' }, { column: 'tag', order: 'asc' }])
+        .limit(6),
+    ])
+
+    return {
+      sources: sources.map((row) => ({ name: row.name, kind: row.kind, count: Number(row.count) })),
+      keyDates: keyDates.map((row) => ({ newsId: row.id, title: row.title, date: toDateOnly(row.key_date) })),
+      trendingTags: tags.map((row) => row.tag),
+    }
+  }
+
   async deleteNews(context: AuthContext, newsId: string) {
     const existing = await db('news')
       .select<{ author_id: string }[]>('author_id')
@@ -256,6 +318,7 @@ export const newsService = new NewsService()
 function newsSelectQuery() {
   return db('news')
     .join('profiles', 'profiles.user_id', 'news.author_id')
+    .join('users', 'users.id', 'news.author_id')
     .select<NewsRow[]>(
       'news.id',
       'news.university_id',
@@ -265,6 +328,9 @@ function newsSelectQuery() {
       'news.body',
       'news.cover_url',
       'news.category',
+      'news.summary',
+      'news.tags',
+      'news.key_date',
       'news.is_published',
       'news.is_pinned',
       'news.is_announcement',
@@ -277,6 +343,8 @@ function newsSelectQuery() {
       'profiles.full_name as author_full_name',
       'profiles.avatar_url as author_avatar_url',
       'profiles.headline as author_headline',
+      'profiles.department as author_department',
+      'users.role as author_role',
     )
 }
 
@@ -317,6 +385,9 @@ function toNews(row: NewsRow) {
     body: row.body,
     coverUrl: row.cover_url,
     category: row.category,
+    summary: row.summary,
+    tags: row.tags ?? [],
+    keyDate: toDateOnly(row.key_date),
     isPublished: row.is_published,
     isPinned: row.is_pinned,
     isAnnouncement: row.is_announcement,
@@ -331,9 +402,30 @@ function toNews(row: NewsRow) {
       fullName: row.author_full_name,
       avatarUrl: row.author_avatar_url,
       headline: row.author_headline,
+      department: row.author_department,
+      role: row.author_role,
     },
   }
 }
+
+/** `date` columns come back as a JS Date at local midnight; the API speaks YYYY-MM-DD. */
+function toDateOnly(value: string | Date | null): string | null {
+  if (!value) return null
+  if (typeof value === 'string') return value.slice(0, 10)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+}
+
+/**
+ * Who a published article speaks for. An imported item came from the university's
+ * own website; an admin writes for the administration; anyone else (faculty) is filed
+ * under their department, falling back to their name.
+ */
+const SOURCE_LABEL_SQL = `CASE
+  WHEN news.is_imported THEN 'University website'
+  WHEN users.role = 'admin' THEN 'University administration'
+  ELSE COALESCE(NULLIF(profiles.department, ''), profiles.full_name)
+END`
 
 function pickDefined<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined))

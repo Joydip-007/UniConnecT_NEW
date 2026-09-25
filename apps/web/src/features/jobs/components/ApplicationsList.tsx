@@ -5,16 +5,11 @@ import { FileText } from 'lucide-react'
 import { api } from '@/lib/axios'
 import { Avatar } from '@/components/Avatar'
 import { queryClient } from '@/lib/queryClient'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { POSTER_APPLICATION_STATUSES, type ApplicationStatus } from '@uniconnect/shared'
+import { statusTone } from '../jobMeta'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-type ApplicationStatus =
-  | 'pending'
-  | 'reviewed'
-  | 'shortlisted'
-  | 'interviewed'
-  | 'offered'
-  | 'rejected'
 
 interface ApplicantProfile {
   avatarUrl: string | null
@@ -44,22 +39,6 @@ interface ApplicationsResponse {
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────
-
-const STATUS_CONFIG: Record<
-  ApplicationStatus,
-  { label: string; bg: string; color: string; border: string }
-> = {
-  pending:     { label: 'Pending',     bg: 'var(--surface-raised)',  color: 'var(--text-secondary)', border: 'var(--border-default)' },
-  reviewed:    { label: 'Reviewed',    bg: 'var(--uc-indigo-bg)',    color: 'var(--uc-indigo-l)',    border: 'var(--uc-indigo-bdr)' },
-  shortlisted: { label: 'Shortlisted', bg: 'var(--uc-cyan-bg)',      color: 'var(--uc-cyan)',        border: 'var(--uc-cyan-bdr)' },
-  interviewed: { label: 'Interviewed', bg: 'var(--uc-orange-bg)',    color: 'var(--uc-orange-l)',    border: 'var(--uc-orange-bdr)' },
-  offered:     { label: 'Offered',     bg: 'var(--uc-mint-bg)',      color: 'var(--uc-mint)',        border: 'var(--uc-mint-bdr)' },
-  rejected:    { label: 'Rejected',    bg: 'var(--uc-red-bg)',       color: 'var(--uc-red)',         border: 'var(--uc-red-bdr)' },
-}
-
-const ALL_STATUSES: ApplicationStatus[] = [
-  'pending', 'reviewed', 'shortlisted', 'interviewed', 'offered', 'rejected',
-]
 
 const AVATAR_COLORS = [
   'var(--uc-indigo)',
@@ -109,8 +88,89 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
     statusMutation.mutate(newStatus)
   }
 
-  const localCfg = STATUS_CONFIG[localStatus]
+  const localCfg = statusTone(localStatus)
   const name = applicant.fullName
+  // The applicant withdrew — the poster reads it, but cannot move it back into the funnel.
+  const withdrawn = localStatus === 'withdrawn'
+  const isMobile = useMediaQuery('(max-width: 767px)')
+
+  const statusPill = (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        fontSize: 12,
+        fontWeight: 500,
+        padding: '2px 9px',
+        borderRadius: 'var(--r-pill)',
+        background: localCfg.bg,
+        color: localCfg.fg,
+        border: `0.5px solid ${localCfg.bdr}`,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {localCfg.label}
+    </span>
+  )
+
+  const resumeLink = resumeUrl && (
+    <a
+      href={resumeUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--uc-indigo-l)', textDecoration: 'none' }}
+    >
+      <FileText size={12} strokeWidth={1.5} />
+      Resume
+    </a>
+  )
+
+  const statusSelect = !withdrawn && (
+    <select
+      value={localStatus}
+      onChange={handleStatusChange}
+      disabled={statusMutation.isPending}
+      aria-label="Application status"
+      style={{
+        flexShrink: 0,
+        fontSize: 12,
+        padding: isMobile ? '0 10px' : '5px 10px',
+        minHeight: isMobile ? 36 : undefined,
+        background: 'var(--surface-raised)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-pill)',
+        color: 'var(--text-primary)',
+        cursor: statusMutation.isPending ? 'wait' : 'pointer',
+        fontFamily: 'inherit',
+        opacity: statusMutation.isPending ? 0.6 : 1,
+      }}
+    >
+      {POSTER_APPLICATION_STATUSES.map((s) => (
+        <option key={s} value={s}>
+          {statusTone(s).label}
+        </option>
+      ))}
+    </select>
+  )
+
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 0', borderBottom: '0.5px solid var(--border-default)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Avatar src={applicant.profile.avatarUrl} initials={initials(name)} color={avatarColor(name)} size={36} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{name}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Applied {format(parseISO(appliedAt), 'MMM d, yyyy')}</div>
+          </div>
+          {statusPill}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ flex: 1 }}>{resumeLink}</span>
+          {statusSelect}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -130,22 +190,7 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
           <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
             {name}
           </span>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontSize: 12,
-              fontWeight: 500,
-              padding: '2px 9px',
-              borderRadius: 'var(--r-pill)',
-              background: localCfg.bg,
-              color: localCfg.color,
-              border: `0.5px solid ${localCfg.border}`,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {localCfg.label}
-          </span>
+{statusPill}
         </div>
 
         {applicant.profile.headline && (
@@ -176,25 +221,7 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
           <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
             Applied {format(parseISO(appliedAt), 'MMM d, yyyy')}
           </span>
-          {resumeUrl && (
-            <a
-              href={resumeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 12,
-                fontWeight: 400,
-                color: 'var(--uc-indigo-l)',
-                textDecoration: 'none',
-              }}
-            >
-              <FileText size={12} strokeWidth={1.5} />
-              Resume
-            </a>
-          )}
+          {resumeLink}
         </div>
 
         {notes && (
@@ -216,33 +243,7 @@ function ApplicationRow({ application, jobId, queryKey }: RowProps) {
         )}
       </div>
 
-      {/* Status dropdown */}
-      <select
-        value={localStatus}
-        onChange={handleStatusChange}
-        disabled={statusMutation.isPending}
-        aria-label="Application status"
-        style={{
-          fontSize: 12,
-          fontWeight: 400,
-          padding: '5px 10px',
-          background: 'var(--surface-raised)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-pill)',
-          color: 'var(--text-primary)',
-          cursor: statusMutation.isPending ? 'wait' : 'pointer',
-          fontFamily: 'inherit',
-          opacity: statusMutation.isPending ? 0.6 : 1,
-          flexShrink: 0,
-          transition: 'opacity 150ms',
-        }}
-      >
-        {ALL_STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {STATUS_CONFIG[s].label}
-          </option>
-        ))}
-      </select>
+      {statusSelect}
     </div>
   )
 }
@@ -255,6 +256,7 @@ interface Props {
 
 export function ApplicationsList({ jobId }: Props) {
   const queryKey = ['jobs', 'applications', { jobId }]
+  const isMobile = useMediaQuery('(max-width: 767px)')
 
   const { data, isPending, isError } = useQuery({
     queryKey,
@@ -313,6 +315,17 @@ export function ApplicationsList({ jobId }: Props) {
         }}
       >
         No applications yet.
+      </div>
+    )
+  }
+
+  // On a phone the rows sit straight inside the posting card — no second card chrome.
+  if (isMobile) {
+    return (
+      <div>
+        {applications.map((app) => (
+          <ApplicationRow key={app.id} application={app} jobId={jobId} queryKey={queryKey} />
+        ))}
       </div>
     )
   }

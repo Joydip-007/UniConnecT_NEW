@@ -3,15 +3,32 @@ import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { env } from '../../config/env'
 import { getIo } from '../../socket'
+import { notificationQueue } from '../../queues/notification.queue'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
 import { notifyGroupReviewers } from '../groups/review-notify'
 import { canModerate, loadGroupApprovalContext } from '../groups/permissions'
 import { logger } from '../../utils/logger'
-import type { AttendeesQuery, CreateEventInput, EventListQuery, PaginationQuery, UpdateEventInput } from './schema'
+import type {
+  AttendeesQuery,
+  CreateEventInput,
+  EventDatesQuery,
+  EventListQuery,
+  MyEventsQuery,
+  UpdateEventInput,
+} from './schema'
 
 type EventType = 'general' | 'career_fair' | 'seminar' | 'alumni_meetup' | 'workshop' | 'club'
-type RsvpStatus = 'going' | 'maybe' | 'not_going'
+type RsvpStatus = 'going' | 'maybe' | 'not_going' | 'waitlisted'
+
+/**
+ * When an event ends. One without `ends_at` is treated as an hour long, so the
+ * upcoming / ongoing / past split, the conflict check and the card's "Ended" state all
+ * agree on a single definition (the web mirrors it in `eventEndsAt`).
+ */
+const EVENT_END_SQL = "COALESCE(events.ends_at, events.starts_at + interval '1 hour')"
+const TOP_ORGANISERS_LIMIT = 5
+const EVENT_DATES_LIMIT = 500
 
 interface AuthContext {
   userId: string
@@ -50,6 +67,10 @@ interface EventRow {
   maybe_count: string | number
   not_going_count: string | number
   own_rsvp: RsvpStatus | null
+  waitlist_count: string | number
+  own_waitlist_position: string | number
+  preview_attendees: { id: string; fullName: string; avatarUrl: string | null }[] | null
+  conflict: { id: string; title: string; startsAt: string } | null
 }
 
 interface EventAccessRow {
@@ -87,11 +108,60 @@ export class EventsService {
       .modify((builder) => {
         applyEventFilters(builder, query)
       })
-      .orderBy('events.starts_at', 'asc')
+      // Past reads newest-first — the event that just finished is the one you're after.
+      .orderBy('events.starts_at', query.when === 'past' ? 'desc' : 'asc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as EventRow[]
 
     return { items: rows.map(toEvent), total, page: query.page, limit: query.limit }
+  }
+
+  /** Start instants (and types) of published events in a window — the date picker's dots. */
+  async listEventDates(context: AuthContext, query: EventDatesQuery) {
+    const rows = await eventBaseQuery(db, context)
+      .modify((builder) => applyEventFilters(builder, { type: query.type, from: query.from, to: query.to }))
+      .select<{ starts_at: Date; type: EventType }[]>('events.starts_at', 'events.type')
+      .orderBy('events.starts_at', 'asc')
+      .limit(EVENT_DATES_LIMIT)
+    return rows.map((row) => ({ startsAt: row.starts_at, type: row.type }))
+  }
+
+  /**
+   * Who is putting on the most upcoming events: a group when the event belongs to one,
+   * otherwise the person who organised it.
+   */
+  async listTopOrganisers(context: AuthContext) {
+    const rows = (await eventBaseQuery(db, context)
+      .leftJoin('groups', 'groups.id', 'events.group_id')
+      .join('profiles', 'profiles.user_id', 'events.organizer_id')
+      .where('events.starts_at', '>', db.fn.now())
+      .select(
+        db.raw("CASE WHEN events.group_id IS NULL THEN 'user' ELSE 'group' END AS kind"),
+        db.raw('COALESCE(events.group_id, events.organizer_id) AS id'),
+        db.raw('COALESCE(groups.name, profiles.full_name) AS name'),
+        db.raw('COALESCE(groups.avatar_url, profiles.avatar_url) AS avatar_url'),
+        db.raw('COUNT(*)::int AS upcoming_count'),
+      )
+      .groupByRaw('1, 2, 3, 4')
+      .orderBy([
+        { column: 'upcoming_count', order: 'desc' },
+        { column: 'name', order: 'asc' },
+      ])
+      .limit(TOP_ORGANISERS_LIMIT)) as {
+      kind: 'group' | 'user'
+      id: string
+      name: string
+      avatar_url: string | null
+      upcoming_count: number
+    }[]
+
+    return rows.map((row) => ({
+      kind: row.kind,
+      id: row.id,
+      name: row.name,
+      avatarUrl: row.avatar_url,
+      upcomingCount: Number(row.upcoming_count),
+    }))
   }
 
   async createEvent(context: AuthContext, input: CreateEventInput) {
@@ -174,7 +244,7 @@ export class EventsService {
     const event = await assertEventInUniversity(eventId, context.universityId)
     assertCanMutateEvent(context, event.organizer_id)
 
-    await db.transaction(async (trx) => {
+    const promoted = await db.transaction(async (trx) => {
       await trx('events')
         .where({ id: eventId, university_id: context.universityId })
         .update({
@@ -206,8 +276,12 @@ export class EventsService {
         uploadedBy: context.userId,
         attachments: input.attachments ?? [],
       })
+
+      // Raising (or removing) the cap opens seats the waitlist is owed.
+      return input.capacity !== undefined ? promoteFromWaitlist(trx, eventId) : []
     })
 
+    await announcePromotions(context.universityId, eventId, promoted)
     return this.getEvent(context, eventId)
   }
 
@@ -227,8 +301,9 @@ export class EventsService {
     return this.getEvent(context, eventId)
   }
 
-  async rsvpEvent(context: AuthContext, eventId: string, status: RsvpStatus) {
-    await db.transaction(async (trx) => {
+  async rsvpEvent(context: AuthContext, eventId: string, requested: RsvpStatus) {
+    let status = requested
+    const promoted = await db.transaction(async (trx) => {
       const event = await trx('events')
         .select<EventAccessRow[]>('id', 'university_id', 'organizer_id', 'is_published', 'capacity')
         .where({ id: eventId, university_id: context.universityId })
@@ -238,15 +313,24 @@ export class EventsService {
       if (!event) throw notFound('Event not found', 'EVENT_NOT_FOUND')
       assertCanViewEvent(context, event)
 
-      if (status === 'going' && event.capacity !== null) {
+      const previous = await trx('event_rsvps')
+        .where({ event_id: eventId, user_id: context.userId })
+        .first<{ status: RsvpStatus } | undefined>('status')
+
+      if (status === 'going' || status === 'waitlisted') {
         const [{ count }] = await trx('event_rsvps')
           .where({ event_id: eventId, status: 'going' })
           .whereNot('user_id', context.userId)
           .count<CountRow[]>({ count: '*' })
+        const full = event.capacity !== null && Number(count) >= event.capacity
 
-        if (Number(count) >= event.capacity) {
+        if (status === 'going' && full) {
           throw conflict('Event is at capacity', 'EVENT_AT_CAPACITY')
         }
+        // Asking to queue for a seat that is free just takes the seat.
+        if (status === 'waitlisted' && !full) status = 'going'
+        // Re-joining the queue you're already in must not cost you your place.
+        if (status === 'waitlisted' && previous?.status === 'waitlisted') return []
       }
 
       await trx('event_rsvps')
@@ -260,16 +344,26 @@ export class EventsService {
           status,
           created_at: trx.fn.now(),
         })
+
+      return previous?.status === 'going' && status !== 'going' ? promoteFromWaitlist(trx, eventId) : []
     })
 
     const payload = { eventId, userId: context.userId, status }
     getIo().to(`uni:${context.universityId}`).emit('event:rsvp', payload)
+    await announcePromotions(context.universityId, eventId, promoted)
     return payload
   }
 
   async deleteRsvp(context: AuthContext, eventId: string) {
     await assertVisibleEvent(context, eventId)
-    await db('event_rsvps').where({ event_id: eventId, user_id: context.userId }).delete()
+    const promoted = await db.transaction(async (trx) => {
+      const [removed] = await trx('event_rsvps')
+        .where({ event_id: eventId, user_id: context.userId })
+        .delete()
+        .returning<{ status: RsvpStatus }[]>('status')
+      return removed?.status === 'going' ? promoteFromWaitlist(trx, eventId) : []
+    })
+    await announcePromotions(context.universityId, eventId, promoted)
     return { rsvp: null }
   }
 
@@ -313,14 +407,16 @@ export class EventsService {
     return buildIcal(event)
   }
 
-  async listMyEvents(context: AuthContext, query: PaginationQuery) {
+  async listMyEvents(context: AuthContext, query: MyEventsQuery) {
     const [{ count }] = await db('event_rsvps')
       .join('events', 'events.id', 'event_rsvps.event_id')
       .where({
         'event_rsvps.user_id': context.userId,
         'event_rsvps.status': 'going',
         'events.university_id': context.universityId,
+        'events.is_published': true,
       })
+      .modify((builder) => applyEventFilters(builder, { from: query.from }))
       .count<CountRow[]>({ count: '*' })
     const total = Number(count)
 
@@ -332,6 +428,7 @@ export class EventsService {
         'events.university_id': context.universityId,
       })
       .andWhere('events.is_published', true)
+      .modify((builder) => applyEventFilters(builder, { from: query.from }))
       .orderBy('events.starts_at', 'asc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)) as EventRow[]
@@ -349,6 +446,9 @@ function eventBaseQuery(knex: Knex, context: AuthContext) {
 
 function applyEventFilters(query: Knex.QueryBuilder, filters: Partial<EventListQuery>) {
   if (filters.type) query.andWhere('events.type', filters.type)
+  if (filters.when === 'upcoming') query.andWhere('events.starts_at', '>', db.fn.now())
+  if (filters.when === 'ongoing') query.andWhereRaw(`events.starts_at <= now() AND ${EVENT_END_SQL} >= now()`)
+  if (filters.when === 'past') query.andWhereRaw(`${EVENT_END_SQL} < now()`)
   if (filters.from) query.andWhere('events.starts_at', '>=', new Date(filters.from))
   if (filters.to) query.andWhere('events.starts_at', '<=', new Date(filters.to))
 }
@@ -392,7 +492,92 @@ function eventSelectQuery(knex: Knex, userId: string) {
       knex.raw('(SELECT status FROM event_rsvps WHERE event_id = events.id AND user_id = ? LIMIT 1) AS own_rsvp', [
         userId,
       ]),
+      knex.raw(
+        "(SELECT COUNT(*)::int FROM event_rsvps WHERE event_rsvps.event_id = events.id AND status = 'waitlisted') AS waitlist_count",
+      ),
+      // 1-based place in the queue; 0 when the viewer isn't on it.
+      knex.raw(
+        `(SELECT COUNT(*)::int FROM event_rsvps w
+            WHERE w.event_id = events.id AND w.status = 'waitlisted'
+              AND w.created_at <= (SELECT m.created_at FROM event_rsvps m
+                                    WHERE m.event_id = events.id AND m.user_id = ? AND m.status = 'waitlisted')
+          ) AS own_waitlist_position`,
+        [userId],
+      ),
+      // The card's face stack: the first three people to say they're going.
+      knex.raw(
+        `(SELECT json_agg(json_build_object('id', a.user_id, 'fullName', a.full_name, 'avatarUrl', a.avatar_url))
+            FROM (SELECT r.user_id, p.full_name, p.avatar_url FROM event_rsvps r
+                    JOIN profiles p ON p.user_id = r.user_id
+                   WHERE r.event_id = events.id AND r.status = 'going'
+                   ORDER BY r.created_at ASC LIMIT 3) a
+          ) AS preview_attendees`,
+      ),
+      // The earliest other event the viewer is going to whose time overlaps this one.
+      knex.raw(
+        `(SELECT json_build_object('id', o.id, 'title', o.title, 'startsAt', o.starts_at)
+            FROM events o
+            JOIN event_rsvps orr ON orr.event_id = o.id AND orr.user_id = ? AND orr.status = 'going'
+           WHERE o.id <> events.id AND o.is_published = true
+             AND o.starts_at < ${EVENT_END_SQL}
+             AND ${EVENT_END_SQL.replace(/events\./g, 'o.')} > events.starts_at
+           ORDER BY o.starts_at ASC LIMIT 1
+          ) AS conflict`,
+        [userId],
+      ),
     )
+}
+
+/**
+ * Hands every free seat to the waitlist, oldest first. Runs inside the caller's
+ * transaction after the change that freed the seat, and returns who got one.
+ */
+async function promoteFromWaitlist(trx: Knex.Transaction, eventId: string): Promise<string[]> {
+  const event = await trx('events').where({ id: eventId }).first<{ capacity: number | null } | undefined>('capacity').forUpdate()
+  if (!event) return []
+
+  let limit: number | undefined
+  if (event.capacity !== null) {
+    const [{ count }] = await trx('event_rsvps').where({ event_id: eventId, status: 'going' }).count<CountRow[]>({ count: '*' })
+    limit = Math.max(0, event.capacity - Number(count))
+    if (limit === 0) return []
+  }
+
+  const next = await trx('event_rsvps')
+    .where({ event_id: eventId, status: 'waitlisted' })
+    .orderBy('created_at', 'asc')
+    .modify((builder) => {
+      if (limit !== undefined) builder.limit(limit)
+    })
+    .forUpdate()
+    .pluck<string[]>('user_id')
+  if (next.length === 0) return []
+
+  await trx('event_rsvps')
+    .where({ event_id: eventId, status: 'waitlisted' })
+    .whereIn('user_id', next)
+    .update({ status: 'going', created_at: trx.fn.now() })
+  return next
+}
+
+/** Tells each promoted person they're in — after commit, so a rollback never notifies. */
+async function announcePromotions(universityId: string, eventId: string, userIds: string[]) {
+  if (userIds.length === 0) return
+  const event = await db('events').where({ id: eventId }).first<{ title: string } | undefined>('title')
+  for (const userId of userIds) {
+    getIo().to(`uni:${universityId}`).emit('event:rsvp', { eventId, userId, status: 'going' })
+    await notificationQueue
+      .add({
+        universityId,
+        userId,
+        type: 'event_waitlist_promoted',
+        referenceId: eventId,
+        referenceType: 'event',
+        content: `A seat opened up: you're going to ${event?.title ?? 'an event'}`,
+        payload: { eventId },
+      })
+      .catch((err: unknown) => logger.warn('Failed to enqueue waitlist promotion notice', { err, eventId, userId }))
+  }
 }
 
 async function assertEventInUniversity(eventId: string, universityId: string) {
@@ -463,8 +648,11 @@ function toEvent(row: EventRow) {
     },
     ownRsvp: row.own_rsvp,
     myRsvp: row.own_rsvp,
-    previewAttendees: [],
+    previewAttendees: row.preview_attendees ?? [],
     totalAttendees: goingCount,
+    waitlistCount: Number(row.waitlist_count),
+    waitlistPosition: Number(row.own_waitlist_position) || null,
+    conflict: row.conflict,
   }
 }
 

@@ -1,12 +1,19 @@
 import { formatDistanceToNow, parseISO } from 'date-fns'
-import type { CSSProperties, FocusEvent } from 'react'
+import type { FocusEvent } from 'react'
 import type { FilterTab } from './types'
 
-export const FILTER_TABS: { label: string; value: FilterTab }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Lost', value: 'lost' },
-  { label: 'Found', value: 'found' },
+export const FILTER_TABS: { label: string; value: FilterTab; hint: string; empty: string }[] = [
+  { label: 'All', value: 'all', hint: 'Open lost reports and found items, newest first', empty: 'Be the first to report a lost or found item.' },
+  { label: 'Lost', value: 'lost', hint: 'Posted by people who lost something', empty: 'No open lost reports. Nothing is missing right now.' },
+  { label: 'Found', value: 'found', hint: 'Posted by people who found something and want to return it', empty: 'Nobody has posted a found item yet.' },
+  { label: 'Resolved', value: 'resolved', hint: 'Items already returned to their owner', empty: 'Nothing has been marked resolved yet.' },
 ]
+
+/** Lost reads red, found reads mint — the two sides of the board at a glance. */
+export const TYPE_TONES = {
+  lost: { label: 'Lost', bg: 'var(--uc-red-bg)', bdr: 'var(--uc-red-bdr)', fg: 'var(--uc-red)' },
+  found: { label: 'Found', bg: 'var(--uc-mint-bg)', bdr: 'var(--uc-mint-bdr)', fg: 'var(--uc-mint)' },
+} as const
 
 export const AVATAR_PALETTE = [
   'var(--uc-indigo)',
@@ -18,20 +25,6 @@ export const AVATAR_PALETTE = [
 
 export const MAX_IMAGES = 3
 export const MAX_IMG_BYTES = 5 * 1024 * 1024
-
-export const inputStyle: CSSProperties = {
-  padding: '9px 12px',
-  fontSize: 13,
-  fontWeight: 400,
-  background: 'var(--surface-raised)',
-  border: '0.5px solid var(--border-default)',
-  borderRadius: 'var(--r-md)',
-  color: 'var(--text-primary)',
-  outline: 'none',
-  width: '100%',
-  fontFamily: 'inherit',
-  transition: 'border-color 150ms',
-}
 
 export function focusBorder(e: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
   e.currentTarget.style.borderColor = 'var(--uc-indigo-bdr)'

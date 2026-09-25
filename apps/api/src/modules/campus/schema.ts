@@ -2,9 +2,18 @@ import { z } from 'zod'
 
 export const LostFoundTypeSchema = z.enum(['lost', 'found'])
 
+/**
+ * Query strings are text, so `z.coerce.boolean()` would read `"false"` as true (any
+ * non-empty string is truthy) — the board's open tabs then listed only resolved items.
+ */
+const queryBoolean = z.preprocess(
+  (value) => (value === 'true' || value === true ? true : value === 'false' || value === false ? false : value),
+  z.boolean(),
+)
+
 export const LostFoundListQuerySchema = z.object({
   type: LostFoundTypeSchema.optional(),
-  isResolved: z.coerce.boolean().optional(),
+  isResolved: queryBoolean.optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 })
@@ -59,6 +68,21 @@ export const UpdateLostFoundSchema = z
     contact_info: value.contact_info ?? value.contactInfo,
     is_resolved: value.is_resolved ?? value.isResolved,
   }))
+
+export const LostFoundPinSchema = z.object({ is_pinned: z.boolean() })
+
+export const LostFoundResolveSchema = z.object({ is_resolved: z.boolean().default(true) })
+
+/** The physical desk in the lost & found rail. `null` clears it and hides the card. */
+export const LostFoundDeskSchema = z.object({
+  desk: z
+    .object({
+      location: z.string().trim().min(1).max(120),
+      hours: z.string().trim().max(120).default(''),
+      holdPolicy: z.string().trim().max(120).default(''),
+    })
+    .nullable(),
+})
 
 export const ShuttleRouteSchema = z
   .object({
@@ -144,3 +168,7 @@ export type ShuttleLocationInput = z.infer<typeof ShuttleLocationSchema>
 export type CourseInput = z.infer<typeof CourseSchema>
 export type CourseListQuery = z.infer<typeof CourseListQuerySchema>
 export type EnrollCourseInput = z.infer<typeof EnrollCourseSchema>
+
+export type LostFoundPinInput = z.infer<typeof LostFoundPinSchema>
+export type LostFoundResolveInput = z.infer<typeof LostFoundResolveSchema>
+export type LostFoundDeskInput = z.infer<typeof LostFoundDeskSchema>

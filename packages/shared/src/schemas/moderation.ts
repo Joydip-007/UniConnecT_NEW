@@ -5,7 +5,7 @@ import { userRoleSchema } from './users'
  * Targets a user can report. Mirrors `reports.target_type` on the API. `user`
  * is the new addition that powers "report this person"; the rest report content.
  */
-export const reportTargetTypeSchema = z.enum(['user', 'post', 'comment', 'job', 'event', 'group', 'message'])
+export const reportTargetTypeSchema = z.enum(['user', 'post', 'comment', 'job', 'event', 'group', 'message', 'lost_found'])
 export type ReportTargetType = z.infer<typeof reportTargetTypeSchema>
 
 export const reportReasonSchema = z.enum([

@@ -42,6 +42,11 @@ const DEV_MOCK_USER: User = {
     githubUrl: null,
     portfolioUrl: null,
     isOpenToMsg: true,
+    // Jobs apply flow reads these (Jobs Page.dc.html sample student).
+    cgpa: 3.42,
+    resumeUrl: 'https://example.com/Dev_User_CV.pdf',
+    resumeName: 'Dev_User_CV.pdf',
+    resumeUpdatedAt: new Date(Date.now() - 20 * 86_400_000).toISOString(),
   },
 }
 

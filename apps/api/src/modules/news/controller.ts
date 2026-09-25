@@ -11,6 +11,11 @@ export const listNews = asyncHandler(async (req: Request, res: Response) => {
   sendPaginated(res, result.items, result.total, result.page, result.limit)
 })
 
+export const getNewsRail = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await newsService.getRail(context))
+})
+
 export const createNews = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   sendSuccess(res, await newsService.createNews(context, req.body as CreateNewsInput), 201)

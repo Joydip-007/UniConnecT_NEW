@@ -52,6 +52,10 @@ interface UserProfileRow {
   website_url: string | null
   github_url: string | null
   portfolio_url: string | null
+  cgpa: string | number | null
+  resume_url: string | null
+  resume_name: string | null
+  resume_updated_at: Date | null
 }
 
 interface CountRow {
@@ -140,7 +144,7 @@ export class UsersService {
       .first<UserProfileRow>()
 
     if (!user) throw notFound('User not found')
-    return toUserProfile(user, { includePhone: true, includeContactInfo: true })
+    return toUserProfile(user, { includePhone: true, includeContactInfo: true, includePrivate: true })
   }
 
   async updateCurrentUser(userId: string, universityId: string, input: UpdateProfileInput) {
@@ -192,6 +196,12 @@ export class UsersService {
     if (input.githubUrl !== undefined) update.github_url = input.githubUrl
     if (input.portfolioUrl !== undefined) update.portfolio_url = input.portfolioUrl
     if (input.isOpenToMsg !== undefined) update.is_open_to_msg = input.isOpenToMsg
+    if (input.cgpa !== undefined) update.cgpa = input.cgpa
+    if (input.resumeUrl !== undefined) {
+      update.resume_url = input.resumeUrl
+      update.resume_name = input.resumeUrl ? (input.resumeName ?? null) : null
+      update.resume_updated_at = input.resumeUrl ? db.fn.now() : null
+    }
 
     await db('profiles').where({ user_id: userId }).update(update)
 
@@ -337,6 +347,7 @@ export class UsersService {
       ...toUserProfile(user, {
         includePhone: canSeeContact,
         includeContactInfo: canSeeContact,
+        includePrivate: isOwnProfile,
       }),
       // Email is contact info too — it was the one field the tier never covered.
       email: canSeeContact ? user.email : null,
@@ -921,6 +932,10 @@ function getUserProfileQuery() {
       'profiles.website_url',
       'profiles.github_url',
       'profiles.portfolio_url',
+      'profiles.cgpa',
+      'profiles.resume_url',
+      'profiles.resume_name',
+      'profiles.resume_updated_at',
     )
 }
 
@@ -1038,7 +1053,12 @@ async function assertUserInUniversity(userId: string, universityId: string) {
 // Keep assertUserInUniversity to avoid unused variable warning
 void assertUserInUniversity
 
-function toUserProfile(row: UserProfileRow, options: { includePhone: boolean; includeContactInfo: boolean }) {
+function toUserProfile(
+  row: UserProfileRow,
+  options: { includePhone: boolean; includeContactInfo: boolean; includePrivate?: boolean },
+) {
+  // CGPA and resume feed the jobs apply flow; only the owner ever sees them.
+  const own = options.includePrivate === true
   return {
     id: row.id,
     username: row.username,
@@ -1070,6 +1090,10 @@ function toUserProfile(row: UserProfileRow, options: { includePhone: boolean; in
       websiteUrl: options.includeContactInfo ? row.website_url : null,
       githubUrl: options.includeContactInfo ? row.github_url : null,
       portfolioUrl: options.includeContactInfo ? row.portfolio_url : null,
+      cgpa: own && row.cgpa !== null ? Number(row.cgpa) : null,
+      resumeUrl: own ? row.resume_url : null,
+      resumeName: own ? row.resume_name : null,
+      resumeUpdatedAt: own && row.resume_updated_at ? new Date(row.resume_updated_at).toISOString() : null,
     },
   }
 }

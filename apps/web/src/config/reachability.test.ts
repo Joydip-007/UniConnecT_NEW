@@ -26,6 +26,9 @@ const REACHED_BY_CONTEXT = new Set<string>([
   PATHS.JOB_DETAIL,
   PATHS.EVENT_DETAIL,
   PATHS.NEWS_DETAIL,
+  // The article draft screen — reached from "Write article" on /news and Edit on an article.
+  PATHS.NEWS_NEW,
+  PATHS.NEWS_EDIT,
   PATHS.GROUP_DETAIL,
   PATHS.CONVERSATION,
   PATHS.TAG,

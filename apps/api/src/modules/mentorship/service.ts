@@ -9,16 +9,24 @@ import type {
   AlumniListQuery,
   CreateRequestInput,
   CreateSessionInput,
+  CreateSessionRequestInput,
+  EndMentorshipInput,
   IncomingRequestsQuery,
   PaginationQuery,
   RedeemGiftCardInput,
   SubmitFeedbackInput,
+  UpdateMentorSettingsInput,
   UpdateRequestInput,
   UpdateSessionInput,
 } from './schema'
 
 export const POINTS_PER_SESSION = 10
 export const POINTS_PER_USD = 100
+/** Must match the `request_expire` job delay below — the UI states it to students. */
+export const REQUEST_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000
+/** How long an accept / decline / end can be undone by the person who made it. */
+export const UNDO_WINDOW_MS = 15 * 60 * 1000
+const DEFAULT_DECLINE_AT_CAPACITY = 'At mentee capacity right now'
 
 type RequestStatus = 'pending' | 'accepted' | 'declined' | 'completed' | 'expired'
 
@@ -68,6 +76,11 @@ interface AlumniRow {
   avatar_url: string | null
   max_mentees: number
   current_mentees: string | number
+  mentorship_topics: string[] | null
+  mentorship_availability: string[] | null
+  sessions_completed: string | number
+  avg_reply_hours: string | number | null
+  is_waitlisted: boolean
 }
 
 interface RequestRow {
@@ -81,6 +94,12 @@ interface RequestRow {
   conversation_id: string | null
   created_at: Date
   updated_at: Date
+  responded_at: Date | null
+  decline_reason: string | null
+  ended_at: Date | null
+  ended_by: string | null
+  end_reason: string | null
+  end_note: string | null
   // alumni fields (for my-requests)
   alumni_full_name?: string
   alumni_avatar_url?: string | null
@@ -88,6 +107,7 @@ interface RequestRow {
   alumni_department?: string | null
   alumni_batch_year?: string | null
   alumni_role?: UserRole
+  alumni_availability?: string[] | null
   // student fields (for incoming)
   student_full_name?: string
   student_avatar_url?: string | null
@@ -116,12 +136,40 @@ interface SessionRow {
   duration_minutes: number
   topic: string
   notes: string | null
+  points_awarded?: number
   created_at: Date
   updated_at: Date
 }
 
+interface SessionRequestRow {
+  id: string
+  request_id: string
+  requested_by: string
+  slot_label: string | null
+  topic: string | null
+  status: 'requested' | 'scheduled' | 'withdrawn' | 'done'
+  created_at: Date
+}
+
+interface RequestExtras {
+  sessionCount: number
+  totalMinutes: number
+  firstSessionDate: string | null
+  lastSessionDate: string | null
+  openSessionRequest: ReturnType<typeof toSessionRequest> | null
+}
+
+const REQUEST_LIFECYCLE_COLUMNS = [
+  'mentorship_requests.responded_at',
+  'mentorship_requests.decline_reason',
+  'mentorship_requests.ended_at',
+  'mentorship_requests.ended_by',
+  'mentorship_requests.end_reason',
+  'mentorship_requests.end_note',
+]
+
 export class MentorshipService {
-  async listAlumni(universityId: string, query: AlumniListQuery) {
+  async listAlumni(universityId: string, viewerId: string, query: AlumniListQuery) {
     const base = db('users')
       .join('profiles', 'profiles.user_id', 'users.id')
       .where({
@@ -145,11 +193,28 @@ export class MentorshipService {
         'profiles.skills',
         'profiles.avatar_url',
         'profiles.max_mentees',
+        'profiles.mentorship_topics',
+        'profiles.mentorship_availability',
         db.raw(
           `(SELECT COUNT(*) FROM mentorship_requests mr
              WHERE mr.alumni_id = users.id
                AND mr.status = 'accepted'
                AND mr.is_deleted = false) AS current_mentees`,
+        ),
+        db.raw(
+          `(SELECT COUNT(*) FROM mentorship_sessions ms
+             JOIN mentorship_requests mr ON mr.id = ms.request_id
+             WHERE mr.alumni_id = users.id AND mr.is_deleted = false) AS sessions_completed`,
+        ),
+        db.raw(
+          `(SELECT AVG(EXTRACT(EPOCH FROM (mr.responded_at - mr.created_at)) / 3600)
+             FROM mentorship_requests mr
+             WHERE mr.alumni_id = users.id AND mr.responded_at IS NOT NULL) AS avg_reply_hours`,
+        ),
+        db.raw(
+          `EXISTS (SELECT 1 FROM mentorship_waitlist w
+             WHERE w.alumni_id = users.id AND w.student_id = ?) AS is_waitlisted`,
+          [viewerId],
         ),
       )
       .orderBy('profiles.full_name', 'asc')
@@ -183,6 +248,10 @@ export class MentorshipService {
 
     if (!alumni) throw notFound('Alumni not found or not open to mentorship', 'ALUMNI_NOT_FOUND')
 
+    // A full mentor gets "Notify me" in the UI, not a request that can only be declined.
+    const { active, max } = await this.capacityFor(input.alumniId)
+    if (active >= max) throw badRequest('This mentor is currently full', 'MENTOR_AT_CAPACITY')
+
     let requestId: string
     try {
       const [row] = await db('mentorship_requests')
@@ -202,6 +271,10 @@ export class MentorshipService {
       }
       throw error
     }
+
+    await db('mentorship_waitlist')
+      .where({ student_id: context.userId, alumni_id: input.alumniId })
+      .delete()
 
     // Enqueue delayed lifecycle jobs
     const [reminderJob, expireJob] = await Promise.all([
@@ -223,7 +296,7 @@ export class MentorshipService {
           alumniId: input.alumniId,
           studentId: context.userId,
         },
-        { delay: 7 * 24 * 60 * 60 * 1000 },
+        { delay: REQUEST_EXPIRY_MS },
       ),
     ])
 
@@ -284,14 +357,17 @@ export class MentorshipService {
         'alumni_profile.headline as alumni_headline',
         'alumni_profile.department as alumni_department',
         'alumni_profile.batch_year as alumni_batch_year',
+        'alumni_profile.mentorship_availability as alumni_availability',
         'alumni_user.role as alumni_role',
+        ...REQUEST_LIFECYCLE_COLUMNS,
       )
       .orderBy('mentorship_requests.created_at', 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)
 
+    const extras = await loadRequestExtras(rows.map((r) => r.id))
     return {
-      items: rows.map(toMyRequest),
+      items: rows.map((r) => toMyRequest(r, extras.get(r.id))),
       total,
       page: query.page,
       hasMore: query.page * query.limit < total,
@@ -333,13 +409,15 @@ export class MentorshipService {
         'student_profile.department as student_department',
         'student_profile.batch_year as student_batch_year',
         'student_user.role as student_role',
+        ...REQUEST_LIFECYCLE_COLUMNS,
       )
       .orderBy('mentorship_requests.created_at', 'desc')
       .limit(query.limit)
       .offset((query.page - 1) * query.limit)
 
+    const extras = await loadRequestExtras(rows.map((r) => r.id))
     return {
-      items: rows.map(toIncomingRequest),
+      items: rows.map((r) => toIncomingRequest(r, extras.get(r.id))),
       total,
       page: query.page,
       hasMore: query.page * query.limit < total,
@@ -355,10 +433,23 @@ export class MentorshipService {
           alumni_id: string
           student_id: string
           status: RequestStatus
+          conversation_id: string | null
           reminder_job_id: string | null
           expire_job_id: string | null
+          created_at: Date
+          responded_at: Date | null
         }[]
-      >('id', 'alumni_id', 'student_id', 'status', 'reminder_job_id', 'expire_job_id')
+      >(
+        'id',
+        'alumni_id',
+        'student_id',
+        'status',
+        'conversation_id',
+        'reminder_job_id',
+        'expire_job_id',
+        'created_at',
+        'responded_at',
+      )
       .first()
 
     if (!request) throw notFound('Mentorship request not found', 'REQUEST_NOT_FOUND')
@@ -370,19 +461,11 @@ export class MentorshipService {
 
     // ── ACCEPT PATH ─────────────────────────────────────────────────────────
     if (input.status === 'accepted') {
-      // Check capacity: count currently accepted relationships for this alumni
-      const [{ count: activeCount }] = await db('mentorship_requests')
-        .where({ alumni_id: request.alumni_id, status: 'accepted', is_deleted: false })
-        .count<CountRow[]>({ count: '*' })
-
-      const maxMenteesRow = await db('profiles')
-        .where({ user_id: request.alumni_id })
-        .select<{ max_mentees: number }[]>('max_mentees')
-        .first()
-
-      const maxMentees = maxMenteesRow?.max_mentees ?? 3
-
-      if (Number(activeCount) >= maxMentees) {
+      if (request.status !== 'pending') {
+        throw badRequest('Only pending requests can be accepted', 'REQUEST_NOT_PENDING')
+      }
+      const { active, max } = await this.capacityFor(request.alumni_id)
+      if (active >= max) {
         throw badRequest('This mentor is currently full', 'MENTOR_AT_CAPACITY')
       }
 
@@ -393,42 +476,49 @@ export class MentorshipService {
       const studentFirstName = (fullRequest.student_full_name as string | undefined)?.split(' ')[0] ?? 'Student'
       const alumniFirstName = (fullRequest.alumni_full_name as string | undefined)?.split(' ')[0] ?? 'Mentor'
 
-      // Run accept in a transaction: create conversation + update request
+      // Run accept in a transaction: create conversation + update request. An accept
+      // that was undone keeps its conversation, so a re-accept reuses it.
       const conversationId = await db.transaction(async (trx) => {
-        const [conv] = await trx('conversations')
-          .insert({
-            university_id: context.universityId,
-            type: 'mentorship',
-            name: `${studentFirstName} ↔ ${alumniFirstName} — Mentorship`,
-            is_group: false,
-            created_by: request.alumni_id,
+        let convId = request.conversation_id
+        if (!convId) {
+          const [conv] = await trx('conversations')
+            .insert({
+              university_id: context.universityId,
+              type: 'mentorship',
+              name: `${studentFirstName} ↔ ${alumniFirstName} — Mentorship`,
+              is_group: false,
+              created_by: request.alumni_id,
+            })
+            .returning<{ id: string }[]>('id')
+
+          if (!conv) throw badRequest('Could not create conversation', 'CONV_CREATE_FAILED')
+
+          await trx('conversation_participants').insert([
+            { conversation_id: conv.id, user_id: request.student_id },
+            { conversation_id: conv.id, user_id: request.alumni_id },
+          ])
+
+          await trx('messages').insert({
+            conversation_id: conv.id,
+            sender_id: request.alumni_id,
+            type: 'system',
+            content:
+              'Mentorship connection started. You can now propose sessions, share resources, and chat here.',
           })
-          .returning<{ id: string }[]>('id')
-
-        if (!conv) throw badRequest('Could not create conversation', 'CONV_CREATE_FAILED')
-
-        await trx('conversation_participants').insert([
-          { conversation_id: conv.id, user_id: request.student_id },
-          { conversation_id: conv.id, user_id: request.alumni_id },
-        ])
-
-        await trx('messages').insert({
-          conversation_id: conv.id,
-          sender_id: request.alumni_id,
-          type: 'system',
-          content:
-            'Mentorship connection started. You can now propose sessions, share resources, and chat here.',
-        })
+          convId = conv.id
+        }
 
         await trx('mentorship_requests')
           .where({ id: requestId, university_id: context.universityId })
           .update({
             status: 'accepted',
-            conversation_id: conv.id,
+            conversation_id: convId,
+            responded_at: trx.fn.now(),
+            decline_reason: null,
             updated_at: trx.fn.now(),
           })
 
-        return conv.id
+        return convId
       })
 
       // Cancel lifecycle jobs now that request is resolved
@@ -449,9 +539,23 @@ export class MentorshipService {
 
     // ── DECLINE PATH ────────────────────────────────────────────────────────
     if (input.status === 'declined') {
+      if (request.status !== 'pending') {
+        throw badRequest('Only pending requests can be declined', 'REQUEST_NOT_PENDING')
+      }
+      let reason = input.declineReason ?? null
+      if (!reason) {
+        const { active, max } = await this.capacityFor(request.alumni_id)
+        if (active >= max) reason = DEFAULT_DECLINE_AT_CAPACITY
+      }
+
       await db('mentorship_requests')
         .where({ id: requestId, university_id: context.universityId })
-        .update({ status: 'declined', updated_at: db.fn.now() })
+        .update({
+          status: 'declined',
+          decline_reason: reason,
+          responded_at: db.fn.now(),
+          updated_at: db.fn.now(),
+        })
 
       await this.cancelMentorshipJobs(request.reminder_job_id, request.expire_job_id)
 
@@ -469,26 +573,366 @@ export class MentorshipService {
       return this.getRequestById(requestId)
     }
 
+    // ── UNDO PATH (accepted | declined → pending) ───────────────────────────
+    if (input.status === 'pending') {
+      if (request.status !== 'accepted' && request.status !== 'declined') {
+        throw badRequest('Only an accept or decline can be undone', 'REQUEST_NOT_UNDOABLE')
+      }
+      if (!request.responded_at || Date.now() - new Date(request.responded_at).getTime() > UNDO_WINDOW_MS) {
+        throw badRequest('This decision can no longer be undone', 'UNDO_WINDOW_PASSED')
+      }
+      if (request.status === 'accepted') {
+        const [{ count }] = await db('mentorship_sessions')
+          .where({ request_id: requestId })
+          .count<CountRow[]>({ count: '*' })
+        if (Number(count) > 0) {
+          throw badRequest('A session is already logged on this mentorship', 'UNDO_HAS_SESSIONS')
+        }
+      }
+
+      // The request is live again, so it needs its expiry back — for what is left of it.
+      const remaining = new Date(request.created_at).getTime() + REQUEST_EXPIRY_MS - Date.now()
+      const expireJob = await mentorshipQueue.add(
+        {
+          type: 'request_expire',
+          requestId,
+          universityId: context.universityId,
+          alumniId: request.alumni_id,
+          studentId: request.student_id,
+        },
+        { delay: Math.max(60 * 1000, remaining) },
+      )
+
+      await db.transaction(async (trx) => {
+        await trx('mentorship_requests')
+          .where({ id: requestId, university_id: context.universityId })
+          .update({
+            status: 'pending',
+            responded_at: null,
+            decline_reason: null,
+            expire_job_id: String(expireJob.id),
+            updated_at: trx.fn.now(),
+          })
+        await trx('mentorship_session_requests')
+          .where({ request_id: requestId })
+          .whereIn('status', ['requested', 'scheduled'])
+          .update({ status: 'withdrawn', updated_at: trx.fn.now() })
+      })
+
+      getIo()
+        .to(`user:${request.student_id}`)
+        .emit('mentorship:request:updated', { requestId })
+
+      return this.getRequestById(requestId)
+    }
+
     // ── GENERAL UPDATE PATH (notes, completed) ──────────────────────────────
+    // Points are paid per logged session, so completing a mentorship awards nothing.
     const updates: Record<string, unknown> = { updated_at: db.fn.now() }
     if (input.status !== undefined) updates.status = input.status
     if (input.session_notes !== undefined) updates.session_notes = input.session_notes
+    if (input.status === 'completed' && request.status !== 'completed') {
+      updates.ended_at = db.fn.now()
+      updates.ended_by = context.userId
+    }
 
     await db('mentorship_requests')
       .where({ id: requestId, university_id: context.universityId })
       .update(updates)
 
-    // Award points when transitioning into 'completed'
     if (input.status === 'completed' && request.status !== 'completed') {
-      await db('profiles')
-        .where({ user_id: request.alumni_id })
-        .increment('mentorship_points', POINTS_PER_SESSION)
-
       // Cancel expire job just in case it's still live
       await this.cancelMentorshipJobs(null, request.expire_job_id)
+      await this.notifyWaitlist(context.universityId, request.alumni_id)
     }
 
     return this.getRequestById(requestId)
+  }
+
+  // ── END / REOPEN ──────────────────────────────────────────────────────────
+
+  /** Either participant ends an accepted mentorship; it moves to Past mentors. */
+  async endMentorship(context: AuthContext, requestId: string, input: EndMentorshipInput) {
+    const request = await this.assertRequestParticipant(context, requestId)
+    if (request.status !== 'accepted') {
+      throw badRequest('Only an active mentorship can be ended', 'MENTORSHIP_NOT_ACTIVE')
+    }
+
+    await db.transaction(async (trx) => {
+      await trx('mentorship_requests')
+        .where({ id: requestId, university_id: context.universityId })
+        .update({
+          status: 'completed',
+          ended_at: trx.fn.now(),
+          ended_by: context.userId,
+          end_reason: input.reason,
+          end_note: input.note || null,
+          updated_at: trx.fn.now(),
+        })
+      await trx('mentorship_session_requests')
+        .where({ request_id: requestId })
+        .whereIn('status', ['requested', 'scheduled'])
+        .update({ status: 'withdrawn', updated_at: trx.fn.now() })
+    })
+
+    const otherId = context.userId === request.student_id ? request.alumni_id : request.student_id
+    await notificationQueue.add({
+      universityId: context.universityId,
+      userId: otherId,
+      type: 'mentorship',
+      actorId: context.userId,
+      referenceId: requestId,
+      referenceType: 'mentorship_request',
+      content: `ended your mentorship. Reason: ${input.reason}.`,
+      payload: { requestId },
+    })
+    getIo()
+      .to(`user:${request.student_id}`)
+      .to(`user:${request.alumni_id}`)
+      .emit('mentorship:request:updated', { requestId })
+
+    await this.notifyWaitlist(context.universityId, request.alumni_id)
+    return this.getRequestById(requestId)
+  }
+
+  /** Undo an end, for the person who ended it, shortly after. */
+  async reopenMentorship(context: AuthContext, requestId: string) {
+    const request = await db('mentorship_requests')
+      .where({ id: requestId, university_id: context.universityId, is_deleted: false })
+      .select<{ alumni_id: string; student_id: string; status: RequestStatus; ended_by: string | null; ended_at: Date | null }[]>(
+        'alumni_id', 'student_id', 'status', 'ended_by', 'ended_at',
+      )
+      .first()
+
+    if (!request) throw notFound('Mentorship request not found', 'REQUEST_NOT_FOUND')
+    if (request.status !== 'completed' || request.ended_by !== context.userId || !request.ended_at) {
+      throw forbidden('Only the person who ended this mentorship can undo it', 'REOPEN_FORBIDDEN')
+    }
+    if (Date.now() - new Date(request.ended_at).getTime() > UNDO_WINDOW_MS) {
+      throw badRequest('This mentorship can no longer be reopened', 'UNDO_WINDOW_PASSED')
+    }
+    const { active, max } = await this.capacityFor(request.alumni_id)
+    if (active >= max) throw badRequest('This mentor is currently full', 'MENTOR_AT_CAPACITY')
+
+    await db('mentorship_requests')
+      .where({ id: requestId, university_id: context.universityId })
+      .update({
+        status: 'accepted',
+        ended_at: null,
+        ended_by: null,
+        end_reason: null,
+        end_note: null,
+        updated_at: db.fn.now(),
+      })
+
+    getIo()
+      .to(`user:${request.student_id}`)
+      .to(`user:${request.alumni_id}`)
+      .emit('mentorship:request:updated', { requestId })
+
+    return this.getRequestById(requestId)
+  }
+
+  // ── SESSION REQUESTS (proposed / scheduled times) ─────────────────────────
+
+  /**
+   * A student proposes a time (or none); an alumnus schedules one. A mentorship holds
+   * at most one open session request, so a new one replaces whatever was open.
+   */
+  async createSessionRequest(context: AuthContext, requestId: string, input: CreateSessionRequestInput) {
+    const request = await this.assertRequestParticipant(context, requestId)
+    if (request.status !== 'accepted') {
+      throw badRequest('Sessions can only be arranged on an active mentorship', 'MENTORSHIP_NOT_ACTIVE')
+    }
+    const isAlumni = context.userId === request.alumni_id
+    if (isAlumni && !input.slotLabel) {
+      throw badRequest('Pick a time to schedule', 'SLOT_REQUIRED')
+    }
+
+    const row = await db.transaction(async (trx) => {
+      await trx('mentorship_session_requests')
+        .where({ request_id: requestId })
+        .whereIn('status', ['requested', 'scheduled'])
+        .update({ status: 'withdrawn', updated_at: trx.fn.now() })
+      const [inserted] = await trx('mentorship_session_requests')
+        .insert({
+          university_id: context.universityId,
+          request_id: requestId,
+          requested_by: context.userId,
+          slot_label: input.slotLabel ?? null,
+          topic: input.topic || null,
+          status: isAlumni ? 'scheduled' : 'requested',
+        })
+        .returning<SessionRequestRow[]>('*')
+      return inserted
+    })
+    if (!row) throw badRequest('Session request could not be created', 'SESSION_REQUEST_CREATE_FAILED')
+
+    const otherId = isAlumni ? request.student_id : request.alumni_id
+    await notificationQueue.add({
+      universityId: context.universityId,
+      userId: otherId,
+      type: 'mentorship',
+      actorId: context.userId,
+      referenceId: requestId,
+      referenceType: 'mentorship_request',
+      content: isAlumni
+        ? `scheduled your next session: ${input.slotLabel}.`
+        : input.slotLabel
+          ? `requested a session: ${input.slotLabel}.`
+          : 'requested a session. Suggest a time in chat.',
+      payload: { requestId },
+    })
+    getIo().to(`user:${otherId}`).emit('mentorship:request:updated', { requestId })
+
+    return toSessionRequest(row)
+  }
+
+  async withdrawSessionRequest(context: AuthContext, requestId: string, sessionRequestId: string) {
+    const request = await this.assertRequestParticipant(context, requestId)
+    const row = await db('mentorship_session_requests')
+      .where({ id: sessionRequestId, request_id: requestId })
+      .whereIn('status', ['requested', 'scheduled'])
+      .select<{ requested_by: string }[]>('requested_by')
+      .first()
+    if (!row) throw notFound('Session request not found', 'SESSION_REQUEST_NOT_FOUND')
+    if (row.requested_by !== context.userId) {
+      throw forbidden('You can only withdraw your own session request', 'SESSION_REQUEST_FORBIDDEN')
+    }
+    await db('mentorship_session_requests')
+      .where({ id: sessionRequestId })
+      .update({ status: 'withdrawn', updated_at: db.fn.now() })
+
+    const otherId = context.userId === request.student_id ? request.alumni_id : request.student_id
+    getIo().to(`user:${otherId}`).emit('mentorship:request:updated', { requestId })
+  }
+
+  // ── MENTOR SETTINGS (alumni) ──────────────────────────────────────────────
+
+  async getMentorSettings(context: AuthContext) {
+    const profile = await db('profiles')
+      .where({ user_id: context.userId })
+      .select<
+        { is_open_to_mentorship: boolean; max_mentees: number; mentorship_topics: string[] | null; mentorship_availability: string[] | null }[]
+      >('is_open_to_mentorship', 'max_mentees', 'mentorship_topics', 'mentorship_availability')
+      .first()
+    if (!profile) throw notFound('Profile not found', 'PROFILE_NOT_FOUND')
+
+    const [{ count: pending }] = await db('mentorship_requests')
+      .where({ alumni_id: context.userId, university_id: context.universityId, status: 'pending', is_deleted: false })
+      .count<CountRow[]>({ count: '*' })
+    const { active } = await this.capacityFor(context.userId)
+
+    return {
+      isOpenToMentorship: profile.is_open_to_mentorship,
+      maxMentees: profile.max_mentees,
+      topics: profile.mentorship_topics ?? [],
+      availability: profile.mentorship_availability ?? [],
+      currentMentees: active,
+      pendingRequests: Number(pending),
+    }
+  }
+
+  async updateMentorSettings(context: AuthContext, input: UpdateMentorSettingsInput) {
+    if (input.maxMentees !== undefined) {
+      const { active } = await this.capacityFor(context.userId)
+      if (input.maxMentees < active) {
+        throw badRequest(`You already have ${active} mentees`, 'CAPACITY_BELOW_ACTIVE')
+      }
+    }
+
+    const updates: Record<string, unknown> = { updated_at: db.fn.now() }
+    if (input.isOpenToMentorship !== undefined) updates.is_open_to_mentorship = input.isOpenToMentorship
+    if (input.maxMentees !== undefined) updates.max_mentees = input.maxMentees
+    if (input.topics !== undefined) updates.mentorship_topics = dedupe(input.topics)
+    if (input.availability !== undefined) updates.mentorship_availability = dedupe(input.availability)
+
+    await db('profiles').where({ user_id: context.userId }).update(updates)
+    await this.notifyWaitlist(context.universityId, context.userId)
+    return this.getMentorSettings(context)
+  }
+
+  // ── WAITLIST ("Notify me") ────────────────────────────────────────────────
+
+  async joinWaitlist(context: AuthContext, alumniId: string) {
+    const alumni = await db('users')
+      .join('profiles', 'profiles.user_id', 'users.id')
+      .where({
+        'users.id': alumniId,
+        'users.university_id': context.universityId,
+        'users.role': 'alumni',
+        'profiles.is_open_to_mentorship': true,
+      })
+      .select<{ id: string }[]>('users.id')
+      .first()
+    if (!alumni) throw notFound('Alumni not found or not open to mentorship', 'ALUMNI_NOT_FOUND')
+
+    await db('mentorship_waitlist')
+      .insert({ university_id: context.universityId, student_id: context.userId, alumni_id: alumniId })
+      .onConflict(['student_id', 'alumni_id'])
+      .ignore()
+    return { alumniId, isWaitlisted: true }
+  }
+
+  async leaveWaitlist(context: AuthContext, alumniId: string) {
+    await db('mentorship_waitlist')
+      .where({ university_id: context.universityId, student_id: context.userId, alumni_id: alumniId })
+      .delete()
+  }
+
+  // ── SESSION HISTORY (alumni) ──────────────────────────────────────────────
+
+  /**
+   * Every session the alumnus has on record, newest first, plus mentorships they
+   * ended before a session was ever logged (shown as "Canceled · no points").
+   */
+  async listMySessions(context: AuthContext) {
+    const sessions = await db('mentorship_sessions as ms')
+      .join('mentorship_requests as mr', 'mr.id', 'ms.request_id')
+      .join('profiles as sp', 'sp.user_id', 'mr.student_id')
+      .where({ 'mr.alumni_id': context.userId, 'mr.university_id': context.universityId, 'mr.is_deleted': false })
+      .orderBy([{ column: 'ms.session_date', order: 'desc' }, { column: 'ms.created_at', order: 'desc' }])
+      .limit(200)
+      .select<
+        (SessionRow & { points_awarded: number; student_id: string; student_full_name: string; student_avatar_url: string | null })[]
+      >('ms.*', 'mr.student_id', 'sp.full_name as student_full_name', 'sp.avatar_url as student_avatar_url')
+
+    const canceled = await db('mentorship_requests as mr')
+      .join('profiles as sp', 'sp.user_id', 'mr.student_id')
+      .where({
+        'mr.alumni_id': context.userId,
+        'mr.university_id': context.universityId,
+        'mr.is_deleted': false,
+        'mr.status': 'completed',
+        'mr.ended_by': context.userId,
+      })
+      .whereNotExists(db('mentorship_sessions').whereRaw('mentorship_sessions.request_id = mr.id'))
+      .select<
+        { id: string; student_id: string; ended_at: Date; end_reason: string | null; student_full_name: string; student_avatar_url: string | null }[]
+      >('mr.id', 'mr.student_id', 'mr.ended_at', 'mr.end_reason', 'sp.full_name as student_full_name', 'sp.avatar_url as student_avatar_url')
+
+    const student = (id: string, fullName: string, avatarUrl: string | null) => ({ id, fullName, avatarUrl })
+    const items = [
+      ...sessions.map((s) => ({
+        kind: 'session' as const,
+        ...toSession(s),
+        student: student(s.student_id, s.student_full_name, s.student_avatar_url),
+      })),
+      ...canceled.map((c) => ({
+        kind: 'canceled' as const,
+        id: `canceled-${c.id}`,
+        requestId: c.id,
+        sessionDate: new Date(c.ended_at).toISOString().slice(0, 10),
+        endReason: c.end_reason,
+        student: student(c.student_id, c.student_full_name, c.student_avatar_url),
+      })),
+    ].sort((a, b) => b.sessionDate.localeCompare(a.sessionDate))
+
+    return {
+      items,
+      totalSessions: sessions.length,
+      pointsEarned: sessions.reduce((n, s) => n + s.points_awarded, 0),
+    }
   }
 
   async withdrawRequest(context: AuthContext, requestId: string) {
@@ -533,26 +977,42 @@ export class MentorshipService {
         'duration_minutes',
         'topic',
         'notes',
+        'points_awarded',
         'created_at',
         'updated_at',
       )
       .then((rows) => rows.map(toSession))
   }
 
+  /**
+   * Logging a session pays the alumnus POINTS_PER_SESSION (recorded on the row so a
+   * delete reverses exactly that) and closes the mentorship's open session request.
+   */
   async createSession(context: AuthContext, requestId: string, input: CreateSessionInput) {
-    await this.assertRequestParticipant(context, requestId)
+    const request = await this.assertRequestParticipant(context, requestId)
 
-    const [row] = await db('mentorship_sessions')
-      .insert({
-        university_id: context.universityId,
-        request_id: requestId,
-        created_by: context.userId,
-        session_date: input.sessionDate,
-        duration_minutes: input.durationMinutes,
-        topic: input.topic,
-        notes: input.notes ?? null,
-      })
-      .returning<SessionRow[]>('*')
+    const row = await db.transaction(async (trx) => {
+      const [inserted] = await trx('mentorship_sessions')
+        .insert({
+          university_id: context.universityId,
+          request_id: requestId,
+          created_by: context.userId,
+          session_date: input.sessionDate,
+          duration_minutes: input.durationMinutes,
+          topic: input.topic,
+          notes: input.notes ?? null,
+          points_awarded: POINTS_PER_SESSION,
+        })
+        .returning<SessionRow[]>('*')
+      await trx('profiles')
+        .where({ user_id: request.alumni_id })
+        .increment('mentorship_points', POINTS_PER_SESSION)
+      await trx('mentorship_session_requests')
+        .where({ request_id: requestId })
+        .whereIn('status', ['requested', 'scheduled'])
+        .update({ status: 'done', updated_at: trx.fn.now() })
+      return inserted
+    })
 
     if (!row) throw badRequest('Session could not be created', 'SESSION_CREATE_FAILED')
     return toSession(row)
@@ -594,11 +1054,11 @@ export class MentorshipService {
   }
 
   async deleteSession(context: AuthContext, requestId: string, sessionId: string) {
-    await this.assertRequestParticipant(context, requestId)
+    const request = await this.assertRequestParticipant(context, requestId)
 
     const session = await db('mentorship_sessions')
       .where({ id: sessionId, request_id: requestId })
-      .select<{ id: string; created_by: string }[]>('id', 'created_by')
+      .select<{ id: string; created_by: string; points_awarded: number }[]>('id', 'created_by', 'points_awarded')
       .first()
 
     if (!session) throw notFound('Session not found', 'SESSION_NOT_FOUND')
@@ -606,7 +1066,14 @@ export class MentorshipService {
       throw forbidden('You can only delete sessions you created', 'SESSION_FORBIDDEN')
     }
 
-    await db('mentorship_sessions').where({ id: sessionId }).delete()
+    await db.transaction(async (trx) => {
+      await trx('mentorship_sessions').where({ id: sessionId }).delete()
+      if (session.points_awarded > 0) {
+        await trx('profiles')
+          .where({ user_id: request.alumni_id })
+          .update({ mentorship_points: trx.raw('GREATEST(mentorship_points - ?, 0)', [session.points_awarded]) })
+      }
+    })
   }
 
   // ── FEEDBACK ─────────────────────────────────────────────────────────────────
@@ -835,7 +1302,7 @@ export class MentorshipService {
   private async assertRequestParticipant(context: AuthContext, requestId: string) {
     const request = await db('mentorship_requests')
       .where({ id: requestId, university_id: context.universityId, is_deleted: false })
-      .select<{ student_id: string; alumni_id: string }[]>('student_id', 'alumni_id')
+      .select<{ student_id: string; alumni_id: string; status: RequestStatus }[]>('student_id', 'alumni_id', 'status')
       .first()
 
     if (!request) throw notFound('Mentorship request not found', 'REQUEST_NOT_FOUND')
@@ -843,6 +1310,53 @@ export class MentorshipService {
     if (context.userId !== request.student_id && context.userId !== request.alumni_id) {
       throw forbidden('You are not a participant in this mentorship', 'REQUEST_NOT_PARTICIPANT')
     }
+    return request
+  }
+
+  private async capacityFor(alumniId: string) {
+    const [{ count }] = await db('mentorship_requests')
+      .where({ alumni_id: alumniId, status: 'accepted', is_deleted: false })
+      .count<CountRow[]>({ count: '*' })
+    const row = await db('profiles')
+      .where({ user_id: alumniId })
+      .select<{ max_mentees: number }[]>('max_mentees')
+      .first()
+    return { active: Number(count), max: row?.max_mentees ?? 3 }
+  }
+
+  /**
+   * Tells every waitlisted student that a place opened, then clears the list — so a
+   * "Notify me" fires once. No-op while the mentor is closed or still full.
+   */
+  private async notifyWaitlist(universityId: string, alumniId: string) {
+    const profile = await db('profiles')
+      .where({ user_id: alumniId })
+      .select<{ is_open_to_mentorship: boolean; full_name: string }[]>('is_open_to_mentorship', 'full_name')
+      .first()
+    if (!profile?.is_open_to_mentorship) return
+    const { active, max } = await this.capacityFor(alumniId)
+    if (active >= max) return
+
+    const waiting = await db('mentorship_waitlist')
+      .where({ university_id: universityId, alumni_id: alumniId })
+      .select<{ id: string; student_id: string }[]>('id', 'student_id')
+    if (waiting.length === 0) return
+
+    await Promise.all(
+      waiting.map((w) =>
+        notificationQueue.add({
+          universityId,
+          userId: w.student_id,
+          type: 'mentorship',
+          actorId: alumniId,
+          referenceId: alumniId,
+          referenceType: 'user',
+          content: `has a mentee place open. Request ${profile.full_name.split(' ')[0]} before it fills.`,
+          payload: { alumniId },
+        }),
+      ),
+    )
+    await db('mentorship_waitlist').whereIn('id', waiting.map((w) => w.id)).delete()
   }
 
   private async cancelMentorshipJobs(
@@ -878,10 +1392,89 @@ function toAlumni(row: AlumniRow) {
     avatarUrl: row.avatar_url,
     maxMentees: row.max_mentees,
     currentMentees: Number(row.current_mentees),
+    topics: row.mentorship_topics ?? [],
+    availability: row.mentorship_availability ?? [],
+    sessionsCompleted: Number(row.sessions_completed),
+    avgReplyHours: row.avg_reply_hours === null ? null : Number(row.avg_reply_hours),
+    isWaitlisted: Boolean(row.is_waitlisted),
   }
 }
 
-function toMyRequest(row: RequestRow) {
+function toLifecycle(row: RequestRow, extras: RequestExtras | undefined) {
+  return {
+    respondedAt: row.responded_at ?? null,
+    declineReason: row.decline_reason ?? null,
+    endedAt: row.ended_at ?? null,
+    endedBy: row.ended_by ?? null,
+    endReason: row.end_reason ?? null,
+    endNote: row.end_note ?? null,
+    sessionCount: extras?.sessionCount ?? 0,
+    totalMinutes: extras?.totalMinutes ?? 0,
+    firstSessionDate: extras?.firstSessionDate ?? null,
+    lastSessionDate: extras?.lastSessionDate ?? null,
+    openSessionRequest: extras?.openSessionRequest ?? null,
+  }
+}
+
+function toSessionRequest(row: SessionRequestRow) {
+  return {
+    id: row.id,
+    requestId: row.request_id,
+    requestedBy: row.requested_by,
+    slotLabel: row.slot_label,
+    topic: row.topic,
+    status: row.status,
+    createdAt: row.created_at,
+  }
+}
+
+function toDateString(value: string | Date | null) {
+  if (value === null) return null
+  return typeof value === 'string' ? value.slice(0, 10) : new Date(value).toISOString().slice(0, 10)
+}
+
+/** Session aggregates and the open session request for each request id, in two queries. */
+async function loadRequestExtras(requestIds: string[]) {
+  const extras = new Map<string, RequestExtras>()
+  if (requestIds.length === 0) return extras
+
+  const aggregates = await db('mentorship_sessions')
+    .whereIn('request_id', requestIds)
+    .groupBy('request_id')
+    .select<
+      { request_id: string; count: string | number; minutes: string | number | null; first: string | Date | null; last: string | Date | null }[]
+    >(
+      'request_id',
+      db.raw('COUNT(*) AS count'),
+      db.raw('SUM(duration_minutes) AS minutes'),
+      db.raw('MIN(session_date) AS first'),
+      db.raw('MAX(session_date) AS last'),
+    )
+  const open = await db('mentorship_session_requests')
+    .whereIn('request_id', requestIds)
+    .whereIn('status', ['requested', 'scheduled'])
+    .orderBy('created_at', 'desc')
+    .select<SessionRequestRow[]>('*')
+
+  for (const id of requestIds) {
+    const agg = aggregates.find((a) => a.request_id === id)
+    const req = open.find((o) => o.request_id === id)
+    extras.set(id, {
+      sessionCount: Number(agg?.count ?? 0),
+      totalMinutes: Number(agg?.minutes ?? 0),
+      firstSessionDate: toDateString(agg?.first ?? null),
+      lastSessionDate: toDateString(agg?.last ?? null),
+      openSessionRequest: req ? toSessionRequest(req) : null,
+    })
+  }
+  return extras
+}
+
+function dedupe(values: string[]) {
+  return [...new Set(values)]
+}
+
+function toMyRequest(row: RequestRow, extras?: RequestExtras) {
   return {
     id: row.id,
     message: row.message,
@@ -898,11 +1491,13 @@ function toMyRequest(row: RequestRow) {
       department: row.alumni_department ?? null,
       batchYear: row.alumni_batch_year ?? null,
       role: row.alumni_role ?? null,
+      availability: row.alumni_availability ?? [],
     },
+    ...toLifecycle(row, extras),
   }
 }
 
-function toIncomingRequest(row: RequestRow) {
+function toIncomingRequest(row: RequestRow, extras?: RequestExtras) {
   return {
     id: row.id,
     message: row.message,
@@ -920,6 +1515,7 @@ function toIncomingRequest(row: RequestRow) {
       batchYear: row.student_batch_year ?? null,
       role: row.student_role ?? null,
     },
+    ...toLifecycle(row, extras),
   }
 }
 
@@ -934,6 +1530,7 @@ function toSession(row: SessionRow) {
     durationMinutes: row.duration_minutes,
     topic: row.topic,
     notes: row.notes,
+    pointsAwarded: row.points_awarded ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

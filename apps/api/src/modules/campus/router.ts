@@ -7,16 +7,23 @@ import {
   createLostFound,
   createShuttleLocation,
   createShuttleRoute,
+  deleteLostFound,
   deleteShuttleRoute,
   enrollCourse,
   getLostFound,
+  getLostFoundStats,
   listCourses,
   listLostFound,
   listMyCourses,
+  listSavedLostFound,
+  pinLostFound,
   listShuttleLocations,
   listShuttleRoutes,
   resolveLostFound,
+  saveLostFound,
+  unsaveLostFound,
   updateCourse,
+  updateLostFoundDesk,
   updateLostFound,
   updateShuttleRoute,
 } from './controller'
@@ -25,7 +32,10 @@ import {
   CourseSchema,
   CreateLostFoundSchema,
   EnrollCourseSchema,
+  LostFoundDeskSchema,
   LostFoundListQuerySchema,
+  LostFoundPinSchema,
+  LostFoundResolveSchema,
   ShuttleLocationSchema,
   ShuttleRouteSchema,
   UpdateLostFoundSchema,
@@ -35,11 +45,21 @@ export const campusRouter = Router()
 
 campusRouter.use(requireAuth, resolveUniversity)
 
+const LOST_FOUND_MEMBERS = requireRole('student', 'alumni', 'faculty', 'admin')
+
 campusRouter.get('/lost-found', validateRequest({ query: LostFoundListQuerySchema }), listLostFound)
-campusRouter.post('/lost-found', validate(CreateLostFoundSchema), createLostFound)
+campusRouter.post('/lost-found', LOST_FOUND_MEMBERS, validate(CreateLostFoundSchema), createLostFound)
+// Static paths are declared before `/lost-found/:itemId`, or the param route would swallow them.
+campusRouter.get('/lost-found/saved', validateRequest({ query: LostFoundListQuerySchema }), listSavedLostFound)
+campusRouter.get('/lost-found/stats', getLostFoundStats)
+campusRouter.put('/lost-found/desk', requireRole('admin'), validate(LostFoundDeskSchema), updateLostFoundDesk)
 campusRouter.get('/lost-found/:itemId', getLostFound)
-campusRouter.patch('/lost-found/:itemId', requireRole('student', 'alumni', 'faculty', 'admin'), validate(UpdateLostFoundSchema), updateLostFound)
-campusRouter.patch('/lost-found/:itemId/resolve', requireRole('student', 'alumni', 'faculty', 'admin'), resolveLostFound)
+campusRouter.patch('/lost-found/:itemId', LOST_FOUND_MEMBERS, validate(UpdateLostFoundSchema), updateLostFound)
+campusRouter.delete('/lost-found/:itemId', LOST_FOUND_MEMBERS, deleteLostFound)
+campusRouter.patch('/lost-found/:itemId/resolve', LOST_FOUND_MEMBERS, validate(LostFoundResolveSchema), resolveLostFound)
+campusRouter.patch('/lost-found/:itemId/pin', requireRole('admin'), validate(LostFoundPinSchema), pinLostFound)
+campusRouter.post('/lost-found/:itemId/save', LOST_FOUND_MEMBERS, saveLostFound)
+campusRouter.delete('/lost-found/:itemId/save', LOST_FOUND_MEMBERS, unsaveLostFound)
 
 campusRouter.get('/shuttle/routes', listShuttleRoutes)
 campusRouter.post('/shuttle/routes', requireRole('faculty', 'admin'), validate(ShuttleRouteSchema), createShuttleRoute)

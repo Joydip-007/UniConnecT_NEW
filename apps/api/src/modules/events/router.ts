@@ -9,8 +9,10 @@ import {
   getEvent,
   getEventIcal,
   listAttendees,
+  listEventDates,
   listEvents,
   listMyEvents,
+  listTopOrganisers,
   publishEvent,
   rsvpEvent,
   updateEvent,
@@ -18,8 +20,9 @@ import {
 import {
   AttendeesQuerySchema,
   CreateEventSchema,
+  EventDatesQuerySchema,
   EventListQuerySchema,
-  PaginationQuerySchema,
+  MyEventsQuerySchema,
   RsvpSchema,
   UpdateEventSchema,
 } from './schema'
@@ -30,7 +33,10 @@ eventsRouter.use(requireAuth, resolveUniversity)
 
 eventsRouter.get('/', validateRequest({ query: EventListQuerySchema }), listEvents)
 eventsRouter.post('/', requireRole('faculty', 'admin'), validate(CreateEventSchema), createEvent)
-eventsRouter.get('/my', validateRequest({ query: PaginationQuerySchema }), listMyEvents)
+// Declared before `/:eventId`, or the param route would swallow them.
+eventsRouter.get('/my', validateRequest({ query: MyEventsQuerySchema }), listMyEvents)
+eventsRouter.get('/dates', validateRequest({ query: EventDatesQuerySchema }), listEventDates)
+eventsRouter.get('/organisers', listTopOrganisers)
 eventsRouter.get('/:eventId', getEvent)
 eventsRouter.patch('/:eventId', requireRole('faculty', 'admin'), validate(UpdateEventSchema), updateEvent)
 eventsRouter.delete('/:eventId', requireRole('faculty', 'admin'), deleteEvent)

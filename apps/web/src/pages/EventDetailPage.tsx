@@ -29,7 +29,7 @@ import { useBackLink } from '@/hooks/useBackLink'
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type EventKind = 'general' | 'career_fair' | 'seminar' | 'workshop' | 'alumni_meetup' | 'club'
-type RsvpStatus = 'going' | 'maybe' | 'not_going' | null
+type RsvpStatus = 'going' | 'maybe' | 'not_going' | 'waitlisted' | null
 
 interface EventDetail {
   id: string
@@ -47,6 +47,8 @@ interface EventDetail {
   organizer: { id: string; fullName: string; avatarUrl: string | null; role?: UserRole }
   rsvpCounts: { going: number; maybe: number; not_going: number }
   myRsvp: RsvpStatus
+  waitlistCount?: number
+  waitlistPosition?: number | null
   attachments?: ContentAttachment[]
 }
 
@@ -388,12 +390,12 @@ export default function EventDetailPage() {
     },
 
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['events', 'detail', id] })
-      queryClient.invalidateQueries({ queryKey: ['events', 'attendees', id] })
+      // Every events cache: lists, the rail, and this page's detail + attendees.
+      queryClient.invalidateQueries({ queryKey: ['events'] })
     },
   })
 
-  function handleRsvp(target: 'going' | 'maybe' | 'not_going') {
+  function handleRsvp(target: 'going' | 'maybe' | 'not_going' | 'waitlisted') {
     if (rsvpMutation.isPending) return
     rsvpMutation.mutate(localRsvp === target ? null : target)
   }
@@ -706,16 +708,33 @@ export default function EventDetailPage() {
             />
           </div>
           {full && (
-            <p
-              style={{
-                margin: 0,
-                fontSize: 12,
-                fontWeight: 400,
-                color: 'var(--text-tertiary)',
-              }}
-            >
-              This event has reached capacity.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                {rsvp === 'waitlisted'
+                  ? event.waitlistPosition
+                    ? `You're #${event.waitlistPosition} on the waitlist. We'll let you know if a seat opens up.`
+                    : "You're on the waitlist. We'll let you know if a seat opens up."
+                  : 'This event is full. Join the waitlist and take the next seat that opens.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => handleRsvp('waitlisted')}
+                disabled={rsvpMutation.isPending}
+                style={{
+                  flexShrink: 0,
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontFamily: 'inherit',
+                  borderRadius: 'var(--r-pill)',
+                  border: '0.5px solid var(--border-hover)',
+                  background: rsvp === 'waitlisted' ? 'var(--surface-raised)' : 'transparent',
+                  color: 'var(--text-primary)',
+                  cursor: rsvpMutation.isPending ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {rsvp === 'waitlisted' ? 'Leave waitlist' : 'Join waitlist'}
+              </button>
+            </div>
           )}
         </div>
       )}

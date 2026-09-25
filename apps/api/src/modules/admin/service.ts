@@ -76,7 +76,7 @@ interface ReportGroupRow {
   last_reported_at: Date
 }
 
-const REMOVABLE_TARGET_TABLES: Record<string, string> = { post: 'posts', job: 'jobs', event: 'events' }
+const REMOVABLE_TARGET_TABLES: Record<string, string> = { post: 'posts', job: 'jobs', event: 'events', lost_found: 'lost_and_found' }
 
 interface FeedbackEntry {
   id: string
@@ -1446,8 +1446,9 @@ async function hydrateTargets(targets: { targetId: string; targetType: string }[
   const groupIds = idsOf('group')
   const userIds = idsOf('user')
   const messageIds = idsOf('message')
+  const lostFoundIds = idsOf('lost_found')
 
-  const [posts, comments, jobs, events, groups, users, messages] = await Promise.all([
+  const [posts, comments, jobs, events, groups, users, messages, lostFound] = await Promise.all([
     postIds.length
       ? db('posts as p')
           .leftJoin('groups as g', 'g.id', 'p.group_id')
@@ -1466,6 +1467,9 @@ async function hydrateTargets(targets: { targetId: string; targetType: string }[
     userIds.length ? db('profiles').whereIn('user_id', userIds).select<{ user_id: string; full_name: string }[]>('user_id', 'full_name') : [],
     messageIds.length
       ? db('messages').whereIn('id', messageIds).select<{ id: string; content: string | null; conversation_id: string }[]>('id', 'content', 'conversation_id')
+      : [],
+    lostFoundIds.length
+      ? db('lost_and_found').whereIn('id', lostFoundIds).select<{ id: string; item_name: string; type: string }[]>('id', 'item_name', 'type')
       : [],
   ])
 
@@ -1493,6 +1497,12 @@ async function hydrateTargets(targets: { targetId: string; targetType: string }[
     map.set(`message:${m.id}`, {
       title: m.content ? truncate(m.content, 60) : 'Media message',
       location: { label: 'Message in a conversation', path: `/messages/${m.conversation_id}` },
+    }),
+  )
+  lostFound.forEach((item) =>
+    map.set(`lost_found:${item.id}`, {
+      title: item.item_name,
+      location: { label: item.type === 'lost' ? 'Lost item report' : 'Found item report', path: `/lost-found?type=${item.type}` },
     }),
   )
   return map

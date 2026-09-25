@@ -1,30 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { Briefcase, Plus, Search } from 'lucide-react'
-import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
-import { OrangeBtn } from '@/components/Button'
-import { JobCard, type Job } from '@/features/jobs/components/JobCard'
+import { usePageRails } from '@/stores/pageRailStore'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { JobCard } from '@/features/jobs/components/JobCard'
 import { MyPostingsPanel } from '@/features/jobs/components/MyPostingsPanel'
 import { PostJobForm } from '@/features/jobs/components/PostJobForm'
+import { JobsRightRail } from '@/features/jobs/components/JobsRightRail'
+import { jobsListQuery } from '@/features/jobs/hooks/useJobs'
+import type { JobType } from '@/features/jobs/jobMeta'
 import { SkeletonJobCard } from '@/components/skeletons/SkeletonJobCard'
 import { EmptyState } from '@/components/EmptyState'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type JobType = 'all' | 'full_time' | 'part_time' | 'internship' | 'remote' | 'contract'
-
-interface JobsPage {
-  items: Job[]
-  total: number
-  page: number
-  hasMore: boolean
-}
-
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TABS: { label: string; value: JobType }[] = [
+type TypeFilter = 'all' | JobType
+
+const TABS: { label: string; value: TypeFilter }[] = [
   { label: 'All', value: 'all' },
   { label: 'Full-time', value: 'full_time' },
   { label: 'Internship', value: 'internship' },
@@ -50,9 +44,9 @@ function defaultView(role: string | undefined): JobsView {
 
 export default function JobsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const rawType = searchParams.get('type') as JobType | null
-  const activeType: JobType =
-    rawType !== null && TABS.some((t) => t.value === rawType) ? rawType : 'all'
+  const rawType = searchParams.get('type')
+  const activeType: TypeFilter = TABS.find((t) => t.value === rawType)?.value ?? 'all'
+  const isMobile = useMediaQuery('(max-width: 767px)')
 
   const [searchInput, setSearchInput] = useState(searchParams.get('q') ?? '')
   const [debouncedSearch, setDebouncedSearch] = useState(searchInput)
@@ -62,12 +56,17 @@ export default function JobsPage() {
   const canPostJob = role === 'alumni' || role === 'faculty' || role === 'admin'
   const [postFormOpen, setPostFormOpen] = useState(false)
 
+  // The design's right rail is page-scoped: closing-soon for everyone, and the
+  // student's own applications — not the role manifest's discovery widgets.
+  const rightRail = useMemo(() => <JobsRightRail />, [])
+  usePageRails(null, rightRail)
+
   const rawView = searchParams.get('view')
   const view: JobsView = !canPostJob
     ? 'browse'
     : rawView === 'mine' || rawView === 'browse'
-    ? rawView
-    : defaultView(role)
+      ? rawView
+      : defaultView(role)
 
   function setView(next: JobsView) {
     const params = new URLSearchParams(searchParams)
@@ -77,43 +76,24 @@ export default function JobsPage() {
     setSearchParams(params, { replace: true })
   }
 
-  // Debounce search input 400ms
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchInput), 400)
+    const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400)
     return () => clearTimeout(t)
   }, [searchInput])
 
-  const queryKey = ['jobs', 'list', { type: activeType, search: debouncedSearch }]
+  const listQuery = jobsListQuery(activeType, debouncedSearch)
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery({
+    ...listQuery,
+    // An alumnus landing on "My postings" should not also pay for the browse feed.
+    enabled: view === 'browse',
+  })
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useInfiniteQuery<JobsPage>({
-      queryKey,
-      queryFn: ({ pageParam }) =>
-        api
-          .get<{ data: JobsPage }>('/jobs', {
-            params: {
-              page: pageParam,
-              isActive: true,
-              ...(activeType !== 'all' && { type: activeType }),
-              ...(debouncedSearch && { search: debouncedSearch }),
-            },
-          })
-          .then((r) => r.data.data),
-      initialPageParam: 1,
-      getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
-      // An alumnus landing on "My postings" should not also pay for the browse feed.
-      enabled: view === 'browse',
-    })
-
-  // Infinite scroll sentinel
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage()
-        }
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage()
       },
       { threshold: 0.1 },
     )
@@ -124,232 +104,226 @@ export default function JobsPage() {
   const jobs = data?.pages.flatMap((p) => p.items) ?? []
   const allCaughtUp = !isLoading && !hasNextPage && jobs.length > 0
 
-  function setType(value: JobType) {
+  function setType(value: TypeFilter) {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
-        if (value === 'all') {
-          next.delete('type')
-        } else {
-          next.set('type', value)
-        }
+        if (value === 'all') next.delete('type')
+        else next.set('type', value)
         return next
       },
       { replace: true },
     )
   }
 
+  const tabBtn = (active: boolean): React.CSSProperties => ({
+    padding: isMobile ? '0 14px' : '7px 12px',
+    minHeight: isMobile ? 36 : undefined,
+    fontSize: 13,
+    fontWeight: active ? 500 : 400,
+    borderRadius: 'var(--r-pill)',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+    color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+    transition: 'background 150ms, color 150ms',
+  })
+
+  const typeTabs = isMobile ? (
+    <div className="rail-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+      {TABS.map(({ label, value }) => {
+        const active = activeType === value
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setType(value)}
+            aria-pressed={active}
+            style={{ ...tabBtn(active), flexShrink: 0, border: '0.5px solid var(--border-default)', background: active ? 'var(--uc-indigo-bg)' : 'var(--surface-card)' }}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  ) : (
+    <nav
+      aria-label="Job types"
+      style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '4px 8px', display: 'flex', gap: 2, overflowX: 'auto' }}
+    >
+      {TABS.map(({ label, value }) => {
+        const active = activeType === value
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setType(value)}
+            aria-pressed={active}
+            style={{ ...tabBtn(active), flex: '1 0 auto', border: 'none', background: active ? 'var(--uc-indigo-bg)' : 'transparent' }}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </nav>
+  )
+
+  const searchBox = (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <Search size={15} strokeWidth={1.5} color="var(--text-tertiary)" style={{ position: 'absolute', left: 14, pointerEvents: 'none' }} />
+      <input
+        type="search"
+        aria-label="Search jobs"
+        placeholder="Search jobs, companies, skills…"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        className="jobs-search"
+        style={{
+          width: '100%',
+          padding: isMobile ? '11px 14px 11px 38px' : '10px 14px 10px 38px',
+          fontSize: 13,
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          color: 'var(--text-primary)',
+          outline: 'none',
+          boxSizing: 'border-box',
+          fontFamily: 'inherit',
+        }}
+      />
+    </div>
+  )
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* View switcher — only for roles the API lets post a job */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12 }}>
+      {isMobile && <h1 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: 'var(--text-primary)' }}>Jobs</h1>}
+
+      {/* View switch + Post a job — only for roles the API lets post */}
       {canPostJob && (
-        <nav
-          aria-label="Jobs views"
-          style={{
-            display: 'flex',
-            gap: 2,
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-            padding: '4px 6px',
-          }}
-        >
-          {([
-            { key: 'mine', label: 'My postings' },
-            { key: 'browse', label: 'Browse' },
-          ] as const).map(({ key, label }) => {
-            const active = view === key
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setView(key)}
-                aria-current={active ? 'page' : undefined}
-                style={{
-                  padding: '7px 14px',
-                  fontSize: 13,
-                  fontWeight: active ? 500 : 400,
-                  borderRadius: 'var(--r-pill)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                  color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                  transition: 'background 150ms, color 150ms',
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </nav>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: isMobile ? 8 : 10 }}>
+          <nav
+            aria-label="Jobs views"
+            style={{ flex: 1, minWidth: 0, display: 'flex', gap: 2, background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '4px 6px' }}
+          >
+            {([
+              { key: 'browse', label: 'Browse' },
+              { key: 'mine', label: 'My postings' },
+            ] as const).map(({ key, label }) => {
+              const active = view === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setView(key)}
+                  aria-current={active ? 'page' : undefined}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '0 14px' : '7px 14px',
+                    minHeight: isMobile ? 40 : undefined,
+                    fontSize: 13,
+                    fontWeight: active ? 500 : 400,
+                    borderRadius: 'var(--r-pill)',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                    background: active ? 'var(--uc-indigo-bg)' : 'transparent',
+                    color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
+                    transition: 'background 150ms, color 150ms',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </nav>
+          <button
+            type="button"
+            onClick={() => setPostFormOpen(true)}
+            aria-label="Post a job"
+            title="Post a job"
+            className="press-feedback"
+            style={{
+              flexShrink: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              border: 'none',
+              borderRadius: 'var(--r-pill)',
+              background: 'var(--uc-mint)',
+              color: 'var(--on-accent)',
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 500,
+              ...(isMobile ? { width: 50, minHeight: 50 } : { padding: '0 18px', minHeight: 44 }),
+            }}
+          >
+            <Plus size={isMobile ? 20 : 15} strokeWidth={2} />
+            {!isMobile && 'Post a job'}
+          </button>
+        </div>
       )}
 
       {view === 'mine' && <MyPostingsPanel />}
 
       {view === 'browse' && (
         <>
-      {/* Type filter tabs */}
-      <nav
-        style={{
-          background: 'var(--surface-card)',
-          border: '0.5px solid var(--border-default)',
-          borderRadius: 'var(--r-lg)',
-          padding: '4px 8px',
-          display: 'flex',
-          gap: 2,
-          overflowX: 'auto',
-        }}
-      >
-        {TABS.map(({ label, value }) => {
-          const active = activeType === value
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setType(value)}
-              style={{
-                flex: '1 0 auto',
-                padding: '7px 12px',
-                fontSize: 13,
-                fontWeight: active ? 500 : 400,
-                borderRadius: 'var(--r-pill)',
-                border: 'none',
-                cursor: 'pointer',
-                background: active ? 'var(--uc-indigo-bg)' : 'transparent',
-                color: active ? 'var(--uc-indigo-xl)' : 'var(--text-secondary)',
-                transition: 'background 150ms, color 150ms',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </nav>
+          {isMobile ? (
+            <>
+              {searchBox}
+              {typeTabs}
+            </>
+          ) : (
+            <>
+              {typeTabs}
+              {searchBox}
+            </>
+          )}
 
-      {/* Search input */}
-      <div
-        style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-        }}
-      >
-        <Search
-          size={15}
-          strokeWidth={1.5}
-          color="var(--text-tertiary)"
-          style={{ position: 'absolute', left: 14, pointerEvents: 'none', flexShrink: 0 }}
-        />
-        <input
-          type="search"
-          placeholder="Search jobs, companies, skills…"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '10px 14px 10px 38px',
-            fontSize: 13,
-            fontWeight: 400,
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-            color: 'var(--text-primary)',
-            outline: 'none',
-            transition: 'border-color 150ms',
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'var(--uc-indigo-bdr)'
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = 'var(--border-default)'
-          }}
-        />
-      </div>
+          {isLoading && (
+            <>
+              <SkeletonJobCard />
+              <SkeletonJobCard />
+              <SkeletonJobCard />
+            </>
+          )}
 
-      {/* Skeleton loading */}
-      {isLoading && (
-        <>
-          <SkeletonJobCard />
-          <SkeletonJobCard />
-          <SkeletonJobCard />
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} queryKey={listQuery.queryKey} />
+          ))}
+
+          {!isLoading && jobs.length === 0 && (
+            <EmptyState
+              icon={Briefcase}
+              title="No jobs found"
+              description={debouncedSearch ? 'Try a different keyword or clear the search.' : 'Check back soon for new opportunities.'}
+            />
+          )}
+
+          {isFetchingNextPage && (
+            <>
+              <SkeletonJobCard />
+              <SkeletonJobCard />
+            </>
+          )}
+
+          <div ref={sentinelRef} style={{ height: 1 }} />
+
+          {allCaughtUp && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0 16px' }}>
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'} shown
+              </span>
+              <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
+            </div>
+          )}
         </>
       )}
 
-      {/* Job list */}
-      {jobs.map((job) => (
-        <JobCard key={job.id} job={job} queryKey={queryKey} />
-      ))}
-
-      {/* Empty state */}
-      {!isLoading && jobs.length === 0 && (
-        <EmptyState
-          icon={Briefcase}
-          title="No jobs found"
-          description={
-            debouncedSearch
-              ? 'Try a different keyword or clear the search.'
-              : 'Check back soon for new opportunities.'
-          }
-        />
-      )}
-
-      {/* Loading next page */}
-      {isFetchingNextPage && (
-        <>
-          <SkeletonJobCard />
-          <SkeletonJobCard />
-        </>
-      )}
-
-      {/* Intersection sentinel */}
-      <div ref={sentinelRef} style={{ height: 1 }} />
-
-      {/* All caught up */}
-      {allCaughtUp && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '4px 0 16px',
-          }}
-        >
-          <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 400,
-              color: 'var(--text-tertiary)',
-              flexShrink: 0,
-            }}
-          >
-            {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'} shown
-          </span>
-          <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
-        </div>
-      )}
-        </>
-      )}
-
-      {/* Floating post a job button — alumni / staff / admin only */}
-      {canPostJob && (
-        <OrangeBtn
-          onClick={() => setPostFormOpen(true)}
-          style={{
-            position: 'fixed',
-            bottom: 28,
-            right: 28,
-            zIndex: 50,
-          }}
-        >
-          <Plus size={15} strokeWidth={2} />
-          Post a job
-        </OrangeBtn>
-      )}
-
-      {postFormOpen && <PostJobForm onClose={() => setPostFormOpen(false)} />}
+      {postFormOpen && <PostJobForm onClose={() => setPostFormOpen(false)} onPosted={() => setView('mine')} />}
     </div>
   )
 }

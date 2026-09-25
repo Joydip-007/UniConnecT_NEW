@@ -1,6 +1,6 @@
 import { useRef, useState, KeyboardEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Camera, X } from 'lucide-react'
+import { Camera, FileText, X } from 'lucide-react'
 import type { User, UserProfile } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
@@ -259,11 +259,34 @@ export function EditProfileModal({ onClose }: Props) {
   const [githubUrl, setGithubUrl] = useState(p?.githubUrl ?? '')
   const [portfolioUrl, setPortfolioUrl] = useState(p?.portfolioUrl ?? '')
   const [isOpenToMsg, setIsOpenToMsg] = useState(p?.isOpenToMsg ?? false)
+  const [cgpa, setCgpa] = useState(p?.cgpa != null ? p.cgpa.toFixed(2) : '')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(p?.avatarUrl ?? null)
   const [coverPreview, setCoverPreview] = useState<string | null>(p?.coverUrl ?? null)
 
   const avatarUpload = usePresignedUpload('profiles')
   const coverUpload = usePresignedUpload('profiles')
+  const resumeUpload = usePresignedUpload('resumes')
+  const resumeInputRef = useRef<HTMLInputElement>(null)
+
+  // Resume is saved on pick, like the avatar — the jobs apply flow reads it from here.
+  async function onResumeFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || file.size > 5 * 1024 * 1024) return
+    try {
+      const publicUrl = await resumeUpload.upload(file)
+      await api.patch('/users/me', { resumeUrl: publicUrl, resumeName: file.name })
+      updateProfile({ resumeUrl: publicUrl, resumeName: file.name, resumeUpdatedAt: new Date().toISOString() })
+    } catch { /* error state set by hook */ }
+  }
+
+  async function removeResume() {
+    await api.patch('/users/me', { resumeUrl: null })
+    updateProfile({ resumeUrl: null, resumeName: null, resumeUpdatedAt: null })
+  }
+
+  const cgpaNum = cgpa.trim() === '' ? null : Number(cgpa)
+  const cgpaInvalid = cgpaNum !== null && (Number.isNaN(cgpaNum) || cgpaNum < 0 || cgpaNum > 4)
 
   // Derived state to match original template references
   const uploading: UploadSlot | null = avatarUpload.uploading ? 'avatar' : coverUpload.uploading ? 'cover' : null
@@ -319,6 +342,7 @@ export function EditProfileModal({ onClose }: Props) {
           githubUrl: githubUrl.trim() || null,
           portfolioUrl: portfolioUrl.trim() || null,
           isOpenToMsg,
+          cgpa: cgpaInvalid ? undefined : cgpaNum,
         })
         .then((r) => r.data.data),
     onSuccess: (updated) => {
@@ -334,7 +358,7 @@ export function EditProfileModal({ onClose }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!fullName.trim()) return
+    if (!fullName.trim() || cgpaInvalid) return
     saveMutation.mutate()
   }
 
@@ -579,6 +603,41 @@ export function EditProfileModal({ onClose }: Props) {
                 />
               </FieldRow>
             </div>
+
+            <FieldRow label="CGPA" optional>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={4}
+                step={0.01}
+                value={cgpa}
+                onChange={(e) => setCgpa(e.target.value)}
+                placeholder="e.g. 3.42 · only you see this"
+                aria-invalid={cgpaInvalid}
+                style={{ ...inputBase, ...(cgpaInvalid ? { borderColor: 'var(--uc-red-bdr)' } : {}) }}
+                onFocus={onFocus}
+                onBlur={onBlur}
+              />
+            </FieldRow>
+
+            <FieldRow label="Resume" optional>
+              <input ref={resumeInputRef} type="file" accept=".pdf,.doc,.docx" onChange={onResumeFileChange} aria-label="Upload resume" style={{ display: 'none' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--r-md)', background: 'var(--surface-raised)', border: '0.5px solid var(--border-default)' }}>
+                <FileText size={15} color="var(--uc-indigo-l)" style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: p?.resumeUrl ? 'var(--text-primary)' : 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {resumeUpload.uploading ? 'Uploading…' : p?.resumeUrl ? (p.resumeName ?? 'Resume') : 'Used when you apply to jobs · only you see this'}
+                </span>
+                {p?.resumeUrl && !resumeUpload.uploading && (
+                  <button type="button" onClick={removeResume} style={{ fontSize: 12, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Remove
+                  </button>
+                )}
+                <GhostBtn type="button" onClick={() => resumeInputRef.current?.click()} disabled={resumeUpload.uploading} style={{ fontSize: 12, padding: '5px 12px' }}>
+                  {p?.resumeUrl ? 'Replace' : 'Upload'}
+                </GhostBtn>
+              </div>
+            </FieldRow>
 
             <FieldRow label="LinkedIn URL" optional>
               <input

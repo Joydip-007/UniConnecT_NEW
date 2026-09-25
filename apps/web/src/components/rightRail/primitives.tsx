@@ -81,3 +81,47 @@ export function SkeletonLine({
 export function WidgetShell({ children }: { children: React.ReactNode }) {
   return <motion.div variants={listItem}>{children}</motion.div>
 }
+
+/**
+ * A standalone rail card for page-scoped rails (`usePageRails`): every card carries its
+ * own surface and an eyebrow title, unlike the manifest widgets whose chrome is
+ * positional. Used by the news and lost & found rails.
+ */
+export function PageRailCard({
+  title,
+  action,
+  gap = 12,
+  children,
+}: {
+  title?: string
+  action?: React.ReactNode
+  gap?: number
+  children: React.ReactNode
+}) {
+  return (
+    <section
+      style={{
+        background: 'var(--surface-card)',
+        border: '0.5px solid var(--border-default)',
+        borderRadius: 'var(--r-lg)',
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap,
+        flexShrink: 0,
+      }}
+    >
+      {(title || action) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          {title && (
+            <h2 style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--text-label)' }}>
+              {title}
+            </h2>
+          )}
+          {action}
+        </div>
+      )}
+      {children}
+    </section>
+  )
+}

@@ -2,6 +2,7 @@ import type { Knex } from 'knex'
 import type { UserRole } from '@uniconnect/shared'
 import { db } from '../../config/db'
 import { getIo } from '../../socket'
+import { evaluateJobEligibility } from '@uniconnect/shared'
 import { badRequest, conflict, forbidden, notFound } from '../../utils/errors'
 import { logger } from '../../utils/logger'
 import { addUserAttachments, getAttachmentsFor, removeAttachments } from '../content-sync/attachments'
@@ -15,7 +16,14 @@ import type {
 } from './schema'
 
 type JobType = 'full_time' | 'part_time' | 'internship' | 'remote' | 'contract'
-type ApplicationStatus = 'pending' | 'reviewed' | 'shortlisted' | 'interviewed' | 'offered' | 'rejected'
+type ApplicationStatus =
+  | 'pending'
+  | 'reviewed'
+  | 'shortlisted'
+  | 'interviewed'
+  | 'offered'
+  | 'rejected'
+  | 'withdrawn'
 
 interface AuthContext {
   userId: string
@@ -44,6 +52,10 @@ interface JobRow {
   is_published: boolean
   view_count: number
   created_at: Date
+  eligible_departments: string[] | null
+  eligible_batches: string[] | null
+  min_cgpa: string | number | null
+  publish_at: Date | null
   poster_full_name: string
   poster_avatar_url: string | null
   poster_headline: string | null
@@ -112,6 +124,7 @@ export class JobsService {
       .andWhere('jobs.is_active', true)
       .andWhere('jobs.is_published', true)
       .andWhere('jobs.deadline', '>=', db.fn.now())
+      .modify(isLive)
       .modify((builder) => applyJobFilters(builder, query))
       .orderBy('jobs.deadline', 'asc')
       .orderBy('jobs.created_at', 'desc')
@@ -137,6 +150,10 @@ export class JobsService {
           application_url: input.application_url ?? null,
           deadline: new Date(input.deadline),
           is_published: input.is_published ?? true,
+          eligible_departments: input.eligible_departments ?? null,
+          eligible_batches: input.eligible_batches ?? null,
+          min_cgpa: input.min_cgpa ?? null,
+          publish_at: input.publish_at ? new Date(input.publish_at) : null,
         })
         .returning<{ id: string }[]>('id')
 
@@ -153,8 +170,8 @@ export class JobsService {
     })
 
     const job = await this.getJob(context.universityId, context.userId, jobId, { incrementView: false })
-    // Drafts are not broadcast — only published jobs reach the board.
-    if (job.isPublished) getIo().to(`uni:${context.universityId}`).emit('job:created', job)
+    // Drafts and scheduled posts are not broadcast — only live jobs reach the board.
+    if (job.isPublished && !job.isScheduled) getIo().to(`uni:${context.universityId}`).emit('job:created', job)
     return job
   }
 
@@ -171,6 +188,8 @@ export class JobsService {
     if (!row || !row.is_active) throw notFound('Job not found', 'JOB_NOT_FOUND')
     // A draft job is visible only to the user who posted it.
     if (!row.is_published && row.posted_by !== userId) throw notFound('Job not found', 'JOB_NOT_FOUND')
+    // So is a scheduled one, until its publish time.
+    if (isScheduledRow(row) && row.posted_by !== userId) throw notFound('Job not found', 'JOB_NOT_FOUND')
 
     if (options.incrementView !== false) {
       void db('jobs')
@@ -203,6 +222,10 @@ export class JobsService {
             deadline: input.deadline ? new Date(input.deadline) : undefined,
             is_active: input.is_active,
             is_published: input.is_published,
+            eligible_departments: input.eligible_departments,
+            eligible_batches: input.eligible_batches,
+            min_cgpa: input.min_cgpa,
+            publish_at: input.publish_at === undefined ? undefined : input.publish_at ? new Date(input.publish_at) : null,
           }),
         })
 
@@ -237,6 +260,39 @@ export class JobsService {
 
   async applyToJob(context: AuthContext, jobId: string, input: ApplyJobInput) {
     const job = await assertJobInUniversity(jobId, context.universityId)
+    const rules = await db('jobs')
+      .select<Pick<JobRow, 'requirements' | 'eligible_departments' | 'eligible_batches' | 'min_cgpa' | 'publish_at' | 'is_published' | 'posted_by'>[]>(
+        'requirements',
+        'eligible_departments',
+        'eligible_batches',
+        'min_cgpa',
+        'publish_at',
+        'is_published',
+        'posted_by',
+      )
+      .where({ id: job.id })
+      .first()
+    if (!rules || !rules.is_published || isScheduledRow(rules)) throw notFound('Job not found', 'JOB_NOT_FOUND')
+
+    // "Who can apply" binds students — the audience the rules are written for.
+    if (context.role === 'student') {
+      const me = await db('profiles')
+        .select<{ department: string | null; batch_year: string | null; cgpa: string | number | null; skills: string[] | null }[]>(
+          'department',
+          'batch_year',
+          'cgpa',
+          'skills',
+        )
+        .where({ user_id: context.userId })
+        .first()
+      const verdict = evaluateJobEligibility(toEligibilityRules(rules), {
+        department: me?.department ?? null,
+        batchYear: me?.batch_year ?? null,
+        cgpa: me?.cgpa === null || me?.cgpa === undefined ? null : Number(me.cgpa),
+        skills: me?.skills ?? [],
+      })
+      if (!verdict.eligible) throw forbidden(verdict.failures.join(' · '), 'NOT_ELIGIBLE')
+    }
 
     let applicationId: string
     try {
@@ -268,6 +324,33 @@ export class JobsService {
     return toApplication(application)
   }
 
+  /**
+   * The applicant closes their own application. The row stays as `withdrawn` so the
+   * unique (job_id, applicant_id) index keeps blocking a re-apply.
+   */
+  async withdrawApplication(context: AuthContext, jobId: string) {
+    const job = await assertJobInUniversity(jobId, context.universityId, { includeInactive: true })
+
+    const existing = await db('job_applications')
+      .select<{ id: string; status: ApplicationStatus }[]>('id', 'status')
+      .where({ job_id: jobId, applicant_id: context.userId })
+      .first()
+    if (!existing) throw notFound('Application not found', 'APPLICATION_NOT_FOUND')
+    if (existing.status === 'withdrawn') throw conflict('Application already withdrawn', 'ALREADY_WITHDRAWN')
+
+    await db('job_applications')
+      .where({ id: existing.id })
+      .update({ status: 'withdrawn', updated_at: db.fn.now() })
+
+    const application = await getApplicationById(existing.id)
+    if (!application) throw notFound('Application not found', 'APPLICATION_NOT_FOUND')
+
+    getIo()
+      .to(`user:${job.posted_by}`)
+      .emit('job:application_withdrawn', { jobId: job.id, applicantId: context.userId })
+    return toApplication(application)
+  }
+
   async listJobApplications(context: AuthContext, jobId: string, query: PaginationQuery) {
     const job = await assertJobInUniversity(jobId, context.universityId, { includeInactive: true })
     assertCanMutateJob(context, job.posted_by)
@@ -292,6 +375,15 @@ export class JobsService {
   async updateApplication(context: AuthContext, jobId: string, appId: string, input: UpdateApplicationInput) {
     const job = await assertJobInUniversity(jobId, context.universityId, { includeInactive: true })
     assertCanMutateJob(context, job.posted_by)
+
+    const current = await db('job_applications')
+      .select<{ status: ApplicationStatus }[]>('status')
+      .where({ id: appId, job_id: jobId })
+      .first()
+    if (!current) throw notFound('Application not found', 'APPLICATION_NOT_FOUND')
+    if (current.status === 'withdrawn' && input.status !== undefined) {
+      throw conflict('The applicant withdrew this application', 'APPLICATION_WITHDRAWN')
+    }
 
     const updated = await db('job_applications')
       .where({ id: appId, job_id: jobId })
@@ -419,6 +511,25 @@ function activeJobsBaseQuery(knex: Knex, universityId: string) {
     .andWhere('jobs.is_active', true)
     .andWhere('jobs.is_published', true)
     .andWhere('jobs.deadline', '>=', knex.fn.now())
+    .modify(isLive)
+}
+
+/** A scheduled job stays off the board until its `publish_at` passes. */
+function isLive(query: Knex.QueryBuilder) {
+  query.andWhere((b) => b.whereNull('jobs.publish_at').orWhere('jobs.publish_at', '<=', db.fn.now()))
+}
+
+function isScheduledRow(row: { publish_at: Date | null }) {
+  return !!row.publish_at && new Date(row.publish_at).getTime() > Date.now()
+}
+
+function toEligibilityRules(row: Pick<JobRow, 'requirements' | 'eligible_departments' | 'eligible_batches' | 'min_cgpa'>) {
+  return {
+    eligibleDepartments: row.eligible_departments,
+    eligibleBatches: row.eligible_batches,
+    minCgpa: row.min_cgpa === null ? null : Number(row.min_cgpa),
+    requirements: row.requirements ?? [],
+  }
 }
 
 function applyJobFilters(query: Knex.QueryBuilder, filters: Partial<JobListQuery>) {
@@ -455,6 +566,10 @@ function jobSelectQuery(knex: Knex, userId: string) {
       'jobs.is_published',
       'jobs.view_count',
       'jobs.created_at',
+      'jobs.eligible_departments',
+      'jobs.eligible_batches',
+      'jobs.min_cgpa',
+      'jobs.publish_at',
       'profiles.full_name as poster_full_name',
       'profiles.avatar_url as poster_avatar_url',
       'profiles.headline as poster_headline',
@@ -528,7 +643,6 @@ function toJob(row: JobRow) {
     location: row.location,
     type: row.type,
     description: row.description,
-    requirements: row.requirements ?? [],
     salaryRange: row.salary_range,
     applicationUrl: row.application_url,
     deadline: row.deadline,
@@ -536,6 +650,9 @@ function toJob(row: JobRow) {
     isPublished: row.is_published,
     viewCount: row.view_count,
     createdAt: row.created_at,
+    ...toEligibilityRules(row),
+    publishAt: row.publish_at,
+    isScheduled: isScheduledRow(row),
     postedByUser: {
       id: row.posted_by,
       fullName: row.poster_full_name,

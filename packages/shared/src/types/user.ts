@@ -23,6 +23,11 @@ export interface UserProfile {
   githubUrl: string | null
   portfolioUrl: string | null
   isOpenToMsg: boolean
+  /** Owner-only (null for other viewers) — read by the jobs apply flow. */
+  cgpa?: number | null
+  resumeUrl?: string | null
+  resumeName?: string | null
+  resumeUpdatedAt?: string | null
 }
 
 export interface User {

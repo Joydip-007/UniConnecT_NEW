@@ -64,7 +64,9 @@ export const router = createBrowserRouter([
           { path: PATHS.NOTIFICATIONS, element: page(() => import('@/pages/NotificationsPage')) },
 
           { path: PATHS.NEWS, element: page(() => import('@/pages/NewsPage')) },
+          { path: PATHS.NEWS_NEW, element: page(() => import('@/pages/NewsDraftPage')) },
           { path: PATHS.NEWS_DETAIL, element: page(() => import('@/pages/NewsDetailPage')) },
+          { path: PATHS.NEWS_EDIT, element: page(() => import('@/pages/NewsDraftPage')) },
 
           { path: PATHS.LOST_FOUND, element: page(() => import('@/pages/LostFoundPage')) },
 

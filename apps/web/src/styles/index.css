@@ -1353,3 +1353,99 @@ select:focus-visible {
 .explore-grid-item:hover {
   border-color: var(--border-hover) !important;
 }
+
+/* Lost & found card: the ⋯ trigger and its menu rows take a hover surface. */
+.lf-menu-trigger:hover {
+  background: var(--surface-raised) !important;
+  color: var(--text-primary) !important;
+}
+.lf-menu-item:hover {
+  background: var(--surface-hover) !important;
+}
+
+/* ── Events page (Events Page.dc.html) ─────────────────────────────────── */
+@keyframes eventsCalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.events-type-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+}
+.events-type-tab[aria-pressed='false']:hover { color: var(--text-primary) !important; }
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.event-card-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+}
+.event-card-faces { flex: 1; min-width: 0; overflow: hidden; }
+.event-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.event-card-btn { padding: 6px 14px; }
+.event-card-btn--square { width: 30px; height: 28px; padding: 0; }
+.event-card-btn--ghost:not(:disabled):hover,
+.event-card-btn--strong:not(:disabled):hover {
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+.events-date-pill:hover,
+.events-clear-date:hover {
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+.events-cal-nav:hover { background: var(--surface-hover) !important; color: var(--text-primary) !important; }
+.events-cal-day[aria-pressed='false']:hover { background: var(--surface-hover) !important; }
+.events-week-day[aria-pressed='false']:hover { background: var(--surface-hover) !important; }
+.events-rail-row:hover { background: var(--surface-hover); }
+
+@media (max-width: 767px) {
+  /* Type chips scroll sideways instead of squeezing six columns into 390px. */
+  .events-type-bar { padding: 0 !important; background: transparent !important; border: none !important; }
+  .events-type-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .events-type-tabs::-webkit-scrollbar { display: none; }
+  .events-type-tab { flex-shrink: 0; min-height: 36px; }
+  .events-type-tab[aria-pressed='false'] {
+    background: var(--surface-card) !important;
+    border: 0.5px solid var(--border-default) !important;
+  }
+
+  /* RSVP becomes a full-width row of 44px targets. */
+  .event-card-footer { flex-wrap: wrap; }
+  .event-card-faces { flex-basis: 100%; }
+  .event-card-actions { flex: 1 1 100%; }
+  .event-card-btn { flex: 1; min-height: 44px; font-size: 13px !important; }
+  .event-card-btn--square { flex: 0 0 44px; width: 44px; height: auto; }
+}
+
+/* Jobs — Withdraw reads neutral until hovered, then signals the destructive move. */
+.jobs-withdraw-btn:hover { color: var(--uc-red) !important; border-color: var(--uc-red-bdr) !important; }
+.jobs-search:focus { border-color: var(--uc-indigo-bdr) !important; }
+
+/* Mentorship (Mentorship Page.dc.html) — hover states the inline styles cannot express. */
+.mentorship-menu-item:hover:not(:disabled),
+.mentorship-row-btn:hover:not(:disabled) {
+  background: var(--surface-hover) !important;
+}
+.mentorship-mentor-card {
+  transition: border-color var(--dur-fast) var(--ease-out-strong);
+}
+.mentorship-mentor-card:hover {
+  border-color: var(--border-hover) !important;
+}
+.mentorship-decline-btn:hover:not(:disabled) {
+  color: var(--uc-red) !important;
+  border-color: var(--uc-red-bdr) !important;
+}

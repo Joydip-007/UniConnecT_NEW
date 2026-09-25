@@ -6,8 +6,9 @@ import { eventsService } from './service'
 import type {
   AttendeesQuery,
   CreateEventInput,
+  EventDatesQuery,
   EventListQuery,
-  PaginationQuery,
+  MyEventsQuery,
   RsvpInput,
   UpdateEventInput,
 } from './schema'
@@ -25,8 +26,18 @@ export const createEvent = asyncHandler(async (req: Request, res: Response) => {
 
 export const listMyEvents = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
-  const result = await eventsService.listMyEvents(context, req.query as unknown as PaginationQuery)
+  const result = await eventsService.listMyEvents(context, req.query as unknown as MyEventsQuery)
   sendPaginated(res, result.items, result.total, result.page, result.limit)
+})
+
+export const listEventDates = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await eventsService.listEventDates(context, req.query as unknown as EventDatesQuery))
+})
+
+export const listTopOrganisers = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await eventsService.listTopOrganisers(context))
 })
 
 export const getEvent = asyncHandler(async (req: Request, res: Response) => {

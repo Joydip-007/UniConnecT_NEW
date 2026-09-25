@@ -14,6 +14,22 @@ export const ApplicationStatusSchema = z.enum([
   'rejected',
 ])
 
+// "Who can apply" — empty / null on an axis means unrestricted.
+const eligibilityFields = {
+  eligible_departments: z.array(z.string().trim().min(1).max(60)).max(20).nullable().optional(),
+  eligibleDepartments: z.array(z.string().trim().min(1).max(60)).max(20).nullable().optional(),
+  eligible_batches: z.array(z.string().trim().min(1).max(10)).max(20).nullable().optional(),
+  eligibleBatches: z.array(z.string().trim().min(1).max(10)).max(20).nullable().optional(),
+  min_cgpa: z.number().min(0).max(4).nullable().optional(),
+  minCgpa: z.number().min(0).max(4).nullable().optional(),
+  publish_at: z.string().datetime({ offset: true }).nullable().optional(),
+  publishAt: z.string().datetime({ offset: true }).nullable().optional(),
+}
+
+const emptyToNull = (list: string[] | null | undefined) =>
+  list === undefined ? undefined : list && list.length > 0 ? list : null
+const zeroToNull = (n: number | null | undefined) => (n === undefined ? undefined : n && n > 0 ? n : null)
+
 export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
@@ -41,6 +57,7 @@ export const CreateJobSchema = z
     is_published: z.boolean().optional(),
     isPublished: z.boolean().optional(),
     attachments: attachmentsField,
+    ...eligibilityFields,
   })
   .transform((value) => ({
     title: value.title,
@@ -54,6 +71,10 @@ export const CreateJobSchema = z
     deadline: value.deadline,
     is_published: value.is_published ?? value.isPublished ?? true,
     attachments: value.attachments,
+    eligible_departments: emptyToNull(value.eligible_departments ?? value.eligibleDepartments),
+    eligible_batches: emptyToNull(value.eligible_batches ?? value.eligibleBatches),
+    min_cgpa: zeroToNull(value.min_cgpa ?? value.minCgpa),
+    publish_at: value.publish_at ?? value.publishAt,
   }))
 
 export const UpdateJobSchema = z
@@ -75,6 +96,7 @@ export const UpdateJobSchema = z
     isPublished: z.boolean().optional(),
     attachments: attachmentsField,
     removedAttachmentIds: removedAttachmentIdsField,
+    ...eligibilityFields,
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one field is required',
@@ -93,6 +115,10 @@ export const UpdateJobSchema = z
     is_published: value.is_published ?? value.isPublished,
     attachments: value.attachments,
     removedAttachmentIds: value.removedAttachmentIds,
+    eligible_departments: emptyToNull(value.eligible_departments ?? value.eligibleDepartments),
+    eligible_batches: emptyToNull(value.eligible_batches ?? value.eligibleBatches),
+    min_cgpa: zeroToNull(value.min_cgpa ?? value.minCgpa),
+    publish_at: value.publish_at === undefined && value.publishAt === undefined ? undefined : (value.publish_at ?? value.publishAt ?? null),
   }))
 
 export const ApplyJobSchema = z
@@ -109,6 +135,7 @@ export const ApplyJobSchema = z
 
 export const UpdateApplicationSchema = z
   .object({
+    // `withdrawn` is the applicant's own move (POST /:jobId/withdraw), never the poster's.
     status: ApplicationStatusSchema.optional(),
     notes: z.string().trim().nullable().optional(),
   })

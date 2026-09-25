@@ -2,6 +2,10 @@ import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axio
 import type { PublicUserProfile } from '@uniconnect/shared'
 import { api } from '@/lib/axios'
 import { resolveMessagesMock } from '@/lib/devMessagesMocks'
+import { resolveNewsLostFoundMock } from '@/lib/devNewsLostFoundMocks'
+import { resolveEventsMock } from '@/lib/devEventsMocks'
+import { resolveJobsMock } from '@/lib/devJobsMocks'
+import { resolveMentorshipMock } from '@/lib/devMentorshipMocks'
 
 /**
  * DEV-ONLY backend stub for the `?dev-auth=1` design-verification flow.
@@ -160,9 +164,17 @@ const DEV_GROUP_STATS = {
 }
 
 /** Returns the HTTP body to fake for a GET, or null to defer to the real adapter. */
-function resolveMockBody(url: string): unknown | null {
+function resolveMockBody(url: string, params?: Record<string, unknown>): unknown | null {
   const messaging = resolveMessagesMock(url)
   if (messaging !== null) return messaging
+  const newsLostFound = resolveNewsLostFoundMock(url, params)
+  if (newsLostFound !== null) return newsLostFound
+  const events = resolveEventsMock(url, params)
+  if (events !== null) return events
+  const jobs = resolveJobsMock(url, params)
+  if (jobs !== null) return jobs
+  const mentorship = resolveMentorshipMock(url, params)
+  if (mentorship !== null) return mentorship
   const DEV_GROUP = currentDevGroup()
   if (url === '/groups') return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
   if (url.startsWith('/groups/my')) return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
@@ -329,7 +341,13 @@ const DEV_ADMIN_QUIZZES = [
 
 const DEV_ADMIN_STATS = {
   totalUsers: 1240, activeUsers: 812, pendingReports: 3, totalPosts: 5210, totalJobs: 48, totalEvents: 22,
-  usersByRole: { student: 1100, alumni: 90, faculty: 40, admin: 10 }, moderationHealth: { openReports: 3, resolvedLast7d: 12, avgResolutionHours: 6 },
+  // Shape of GET /admin/stats as `useAdminRail` reads it — the rail's default branch
+  // (any admin route outside /admin) needs `postsByDay`, or it throws.
+  users: 1240,
+  postsByDay: [{ date: new Date().toISOString().slice(0, 10), count: 14 }],
+  usersByRole: [{ role: 'student', count: 1100 }, { role: 'alumni', count: 90 }, { role: 'faculty', count: 40 }, { role: 'admin', count: 10 }],
+  escalatedReports: 1, deletionRequests: 0, resolvedPct7d: 80, pendingInviteBatches: 0,
+  moderationHealth: { reportsOpen: 3, resolvedPct7d: 80, medianResponseHours: 6, repeatOffenders: 0 },
 }
 
 const inDays = (days: number, hour: number, minute = 0) => {
@@ -430,7 +448,7 @@ export function installDevMocks(): void {
     const method = (config.method ?? 'get').toLowerCase()
     const url = config.url ?? ''
     if (method === 'get' || method === 'post') {
-      const body = resolveMockBody(url)
+      const body = resolveMockBody(url, config.params as Record<string, unknown> | undefined)
       if (body !== null) {
         return {
           data: body,

@@ -1,65 +1,17 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import { format, parseISO, isPast } from 'date-fns'
-import { MapPin } from 'lucide-react'
-import { api } from '@/lib/axios'
-import { queryClient } from '@/lib/queryClient'
-import { ShareMenu } from '@/components/ShareMenu'
+import type { CSSProperties, MouseEvent, ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { AlertTriangle, CalendarPlus, Check, MapPin } from 'lucide-react'
+import { TYPE_META, eventEndsAt, formatDayMonth, formatTime } from '../constants'
+import { useAddToCalendar, useEventRsvp } from '../hooks/useEvents'
+import type { Event, EventAttendee, RsvpStatus } from '../types'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+export type { Event, EventAttendee, EventKind } from '../types'
 
-export interface EventAttendee {
-  id: string
-  fullName: string
-  avatarUrl: string | null
-}
+const AVATAR_TINTS = ['var(--uc-indigo)', 'var(--uc-cyan)', 'var(--uc-amber)', 'var(--uc-mint)', 'var(--uc-orange)']
 
-export type EventKind = 'general' | 'career_fair' | 'seminar' | 'workshop' | 'alumni_meetup' | 'club'
-
-export interface Event {
-  id: string
-  title: string
-  type: EventKind
-  startDate: string
-  endDate: string | null
-  location: string
-  description: string
-  coverUrl: string | null
-  rsvpCounts: { going: number; maybe: number }
-  capacity: number | null
-  myRsvp: 'going' | 'maybe' | null
-  previewAttendees: EventAttendee[]
-  totalAttendees: number
-  organizer: { id: string; fullName: string }
-}
-
-type RsvpStatus = 'going' | 'maybe' | null
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const TYPE_META: Record<EventKind, { label: string; bdr: string; color: string; glow: string }> = {
-  general:       { label: 'General',       bdr: 'var(--border-hover)',     color: 'var(--text-secondary)', glow: 'rgba(238,242,255,0.08)' },
-  career_fair:   { label: 'Career fair',   bdr: 'var(--uc-indigo-bdr)',   color: 'var(--uc-indigo-xl)',  glow: 'rgba(91,91,214,0.35)' },
-  seminar:       { label: 'Seminar',       bdr: 'var(--uc-orange-bdr)',   color: 'var(--uc-orange-l)',   glow: 'rgba(240,90,40,0.28)' },
-  workshop:      { label: 'Workshop',      bdr: 'var(--uc-mint-bdr)',    color: 'var(--uc-mint)',        glow: 'var(--uc-mint-bdr)' },
-  alumni_meetup: { label: 'Alumni meetup', bdr: 'var(--uc-cyan-bdr)',    color: 'var(--uc-cyan)',        glow: 'var(--uc-cyan-bdr)' },
-  club:          { label: 'Club',          bdr: 'rgba(139,92,246,0.28)',  color: 'rgba(196,181,253,1)',   glow: 'rgba(139,92,246,0.32)' },
-}
-
-const AVATAR_PALETTE = [
-  'rgba(91,91,214,0.75)',
-  'rgba(240,90,40,0.75)',
-  'rgba(16,185,129,0.75)',
-  'rgba(6,182,212,0.75)',
-  'rgba(139,92,246,0.75)',
-]
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function avatarColor(id: string): string {
+function avatarTint(id: string): string {
   const sum = [...id].reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_PALETTE[sum % AVATAR_PALETTE.length]
+  return AVATAR_TINTS[sum % AVATAR_TINTS.length]
 }
 
 function toInitials(fullName: string): string {
@@ -68,206 +20,188 @@ function toInitials(fullName: string): string {
   return ((parts[0][0] ?? '') + (parts[parts.length - 1][0] ?? '')).toUpperCase()
 }
 
-// ── FaceStack ─────────────────────────────────────────────────────────────────
+const FACE: CSSProperties = {
+  width: 22,
+  height: 22,
+  borderRadius: '50%',
+  border: '2px solid var(--surface-card)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 11,
+  fontWeight: 500,
+  position: 'relative',
+  flexShrink: 0,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+}
 
 function FaceStack({ attendees, total }: { attendees: EventAttendee[]; total: number }) {
+  if (total === 0) {
+    return <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Be first to RSVP</span>
+  }
   const shown = attendees.slice(0, 3)
   const overflow = total - shown.length
 
-  if (total === 0) {
-    return (
-      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-        Be first to RSVP
-      </span>
-    )
-  }
-
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        {shown.map((a, i) => (
-          <div
-            key={a.id}
-            title={a.fullName}
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              background: a.avatarUrl ? undefined : avatarColor(a.id),
-              backgroundImage: a.avatarUrl ? `url(${a.avatarUrl})` : undefined,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              border: '2px solid var(--surface-card)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              marginLeft: i === 0 ? 0 : -7,
-              zIndex: shown.length - i,
-              position: 'relative',
-              flexShrink: 0,
-            }}
-          >
-            {!a.avatarUrl && toInitials(a.fullName)}
-          </div>
-        ))}
-        {overflow > 0 && (
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              background: 'var(--surface-raised)',
-              border: '2px solid var(--surface-card)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--text-secondary)',
-              marginLeft: -7,
-              position: 'relative',
-              flexShrink: 0,
-            }}
-          >
-            +{overflow}
-          </div>
-        )}
-      </div>
-      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+      {shown.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {shown.map((a, i) => (
+            <div
+              key={a.id}
+              title={a.fullName}
+              style={{
+                ...FACE,
+                marginLeft: i === 0 ? 0 : -7,
+                zIndex: shown.length - i,
+                background: a.avatarUrl ? undefined : avatarTint(a.id),
+                backgroundImage: a.avatarUrl ? `url(${a.avatarUrl})` : undefined,
+                color: 'var(--on-accent)',
+              }}
+            >
+              {!a.avatarUrl && toInitials(a.fullName)}
+            </div>
+          ))}
+          {overflow > 0 && (
+            <div
+              style={{
+                ...FACE,
+                width: 'auto',
+                minWidth: 22,
+                padding: '0 5px',
+                boxSizing: 'border-box',
+                borderRadius: 'var(--r-pill)',
+                marginLeft: -7,
+                background: 'var(--surface-raised)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              +{overflow}
+            </div>
+          )}
+        </div>
+      )}
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
         {total} going
       </span>
     </div>
   )
 }
 
-// ── EventCard ─────────────────────────────────────────────────────────────────
+function CardButton({
+  children,
+  onClick,
+  disabled,
+  tone = 'ghost',
+  label,
+  square = false,
+}: {
+  children: ReactNode
+  onClick: (e: MouseEvent) => void
+  disabled?: boolean
+  tone?: 'primary' | 'selected' | 'ghost' | 'strong'
+  label?: string
+  square?: boolean
+}) {
+  const tones: Record<typeof tone, CSSProperties> = {
+    primary: { border: '0.5px solid transparent', background: 'var(--uc-indigo)', color: 'var(--on-indigo)', fontWeight: 500 },
+    selected: { border: '0.5px solid var(--border-strong)', background: 'var(--surface-raised)', color: 'var(--text-primary)' },
+    ghost: { border: '0.5px solid var(--border-hover)', background: 'transparent', color: 'var(--text-secondary)' },
+    strong: { border: '0.5px solid var(--border-hover)', background: 'transparent', color: 'var(--text-primary)' },
+  }
+  return (
+    <button
+      type="button"
+      className={`event-card-btn event-card-btn--${tone}${square ? ' event-card-btn--square' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 5,
+        fontSize: 12,
+        fontWeight: 400,
+        borderRadius: 'var(--r-pill)',
+        fontFamily: 'inherit',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.55 : 1,
+        whiteSpace: 'nowrap',
+        transition: 'background 150ms, color 150ms, border-color 150ms',
+        ...tones[tone],
+      }}
+    >
+      {children}
+    </button>
+  )
+}
 
-export function EventCard({ event, queryKey }: { event: Event; queryKey: readonly unknown[] }) {
+export function EventCard({ event }: { event: Event }) {
   const navigate = useNavigate()
-  const [localRsvp, setLocalRsvp]     = useState<RsvpStatus>(event.myRsvp)
-  const [localCounts, setLocalCounts] = useState(event.rsvpCounts)
+  const rsvp = useEventRsvp(event.id)
+  const addToCalendar = useAddToCalendar()
 
-  const meta   = TYPE_META[event.type] ?? TYPE_META.general
-  const ended  = isPast(parseISO(event.endDate ?? event.startDate))
-  const full   = event.capacity !== null && localCounts.going >= event.capacity && localRsvp !== 'going'
+  const meta = TYPE_META[event.type] ?? TYPE_META.general
+  const start = new Date(event.startDate)
+  const ended = eventEndsAt(event) < new Date()
+  const going = event.rsvpCounts.going
+  const mine = event.myRsvp
+  const full = event.capacity !== null && going >= event.capacity && mine !== 'going'
+  const busy = rsvp.isPending
 
-  const dayStr   = format(parseISO(event.startDate), 'd')
-  const monthStr = format(parseISO(event.startDate), 'MMM').toUpperCase()
-
-  const coverStyle: React.CSSProperties = event.coverUrl
-    ? {
-        backgroundImage: `url(${event.coverUrl})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }
+  const coverStyle: CSSProperties = event.coverUrl
+    ? { backgroundImage: `url(${event.coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : {
         backgroundColor: 'var(--surface-raised)',
         backgroundImage: [
-          `radial-gradient(ellipse at 25% 65%, ${meta.glow} 0%, transparent 60%)`,
-          'radial-gradient(circle, rgba(255,255,255,0.085) 1px, transparent 1px)',
+          `radial-gradient(ellipse at 25% 65%, ${meta.bdr} 0%, transparent 60%)`,
+          'radial-gradient(circle, var(--border-hover) 1px, transparent 1px)',
         ].join(', '),
         backgroundSize: '100% 100%, 18px 18px',
       }
 
-  // Optimistic counter update — keeps local state in sync with cache write
-  function patchCounts(prev: RsvpStatus, next: RsvpStatus) {
-    setLocalRsvp(next)
-    setLocalCounts((c) => {
-      const nc = { ...c }
-      if (prev === 'going') nc.going = Math.max(0, nc.going - 1)
-      if (prev === 'maybe') nc.maybe = Math.max(0, nc.maybe - 1)
-      if (next === 'going') nc.going += 1
-      if (next === 'maybe') nc.maybe += 1
-      return nc
-    })
-  }
-
-  const rsvpMutation = useMutation({
-    mutationFn: (next: RsvpStatus) =>
-      next === null
-        ? api.delete(`/events/${event.id}/rsvp`)
-        : api.post(`/events/${event.id}/rsvp`, { status: next }),
-
-    onMutate: async (next) => {
-      await queryClient.cancelQueries({ queryKey })
-      const snapshot = queryClient.getQueryData<Event[]>(queryKey)
-      patchCounts(localRsvp, next)
-
-      // Update rsvpCounts in the list cache
-      queryClient.setQueryData<Event[]>(queryKey, (old = []) =>
-        old.map((e) => {
-          if (e.id !== event.id) return e
-          const prev = e.myRsvp
-          const nc = { ...e.rsvpCounts }
-          if (prev === 'going') nc.going = Math.max(0, nc.going - 1)
-          if (prev === 'maybe') nc.maybe = Math.max(0, nc.maybe - 1)
-          if (next === 'going') nc.going += 1
-          if (next === 'maybe') nc.maybe += 1
-          return { ...e, myRsvp: next, rsvpCounts: nc }
-        }),
-      )
-      return { snapshot }
-    },
-
-    onError: (_err, _next, ctx) => {
-      setLocalRsvp(event.myRsvp)
-      setLocalCounts(event.rsvpCounts)
-      if (ctx?.snapshot) queryClient.setQueryData(queryKey, ctx.snapshot)
-    },
-
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
-  })
-
-  function handleRsvp(e: React.MouseEvent, target: 'going' | 'maybe') {
+  function toggle(e: MouseEvent, target: RsvpStatus) {
     e.stopPropagation()
-    if (rsvpMutation.isPending) return
-    rsvpMutation.mutate(localRsvp === target ? null : target)
+    if (busy) return
+    rsvp.mutate(mine === target ? null : target)
   }
 
-  const goingActive = localRsvp === 'going'
-  const maybeActive = localRsvp === 'maybe'
+  function add(e: MouseEvent) {
+    e.stopPropagation()
+    addToCalendar.mutate({ eventId: event.id, title: event.title })
+  }
+
+  const open = () => navigate(`/events/${event.id}`)
+
+  const capacityPct = event.capacity ? Math.min(100, Math.round((going / event.capacity) * 100)) : 0
+  const atCapacity = event.capacity !== null && going >= event.capacity
+  const capacityNote = atCapacity
+    ? mine === 'waitlisted' && event.waitlistPosition
+      ? `${going} of ${event.capacity} seats taken · you're #${event.waitlistPosition} in line`
+      : `${going} of ${event.capacity} seats taken · waitlist open`
+    : `${going} of ${event.capacity} seats taken`
 
   return (
     <article
       className="card-hover-border"
+      onClick={open}
       style={{
+        cursor: 'pointer',
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
         overflow: 'hidden',
-        transition: 'border-color 200ms',
         display: 'flex',
         flexDirection: 'column',
+        opacity: ended ? 0.72 : 1,
+        transition: 'border-color 200ms',
       }}
     >
-      <button
-        type="button"
-        onClick={() => navigate(`/events/${event.id}`)}
-        aria-label={`View event: ${event.title}`}
-        style={{
-          display: 'contents',
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          margin: 0,
-          font: 'inherit',
-          textAlign: 'inherit',
-          cursor: 'pointer',
-        }}
-      >
-      {/* ── Cover ─────────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          height: 80,
-          position: 'relative',
-          borderBottom: `0.5px solid ${meta.bdr}`,
-          ...coverStyle,
-        }}
-      >
-        {/* Type badge — bottom-left */}
+      {/* ── Cover ──────────────────────────────────────────────────────────── */}
+      <div style={{ height: 80, position: 'relative', borderBottom: `0.5px solid ${meta.bdr}`, ...coverStyle }}>
         <span
           style={{
             position: 'absolute',
@@ -284,33 +218,6 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
         >
           {meta.label}
         </span>
-
-        {/* Date box — bottom-right */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            right: 12,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            lineHeight: 1,
-            gap: 3,
-            background: 'var(--overlay-media)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-md)',
-            padding: '5px 10px',
-          }}
-        >
-          <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--uc-indigo-l)', lineHeight: 1 }}>
-            {dayStr}
-          </span>
-          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
-            {monthStr}
-          </span>
-        </div>
-
-        {/* Ended badge — top-right */}
         {ended && (
           <span
             style={{
@@ -318,7 +225,6 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
               top: 8,
               right: 12,
               fontSize: 12,
-              fontWeight: 400,
               padding: '2px 8px',
               borderRadius: 'var(--r-pill)',
               background: 'var(--overlay-media)',
@@ -329,40 +235,37 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
             Ended
           </span>
         )}
-      </div>
-      </button>
-
-      {/* ── Body ──────────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          padding: '14px 16px 16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          flex: 1,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => navigate(`/events/${event.id}`)}
-          aria-label={`View event: ${event.title}`}
+        <div
           style={{
-            display: 'contents',
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            margin: 0,
-            font: 'inherit',
-            textAlign: 'inherit',
-            cursor: 'pointer',
+            position: 'absolute',
+            bottom: 8,
+            right: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 3,
+            background: 'var(--overlay-media)',
+            border: '0.5px solid var(--border-default)',
+            borderRadius: 'var(--r-md)',
+            padding: '5px 10px',
           }}
         >
+          <span style={{ fontSize: 18, fontWeight: 500, color: 'var(--uc-indigo-l)', lineHeight: 1 }}>
+            {String(start.getDate()).padStart(2, '0')}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>
+            {start.toLocaleString('en-US', { month: 'short' }).toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Body ───────────────────────────────────────────────────────────── */}
+      <div style={{ padding: '14px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
         <h3
           style={{
             margin: 0,
             fontSize: 14,
             fontWeight: 500,
-            color: 'var(--text-primary)',
             lineHeight: 1.4,
             display: '-webkit-box',
             WebkitLineClamp: 2,
@@ -370,102 +273,108 @@ export function EventCard({ event, queryKey }: { event: Event; queryKey: readonl
             overflow: 'hidden',
           }}
         >
-          {event.title}
+          <Link
+            to={`/events/${event.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'var(--text-primary)', textDecoration: 'none' }}
+          >
+            {event.title}
+          </Link>
         </h3>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <MapPin size={11} strokeWidth={1.5} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 400,
-              color: 'var(--text-secondary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {event.location}
           </span>
         </div>
-        </button>
 
-        {/* ── Footer ────────────────────────────────────────────────────── */}
-        <div
-          style={{
-            marginTop: 'auto',
-            paddingTop: 10,
-            borderTop: '0.5px solid var(--border-default)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Face stack */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <FaceStack attendees={event.previewAttendees} total={localCounts.going} />
+        {/* Capacity meter — pressure shows before the event is full, not just after. */}
+        {!ended && event.capacity !== null && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div
+              role="meter"
+              aria-label="Seats taken"
+              aria-valuemin={0}
+              aria-valuemax={event.capacity}
+              aria-valuenow={Math.min(going, event.capacity)}
+              style={{ height: 3, borderRadius: 'var(--r-pill)', background: 'var(--surface-raised)', overflow: 'hidden' }}
+            >
+              <div style={{ width: `${capacityPct}%`, height: '100%', background: atCapacity ? 'var(--uc-red)' : 'var(--uc-indigo)' }} />
+            </div>
+            <span style={{ fontSize: 12, color: atCapacity ? 'var(--uc-red)' : 'var(--text-tertiary)' }}>{capacityNote}</span>
+          </div>
+        )}
+
+        {/* Clash with something the viewer already committed to — shown before they RSVP. */}
+        {!ended && event.conflict && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 10px',
+              background: 'var(--uc-amber-bg)',
+              border: '0.5px solid var(--uc-amber-bdr)',
+              borderRadius: 'var(--r-sm)',
+              color: 'var(--uc-amber-l)',
+              fontSize: 12,
+              minWidth: 0,
+            }}
+          >
+            <AlertTriangle size={12} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Overlaps {event.conflict.title}, {formatTime(new Date(event.conflict.startsAt))}
+              {new Date(event.conflict.startsAt).toDateString() !== start.toDateString() &&
+                ` on ${formatDayMonth(new Date(event.conflict.startsAt))}`}
+            </span>
+          </div>
+        )}
+
+        {/* ── Footer ─────────────────────────────────────────────────────── */}
+        <div className="event-card-footer" onClick={(e) => e.stopPropagation()}>
+          <div className="event-card-faces">
+            {ended ? (
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{going} attended</span>
+            ) : (
+              <FaceStack attendees={event.previewAttendees} total={going} />
+            )}
           </div>
 
-          <ShareMenu entityType="event" entityId={event.id} title={event.title} />
-
-          {/* RSVP buttons */}
-          {!ended ? (
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-              {/* Going */}
-              <button
-                type="button"
-                onClick={(e) => handleRsvp(e, 'going')}
-                disabled={(!goingActive && full) || rsvpMutation.isPending}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 5,
-                  fontSize: 12,
-                  fontWeight: goingActive ? 500 : 400,
-                  padding: '5px 14px',
-                  borderRadius: 'var(--r-pill)',
-                  border: goingActive ? 'none' : '0.5px solid var(--border-hover)',
-                  background: goingActive ? 'var(--uc-indigo)' : 'transparent',
-                  color: goingActive ? 'var(--text-primary)' : full ? 'var(--text-tertiary)' : 'var(--text-secondary)',
-                  cursor: (!goingActive && full) || rsvpMutation.isPending ? 'not-allowed' : 'pointer',
-                  transition: 'background 150ms, color 150ms',
-                  opacity: rsvpMutation.isPending ? 0.55 : 1,
-                }}
-              >
-                {goingActive && <span style={{ fontSize: 10 }}>✓</span>}
-                {!goingActive && full ? 'Full' : 'Going'}
-              </button>
-
-              {/* Maybe */}
-              <button
-                type="button"
-                onClick={(e) => handleRsvp(e, 'maybe')}
-                disabled={rsvpMutation.isPending}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 12,
-                  fontWeight: 400,
-                  padding: '5px 14px',
-                  borderRadius: 'var(--r-pill)',
-                  border: maybeActive ? '0.5px solid var(--border-strong)' : '0.5px solid var(--border-hover)',
-                  background: maybeActive ? 'var(--surface-raised)' : 'transparent',
-                  color: maybeActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  cursor: rsvpMutation.isPending ? 'not-allowed' : 'pointer',
-                  transition: 'background 150ms, color 150ms',
-                  opacity: rsvpMutation.isPending ? 0.55 : 1,
-                }}
-              >
-                Maybe
-              </button>
+          {ended ? (
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>Event ended</span>
+          ) : full ? (
+            <div className="event-card-actions">
+              <CardButton onClick={add} disabled={addToCalendar.isPending}>
+                <CalendarPlus size={12} strokeWidth={1.5} />
+                Add
+              </CardButton>
+              {mine === 'waitlisted' ? (
+                <CardButton tone="selected" onClick={(e) => toggle(e, 'waitlisted')} disabled={busy} label="Leave waitlist">
+                  <Check size={11} strokeWidth={2} />
+                  On waitlist
+                </CardButton>
+              ) : (
+                <CardButton tone="strong" onClick={(e) => toggle(e, 'waitlisted')} disabled={busy}>
+                  Join waitlist
+                </CardButton>
+              )}
             </div>
           ) : (
-            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
-              Event ended
-            </span>
+            <div className="event-card-actions">
+              {mine === 'going' && (
+                <CardButton square onClick={add} disabled={addToCalendar.isPending} label="Add to calendar">
+                  <CalendarPlus size={13} strokeWidth={1.5} />
+                </CardButton>
+              )}
+              <CardButton tone={mine === 'going' ? 'primary' : 'ghost'} onClick={(e) => toggle(e, 'going')} disabled={busy}>
+                {mine === 'going' && <Check size={11} strokeWidth={2} />}
+                Going
+              </CardButton>
+              <CardButton tone={mine === 'maybe' ? 'selected' : 'ghost'} onClick={(e) => toggle(e, 'maybe')} disabled={busy}>
+                Maybe
+              </CardButton>
+            </div>
           )}
         </div>
       </div>

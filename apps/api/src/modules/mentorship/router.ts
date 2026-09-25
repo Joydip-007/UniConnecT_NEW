@@ -5,7 +5,16 @@ import { validate, validateRequest } from '../../middleware/validate'
 import {
   createRequest,
   createSession,
+  createSessionRequest,
   deleteSession,
+  endMentorship,
+  getMentorSettings,
+  joinWaitlist,
+  leaveWaitlist,
+  listMySessions,
+  reopenMentorship,
+  updateMentorSettings,
+  withdrawSessionRequest,
   getIncomingRequests,
   getMyRequests,
   getMyRewards,
@@ -22,11 +31,14 @@ import {
 import {
   AlumniListQuerySchema,
   CreateRequestSchema,
+  CreateSessionRequestSchema,
   CreateSessionSchema,
+  EndMentorshipSchema,
   IncomingRequestsQuerySchema,
   PaginationQuerySchema,
   RedeemGiftCardSchema,
   SubmitFeedbackSchema,
+  UpdateMentorSettingsSchema,
   UpdateRequestSchema,
   UpdateSessionSchema,
 } from './schema'
@@ -36,6 +48,17 @@ export const mentorshipRouter = Router()
 mentorshipRouter.use(requireAuth, resolveUniversity)
 
 mentorshipRouter.get('/alumni', validateRequest({ query: AlumniListQuerySchema }), listAlumni)
+
+// "Notify me" when a full mentor opens a place
+mentorshipRouter.post('/alumni/:alumniId/waitlist', requireRole('student'), joinWaitlist)
+mentorshipRouter.delete('/alumni/:alumniId/waitlist', requireRole('student'), leaveWaitlist)
+
+// The alumnus's own mentor settings: accepting, capacity, topics, weekly availability
+mentorshipRouter.get('/settings', requireRole('alumni'), getMentorSettings)
+mentorshipRouter.patch('/settings', requireRole('alumni'), validate(UpdateMentorSettingsSchema), updateMentorSettings)
+
+// Every session the alumnus has logged, across mentees
+mentorshipRouter.get('/sessions/mine', requireRole('alumni'), listMySessions)
 
 mentorshipRouter.post(
   '/requests',
@@ -70,6 +93,18 @@ mentorshipRouter.delete(
   requireRole('student'),
   withdrawRequest,
 )
+
+// Either participant ends an accepted mentorship; the one who ended it can undo shortly after
+mentorshipRouter.post('/requests/:id/end', validate(EndMentorshipSchema), endMentorship)
+mentorshipRouter.post('/requests/:id/reopen', reopenMentorship)
+
+// Proposed (student) or scheduled (alumni) session times
+mentorshipRouter.post(
+  '/requests/:id/session-requests',
+  validate(CreateSessionRequestSchema),
+  createSessionRequest,
+)
+mentorshipRouter.delete('/requests/:id/session-requests/:srid', withdrawSessionRequest)
 
 // Session CRUD — accessible to both student and alumni on the request
 mentorshipRouter.get('/requests/:id/sessions', listSessions)

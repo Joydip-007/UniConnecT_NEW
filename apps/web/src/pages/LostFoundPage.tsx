@@ -1,43 +1,50 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Search } from 'lucide-react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useAuthStore } from '@/stores/authStore'
-import { OrangeBtn } from '@/components/Button'
+import { usePageRails } from '@/stores/pageRailStore'
 import {
+  FILTER_TABS,
   FilterBar,
   LostFoundCard,
+  LostFoundRightRail,
   PostItemModal,
   SkeletonCard,
   useLostFoundList,
   type FilterTab,
 } from '@/features/lost-found'
-import { FILTER_TABS } from '@/features/lost-found/constants'
 
+/** Also rendered inside Explore as `?section=lost-found`; the URL params are the same in both. */
 export default function LostFoundPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const rawTab = searchParams.get('type') as FilterTab | null
-  const activeTab: FilterTab =
-    rawTab !== null && FILTER_TABS.some((t) => t.value === rawTab) ? rawTab : 'all'
-  const showResolved = searchParams.get('resolved') === 'true'
+  const rawTab = searchParams.get('type')
+  // `?resolved=true` is the old resolved toggle; it now opens the Resolved tab.
+  const activeTab: FilterTab = FILTER_TABS.some((t) => t.value === rawTab)
+    ? (rawTab as FilterTab)
+    : searchParams.get('resolved') === 'true'
+      ? 'resolved'
+      : 'all'
 
   const [modalOpen, setModalOpen] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.role === 'admin'
+  // Admins moderate the board rather than post to it.
+  const canReport = Boolean(user && !isAdmin)
+  const isMobile = useMediaQuery('(max-width: 767px)')
 
-  const currentUserId = useAuthStore((s) => s.user?.id)
+  const rightRail = useMemo(() => <LostFoundRightRail />, [])
+  usePageRails(null, rightRail)
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useLostFoundList(
-    activeTab,
-    showResolved,
-  )
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useLostFoundList(activeTab)
 
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage()
-        }
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage()
       },
       { threshold: 0.1 },
     )
@@ -47,11 +54,13 @@ export default function LostFoundPage() {
 
   const items = data?.pages.flatMap((p) => p.items) ?? []
   const allCaughtUp = !isLoading && !hasNextPage && items.length > 0
+  const emptyLabel = FILTER_TABS.find((t) => t.value === activeTab)?.empty
 
   function setTab(value: FilterTab) {
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev)
+        next.delete('resolved')
         if (value === 'all') next.delete('type')
         else next.set('type', value)
         return next
@@ -60,25 +69,41 @@ export default function LostFoundPage() {
     )
   }
 
-  function toggleResolved() {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (showResolved) next.delete('resolved')
-        else next.set('resolved', 'true')
-        return next
-      },
-      { replace: true },
-    )
-  }
+  const reportButton = (floating: boolean) => (
+    <button
+      type="button"
+      onClick={() => setModalOpen(true)}
+      style={{
+        flexShrink: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        minHeight: floating ? 48 : 40,
+        padding: floating ? '0 20px' : '0 18px',
+        borderRadius: 'var(--r-pill)',
+        border: 'none',
+        background: 'var(--uc-mint-d)',
+        color: 'var(--on-accent)',
+        fontSize: 13,
+        fontWeight: 500,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        whiteSpace: 'nowrap',
+        ...(floating && { position: 'fixed', bottom: 80, right: 16, zIndex: 50 }),
+      }}
+    >
+      <Search size={15} strokeWidth={1.5} />
+      Report item
+    </button>
+  )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? 10 : 12, paddingBottom: canReport && isMobile ? 72 : 0 }}>
       <FilterBar
         activeTab={activeTab}
-        showResolved={showResolved}
         onTabChange={setTab}
-        onToggleResolved={toggleResolved}
+        compact={isMobile}
+        action={canReport && !isMobile ? reportButton(false) : undefined}
       />
 
       {isLoading && (
@@ -90,29 +115,13 @@ export default function LostFoundPage() {
       )}
 
       {items.map((item) => (
-        <LostFoundCard key={item.id} item={item} currentUserId={currentUserId} />
+        <LostFoundCard key={item.id} item={item} currentUserId={user?.id} isAdmin={isAdmin} compact={isMobile} />
       ))}
 
       {!isLoading && items.length === 0 && (
-        <div
-          style={{
-            background: 'var(--surface-card)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-lg)',
-            padding: '48px 24px',
-            textAlign: 'center',
-          }}
-        >
-          <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Nothing here yet
-          </p>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 400, color: 'var(--text-secondary)' }}>
-            {activeTab !== 'all'
-              ? `No ${activeTab} items found. Try switching the filter.`
-              : showResolved
-                ? 'No resolved items found.'
-                : 'Be the first to report a lost or found item.'}
-          </p>
+        <div style={{ background: 'var(--surface-card)', border: '0.5px solid var(--border-default)', borderRadius: 'var(--r-lg)', padding: '48px 24px', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)' }}>Nothing here yet</p>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>{emptyLabel}</p>
         </div>
       )}
 
@@ -128,25 +137,15 @@ export default function LostFoundPage() {
       {allCaughtUp && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '4px 0 16px' }}>
           <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
-          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>
             {items.length} {items.length === 1 ? 'item' : 'items'} shown
           </span>
           <div style={{ flex: 1, height: '0.5px', background: 'var(--border-default)' }} />
         </div>
       )}
 
-      <OrangeBtn
-        onClick={() => setModalOpen(true)}
-        style={{
-          position: 'fixed',
-          bottom: 28,
-          right: 28,
-          zIndex: 50,
-        }}
-      >
-        <Plus size={15} strokeWidth={2} />
-        Report item
-      </OrangeBtn>
+      {/* On a phone the create action floats above the bottom nav so it never covers a slot. */}
+      {canReport && isMobile && reportButton(true)}
 
       {modalOpen && <PostItemModal onClose={() => setModalOpen(false)} />}
     </div>

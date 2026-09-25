@@ -223,16 +223,7 @@ export default function JobDetailPage() {
       {canViewApplications && <ApplicationsList jobId={job.id} />}
 
       {applyOpen && (
-        <ApplyModal
-          jobId={job.id}
-          jobTitle={job.title}
-          company={job.company}
-          onSuccess={() => {
-            setApplyOpen(false)
-            queryClient.invalidateQueries({ queryKey })
-          }}
-          onClose={() => setApplyOpen(false)}
-        />
+        <ApplyModal job={job} onClose={() => setApplyOpen(false)} />
       )}
     </div>
   )

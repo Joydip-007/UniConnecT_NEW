@@ -74,6 +74,11 @@ export const userProfileFieldsSchema = z.object({
   githubUrl: z.string().nullable(),
   portfolioUrl: z.string().nullable(),
   isOpenToMsg: z.boolean(),
+  /** Owner-only: null for any other viewer. */
+  cgpa: z.number().nullable().optional(),
+  resumeUrl: z.string().nullable().optional(),
+  resumeName: z.string().nullable().optional(),
+  resumeUpdatedAt: z.string().nullable().optional(),
 })
 
 export const themePreferenceSchema = z.enum(['light', 'dark', 'system'])

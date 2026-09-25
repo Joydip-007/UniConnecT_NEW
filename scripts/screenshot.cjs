@@ -56,6 +56,28 @@ const ROUTES = {
   'messages-group': { path: '/messages/dev-conv-batch', auth: true, w: 1440, h: 900  },
   'messages-mobile': { path: '/messages',             auth: true,  w: 390,  h: 844  },
   'messages-thread-mobile': { path: '/messages/dev-conv-nusrat', auth: true, w: 390, h: 844 },
+  // devNewsLostFoundMocks.ts — the sample content from News and Lost Found.dc.html.
+  'news':        { path: '/news',                     auth: true,  w: 1440, h: 900  },
+  'news-faculty': { path: '/news',                    auth: true,  role: 'faculty', w: 1440, h: 900 },
+  'news-detail': { path: '/news/dev-news-v1',         auth: true,  role: 'admin', w: 1440, h: 900 },
+  'news-draft':  { path: '/news/new',                 auth: true,  role: 'faculty', w: 1440, h: 900 },
+  'news-mobile': { path: '/news',                     auth: true,  role: 'faculty', w: 390, h: 844 },
+  'lost-found':  { path: '/lost-found',               auth: true,  w: 1440, h: 900  },
+  'lost-found-admin': { path: '/lost-found',          auth: true,  role: 'admin', w: 1440, h: 900 },
+  'lost-found-mobile': { path: '/lost-found',         auth: true,  w: 390,  h: 844  },
+  // devEventsMocks.ts — the sample events from Events Page.dc.html, dated relative to today.
+  'events':      { path: '/events',                   auth: true,  w: 1440, h: 1024 },
+  'events-mobile': { path: '/events',                 auth: true,  role: 'faculty', w: 390, h: 844 },
+  // devJobsMocks.ts — the sample jobs from Jobs Page.dc.html. Students browse with the
+  // eligibility banners and My applications rail; alumni land on My postings.
+  'jobs':        { path: '/jobs',                     auth: true,  role: 'student', w: 1440, h: 1024 },
+  'jobs-alumni': { path: '/jobs',                     auth: true,  role: 'alumni', w: 1440, h: 1024 },
+  'jobs-faculty': { path: '/jobs',                    auth: true,  role: 'faculty', w: 1440, h: 1024 },
+  'jobs-mobile': { path: '/jobs',                     auth: true,  role: 'student', w: 390, h: 844 },
+  'mentorship':  { path: '/mentorship',               auth: true,  role: 'student', w: 1440, h: 1400 },
+  'mentorship-alumni': { path: '/mentorship',         auth: true,  role: 'alumni', w: 1440, h: 1024 },
+  'mentorship-mobile': { path: '/mentorship',         auth: true,  role: 'student', w: 390, h: 844 },
+  'mentorship-alumni-mobile': { path: '/mentorship',  auth: true,  role: 'alumni', w: 390, h: 844 },
 };
 
 async function capture(name, route) {

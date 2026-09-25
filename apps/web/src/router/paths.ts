@@ -29,6 +29,8 @@ export const PATHS = {
 
   NEWS: '/news',
   NEWS_DETAIL: '/news/:id',
+  NEWS_NEW: '/news/new',
+  NEWS_EDIT: '/news/:id/edit',
 
   LOST_FOUND: '/lost-found',
 

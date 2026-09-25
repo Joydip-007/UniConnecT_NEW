@@ -24,6 +24,9 @@ export const UpdateProfileSchema = z
     githubUrl: z.string().url().nullable().optional(),
     portfolioUrl: z.string().url().nullable().optional(),
     isOpenToMsg: z.boolean().optional(),
+    cgpa: z.number().min(0).max(4).nullable().optional(),
+    resumeUrl: z.string().url().nullable().optional(),
+    resumeName: z.string().trim().max(255).nullable().optional(),
   })
   .strict()
 

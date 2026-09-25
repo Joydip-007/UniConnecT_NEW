@@ -1,7 +1,8 @@
 import type { UserRole } from '@uniconnect/shared'
 
 export type LostFoundType = 'lost' | 'found'
-export type FilterTab = 'all' | 'lost' | 'found'
+/** The board's four tabs. `resolved` lists returned items; the other three list open ones. */
+export type FilterTab = 'all' | 'lost' | 'found' | 'resolved'
 
 export interface LFAuthor {
   fullName: string
@@ -20,6 +21,9 @@ export interface LostFoundItem {
   locationDetail: string
   contactInfo: string
   isResolved: boolean
+  resolvedAt: string | null
+  isPinned: boolean
+  isSaved: boolean
   authorId: string
   author: LFAuthor
   createdAt: string
@@ -35,4 +39,19 @@ export interface LFPage {
 export interface UploadedImage {
   url: string
   preview: string
+}
+
+export interface LostFoundDesk {
+  location: string
+  hours: string
+  holdPolicy: string
+}
+
+export interface LostFoundStats {
+  reunitedThisMonth: number
+  /** Share of items posted in the last 90 days that were resolved; null when none were posted. */
+  resolvedPct: number | null
+  avgResolveDays: number | null
+  hotspots: { place: string; count: number }[]
+  desk: LostFoundDesk | null
 }

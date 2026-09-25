@@ -65,6 +65,11 @@ export const applyToJob = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, await jobsService.applyToJob(context, getJobIdParam(req), req.body as ApplyJobInput), 201)
 })
 
+export const withdrawApplication = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await jobsService.withdrawApplication(context, getJobIdParam(req)))
+})
+
 export const listJobApplications = asyncHandler(async (req: Request, res: Response) => {
   const context = getAuthContext(req)
   const result = await jobsService.listJobApplications(

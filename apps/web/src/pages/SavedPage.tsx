@@ -9,13 +9,16 @@ import { SAVED_JOBS_KEY, useSavedJobs } from '@/features/jobs/hooks/useSavedJobs
 import { EmptyState } from '@/components/EmptyState'
 import { SkeletonJobCard } from '@/components/skeletons/SkeletonJobCard'
 import { SkeletonPost } from '@/components/skeletons/SkeletonPost'
+import { LostFoundCard, SkeletonCard, useSavedLostFound } from '@/features/lost-found'
 import { PATHS } from '@/router/paths'
+import { useAuthStore } from '@/stores/authStore'
 
-type SavedTab = 'posts' | 'jobs'
+type SavedTab = 'posts' | 'jobs' | 'lost-found'
 
 const TABS: { key: SavedTab; label: string }[] = [
   { key: 'posts', label: 'Posts' },
   { key: 'jobs', label: 'Jobs' },
+  { key: 'lost-found', label: 'Lost & found' },
 ]
 
 /**
@@ -30,7 +33,8 @@ export default function SavedPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const tab: SavedTab = rawTab === 'jobs' ? 'jobs' : 'posts'
+  const tab: SavedTab = rawTab === 'jobs' || rawTab === 'lost-found' ? rawTab : 'posts'
+  const user = useAuthStore((s) => s.user)
 
   const [openPostId, setOpenPostId] = useState<string | null>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -39,10 +43,12 @@ export default function SavedPage() {
   // member can see there is something on the other side without switching to find out.
   const posts = useSavedPosts()
   const jobs = useSavedJobs()
+  const lostFound = useSavedLostFound()
 
   const postItems = posts.data?.pages.flatMap((p) => p.items) ?? []
   const jobItems = jobs.data?.pages.flatMap((p) => p.items) ?? []
-  const active = tab === 'posts' ? posts : jobs
+  const lostFoundItems = lostFound.data?.pages.flatMap((p) => p.items) ?? []
+  const active = tab === 'posts' ? posts : tab === 'jobs' ? jobs : lostFound
   const openPost = postItems.find((p) => p.id === openPostId) ?? null
 
   function selectTab(next: SavedTab) {
@@ -66,14 +72,15 @@ export default function SavedPage() {
     return () => observer.disconnect()
   }, [active])
 
-  const isEmpty = !active.isLoading && (tab === 'posts' ? postItems.length : jobItems.length) === 0
+  const activeCount = tab === 'posts' ? postItems.length : tab === 'jobs' ? jobItems.length : lostFoundItems.length
+  const isEmpty = !active.isLoading && activeCount === 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <header>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 500, color: 'var(--text-primary)' }}>Saved</h1>
         <p style={{ margin: '4px 0 0', fontSize: 14, fontWeight: 400, color: 'var(--text-secondary)' }}>
-          Posts and jobs you bookmarked, in one place. Only you can see these.
+          Posts, jobs and lost &amp; found items you saved, in one place. Only you can see these.
         </p>
       </header>
 
@@ -92,7 +99,7 @@ export default function SavedPage() {
       >
         {TABS.map(({ key, label }) => {
           const isActive = tab === key
-          const count = key === 'posts' ? posts.data?.pages[0]?.total : jobs.data?.pages[0]?.total
+          const count = (key === 'posts' ? posts : key === 'jobs' ? jobs : lostFound).data?.pages[0]?.total
           return (
             <button
               key={key}
@@ -121,7 +128,7 @@ export default function SavedPage() {
 
       {active.isLoading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {tab === 'posts' ? <><SkeletonPost /><SkeletonPost /></> : <><SkeletonJobCard /><SkeletonJobCard /></>}
+          {tab === 'posts' ? <><SkeletonPost /><SkeletonPost /></> : tab === 'jobs' ? <><SkeletonJobCard /><SkeletonJobCard /></> : <><SkeletonCard /><SkeletonCard /></>}
         </div>
       )}
 
@@ -132,11 +139,13 @@ export default function SavedPage() {
           description={
             tab === 'posts'
               ? 'Tap the bookmark icon on a post to keep it here.'
-              : 'Tap Save on a job to keep it here.'
+              : tab === 'jobs'
+                ? 'Tap Save on a job to keep it here.'
+                : 'Choose Save item from a lost & found post’s menu to keep it here.'
           }
           action={{
-            label: tab === 'posts' ? 'Go to feed' : 'Browse jobs',
-            onClick: () => navigate(tab === 'posts' ? PATHS.FEED : PATHS.JOBS),
+            label: tab === 'posts' ? 'Go to feed' : tab === 'jobs' ? 'Browse jobs' : 'Open lost & found',
+            onClick: () => navigate(tab === 'posts' ? PATHS.FEED : tab === 'jobs' ? PATHS.JOBS : PATHS.LOST_FOUND),
           }}
         />
       )}
@@ -153,9 +162,11 @@ export default function SavedPage() {
                 onEditPost={() => navigate(PATHS.FEED)}
               />
             ))
-          : jobItems.map((job) => (
-              <JobCard key={job.id} job={job} queryKey={[...SAVED_JOBS_KEY]} />
-            ))}
+          : tab === 'jobs'
+            ? jobItems.map((job) => <JobCard key={job.id} job={job} queryKey={[...SAVED_JOBS_KEY]} />)
+            : lostFoundItems.map((item) => (
+                <LostFoundCard key={item.id} item={item} currentUserId={user?.id} isAdmin={user?.role === 'admin'} />
+              ))}
       </div>
 
       <div ref={sentinelRef} style={{ height: 1 }} />

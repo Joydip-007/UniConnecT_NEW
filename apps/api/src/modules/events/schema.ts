@@ -5,7 +5,9 @@ const attachmentsField = z.array(attachmentInputSchema).max(MAX_ATTACHMENTS_PER_
 const removedAttachmentIdsField = z.array(z.string().uuid()).optional()
 
 export const EventTypeSchema = z.enum(['general', 'career_fair', 'seminar', 'alumni_meetup', 'workshop', 'club'])
-export const RsvpStatusSchema = z.enum(['going', 'maybe', 'not_going'])
+export const RsvpStatusSchema = z.enum(['going', 'maybe', 'not_going', 'waitlisted'])
+/** Where an event sits relative to now — see `EVENT_END_SQL` for how an open-ended one ends. */
+export const EventWhenSchema = z.enum(['upcoming', 'ongoing', 'past'])
 
 export const PaginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -14,9 +16,28 @@ export const PaginationQuerySchema = z.object({
 
 export const EventListQuerySchema = PaginationQuerySchema.extend({
   type: EventTypeSchema.optional(),
+  when: EventWhenSchema.optional(),
   from: z.string().datetime({ offset: true }).optional(),
   to: z.string().datetime({ offset: true }).optional(),
 })
+
+export const MyEventsQuerySchema = PaginationQuerySchema.extend({
+  /** Only events starting at or after this instant — the rail passes the start of the viewer's day. */
+  from: z.string().datetime({ offset: true }).optional(),
+})
+
+/** The date picker's "has events" dots: a bounded window so a month view stays one cheap query. */
+export const EventDatesQuerySchema = z
+  .object({
+    type: EventTypeSchema.optional(),
+    from: z.string().datetime({ offset: true }),
+    to: z.string().datetime({ offset: true }),
+  })
+  .refine((value) => new Date(value.to) > new Date(value.from), { message: 'to must be after from', path: ['to'] })
+  .refine((value) => new Date(value.to).getTime() - new Date(value.from).getTime() <= 62 * 24 * 60 * 60 * 1000, {
+    message: 'The window can span at most 62 days',
+    path: ['to'],
+  })
 
 export const AttendeesQuerySchema = PaginationQuerySchema.extend({
   status: RsvpStatusSchema.optional(),
@@ -127,6 +148,8 @@ export const RsvpSchema = z.object({
 export type EventListQuery = z.infer<typeof EventListQuerySchema>
 export type AttendeesQuery = z.infer<typeof AttendeesQuerySchema>
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>
+export type MyEventsQuery = z.infer<typeof MyEventsQuerySchema>
+export type EventDatesQuery = z.infer<typeof EventDatesQuerySchema>
 export type CreateEventInput = z.infer<typeof CreateEventSchema>
 export type UpdateEventInput = z.infer<typeof UpdateEventSchema>
 export type RsvpInput = z.infer<typeof RsvpSchema>

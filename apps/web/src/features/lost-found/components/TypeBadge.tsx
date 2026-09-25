@@ -1,24 +1,25 @@
+import { TYPE_TONES } from '../constants'
 import type { LostFoundType } from '../types'
 
 export function TypeBadge({ type }: { type: LostFoundType }) {
-  const lost = type === 'lost'
+  const tone = TYPE_TONES[type]
   return (
     <span
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        padding: '2px 8px',
+        padding: '2px 10px',
         borderRadius: 'var(--r-pill)',
         fontSize: 12,
         fontWeight: 500,
-        background: lost ? 'var(--uc-orange-bg)' : 'var(--uc-cyan-bg)',
-        border: `0.5px solid ${lost ? 'var(--uc-orange-bdr)' : 'var(--uc-cyan-bdr)'}`,
-        color: lost ? 'var(--uc-orange-l)' : 'var(--uc-cyan)',
+        background: tone.bg,
+        border: `0.5px solid ${tone.bdr}`,
+        color: tone.fg,
         whiteSpace: 'nowrap',
         flexShrink: 0,
       }}
     >
-      {lost ? 'Lost' : 'Found'}
+      {tone.label}
     </span>
   )
 }

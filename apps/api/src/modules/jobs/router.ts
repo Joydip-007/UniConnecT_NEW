@@ -16,6 +16,7 @@ import {
   unsaveJob,
   updateApplication,
   updateJob,
+  withdrawApplication,
 } from './controller'
 import {
   ApplyJobSchema,
@@ -39,6 +40,7 @@ jobsRouter.get('/:jobId', getJob)
 jobsRouter.patch('/:jobId', requireRole('alumni', 'faculty', 'admin'), validate(UpdateJobSchema), updateJob)
 jobsRouter.delete('/:jobId', requireRole('alumni', 'faculty', 'admin'), deleteJob)
 jobsRouter.post('/:jobId/apply', validate(ApplyJobSchema), applyToJob)
+jobsRouter.post('/:jobId/withdraw', withdrawApplication)
 jobsRouter.get(
   '/:jobId/applications',
   requireRole('alumni', 'faculty', 'admin'),
