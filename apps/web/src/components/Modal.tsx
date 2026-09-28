@@ -25,6 +25,11 @@ interface ModalProps {
   sheet?: boolean
   /** Width cap for `frame="panel"`. */
   panelWidth?: number
+  /**
+   * Panel fill. `raised` lifts the dialog one step so `--surface-card` rows inside it
+   * still read as cards (the Learn dialogs stack unit and attempt cards).
+   */
+  panelSurface?: 'card' | 'raised'
 }
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -39,6 +44,7 @@ export function Modal({
   frame = 'default',
   sheet = false,
   panelWidth = 560,
+  panelSurface = 'card',
 }: ModalProps) {
   const isPanel = frame === 'panel'
   const panelRef = useRef<HTMLDivElement>(null)
@@ -134,7 +140,7 @@ export function Modal({
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
-                    background: 'var(--surface-card)',
+                    background: panelSurface === 'raised' ? 'var(--surface-raised)' : 'var(--surface-card)',
                     border: '0.5px solid var(--border-hover)',
                     borderRadius: 'var(--r-xl)',
                   }

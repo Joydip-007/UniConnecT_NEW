@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { StreakBanner } from './StreakBanner'
 import { weekDots } from '../weekDots'
 import type { LearningStats } from '../types'
+import type { BadgeCard } from '../badgeLadders'
 
 const baseStats: LearningStats = {
   currentStreak: 3,
@@ -91,5 +92,27 @@ describe('StreakBanner', () => {
   it('shows the zero-state message when currentStreak is 0', () => {
     render(<StreakBanner stats={{ ...baseStats, currentStreak: 0 }} />)
     expect(screen.getByText('Start your streak today')).toBeInTheDocument()
+  })
+
+  function card(key: string, name: string): BadgeCard {
+    return {
+      key, category: 'streaks', name, criteria: '', earned: true, tierLabel: 'Earned', hasNext: false, current: 1,
+      target: 1, progressPct: 100, progressLabel: '', heldByPct: 5, pinned: false, pinBadgeId: key, pinnedIds: [],
+    }
+  }
+
+  it('hides the badges row when no earned list is passed (non-students)', () => {
+    render(<StreakBanner stats={baseStats} onOpenBadges={vi.fn()} />)
+    expect(screen.queryByText(/badges? earned/)).not.toBeInTheDocument()
+  })
+
+  it('stacks four earned badges, counts the rest, and opens a focused badge', () => {
+    const onOpen = vi.fn()
+    const earned = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) => card(k, `Badge ${k}`))
+    render(<StreakBanner stats={baseStats} earned={earned} onOpenBadges={onOpen} />)
+    expect(screen.getByText('6 badges earned')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View all badges' })).toHaveTextContent('+2')
+    fireEvent.click(screen.getByRole('button', { name: 'Badge b' }))
+    expect(onOpen).toHaveBeenCalledWith(earned[1])
   })
 })

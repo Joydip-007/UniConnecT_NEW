@@ -1,6 +1,9 @@
 import { Router } from 'express'
 import {
+  badgeIdParamsSchema,
   completeUnitSchema,
+  pinBadgeSchema,
+  submitUnitQuizAttemptSchema,
   pathIdParamsSchema,
   showcaseBadgeSchema,
   unitIdParamsSchema,
@@ -25,11 +28,29 @@ learningRouter.post(
   validateRequest({ params: unitIdParamsSchema, body: completeUnitSchema }),
   c.completeUnit,
 )
+learningRouter.get(
+  '/units/:unitId/attempts',
+  validateRequest({ params: unitIdParamsSchema }),
+  c.listUnitQuizAttempts,
+)
+learningRouter.post(
+  '/units/:unitId/attempts',
+  validateRequest({ params: unitIdParamsSchema, body: submitUnitQuizAttemptSchema }),
+  c.submitUnitQuizAttempt,
+)
+learningRouter.get('/me/quizzes', c.listMyQuizzes)
 learningRouter.get('/me/badges', c.listMyBadges)
+// Declared before any `/me/badges/:badgeId/…` route so the literal segment is never read as an id.
+learningRouter.get('/me/badges/progress', c.getBadgeProgress)
 learningRouter.put(
   '/me/badges/showcase',
   validateRequest({ body: showcaseBadgeSchema }),
   c.setShowcase,
+)
+learningRouter.put(
+  '/me/badges/:badgeId/pin',
+  validateRequest({ params: badgeIdParamsSchema, body: pinBadgeSchema }),
+  c.setBadgePin,
 )
 learningRouter.get(
   '/users/:userId/badges',

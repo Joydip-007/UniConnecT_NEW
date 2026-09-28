@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Trophy, CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle } from 'lucide-react'
+import { LearnDialog } from '@/features/learning/components/learnUi'
+import { pillButton } from '@/features/learning/learnFormat'
 import { Modal } from '@/components/Modal'
 import { useSubmitAttempt } from '../hooks/useQuiz'
 import type { DailyQuizSlot, QuizAttemptResult, QuizReviewItem } from '../types'
@@ -66,24 +68,22 @@ export function DailyQuizModal({ slot, open, onClose }: Props) {
 
   if (result) {
     return (
-      <Modal isOpen title="Quiz result" onClose={handleClose}>
-        <div style={{ padding: '8px 0 16px', display: 'grid', gap: 20 }}>
-          <div style={{ display: 'grid', gap: 16, textAlign: 'center' }}>
-            <Trophy size={40} color={result.passed ? 'var(--uc-amber)' : 'var(--text-tertiary)'} aria-hidden style={{ justifySelf: 'center' }} />
-            <p style={{ margin: 0, fontSize: 28, fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-              {result.score}%
-            </p>
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)' }}>
-              {result.correctCount} of {result.totalQuestions} correct
-              {result.passed ? ' — you passed!' : ' — try again tomorrow'}
-            </p>
-          </div>
-
-          <QuizReviewList review={result.review} />
-
-          <button type="button" onClick={handleClose} style={actionButton}>Done</button>
-        </div>
-      </Modal>
+      <LearnDialog
+        label="Daily quiz answers"
+        title={`Daily quiz · ${slot.department}`}
+        sub={`Today · ${result.correctCount} of ${result.totalQuestions} correct · ${result.score}%`}
+        onClose={handleClose}
+        footer={
+          <>
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--text-tertiary)' }}>A new daily quiz opens at midnight.</span>
+            <button type="button" onClick={handleClose} className="press-feedback" style={pillButton('outline')}>
+              Close
+            </button>
+          </>
+        }
+      >
+        <QuizReviewList review={result.review} />
+      </LearnDialog>
     )
   }
 
@@ -143,42 +143,33 @@ function QuizReviewList({ review }: { review: QuizReviewItem[] }) {
   if (review.length === 0) return null
 
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-tertiary)' }}>
-        Review your answers
-      </p>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {review.map((item, i) => (
         <div
           key={item.question}
           style={{
-            display: 'grid',
-            gap: 6,
-            padding: '10px 12px',
-            borderRadius: 'var(--r-md)',
-            border: `0.5px solid ${item.isCorrect ? 'var(--border-default)' : 'var(--uc-red)'}`,
-            background: 'var(--surface-card)',
+            display: 'flex',
+            gap: 10,
+            padding: '10px 0',
+            borderBottom: i === review.length - 1 ? 'none' : '0.5px solid var(--border-default)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            {item.isCorrect ? (
-              <CheckCircle2 size={16} color="var(--uc-mint)" aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
-            ) : (
-              <XCircle size={16} color="var(--uc-red)" aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
-            )}
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)', textWrap: 'balance' }}>
-              {i + 1}. {item.question}
-            </p>
-          </div>
-          <div style={{ display: 'grid', gap: 4, paddingLeft: 24 }}>
-            <p style={{ margin: 0, fontSize: 13, color: item.isCorrect ? 'var(--text-secondary)' : 'var(--uc-red)' }}>
+          {item.isCorrect ? (
+            <CheckCircle2 size={15} color="var(--uc-mint)" aria-label="Correct" style={{ flexShrink: 0, marginTop: 1 }} />
+          ) : (
+            <XCircle size={15} color="var(--uc-red)" aria-label="Wrong" style={{ flexShrink: 0, marginTop: 1 }} />
+          )}
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.45 }}>{item.question}</span>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>
               Your answer: {item.selectedIndex >= 0 ? item.options[item.selectedIndex] : 'No answer'}
-            </p>
+            </span>
             {!item.isCorrect && (
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--uc-mint)' }}>
-                Correct answer: {item.options[item.correctIndex]}
-              </p>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--uc-mint)', marginTop: 2 }}>
+                Correct: {item.options[item.correctIndex]}
+              </span>
             )}
-          </div>
+          </span>
         </div>
       ))}
     </div>

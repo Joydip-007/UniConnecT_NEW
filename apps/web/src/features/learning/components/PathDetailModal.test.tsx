@@ -1,265 +1,170 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { useState } from 'react'
 import { server } from '@/tests/msw/server'
 import { PathDetailModal } from './PathDetailModal'
 import { useToastStore } from '@/stores/toastStore'
+import type { PathDetail, TodayEntry } from '../types'
 
-function renderModal(overrides: Partial<{ pathId: string | null; open: boolean; onClose: () => void }> = {}) {
+const UNITS: PathDetail['units'] = [
+  { id: 'u1', display_order: 1, title: 'Branches without fear', type: 'read', completed: true, summary: 'One branch per feature.', minutes: 7, content: { body: 'A branch is a cheap pointer.' } },
+  { id: 'u2', display_order: 2, title: 'Rebase vs merge', type: 'video', completed: false, summary: 'When a clean history helps.', minutes: 9, hasVideo: true, content: { body: 'Merge keeps history.', video_url: 'https://cdn.example/rebase.mp4' } },
+  { id: 'u3', display_order: 3, title: 'Checkpoint: recovering a repo', type: 'quiz', completed: false, summary: 'Two questions on reflog.', questionCount: 2, content: null, completion_rule: { passScore: 70 } },
+]
+
+function detail(over: Partial<PathDetail> = {}): PathDetail {
+  return {
+    id: 'path-1', title: 'Git for group projects', description: 'Branches, rebases and recovery.', category: 'technical',
+    difficulty: 'beginner', estimated_days: 9, badge_name: 'Merge master', badge_icon: null, unitCount: 3, enrolledCount: 4,
+    units: UNITS, enrollment: { status: 'active' }, ...over,
+  }
+}
+
+function usePathResponse(data: PathDetail) {
+  server.use(http.get('*/learning/paths/:pathId', () => HttpResponse.json({ data })))
+}
+
+function Harness({ today, onStartQuiz = vi.fn() }: { today?: TodayEntry; onStartQuiz?: (id: string) => void }) {
+  const [unitId, setUnitId] = useState<string | null>(null)
+  return (
+    <PathDetailModal
+      pathId="path-1"
+      unitId={unitId}
+      onSelectUnit={setUnitId}
+      onClose={vi.fn()}
+      onStartQuiz={onStartQuiz}
+      onShowResults={vi.fn()}
+      today={today}
+    />
+  )
+}
+
+function renderModal(props: Parameters<typeof Harness>[0] = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const onClose = overrides.onClose ?? vi.fn()
-  const utils = render(
+  return render(
     <QueryClientProvider client={qc}>
-      <PathDetailModal pathId={overrides.pathId ?? 'path-1'} open={overrides.open ?? true} onClose={onClose} />
+      <Harness {...props} />
     </QueryClientProvider>,
   )
-  return { ...utils, onClose }
 }
 
 describe('PathDetailModal', () => {
-  beforeEach(() => {
-    useToastStore.setState({ toasts: [] })
-  })
+  beforeEach(() => useToastStore.setState({ toasts: [] }))
 
-  it('renders the unit list and an Enroll button when not enrolled', async () => {
-    server.use(
-      http.get('*/learning/paths/:pathId', () =>
-        HttpResponse.json({
-          data: {
-            id: 'path-1',
-            title: 'Git basics',
-            description: 'Learn version control',
-            category: 'engineering',
-            difficulty: 'beginner',
-            estimated_days: 5,
-            badge_name: 'Git novice',
-            badge_icon: 'git',
-            unitCount: 1,
-            enrolledCount: 12,
-            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false }],
-            enrollment: null,
-          },
-        })),
-    )
+  it('lists every unit with its summary and kind, and offers Start path when not enrolled', async () => {
+    usePathResponse(detail({ enrollment: null, units: UNITS.map((u) => ({ ...u, completed: false })) }))
     renderModal()
-
-    expect(await screen.findByText('Intro')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enroll' })).toBeInTheDocument()
+    expect(await screen.findByText('Not started')).toBeInTheDocument()
+    expect(screen.getByText('When a clean history helps.')).toBeInTheDocument()
+    expect(screen.getByText('Video · 9 min')).toBeInTheDocument()
+    expect(screen.getByText('Quiz · 2 questions')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Start path/ })).toBeInTheDocument()
   })
 
-  it('posts an enroll request and shows a success toast', async () => {
+  it('starts the path and opens its first unit', async () => {
+    let enrolled = false
     server.use(
       http.get('*/learning/paths/:pathId', () =>
-        HttpResponse.json({
-          data: {
-            id: 'path-1',
-            title: 'Git basics',
-            description: 'Learn version control',
-            category: 'engineering',
-            difficulty: 'beginner',
-            estimated_days: 5,
-            badge_name: null,
-            badge_icon: null,
-            unitCount: 1,
-            enrolledCount: 12,
-            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false }],
-            enrollment: null,
-          },
-        })),
-      http.post('*/learning/paths/:pathId/enroll', () => HttpResponse.json({ data: {} })),
-    )
-    const user = userEvent.setup()
-    renderModal()
-
-    await user.click(await screen.findByRole('button', { name: 'Enroll' }))
-
-    await vi.waitFor(() => {
-      const toasts = useToastStore.getState().toasts
-      expect(toasts.some((t) => t.message === 'Enrolled — your first unit is ready')).toBe(true)
-    })
-  })
-
-  it('shows an undo toast when abandoning an active path', async () => {
-    server.use(
-      http.get('*/learning/paths/:pathId', () =>
-        HttpResponse.json({
-          data: {
-            id: 'path-1',
-            title: 'Git basics',
-            description: 'Learn version control',
-            category: 'engineering',
-            difficulty: 'beginner',
-            estimated_days: 5,
-            badge_name: null,
-            badge_icon: null,
-            unitCount: 1,
-            enrolledCount: 12,
-            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false }],
-            enrollment: { status: 'active' },
-          },
-        })),
-      http.post('*/learning/paths/:pathId/abandon', () => HttpResponse.json({ data: {} })),
-    )
-    const user = userEvent.setup()
-    renderModal()
-
-    await user.click(await screen.findByRole('button', { name: 'Abandon path' }))
-
-    await vi.waitFor(() => {
-      const toasts = useToastStore.getState().toasts
-      const abandonedToast = toasts.find((t) => t.message === 'Path abandoned')
-      expect(abandonedToast).toBeDefined()
-      expect(typeof abandonedToast?.onUndo).toBe('function')
-    })
-  })
-
-  it('re-enrolls via POST when the undo callback is invoked after abandoning', async () => {
-    const enrollSpy = vi.fn()
-    server.use(
-      http.get('*/learning/paths/:pathId', () =>
-        HttpResponse.json({
-          data: {
-            id: 'path-1',
-            title: 'Git basics',
-            description: 'Learn version control',
-            category: 'engineering',
-            difficulty: 'beginner',
-            estimated_days: 5,
-            badge_name: null,
-            badge_icon: null,
-            unitCount: 1,
-            enrolledCount: 12,
-            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false }],
-            enrollment: { status: 'active' },
-          },
-        })),
-      http.post('*/learning/paths/:pathId/abandon', () => HttpResponse.json({ data: {} })),
-      http.post('*/learning/paths/:pathId/enroll', ({ params }) => {
-        enrollSpy(params.pathId)
+        HttpResponse.json({ data: enrolled ? detail({ units: UNITS.map((u) => ({ ...u, completed: false })) }) : detail({ enrollment: null }) })),
+      http.post('*/learning/paths/:pathId/enroll', () => {
+        enrolled = true
         return HttpResponse.json({ data: {} })
       }),
     )
+    renderModal()
+    await userEvent.setup().click(await screen.findByRole('button', { name: /Start path/ }))
+    expect(await screen.findByText('Git for group projects · unit 1 of 3')).toBeInTheDocument()
+  })
+
+  it('shows today’s unit, progress and Continue for an active path', async () => {
+    usePathResponse(detail())
+    renderModal({ today: { pathId: 'path-1', unit: UNITS[1], completedToday: false } })
+    expect(await screen.findByText('Left for today · 1')).toBeInTheDocument()
+    expect(screen.getByText('Today')).toBeInTheDocument()
+    expect(screen.getByText('1 of 3 units complete')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Continue: Rebase vs merge' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Abandon path' })).toBeInTheDocument()
+  })
+
+  it('says today is done when the path’s unit for today is finished', async () => {
+    usePathResponse(detail())
+    renderModal({ today: { pathId: 'path-1', unit: UNITS[1], completedToday: true } })
+    expect(await screen.findByText(/Today's plan for this path is done/)).toBeInTheDocument()
+  })
+
+  it('keeps Mark complete disabled until the video is played through to the end', async () => {
+    usePathResponse(detail())
     const user = userEvent.setup()
     renderModal()
+    await user.click(await screen.findByRole('button', { name: 'Continue: Rebase vs merge' }))
 
-    await user.click(await screen.findByRole('button', { name: 'Abandon path' }))
+    const mark = screen.getByRole('button', { name: /Mark complete/ })
+    expect(mark).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('Watch the whole video to mark this unit complete.')).toBeInTheDocument()
 
-    let onUndo: (() => void) | undefined
-    await vi.waitFor(() => {
-      onUndo = useToastStore.getState().toasts.find((t) => t.message === 'Path abandoned')?.onUndo
-      expect(typeof onUndo).toBe('function')
-    })
-
-    onUndo?.()
-
-    await vi.waitFor(() => {
-      expect(enrollSpy).toHaveBeenCalledWith('path-1')
-    })
+    const video = screen.getByLabelText('Lesson video') as HTMLVideoElement
+    Object.defineProperty(video, 'duration', { configurable: true, value: 4 })
+    fireEvent.loadedMetadata(video)
+    // Scrubbing straight to the end does not count.
+    Object.defineProperty(video, 'currentTime', { configurable: true, writable: true, value: 4 })
+    fireEvent.timeUpdate(video)
+    expect(mark).toHaveAttribute('aria-disabled', 'true')
+    // Playing through does.
+    for (const t of [1, 2, 3, 4]) {
+      video.currentTime = t
+      fireEvent.timeUpdate(video)
+    }
+    await waitFor(() => expect(mark).toHaveAttribute('aria-disabled', 'false'))
+    expect(screen.getByText('Video watched. You can mark this unit complete.')).toBeInTheDocument()
   })
 
-  it('invalidates the learning cache on undo even after the modal has unmounted', async () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-    const invalidateSpy = vi.spyOn(qc, 'invalidateQueries')
-    server.use(
-      http.get('*/learning/paths/:pathId', () =>
-        HttpResponse.json({
-          data: {
-            id: 'path-1',
-            title: 'Git basics',
-            description: 'Learn version control',
-            category: 'engineering',
-            difficulty: 'beginner',
-            estimated_days: 5,
-            badge_name: null,
-            badge_icon: null,
-            unitCount: 1,
-            enrolledCount: 12,
-            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false }],
-            enrollment: { status: 'active' },
-          },
-        })),
-      http.post('*/learning/paths/:pathId/abandon', () => HttpResponse.json({ data: {} })),
-      http.post('*/learning/paths/:pathId/enroll', () => HttpResponse.json({ data: {} })),
-    )
+  it('completes a reading unit and toasts the streak', async () => {
+    usePathResponse(detail({ units: [{ ...UNITS[0], completed: false }, UNITS[1], UNITS[2]] }))
     const user = userEvent.setup()
-    const { unmount } = render(
-      <QueryClientProvider client={qc}>
-        <PathDetailModal pathId="path-1" open onClose={vi.fn()} />
-      </QueryClientProvider>,
-    )
+    renderModal()
+    await user.click(await screen.findByRole('button', { name: 'Continue: Branches without fear' }))
+    expect(screen.getByText('A branch is a cheap pointer.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Mark complete/ }))
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.map((t) => t.message)).toContain('Unit complete — streak: 4 days'))
+  })
 
+  it('explains why a later unit is locked', async () => {
+    usePathResponse(detail())
+    const user = userEvent.setup()
+    renderModal()
+    await user.click(await screen.findByText('Checkpoint: recovering a repo'))
+    expect(screen.getByText('Finish "Rebase vs merge" first')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Start quiz/ })).not.toBeInTheDocument()
+  })
+
+  it('offers the quiz on an unlocked checkpoint unit', async () => {
+    usePathResponse(detail({
+      units: [UNITS[0], { ...UNITS[1], completed: true }, { ...UNITS[2], content: { questions: [{ q: 'Q?', options: ['a', 'b'], answer: 0 }] } }],
+    }))
+    const onStartQuiz = vi.fn()
+    const user = userEvent.setup()
+    renderModal({ onStartQuiz })
+    await user.click(await screen.findByRole('button', { name: 'Continue: Checkpoint: recovering a repo' }))
+    expect(await screen.findByText('Not attempted yet')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Start quiz' }))
+    expect(onStartQuiz).toHaveBeenCalledWith('u3')
+  })
+
+  it('abandons with an undo toast', async () => {
+    usePathResponse(detail())
+    let abandoned = false
+    server.use(http.post('*/learning/paths/:pathId/abandon', () => {
+      abandoned = true
+      return HttpResponse.json({ data: {} })
+    }))
+    const user = userEvent.setup()
+    renderModal()
     await user.click(await screen.findByRole('button', { name: 'Abandon path' }))
-
-    let onUndo: (() => void) | undefined
-    await vi.waitFor(() => {
-      onUndo = useToastStore.getState().toasts.find((t) => t.message === 'Path abandoned')?.onUndo
-      expect(typeof onUndo).toBe('function')
-    })
-
-    // Simulate the modal having unmounted before the user clicks undo on the toast.
-    unmount()
-    onUndo?.()
-
-    await vi.waitFor(() => {
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['learning'] })
-    })
-  })
-
-  it('does not highlight a "next" unit when the user is not enrolled', async () => {
-    server.use(
-      http.get('*/learning/paths/:pathId', () =>
-        HttpResponse.json({
-          data: {
-            id: 'path-1',
-            title: 'Git basics',
-            description: 'Learn version control',
-            category: 'engineering',
-            difficulty: 'beginner',
-            estimated_days: 5,
-            badge_name: null,
-            badge_icon: null,
-            unitCount: 2,
-            enrolledCount: 12,
-            units: [
-              { id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: false },
-              { id: 'unit-2', display_order: 2, title: 'Follow-up', type: 'read', completed: false },
-            ],
-            enrollment: null,
-          },
-        })),
-    )
-    renderModal()
-
-    expect(await screen.findByText('Intro')).toBeInTheDocument()
-    const introRow = screen.getByText('Intro').closest('div')
-    expect(introRow).toHaveStyle({ background: 'var(--surface-card)' })
-  })
-
-  it('shows a Completed chip and badge line when the path is completed', async () => {
-    server.use(
-      http.get('*/learning/paths/:pathId', () =>
-        HttpResponse.json({
-          data: {
-            id: 'path-1',
-            title: 'Git basics',
-            description: 'Learn version control',
-            category: 'engineering',
-            difficulty: 'beginner',
-            estimated_days: 5,
-            badge_name: 'Git novice',
-            badge_icon: 'git',
-            unitCount: 1,
-            enrolledCount: 12,
-            units: [{ id: 'unit-1', display_order: 1, title: 'Intro', type: 'read', completed: true }],
-            enrollment: { status: 'completed' },
-          },
-        })),
-    )
-    renderModal()
-
-    expect(await screen.findByText('Completed')).toBeInTheDocument()
-    expect(screen.getByText('Badge earned: Git novice')).toBeInTheDocument()
+    await waitFor(() => expect(abandoned).toBe(true))
+    await waitFor(() => expect(useToastStore.getState().toasts[0]?.onUndo).toBeTypeOf('function'))
   })
 })

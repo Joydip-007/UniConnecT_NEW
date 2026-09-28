@@ -1,6 +1,6 @@
 import { Award } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
-import { useUserBadges, useShowcaseBadge, type UserBadge } from '@/features/learning'
+import { useUserBadges, usePinBadge, type UserBadge } from '@/features/learning'
 
 interface Props {
   userId: string
@@ -25,7 +25,9 @@ function formatDate(iso: string) {
 
 export function BadgesPanel({ userId, isOwnProfile }: Props) {
   const { data: badges } = useUserBadges(userId)
-  const showcase = useShowcaseBadge()
+  // Up to three badges are pinned (the Learn badges page shares the same pins); the API
+  // drops the oldest when a fourth is added.
+  const pin = usePinBadge()
 
   if (badges && badges.length === 0) {
     return (
@@ -110,7 +112,7 @@ export function BadgesPanel({ userId, isOwnProfile }: Props) {
               {isOwnProfile && (
                 <button
                   type="button"
-                  onClick={() => showcase.mutate(badge.isShowcased ? null : badge.id)}
+                  onClick={() => pin.mutate({ badgeId: badge.id, pinned: !badge.isShowcased })}
                   style={{
                     fontFamily: 'inherit',
                     fontSize: 12,

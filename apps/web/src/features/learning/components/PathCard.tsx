@@ -1,20 +1,22 @@
-import { Award } from 'lucide-react'
+import { Award, CalendarCheck } from 'lucide-react'
 import type { LearningPath } from '../types'
+import { PATH_STATUS_META, pathStatus } from '../pathFilters'
+import { ProgressBar, StatusPill } from './learnUi'
+import { pathMeta } from '../learnFormat'
 
 interface PathCardProps {
   path: LearningPath
   onOpen: (id: string) => void
+  /** Units on today's plan for this path that are still to do. */
+  todayLeft?: number
+  /** Phone layout: no description or badge line, tighter type. */
+  compact?: boolean
 }
 
-const STATUS_LABEL: Record<'active' | 'completed', string> = {
-  active: 'In progress',
-  completed: 'Completed',
-}
-
-export function PathCard({ path, onOpen }: PathCardProps) {
-  const status = path.myEnrollmentStatus === 'active' || path.myEnrollmentStatus === 'completed'
-    ? path.myEnrollmentStatus
-    : null
+export function PathCard({ path, onOpen, todayLeft = 0, compact = false }: PathCardProps) {
+  const status = pathStatus(path.myEnrollmentStatus)
+  const meta = PATH_STATUS_META[status]
+  const showProgress = status === 'active' && path.unitCount > 0
 
   return (
     <button
@@ -25,43 +27,28 @@ export function PathCard({ path, onOpen }: PathCardProps) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
-        gap: 8,
+        gap: compact ? 6 : 8,
         width: '100%',
         textAlign: 'left',
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
         borderRadius: 'var(--r-lg)',
-        padding: 16,
+        padding: compact ? 14 : 16,
         cursor: 'pointer',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{path.title}</span>
-        {status && (
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: status === 'completed' ? 'var(--uc-mint)' : 'var(--uc-indigo-l)',
-              background: status === 'completed' ? 'var(--uc-mint-bg)' : 'var(--uc-indigo-bg)',
-              border: `0.5px solid ${status === 'completed' ? 'var(--uc-mint-bdr)' : 'var(--uc-indigo-bdr)'}`,
-              borderRadius: 'var(--r-pill)',
-              padding: '2px 8px',
-              flexShrink: 0,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {STATUS_LABEL[status]}
-          </span>
-        )}
+        <span style={{ fontSize: compact ? 13 : 14, fontWeight: 500, color: 'var(--text-primary)' }}>{path.title}</span>
+        <StatusPill tone={meta.tone} size={compact ? 11 : 12}>
+          {meta.label}
+        </StatusPill>
       </div>
 
-      {path.description && (
+      {!compact && path.description && (
         <p
           style={{
             margin: 0,
             fontSize: 13,
-            fontWeight: 400,
             color: 'var(--text-secondary)',
             lineHeight: 1.4,
             display: '-webkit-box',
@@ -74,37 +61,37 @@ export function PathCard({ path, onOpen }: PathCardProps) {
         </p>
       )}
 
-      <p style={{ margin: 0, fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
-        {path.unitCount} units · ~{path.estimated_days} days · {path.difficulty}
+      <p style={{ margin: 0, fontSize: 12, color: compact ? 'var(--text-secondary)' : 'var(--text-tertiary)', lineHeight: 1.4 }}>
+        {pathMeta(path)}
       </p>
 
-      {status === 'active' && path.unitCount > 0 && (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div
-            style={{
-              height: 4,
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--border-default)',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                width: `${Math.round((100 * path.completedUnitCount) / path.unitCount)}%`,
-                height: '100%',
-                background: 'var(--uc-indigo)',
-              }}
-            />
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-tertiary)' }}>
+      {showProgress && (
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: compact ? 5 : 6 }}>
+          <ProgressBar pct={Math.round((100 * path.completedUnitCount) / path.unitCount)} />
+          <span style={{ fontSize: compact ? 11 : 12, color: 'var(--text-tertiary)' }}>
             {path.completedUnitCount} of {path.unitCount} units
             {path.nextUnitTitle ? ` · next: ${path.nextUnitTitle}` : ''}
           </span>
+          {todayLeft > 0 && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: compact ? 11 : 12,
+                fontWeight: 500,
+                color: 'var(--uc-orange-l)',
+              }}
+            >
+              <CalendarCheck size={13} aria-hidden="true" />
+              {todayLeft} left today
+            </span>
+          )}
         </div>
       )}
 
-      {path.badge_name && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 400, color: 'var(--uc-amber-l)' }}>
+      {!compact && path.badge_name && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--uc-amber-l)' }}>
           <Award size={13} aria-hidden="true" />
           <span>{path.badge_name}</span>
         </div>

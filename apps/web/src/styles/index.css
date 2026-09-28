@@ -737,6 +737,16 @@ select:focus-visible {
   }
 }
 
+/* Learn streak card: each earned badge in the overlapping stack lifts on hover. */
+.badge-stack-item {
+  transition: transform 120ms var(--ease-out-strong);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .badge-stack-item:hover {
+    transform: translateY(-2px);
+  }
+}
+
 .nav-sidebar-item .nav-item-icon {
   transition: transform var(--dur-fast) var(--ease-out-strong), color var(--dur-fast) var(--ease-out-strong);
 }

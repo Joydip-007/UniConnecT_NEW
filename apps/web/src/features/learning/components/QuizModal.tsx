@@ -1,216 +1,216 @@
 import { useEffect, useState } from 'react'
 import { isAxiosError } from 'axios'
-import { Check, RotateCcw, X } from 'lucide-react'
-import { Modal } from '@/components/Modal'
-import { useCompleteUnit, streakToastMessage } from '../hooks/useLearning'
+import { Check, History, RotateCcw, X } from 'lucide-react'
+import { LEARNING } from '@uniconnect/shared'
 import { useToastStore } from '@/stores/toastStore'
-import type { LearningUnit } from '../types'
+import { streakToastMessage, usePath, useSubmitUnitQuiz, useUnitAttempts } from '../hooks/useLearning'
+import type { UnitQuizAttempt } from '../types'
+import { LearnDialog } from './learnUi'
+import { pillButton } from '../learnFormat'
 
 interface QuizModalProps {
-  unit: LearningUnit | null
-  open: boolean
+  pathId: string
+  unitId: string
   onClose: () => void
+  /** Present when the quiz was opened from its unit inside the path dialog. */
+  onBack?: () => void
+  onShowResults: () => void
 }
 
-interface ResultState {
-  score: number
-  passed: boolean
-  passScore: number
-  wrongCount: number
-}
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (isAxiosError(err) && typeof err.response?.data?.error === 'string') {
-    return err.response.data.error
-  }
+function errorMessage(err: unknown, fallback: string) {
+  if (isAxiosError(err) && typeof err.response?.data?.error === 'string') return err.response.data.error
   return fallback
 }
 
-// Backend does not expose a distinct error code for "quiz failed" vs other 400s
-// (e.g. "unit locked") — both use code BAD_REQUEST (see apps/api/src/modules/learning/service.ts).
-// Discriminate on the message text so only an actual failed-quiz attempt shows the retry state.
-function isQuizFailureError(err: unknown): boolean {
-  if (!isAxiosError(err) || err.response?.status !== 400) return false
-  const message = err.response?.data?.error
-  return typeof message === 'string' && message.toLowerCase().includes('below pass mark')
+const visuallyHidden: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
 }
 
-const DEFAULT_PASS_SCORE = 70
-
-export function QuizModal({ unit, open, onClose }: QuizModalProps) {
-  const questions = unit?.content?.questions ?? []
-  const [answers, setAnswers] = useState<(number | null)[]>([])
-  const [result, setResult] = useState<ResultState | null>(null)
-  const mutation = useCompleteUnit()
+/**
+ * A path checkpoint quiz. The server grades each submission and records it (Past results),
+ * and a pass on the current unit completes it. Retrying keeps the questions you got right
+ * locked in and only blanks the ones to fix.
+ */
+export function QuizModal({ pathId, unitId, onClose, onBack, onShowResults }: QuizModalProps) {
+  const { data: path } = usePath(pathId)
+  const { data: attempts } = useUnitAttempts(unitId)
+  const submit = useSubmitUnitQuiz()
   const show = useToastStore((s) => s.show)
 
+  const unit = path?.units.find((u) => u.id === unitId)
+  const questions = unit?.content?.questions ?? []
+  const [picks, setPicks] = useState<(number | null)[]>([])
+  const [graded, setGraded] = useState<UnitQuizAttempt | null>(null)
+
   useEffect(() => {
-    if (open) {
-      setAnswers(questions.map(() => null))
-      setResult(null)
-    }
+    setPicks(questions.map(() => null))
+    setGraded(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, unit?.id])
+  }, [unitId, questions.length])
 
-  if (!unit) return null
-  const currentUnit = unit
-
-  const allAnswered = questions.length > 0 && answers.every((a) => a !== null)
-  const passScore = currentUnit.completion_rule?.passScore ?? DEFAULT_PASS_SCORE
-  const graded = result !== null
-
-  function handleSelect(qIndex: number, optionIndex: number) {
-    setAnswers((prev) => prev.map((a, i) => (i === qIndex ? optionIndex : a)))
-  }
+  const passScore = unit?.completion_rule?.passScore ?? LEARNING.DEFAULT_QUIZ_PASS_SCORE
+  const answered = questions.length > 0 && picks.length === questions.length && picks.every((p) => p !== null)
+  const wrong = graded ? graded.review.filter((r) => !r.isCorrect).length : 0
 
   function handleSubmit() {
-    const correct = questions.reduce((acc, q, i) => (answers[i] === q.answer ? acc + 1 : acc), 0)
-    const wrongCount = questions.length - correct
-    const score = Math.round((100 * correct) / questions.length)
-
-    mutation.mutate(
-      { unitId: currentUnit.id, score },
+    if (!answered || submit.isPending) return
+    submit.mutate(
+      { unitId, answers: picks as number[] },
       {
         onSuccess: (res) => {
-          setResult({ score, passed: true, passScore, wrongCount })
-          show({ message: streakToastMessage(res.streak.currentStreak), type: 'success' })
-          if (res.pathCompleted) {
-            show({ message: 'Path complete! Badge on its way', type: 'success' })
+          setGraded(res.attempt)
+          if (res.completion && !res.completion.alreadyCompleted) {
+            show({ message: streakToastMessage(res.completion.streak.currentStreak), type: 'success' })
+            if (res.completion.pathCompleted) show({ message: 'Path complete! Badge on its way', type: 'success' })
           }
+          if (res.completionError) show({ message: res.completionError, type: 'error' })
         },
-        onError: (err) => {
-          if (isAxiosError(err) && err.response?.status === 429) {
-            show({ message: extractErrorMessage(err, 'Too many attempts'), type: 'error' })
-            onClose()
-            return
-          }
-          if (isQuizFailureError(err)) {
-            setResult({ score, passed: false, passScore, wrongCount })
-            return
-          }
-          show({ message: extractErrorMessage(err, 'Something went wrong. Please try again.'), type: 'error' })
-        },
+        onError: (err) => show({ message: errorMessage(err, 'Could not submit your answers'), type: 'error' }),
       },
     )
   }
 
-  /**
-   * Retrying blanks only the questions that were wrong. The ones already correct keep their
-   * answer and stay locked, so fixing two mistakes does not mean re-answering all five.
-   */
   function handleRetry() {
-    setAnswers((prev) => prev.map((a, i) => (a === questions[i].answer ? a : null)))
-    setResult(null)
+    if (!graded) return
+    setPicks((prev) => prev.map((p, i) => (graded.review[i]?.isCorrect ? p : null)))
+    setGraded(null)
   }
 
-  const resultTone = result?.passed
-    ? {
-        icon: Check,
-        color: 'var(--uc-mint)',
-        background: 'var(--uc-mint-bg)',
-        border: '0.5px solid var(--uc-mint-bdr)',
-        text:
-          result.wrongCount === 0
-            ? 'All correct. Checkpoint cleared.'
-            : `Score ${result.score}% · passed.`,
-      }
-    : result
-      ? {
-          icon: RotateCcw,
-          color: 'var(--uc-amber-l)',
-          background: 'var(--uc-amber-bg)',
-          border: '0.5px solid var(--uc-amber-bdr)',
-          text: `Score ${result.score}%, you need ${result.passScore}%. ${result.wrongCount} of ${questions.length} to fix, the rest stay locked in.`,
-        }
-      : null
+  function handleFooter() {
+    if (!graded) return handleSubmit()
+    if (wrong > 0) return handleRetry()
+    return onBack ? onBack() : onClose()
+  }
 
-  const buttonLabel = !result
+  const buttonLabel = !graded
     ? 'Submit'
-    : result.passed
+    : wrong === 0
       ? 'Done'
-      : `Retry ${result.wrongCount} ${result.wrongCount === 1 ? 'question' : 'questions'}`
+      : `Retry ${wrong} ${wrong === 1 ? 'question' : 'questions'}`
 
   return (
-    <Modal isOpen={open} onClose={onClose} title={currentUnit.title}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {resultTone ? (
-          <div
-            role="status"
+    <LearnDialog
+      label="Quiz"
+      title={unit?.title ?? 'Quiz'}
+      sub={`${path ? `${path.title} · ` : ''}pass mark ${passScore}%`}
+      onClose={onClose}
+      onBack={onBack}
+      headerAction={
+        attempts && attempts.length > 0 ? (
+          <button
+            type="button"
+            onClick={onShowResults}
+            className="interactive-surface"
             style={{
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '10px 12px',
-              borderRadius: 'var(--r-md)',
-              border: resultTone.border,
-              background: resultTone.background,
-              fontSize: 13,
-              fontWeight: 400,
-              color: 'var(--text-primary)',
+              gap: 6,
+              background: 'none',
+              border: 'none',
+              padding: '6px 8px',
+              borderRadius: 'var(--r-pill)',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
-            <resultTone.icon size={14} color={resultTone.color} aria-hidden="true" style={{ flexShrink: 0 }} />
-            {resultTone.text}
-          </div>
-        ) : null}
+            <History size={14} aria-hidden="true" />
+            Past results
+          </button>
+        ) : null
+      }
+      footer={
+        <button
+          type="button"
+          onClick={handleFooter}
+          aria-disabled={!graded && (!answered || submit.isPending)}
+          className="press-feedback"
+          style={{ ...pillButton('primary'), opacity: !graded && (!answered || submit.isPending) ? 0.6 : 1 }}
+        >
+          {buttonLabel}
+        </button>
+      }
+    >
+      {graded && (
+        <div
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '10px 12px',
+            borderRadius: 'var(--r-md)',
+            border: `0.5px solid ${wrong === 0 ? 'var(--uc-mint-bdr)' : 'var(--uc-amber-bdr)'}`,
+            background: wrong === 0 ? 'var(--uc-mint-bg)' : 'var(--uc-amber-bg)',
+            fontSize: 13,
+            color: 'var(--text-primary)',
+          }}
+        >
+          {wrong === 0 ? (
+            <Check size={14} color="var(--uc-mint)" aria-hidden="true" style={{ flexShrink: 0 }} />
+          ) : (
+            <RotateCcw size={14} color="var(--uc-amber-l)" aria-hidden="true" style={{ flexShrink: 0 }} />
+          )}
+          {wrong === 0
+            ? 'All correct. Checkpoint cleared.'
+            : `${wrong} of ${questions.length} to fix. The rest stay locked in.`}
+        </div>
+      )}
 
-        {questions.map((question, qIndex) => {
-          const right = answers[qIndex] === question.answer
-          // A question you got right is settled: it keeps its answer through a retry, and
-          // only then is it safe to point at the correct option. Questions still to fix mark
-          // the answer you picked, never the one you missed — otherwise the retry is a formality.
-          const locked = graded && right
-          const revealAnswer = graded && (right || result.passed)
-
+      {!unit ? (
+        <div style={{ height: 160, borderRadius: 'var(--r-md)', background: 'var(--surface-card)' }} />
+      ) : questions.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-tertiary)' }}>This quiz has no questions yet.</p>
+      ) : (
+        questions.map((question, qIndex) => {
+          const review = graded?.review[qIndex]
+          const right = review?.isCorrect ?? false
+          const locked = !!graded && right
           return (
             <fieldset
-              key={question.q}
+              key={`${qIndex}-${question.q}`}
               style={{
-                border: `0.5px solid ${
-                  !graded
-                    ? 'var(--border-default)'
-                    : right
-                      ? 'var(--uc-mint-bdr)'
-                      : 'var(--uc-red-bdr)'
-                }`,
+                border: `0.5px solid ${!graded ? 'var(--border-default)' : right ? 'var(--uc-mint-bdr)' : 'var(--uc-red-bdr)'}`,
                 borderRadius: 'var(--r-md)',
                 padding: 12,
                 margin: 0,
               }}
             >
-              <legend style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', padding: '0 4px' }}>
-                {question.q}
-              </legend>
-
-              {graded ? (
+              <legend style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', padding: '0 4px' }}>{question.q}</legend>
+              {graded && (
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
-                    marginTop: 2,
                     fontSize: 12,
                     fontWeight: 500,
                     color: right ? 'var(--uc-mint)' : 'var(--uc-red)',
+                    marginTop: 2,
                   }}
                 >
                   {right ? <Check size={13} aria-hidden="true" /> : <X size={13} aria-hidden="true" />}
                   {right ? 'Correct, locked' : 'Retry this one'}
                 </div>
-              ) : null}
-
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
                 {question.options.map((option, oIndex) => {
-                  const picked = answers[qIndex] === oIndex
-                  const isAnswer = oIndex === question.answer
-
+                  const picked = picks[qIndex] === oIndex
+                  const isAnswer = review ? review.correctIndex === oIndex : false
                   let border = 'var(--border-default)'
                   let dotBorder = '1.5px solid var(--border-strong)'
-                  let dotBackground = 'transparent'
-                  if (revealAnswer && isAnswer) {
+                  if (graded && isAnswer) {
                     border = 'var(--uc-mint-bdr)'
                     dotBorder = '4px solid var(--uc-mint)'
-                    dotBackground = 'var(--uc-mint-bg)'
                   } else if (graded && picked) {
                     border = 'var(--uc-red-bdr)'
                     dotBorder = '4px solid var(--uc-red)'
@@ -218,21 +218,22 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
                     border = 'var(--uc-orange)'
                     dotBorder = '4px solid var(--uc-orange)'
                   }
-
                   return (
                     <label
-                      key={option}
+                      key={`${oIndex}-${option}`}
                       style={{
+                        position: 'relative',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
+                        minHeight: 36,
+                        boxSizing: 'border-box',
                         fontSize: 13,
-                        fontWeight: 400,
                         color: 'var(--text-primary)',
                         border: `0.5px solid ${border}`,
                         borderRadius: 'var(--r-md)',
                         padding: '8px 10px',
-                        cursor: locked ? 'default' : 'pointer',
+                        cursor: graded ? 'default' : 'pointer',
                         opacity: locked && !isAnswer ? 0.5 : 1,
                       }}
                     >
@@ -240,22 +241,9 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
                         type="radio"
                         name={`question-${qIndex}`}
                         checked={picked}
-                        disabled={locked}
-                        onChange={() => handleSelect(qIndex, oIndex)}
-                        // Visually hidden, not removed: the styled dot beside it is the
-                        // only thing drawn, but the radio keeps the group keyboard- and
-                        // screen-reader-navigable.
-                        style={{
-                          position: 'absolute',
-                          width: 1,
-                          height: 1,
-                          padding: 0,
-                          margin: -1,
-                          overflow: 'hidden',
-                          clip: 'rect(0 0 0 0)',
-                          whiteSpace: 'nowrap',
-                          border: 0,
-                        }}
+                        disabled={!!graded}
+                        onChange={() => setPicks((prev) => prev.map((p, i) => (i === qIndex ? oIndex : p)))}
+                        style={visuallyHidden}
                       />
                       <span
                         aria-hidden="true"
@@ -264,9 +252,9 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
                           height: 14,
                           borderRadius: '50%',
                           flexShrink: 0,
-                          border: dotBorder,
-                          background: dotBackground,
                           boxSizing: 'border-box',
+                          border: dotBorder,
+                          background: graded && isAnswer ? 'var(--uc-mint-bg)' : 'transparent',
                         }}
                       />
                       {option}
@@ -276,33 +264,8 @@ export function QuizModal({ unit, open, onClose }: QuizModalProps) {
               </div>
             </fieldset>
           )
-        })}
-
-        <button
-          type="button"
-          className="press-feedback"
-          onClick={!result ? handleSubmit : result.passed ? onClose : handleRetry}
-          disabled={!result && (!allAnswered || mutation.isPending)}
-          style={{
-            ...buttonStyle,
-            opacity: !result && (!allAnswered || mutation.isPending) ? 0.6 : 1,
-          }}
-        >
-          {buttonLabel}
-        </button>
-      </div>
-    </Modal>
+        })
+      )}
+    </LearnDialog>
   )
-}
-
-const buttonStyle: React.CSSProperties = {
-  alignSelf: 'flex-start',
-  background: 'var(--uc-orange)',
-  color: 'var(--on-accent)',
-  border: 'none',
-  borderRadius: 'var(--r-pill)',
-  padding: '8px 16px',
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: 'pointer',
 }

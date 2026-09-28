@@ -66,9 +66,9 @@ describe('DailyQuizModal', () => {
     await waitFor(() => screen.getByText('Capital of France?'))
     fireEvent.click(screen.getByText('Paris'))
     await waitFor(() => fireEvent.click(screen.getByRole('button', { name: /submit/i })))
-    await waitFor(() => expect(screen.getByText(/100/)).toBeInTheDocument())
-    expect(screen.getByText('1. What is 1+1?')).toBeInTheDocument()
-    expect(screen.getByText('2. Capital of France?')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/2 of 2 correct · 100%/)).toBeInTheDocument())
+    expect(screen.getByText('What is 1+1?')).toBeInTheDocument()
+    expect(screen.getByText('Capital of France?')).toBeInTheDocument()
   })
 
   it('shows correct answer for a wrong response in the review', async () => {
@@ -90,7 +90,7 @@ describe('DailyQuizModal', () => {
     fireEvent.click(screen.getByText('London'))
     await waitFor(() => fireEvent.click(screen.getByRole('button', { name: /submit/i })))
     await waitFor(() => expect(screen.getByText('Your answer: London')).toBeInTheDocument())
-    expect(screen.getByText('Correct answer: Paris')).toBeInTheDocument()
+    expect(screen.getByText('Correct: Paris')).toBeInTheDocument()
   })
 
   it('returns null when not open', () => {

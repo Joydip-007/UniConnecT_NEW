@@ -65,3 +65,33 @@ export const listBadgesForUser = asyncHandler(async (req: Request, res: Response
   const { userId } = req.params as { userId: string }
   sendSuccess(res, await service.listUserBadgesForOther(userId, context.universityId))
 })
+
+export const submitUnitQuizAttempt = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { unitId } = req.params as { unitId: string }
+  sendSuccess(res, await service.submitUnitQuizAttempt(unitId, context.userId, context.universityId, req.body), 201)
+})
+
+export const listUnitQuizAttempts = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { unitId } = req.params as { unitId: string }
+  sendSuccess(res, await service.listUnitQuizAttempts(unitId, context.userId, context.universityId))
+})
+
+export const listMyQuizzes = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await service.listMyQuizzes(context.userId, context.universityId))
+})
+
+export const getBadgeProgress = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  sendSuccess(res, await service.getBadgeProgress(context.userId, context.universityId))
+})
+
+export const setBadgePin = asyncHandler(async (req: Request, res: Response) => {
+  const context = getAuthContext(req)
+  const { badgeId } = req.params as { badgeId: string }
+  const { pinned } = req.body as { pinned: boolean }
+  await service.setBadgePin(context.userId, badgeId, pinned)
+  sendSuccess(res, { success: true })
+})

@@ -28,9 +28,16 @@ export interface LearningUnit {
   title: string
   type: 'read' | 'video' | 'exercise' | 'quiz'
   completed: boolean
+  /** One-line description; public even while the unit is locked. */
+  summary?: string | null
+  /** Authored duration, or an estimate from the body length for reading units. */
+  minutes?: number | null
+  questionCount?: number
+  hasVideo?: boolean
   // `text` is a legacy shape (pre-fix AI generations wrote `{ text }` instead of `{ body }`) —
   // kept readable here so already-generated units still render; new generations write `body`.
-  content?: { body?: string; text?: string; questions?: QuizQuestion[] }
+  // `null` while the unit is locked for the caller.
+  content?: { body?: string; text?: string; video_url?: string; questions?: QuizQuestion[] } | null
   completion_rule?: { passScore?: number }
 }
 
@@ -64,6 +71,7 @@ export interface UserBadge {
   points: number
   rarity: 'common' | 'rare' | 'epic'
   isShowcased: boolean
+  showcasedAt?: string | null
   awardedAt: string
   skillPathId: string | null
 }
@@ -73,4 +81,67 @@ export interface CompleteUnitResult {
   alreadyCompleted?: boolean
   pathCompleted: boolean
   streak: { currentStreak: number; longestStreak: number }
+}
+
+export interface UnitQuizReviewItem {
+  question: string
+  options: string[]
+  selectedIndex: number | null
+  correctIndex: number
+  isCorrect: boolean
+}
+
+export interface UnitQuizAttempt {
+  id: string
+  createdAt: string
+  score: number
+  correctCount: number
+  totalQuestions: number
+  passed: boolean
+  review: UnitQuizReviewItem[]
+}
+
+export interface SubmitUnitQuizResult {
+  attempt: UnitQuizAttempt
+  passScore: number
+  completion: CompleteUnitResult | null
+  /** Why a passing attempt did not complete the unit (e.g. the one-unit-per-day pace). */
+  completionError: string | null
+}
+
+/** A checkpoint quiz row on the Quizzes tab. */
+export interface MyQuiz {
+  unitId: string
+  pathId: string
+  pathTitle: string
+  title: string
+  summary: string | null
+  questionCount: number
+  passScore: number
+  state: 'completed' | 'next' | 'locked'
+  pathStarted: boolean
+  blockedByTitle: string | null
+  attemptCount: number
+  bestScore: number | null
+  lastScore: number | null
+  passed: boolean
+}
+
+export type BadgeTrigger = 'streak_milestone' | 'unit_completed' | 'quiz_win' | 'path_completed'
+
+export interface BadgeProgress {
+  id: string
+  name: string
+  description: string | null
+  iconUrl: string | null
+  triggerType: BadgeTrigger
+  skillPathId: string | null
+  pathTitle: string | null
+  current: number
+  target: number
+  earned: boolean
+  awardedAt: string | null
+  pinned: boolean
+  pinnedAt: string | null
+  heldByPct: number
 }

@@ -267,6 +267,18 @@ export function LearningPathBuilder({ seed, onExit, onDraftWithAi }: Props) {
                   onChange={(e) => patchUnit(u.key, { minutes: Math.max(1, Number(e.target.value) || 1) })}
                   style={{ ...inputStyle, width: 72, padding: '7px 10px', fontSize: 13 }}
                 />
+                {u.type === 'video' && (
+                  // The learner's player gates "Mark complete" on watching to the end, so a
+                  // video unit without a URL falls back to its reading text.
+                  <input
+                    type="url"
+                    aria-label={`Unit ${i + 1} video URL`}
+                    placeholder="Video URL (mp4 or webm)"
+                    value={typeof u.content.video_url === 'string' ? u.content.video_url : ''}
+                    onChange={(e) => patchUnit(u.key, { content: { ...u.content, video_url: e.target.value.trim() } })}
+                    style={{ ...inputStyle, flexBasis: '100%', padding: '7px 10px', fontSize: 13 }}
+                  />
+                )}
                 <SmallBtn tone="tint" onClick={() => setEditing(null)}>
                   Done
                 </SmallBtn>

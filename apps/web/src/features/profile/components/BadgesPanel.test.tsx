@@ -27,10 +27,12 @@ describe('BadgesPanel', () => {
     expect(screen.getByText('Common')).toBeInTheDocument()
   })
 
-  it('shows a Showcase pill on own profile and PUTs the badge id on click', async () => {
+  it('shows a Showcase pill on own profile and pins the badge on click', async () => {
     let putBody: unknown = null
+    let putUrl = ''
     server.use(
-      http.put('*/learning/me/badges/showcase', async ({ request }) => {
+      http.put('*/learning/me/badges/:badgeId/pin', async ({ request }) => {
+        putUrl = request.url
         putBody = await request.json()
         return HttpResponse.json({ data: {} })
       }),
@@ -41,15 +43,16 @@ describe('BadgesPanel', () => {
     const showcaseBtn = await screen.findByRole('button', { name: 'Showcase' })
     await user.click(showcaseBtn)
 
-    expect(putBody).toEqual({ badgeId: 'badge-1' })
+    expect(putUrl).toMatch(/\/learning\/me\/badges\/badge-1\/pin$/)
+    expect(putBody).toEqual({ pinned: true })
   })
 
-  it('shows Showcased and clears via mutate(null) when clicked on the active badge', async () => {
+  it('shows Showcased and unpins only that badge when clicked', async () => {
     let putBody: unknown = null
     server.use(
       http.get('*/learning/users/:userId/badges', () =>
         HttpResponse.json({ data: [{ ...learningFixtures.badges[0], isShowcased: true }] })),
-      http.put('*/learning/me/badges/showcase', async ({ request }) => {
+      http.put('*/learning/me/badges/:badgeId/pin', async ({ request }) => {
         putBody = await request.json()
         return HttpResponse.json({ data: {} })
       }),
@@ -60,7 +63,7 @@ describe('BadgesPanel', () => {
     const showcasedBtn = await screen.findByRole('button', { name: 'Showcased ✓' })
     await user.click(showcasedBtn)
 
-    expect(putBody).toEqual({ badgeId: null })
+    expect(putBody).toEqual({ pinned: false })
   })
 
   it('does not show Showcase pills on other people profiles', async () => {

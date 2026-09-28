@@ -6,6 +6,7 @@ import { resolveNewsLostFoundMock } from '@/lib/devNewsLostFoundMocks'
 import { resolveEventsMock } from '@/lib/devEventsMocks'
 import { resolveJobsMock } from '@/lib/devJobsMocks'
 import { resolveMentorshipMock } from '@/lib/devMentorshipMocks'
+import { resolveLearningMock } from '@/lib/devLearningMocks'
 
 /**
  * DEV-ONLY backend stub for the `?dev-auth=1` design-verification flow.
@@ -175,6 +176,8 @@ function resolveMockBody(url: string, params?: Record<string, unknown>): unknown
   if (jobs !== null) return jobs
   const mentorship = resolveMentorshipMock(url, params)
   if (mentorship !== null) return mentorship
+  const learning = resolveLearningMock(url)
+  if (learning !== null) return learning
   const DEV_GROUP = currentDevGroup()
   if (url === '/groups') return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }
   if (url.startsWith('/groups/my')) return { data: { items: [DEV_GROUP], total: 1, page: 1, hasMore: false } }

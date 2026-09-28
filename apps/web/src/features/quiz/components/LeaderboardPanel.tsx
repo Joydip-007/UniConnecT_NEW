@@ -1,4 +1,3 @@
-import { RoleBadge } from '@/components/RoleBadge'
 import { useTodayLeaderboard } from '../hooks/useQuiz'
 
 interface Props { currentUserId?: string }
@@ -56,19 +55,16 @@ export function LeaderboardPanel({ currentUserId }: Props) {
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
               {entry.rank}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-              {entry.role && <RoleBadge role={entry.role} size={13} tipPlacement="below" />}
-              <span style={{
-                fontSize: 13,
-                color: isMe ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontWeight: isMe ? 500 : 400,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                minWidth: 0,
-              }}>
-                {entry.fullName}
-              </span>
+            <span style={{
+              fontSize: 13,
+              color: isMe ? 'var(--text-primary)' : 'var(--text-secondary)',
+              fontWeight: isMe ? 500 : 400,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}>
+              {isMe ? `${entry.fullName} (you)` : entry.fullName}
             </span>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>
               {entry.score}%

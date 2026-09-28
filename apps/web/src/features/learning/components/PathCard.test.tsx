@@ -1,77 +1,56 @@
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
 import { PathCard } from './PathCard'
 import type { LearningPath } from '../types'
 
-const basePath: LearningPath = {
-  id: 'path-1',
-  title: 'Git basics',
-  description: 'Learn version control',
-  category: 'engineering',
-  difficulty: 'beginner',
-  estimated_days: 5,
-  badge_name: 'Git novice',
-  badge_icon: 'git',
-  unitCount: 3,
-  enrolledCount: 12,
-  myEnrollmentStatus: null,
-  completedUnitCount: 0,
-  nextUnitTitle: null,
+const base: LearningPath = {
+  id: 'p1',
+  title: 'Algorithms, properly',
+  description: 'Sorting, greedy proofs and dynamic programming.',
+  category: 'technical',
+  difficulty: 'intermediate',
+  estimated_days: 24,
+  badge_name: 'Algorithmist',
+  badge_icon: null,
+  unitCount: 8,
+  enrolledCount: 3,
+  myEnrollmentStatus: 'active',
+  completedUnitCount: 5,
+  nextUnitTitle: 'Greedy proofs',
 }
 
 describe('PathCard', () => {
-  it('renders title, description, meta row, and badge hint', () => {
-    render(<PathCard path={basePath} onOpen={vi.fn()} />)
-
-    expect(screen.getByText('Git basics')).toBeInTheDocument()
-    expect(screen.getByText('Learn version control')).toBeInTheDocument()
-    expect(screen.getByText('3 units · ~5 days · beginner')).toBeInTheDocument()
-    expect(screen.getByText('Git novice')).toBeInTheDocument()
-  })
-
-  it('fires onOpen with the path id when clicked', async () => {
-    const user = userEvent.setup()
-    const onOpen = vi.fn()
-    render(<PathCard path={basePath} onOpen={onOpen} />)
-
-    await user.click(screen.getByRole('button'))
-
-    expect(onOpen).toHaveBeenCalledWith('path-1')
-  })
-
-  it('shows an "In progress" chip when actively enrolled', () => {
-    render(<PathCard path={{ ...basePath, myEnrollmentStatus: 'active' }} onOpen={vi.fn()} />)
+  it('shows progress, the resume point and what is left today for an active path', () => {
+    render(<PathCard path={base} onOpen={vi.fn()} todayLeft={1} />)
     expect(screen.getByText('In progress')).toBeInTheDocument()
+    expect(screen.getByText('5 of 8 units · next: Greedy proofs')).toBeInTheDocument()
+    expect(screen.getByText('1 left today')).toBeInTheDocument()
+    expect(screen.getByText('8 units · ~24 days · intermediate')).toBeInTheDocument()
+    expect(screen.getByText('Algorithmist')).toBeInTheDocument()
   })
 
-  it('shows progress and the resume point while actively enrolled', () => {
-    render(
-      <PathCard
-        path={{ ...basePath, myEnrollmentStatus: 'active', completedUnitCount: 1, nextUnitTitle: 'Branching' }}
-        onOpen={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('1 of 3 units · next: Branching')).toBeInTheDocument()
+  it.each([
+    [null, 'Not started'],
+    ['completed', 'Completed'],
+    ['abandoned', 'Dropped'],
+  ] as const)('labels a %s enrollment as %s, without a progress bar', (status, label) => {
+    render(<PathCard path={{ ...base, myEnrollmentStatus: status }} onOpen={vi.fn()} todayLeft={1} />)
+    expect(screen.getByText(label)).toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+    expect(screen.queryByText('1 left today')).not.toBeInTheDocument()
   })
 
-  it('drops the "next" clause when an enrolled path has no unit left', () => {
-    render(
-      <PathCard
-        path={{ ...basePath, myEnrollmentStatus: 'active', completedUnitCount: 3, nextUnitTitle: null }}
-        onOpen={vi.fn()}
-      />,
-    )
-    expect(screen.getByText('3 of 3 units')).toBeInTheDocument()
+  it('drops the description and badge line in the compact phone layout', () => {
+    render(<PathCard path={base} onOpen={vi.fn()} compact />)
+    expect(screen.queryByText(base.description as string)).not.toBeInTheDocument()
+    expect(screen.queryByText('Algorithmist')).not.toBeInTheDocument()
   })
 
-  it('shows no progress bar when the path is not started', () => {
-    render(<PathCard path={basePath} onOpen={vi.fn()} />)
-    expect(screen.queryByText(/of 3 units/)).not.toBeInTheDocument()
-  })
-
-  it('shows a "Completed" chip when the path is completed', () => {
-    render(<PathCard path={{ ...basePath, myEnrollmentStatus: 'completed' }} onOpen={vi.fn()} />)
-    expect(screen.getByText('Completed')).toBeInTheDocument()
+  it('opens the path on click', async () => {
+    const onOpen = vi.fn()
+    render(<PathCard path={base} onOpen={onOpen} />)
+    await userEvent.setup().click(screen.getByRole('button'))
+    expect(onOpen).toHaveBeenCalledWith('p1')
   })
 })

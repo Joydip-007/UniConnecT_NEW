@@ -66,6 +66,15 @@ export const learningFixtures = {
     pathCompleted: false,
     streak: { currentStreak: 4, longestStreak: 7 },
   },
+  quizzes: [
+    {
+      unitId: 'unit-q', pathId: 'path-1', pathTitle: 'Git basics', title: 'Checkpoint: recovering a repo',
+      summary: 'Two questions on reflog.', questionCount: 2, passScore: 70, state: 'locked' as const,
+      pathStarted: false, blockedByTitle: null, attemptCount: 0, bestScore: null, lastScore: null, passed: false,
+    },
+  ],
+  attempts: [] as unknown[],
+  badgeProgress: [] as unknown[],
 };
 
 export const handlers = [
@@ -79,4 +88,8 @@ export const handlers = [
   http.put('*/learning/me/badges/showcase', () => HttpResponse.json({ data: {} })),
   http.get('*/learning/users/:userId/badges', () => HttpResponse.json({ data: learningFixtures.badges })),
   http.post('*/learning/units/:unitId/complete', () => HttpResponse.json({ data: learningFixtures.completeUnitResult })),
+  http.get('*/learning/me/quizzes', () => HttpResponse.json({ data: learningFixtures.quizzes })),
+  http.get('*/learning/units/:unitId/attempts', () => HttpResponse.json({ data: learningFixtures.attempts })),
+  http.get('*/learning/me/badges/progress', () => HttpResponse.json({ data: learningFixtures.badgeProgress })),
+  http.put('*/learning/me/badges/:badgeId/pin', () => HttpResponse.json({ data: { success: true } })),
 ];

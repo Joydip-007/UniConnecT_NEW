@@ -1,16 +1,24 @@
 import { useState } from 'react'
 import { BookOpen } from 'lucide-react'
+import { pillButton } from '@/features/learning/learnFormat'
 import { useTodayQuiz } from '../hooks/useQuiz'
 import { DailyQuizModal } from './DailyQuizModal'
 
-export function DailyQuizCard({ accent = false }: { accent?: boolean }) {
+interface DailyQuizCardProps {
+  /** Take the screen's one filled accent while today's quiz is still open. */
+  accent?: boolean
+  /** Phone layout: icon, text and button on one row. */
+  compact?: boolean
+}
+
+export function DailyQuizCard({ accent = false, compact = false }: DailyQuizCardProps) {
   const { data: slot, isLoading } = useTodayQuiz()
   const [open, setOpen] = useState(false)
 
   if (isLoading) {
     return (
       <div style={{
-        height: 88,
+        height: compact ? 64 : 88,
         borderRadius: 'var(--r-lg)',
         background: 'var(--surface-card)',
         border: '0.5px solid var(--border-default)',
@@ -21,56 +29,61 @@ export function DailyQuizCard({ accent = false }: { accent?: boolean }) {
   if (!slot) return null
 
   const attempted = slot.myAttempt !== null
-  // Only one filled accent on the Learn screen. The quiz claims it when nothing above it
-  // in Today still needs doing (`accent`) and it has not been attempted yet.
   const lead = accent && !attempted
+  const title = `Daily quiz · ${slot.department}`
+  const line = attempted
+    ? `You scored ${slot.myAttempt!.score}% · ${slot.myAttempt!.correctCount} of ${slot.myAttempt!.totalQuestions} correct`
+    : `${slot.questions.length} questions · test your knowledge today`
+  const button = (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      className="press-feedback"
+      style={{
+        ...pillButton(lead ? 'primary' : 'outline'),
+        ...(compact ? { fontSize: 12, padding: '0 12px', flexShrink: 0 } : { alignSelf: 'start', justifySelf: 'start' }),
+      }}
+    >
+      {attempted ? 'Review answers' : 'Take quiz'}
+    </button>
+  )
 
   return (
     <>
-      <div style={{
-        background: 'var(--surface-card)',
-        border: '0.5px solid var(--border-default)',
-        borderRadius: 'var(--r-lg)',
-        padding: 16,
-        display: 'grid',
-        gap: 10,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BookOpen size={16} color="var(--uc-indigo)" aria-hidden />
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-            Daily quiz · {slot.department}
-          </p>
+      {compact ? (
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: 14,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <BookOpen size={18} color="var(--uc-indigo)" aria-hidden style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>{line}</p>
+          </div>
+          {button}
         </div>
-
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', textWrap: 'pretty' }}>
-          {attempted
-            ? `You scored ${slot.myAttempt!.score}% · ${slot.myAttempt!.correctCount} of ${slot.myAttempt!.totalQuestions} correct`
-            : `${slot.questions.length} questions · test your knowledge today`}
-        </p>
-
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          style={{
-            height: 36,
-            padding: '0 16px',
-            borderRadius: 'var(--r-pill)',
-            background: lead ? 'var(--uc-orange)' : 'transparent',
-            color: lead ? 'var(--on-accent)' : 'var(--text-secondary)',
-            border: lead ? 'none' : '0.5px solid var(--border-default)',
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 500,
-            // The card is a grid, so `alignSelf` only pins the block axis — without
-            // `justifySelf` the pill stretches the full card width and reads as a banner.
-            alignSelf: 'start',
-            justifySelf: 'start',
-            transition: 'opacity var(--dur-fast) var(--ease-standard)',
-          }}
-        >
-          {attempted ? 'Review answers' : 'Take quiz'}
-        </button>
-      </div>
+      ) : (
+        <div style={{
+          background: 'var(--surface-card)',
+          border: '0.5px solid var(--border-default)',
+          borderRadius: 'var(--r-lg)',
+          padding: 16,
+          display: 'grid',
+          gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BookOpen size={16} color="var(--uc-indigo)" aria-hidden />
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{title}</p>
+          </div>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', textWrap: 'pretty' }}>{line}</p>
+          {button}
+        </div>
+      )}
 
       {open && <DailyQuizModal slot={slot} open={open} onClose={() => setOpen(false)} />}
     </>

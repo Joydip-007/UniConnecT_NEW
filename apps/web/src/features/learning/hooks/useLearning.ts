@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
 import type {
-  CompleteUnitResult, LearningPath, LearningStats, PathDetail, TodayEntry, UserBadge,
+  BadgeProgress, CompleteUnitResult, LearningPath, LearningStats, MyQuiz, PathDetail, SubmitUnitQuizResult,
+  TodayEntry, UnitQuizAttempt, UserBadge,
 } from '../types'
 
 const STREAK_MILESTONES = new Set([7, 30, 100])
@@ -92,6 +93,50 @@ export function useShowcaseBadge() {
   const invalidate = useInvalidateLearning()
   return useMutation({
     mutationFn: (badgeId: string | null) => api.put('/learning/me/badges/showcase', { badgeId }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useMyQuizzes() {
+  return useQuery({
+    queryKey: ['learning', 'quizzes', {}],
+    queryFn: () => api.get<{ data: MyQuiz[] }>('/learning/me/quizzes').then((r) => r.data.data),
+  })
+}
+
+export function useUnitAttempts(unitId: string | null) {
+  return useQuery({
+    queryKey: ['learning', 'attempts', { unitId }],
+    queryFn: () =>
+      api.get<{ data: UnitQuizAttempt[] }>(`/learning/units/${unitId}/attempts`).then((r) => r.data.data),
+    enabled: !!unitId,
+  })
+}
+
+export function useSubmitUnitQuiz() {
+  const invalidate = useInvalidateLearning()
+  return useMutation({
+    mutationFn: ({ unitId, answers }: { unitId: string; answers: number[] }) =>
+      api
+        .post<{ data: SubmitUnitQuizResult }>(`/learning/units/${unitId}/attempts`, { answers })
+        .then((r) => r.data.data),
+    onSuccess: invalidate,
+  })
+}
+
+export function useBadgeProgress(enabled = true) {
+  return useQuery({
+    queryKey: ['learning', 'badges', { progress: true }],
+    queryFn: () => api.get<{ data: BadgeProgress[] }>('/learning/me/badges/progress').then((r) => r.data.data),
+    enabled,
+  })
+}
+
+export function usePinBadge() {
+  const invalidate = useInvalidateLearning()
+  return useMutation({
+    mutationFn: ({ badgeId, pinned }: { badgeId: string; pinned: boolean }) =>
+      api.put(`/learning/me/badges/${badgeId}/pin`, { pinned }),
     onSuccess: invalidate,
   })
 }
