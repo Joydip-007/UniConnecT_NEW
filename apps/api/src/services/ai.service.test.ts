@@ -15,7 +15,13 @@ vi.mock('@google/generative-ai', () => ({
   },
 }))
 
-import { generateQuizQuestions, MODEL_FALLBACK_CHAIN, RETRY_DELAYS_MS } from './ai.service'
+import {
+  generateQuizQuestions,
+  AIQuotaExceededError,
+  AIUnavailableError,
+  MODEL_FALLBACK_CHAIN,
+  RETRY_DELAYS_MS,
+} from './ai.service'
 
 describe('ai.service', () => {
   beforeEach(() => {
@@ -77,7 +83,7 @@ describe('ai.service', () => {
 
     await expect(
       runWithoutBackoffDelays(() => generateQuizQuestions({ department: 'Math', count: 1 })),
-    ).rejects.toThrow('persistent failure')
+    ).rejects.toBeInstanceOf(AIUnavailableError)
     // A non-quota error exhausts every retry on a model before falling through to the
     // next one in the chain, so the total is models × attempts-per-model.
     expect(mockGenerateContent).toHaveBeenCalledTimes(MODEL_FALLBACK_CHAIN.length * RETRY_DELAYS_MS.length)
@@ -92,5 +98,45 @@ describe('ai.service', () => {
     const result = await generateQuizQuestions({ department: 'Physics', count: 1 })
 
     expect(result).toEqual(payload)
+  })
+
+  it('surfaces quota exhaustion as a 503 AIQuotaExceededError without retrying a model', async () => {
+    mockGenerateContent.mockRejectedValue(new Error('[429 Too Many Requests] RESOURCE_EXHAUSTED'))
+
+    const error = await runWithoutBackoffDelays(() =>
+      generateQuizQuestions({ department: 'Math', count: 1 }),
+    ).catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(AIQuotaExceededError)
+    expect((error as AIQuotaExceededError).statusCode).toBe(503)
+    expect(mockGenerateContent).toHaveBeenCalledTimes(MODEL_FALLBACK_CHAIN.length)
+  })
+
+  it('moves to the next model at once when one is overloaded', async () => {
+    const payload = [{ q: 'Q', options: ['a', 'b', 'c', 'd'], answer: 0 }]
+    mockGenerateContent
+      .mockRejectedValueOnce(new Error('[503 Service Unavailable] This model is currently experiencing high demand.'))
+      .mockResolvedValueOnce({ response: { text: () => JSON.stringify(payload) } })
+
+    const result = await generateQuizQuestions({ department: 'Math', count: 1 })
+
+    expect(result).toEqual(payload)
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2)
+  })
+
+  // Keep last: a retired model stays skipped for the rest of the process.
+  it('skips a retired (404) model without retrying it, then remembers it', async () => {
+    const payload = [{ q: 'Q', options: ['a', 'b', 'c', 'd'], answer: 0 }]
+    mockGenerateContent
+      .mockRejectedValueOnce(new Error('[404 Not Found] This model models/x is no longer available.'))
+      .mockResolvedValueOnce({ response: { text: () => JSON.stringify(payload) } })
+
+    await generateQuizQuestions({ department: 'Math', count: 1 })
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2)
+
+    mockGenerateContent.mockReset()
+    mockGenerateContent.mockResolvedValueOnce({ response: { text: () => JSON.stringify(payload) } })
+    await generateQuizQuestions({ department: 'Math', count: 1 })
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1)
   })
 })

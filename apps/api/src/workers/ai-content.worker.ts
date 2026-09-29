@@ -1,6 +1,6 @@
 import { aiContentQueue } from '../queues/ai-content.queue'
 import { db } from '../config/db'
-import { generateQuizQuestions, generateFlashcards, generateSkillPath, AIQuotaExceededError } from '../services/ai.service'
+import { generateQuizQuestions, generateFlashcards, generateSkillPath, AIQuotaExceededError, AIUnavailableError } from '../services/ai.service'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
 import { courseOutlineService } from '../modules/academic/course-outline.service'
@@ -15,7 +15,8 @@ function describeAiError(error: unknown): string {
   if (error instanceof AIQuotaExceededError) {
     return 'AI quota reached — all configured models hit their rate limit or free-tier daily cap. This is usually the per-day free-tier quota (separate from billing/paid quota) and typically resets within 24 hours; generation will resume automatically on the next scheduled run.'
   }
-  return `AI generation failed: ${error instanceof Error ? error.message : String(error)}`
+  const cause = error instanceof AIUnavailableError ? error.lastError : error
+  return `AI generation failed: ${cause instanceof Error ? cause.message : String(cause)}`
 }
 
 const AI_CALLS_PER_MINUTE = env.AI_CALLS_PER_MINUTE

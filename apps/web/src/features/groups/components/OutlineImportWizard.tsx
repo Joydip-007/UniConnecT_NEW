@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { isAxiosError } from 'axios'
 import {
   CheckCircle2,
   ClipboardList,
@@ -116,8 +117,14 @@ export function OutlineImportWizard({ onClose }: { onClose: () => void }) {
       setRosterEmails(result.rosterEmails)
       setSection(result.draft.section ?? '')
       setStep('review')
-    } catch {
-      toast.error('Could not read that outline. Try a different file.')
+    } catch (e) {
+      // 503 = the AI is down/over quota, not a bad file — say so rather than blaming the upload.
+      const aiDown = isAxiosError(e) && e.response?.status === 503
+      toast.error(
+        aiDown
+          ? ((e.response?.data as { error?: string } | undefined)?.error ?? 'AI is temporarily unavailable. Try again shortly.')
+          : 'Could not read that outline. Try a different file.',
+      )
     }
   }
 

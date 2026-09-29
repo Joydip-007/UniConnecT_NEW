@@ -1,15 +1,29 @@
 import type { GoogleGenerativeAI as GoogleGenerativeAIClass } from '@google/generative-ai'
 import { z } from 'zod'
 import { env } from '../config/env'
+import { AppError } from '../utils/errors'
 import { logger } from '../utils/logger'
 
 /**
- * Tried in order. A quota error abandons the current model immediately; any other error
- * is retried per RETRY_DELAYS_MS first, and only then falls through to the next model.
- * Worst case for a persistently failing call is therefore
- * MODEL_FALLBACK_CHAIN.length * RETRY_DELAYS_MS.length attempts.
+ * Tried in order. A quota/overload error abandons the current model immediately and a
+ * retired model (404) is skipped for the rest of the process; any other error is retried
+ * per RETRY_DELAYS_MS first, and only then falls through to the next model. Worst case for
+ * a persistently failing call is therefore MODEL_FALLBACK_CHAIN.length * RETRY_DELAYS_MS.length
+ * attempts.
+ *
+ * Prefer the `-latest` aliases: pinned versions get retired (gemini-2.0-flash and -lite now
+ * 404), and free-tier quota is per model, so each distinct entry is its own quota bucket.
+ * Override with the `GEMINI_MODELS` env var.
  */
-export const MODEL_FALLBACK_CHAIN = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+export const MODEL_FALLBACK_CHAIN: string[] = (() => {
+  const configured = (env.GEMINI_MODELS ?? '')
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean)
+  return configured.length > 0
+    ? configured
+    : ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite']
+})()
 
 // Imported lazily (rather than as a static top-level `import`) so that merely loading this
 // module — which happens transitively through several routers at app startup/test setup —
@@ -30,23 +44,52 @@ async function getModel(name: string) {
   let model = modelCache.get(name)
   if (!model) {
     const genAI = await getGenAIInstance()
-    model = genAI.getGenerativeModel({ model: name, generationConfig: { temperature: 0.4 } })
+    model = genAI.getGenerativeModel({
+      model: name,
+      generationConfig: { temperature: 0.4, responseMimeType: 'application/json' },
+    })
     modelCache.set(name, model)
   }
   return model
 }
 
+/** Models Google answered 404 for (retired/unknown). Skipped until the process restarts. */
+const retiredModels = new Set<string>()
+
 /** Thrown when every model in the fallback chain has exhausted its quota. */
-export class AIQuotaExceededError extends Error {
-  constructor(message = 'AI quota reached for all configured models') {
-    super(message)
+export class AIQuotaExceededError extends AppError {
+  constructor(message = 'AI quota reached for all configured models. Please try again later.') {
+    super(message, 503, 'AI_QUOTA_EXCEEDED')
     this.name = 'AIQuotaExceededError'
   }
 }
 
+/** Thrown when every model in the chain failed for a reason other than quota. */
+export class AIUnavailableError extends AppError {
+  constructor(
+    message = 'AI generation is temporarily unavailable. Please try again in a few minutes.',
+    public readonly lastError?: unknown,
+  ) {
+    super(message, 503, 'AI_UNAVAILABLE')
+    this.name = 'AIUnavailableError'
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 function isQuotaError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error)
-  return /RESOURCE_EXHAUSTED|quota|status:\s*429|\[429/i.test(message)
+  return /RESOURCE_EXHAUSTED|quota|status:\s*429|\[429/i.test(errorMessage(error))
+}
+
+/** Overloaded model ("high demand") — retrying the same model rarely helps; move on. */
+function isOverloadedError(error: unknown): boolean {
+  return /\[503|status:\s*503|UNAVAILABLE|overloaded|high demand/i.test(errorMessage(error))
+}
+
+function isModelGoneError(error: unknown): boolean {
+  return /\[404|status:\s*404|no longer available|is not found for API version/i.test(errorMessage(error))
 }
 
 export interface AIQuizQuestion {
@@ -101,6 +144,7 @@ async function callGemini(prompt: string): Promise<unknown> {
   let sawQuotaError = false
 
   for (const modelName of MODEL_FALLBACK_CHAIN) {
+    if (retiredModels.has(modelName)) continue
     const model = await getModel(modelName)
     for (const delay of RETRY_DELAYS_MS) {
       if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
@@ -110,9 +154,18 @@ async function callGemini(prompt: string): Promise<unknown> {
         return JSON.parse(text)
       } catch (error) {
         lastError = error
+        if (isModelGoneError(error)) {
+          retiredModels.add(modelName)
+          logger.error('Gemini model unavailable (404), skipping it — update GEMINI_MODELS', { model: modelName })
+          break
+        }
         if (isQuotaError(error)) {
           sawQuotaError = true
           logger.warn('Gemini quota reached for model, switching to next fallback model', { model: modelName })
+          break
+        }
+        if (isOverloadedError(error)) {
+          logger.warn('Gemini model overloaded, switching to next fallback model', { model: modelName })
           break
         }
         logger.warn('Gemini call failed, will retry if attempts remain', { model: modelName, error })
@@ -123,7 +176,11 @@ async function callGemini(prompt: string): Promise<unknown> {
   if (sawQuotaError) {
     throw new AIQuotaExceededError()
   }
-  throw lastError
+  logger.error('Gemini call failed on every model in the fallback chain', {
+    models: MODEL_FALLBACK_CHAIN,
+    error: errorMessage(lastError),
+  })
+  throw new AIUnavailableError(undefined, lastError)
 }
 
 export async function generateQuizQuestions(options: {
@@ -198,33 +255,46 @@ Return ONLY valid JSON. No markdown. No explanation. JSON schema:
   return parsed as AISkillPath
 }
 
+// Lenient on purpose: models routinely send `null` for absent optionals and numbers as
+// strings ("20%"). Normalise those here instead of failing the whole import.
+const optionalText = z
+  .string()
+  .nullish()
+  .transform((v) => v ?? undefined)
+const looseNumber = z.preprocess(
+  (v) => (typeof v === 'string' ? Number.parseFloat(v.replace(/[^\d.-]/g, '')) : v),
+  z.number(),
+)
+
 const CourseOutlineExtractionSchema = z.object({
   courseCode: z.string(),
   courseTitle: z.string(),
-  section: z.string().optional(),
+  section: optionalText,
   topics: z.array(
     z.object({
-      weekNumber: z.number(),
+      weekNumber: looseNumber,
       title: z.string(),
-      dateRange: z.string().optional(),
+      dateRange: optionalText,
     }),
   ),
   assessments: z.array(
     z.object({
       categoryName: z.string(),
-      weightPercent: z.number(),
-      fullMarks: z.number(),
-      totalGiven: z.number(),
+      weightPercent: looseNumber,
+      fullMarks: looseNumber,
+      totalGiven: looseNumber,
     }),
   ),
-  assignments: z.array(
-    z.object({
-      title: z.string(),
-      dueDate: z.string().nullable(),
-      topic: z.string().nullable(),
-      kind: z.enum(['assignment', 'class_test']),
-    }),
-  ),
+  assignments: z
+    .array(
+      z.object({
+        title: z.string(),
+        dueDate: z.string().nullish().transform((v) => v ?? null),
+        topic: z.string().nullish().transform((v) => v ?? null),
+        kind: z.enum(['assignment', 'class_test']).catch('assignment'),
+      }),
+    )
+    .default([]),
 })
 
 export type CourseOutlineExtraction = z.infer<typeof CourseOutlineExtractionSchema>
@@ -243,5 +313,12 @@ Text:
 ${text}`
 
   const parsed = await callGemini(prompt)
-  return CourseOutlineExtractionSchema.parse(parsed)
+  const result = CourseOutlineExtractionSchema.safeParse(parsed)
+  if (!result.success) {
+    // Not a request-validation failure — the model's reply didn't fit. A raw ZodError would
+    // surface as a misleading 422 "Request validation failed".
+    logger.warn('Course outline extraction returned an unexpected shape', { issues: result.error.issues })
+    throw new AppError('Could not read a course outline from that file. Try a different file.', 422, 'OUTLINE_UNREADABLE')
+  }
+  return result.data
 }

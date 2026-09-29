@@ -81,6 +81,10 @@ export async function buildCourseOutlineDraft(fileUrl: string, rosterUrl?: strin
   if (rosterUrl) assertAttachmentUrlsAreOwnUploads([{ url: rosterUrl }])
 
   const text = await extractTextFromUrl(fileUrl)
+  // A scanned (image-only) PDF extracts to nothing — don't spend an AI call on it.
+  if (text.trim().length < 20) {
+    throw badRequest('No readable text in that file. Upload a text-based PDF or DOCX.', 'OUTLINE_NO_TEXT')
+  }
   const extraction = await extractCourseOutline(text)
 
   const draft: CourseOutlineDraftInput = {

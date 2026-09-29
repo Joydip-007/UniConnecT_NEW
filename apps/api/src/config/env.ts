@@ -37,6 +37,10 @@ const envSchema = z.object({
   KLIPY_CONTENT_FILTER: z.enum(['off', 'low', 'medium', 'high']).default('high'),
   // AI / Academic LMS
   GEMINI_API_KEY: z.string().min(1),
+  // Comma-separated Gemini model fallback chain. Google retires pinned versions (2.0-flash
+  // went dark in 2026), so this lets ops swap models from App Service settings without a
+  // deploy. Unset → the `-latest` aliases in `ai.service.ts`.
+  GEMINI_MODELS: z.string().optional(),
   AI_CONTENT_ENABLED: z.coerce.boolean().default(true),
   AI_GROUP_POST_HOUR: z.coerce.number().int().min(0).max(23).default(8),
   // Guards the Gemini free-tier per-minute quota. Exceeding it makes the worker sleep out
