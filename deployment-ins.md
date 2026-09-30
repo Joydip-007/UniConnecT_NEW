@@ -212,8 +212,10 @@ Portal → `uniconnect-api` → **Configuration → Application settings** → *
 | `RESEND_API_KEY` | From [resend.com](https://resend.com) dashboard |
 | `RESEND_FROM_EMAIL` | `UniConnecT <noreply@uniconnectt.me>` |
 | `GEMINI_API_KEY` | From [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — powers AI flashcards, quiz generation, and course outlines |
-| `AI_CONTENT_ENABLED` | `true` — enables the daily AI content cron (quiz generation + academic-group flashcard posting) |
-| `AI_GROUP_POST_HOUR` | `0`-`23`, e.g. `8` — hour (server time) the daily AI flashcard group-posting cron runs |
+| `GEMINI_MODELS` | *(optional)* comma-separated model fallback chain, e.g. `gemini-flash-latest,gemini-2.5-flash`. Set this when Google retires a model, with no deploy needed. Unset → the `-latest` aliases in `ai.service.ts` |
+| `AI_CALLS_PER_MINUTE` | *(optional, default `12`)* Gemini calls per minute before the AI worker pauses for the rest of the minute |
+| `AI_CONTENT_ENABLED` | `true` — enables the hourly AI content crons (quiz generation, academic-group posting, learning-path generation) |
+| `AI_GROUP_POST_HOUR` | *(deprecated, unused)* each academic group now schedules itself from its own `ai_settings.run_hour` / `run_weekday` |
 
 Click **Save** → the app restarts automatically.
 

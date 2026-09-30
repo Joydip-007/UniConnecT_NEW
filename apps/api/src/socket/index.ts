@@ -4,6 +4,7 @@ import type Redis from 'ioredis'
 import { Server } from 'socket.io'
 import { MESSAGE_EVENTS, PRESENCE_EVENTS } from '@uniconnect/shared'
 import { db } from '../config/db'
+import { watchRedisClient } from '../config/redis-errors'
 import { env } from '../config/env'
 import {
   broadcastPresence,
@@ -42,6 +43,9 @@ async function emitListTyping(convId: string, userId: string, isTyping: boolean)
 export function setupSocket(httpServer: HttpServer, redisClient: Redis) {
   const pubClient = redisClient.duplicate()
   const subClient = redisClient.duplicate()
+  // duplicate() copies options, not listeners, so the adapter clients need their own.
+  watchRedisClient(pubClient, 'socket:pub')
+  watchRedisClient(subClient, 'socket:sub')
 
   const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim())
 

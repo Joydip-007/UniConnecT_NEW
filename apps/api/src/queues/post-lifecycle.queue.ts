@@ -1,5 +1,4 @@
-import Queue from 'bull'
-import { bullQueueOptions } from '../config/bull'
+import { createQueue } from '../config/bull'
 
 export type PostLifecycleJobType = 'publish' | 'expire'
 
@@ -16,7 +15,7 @@ export interface PostLifecycleSweepJob {
 
 export type PostLifecycleJobData = PostLifecycleJob | PostLifecycleSweepJob
 
-export const postLifecycleQueue = new Queue<PostLifecycleJobData>('post-lifecycle', bullQueueOptions)
+export const postLifecycleQueue = createQueue<PostLifecycleJobData>('post-lifecycle')
 
 // Deterministic job ids so a reschedule/cancel is a clean remove-then-add.
 export function publishJobId(postId: string): string {

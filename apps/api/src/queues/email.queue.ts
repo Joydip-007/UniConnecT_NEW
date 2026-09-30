@@ -1,5 +1,4 @@
-import Queue from 'bull'
-import { bullQueueOptions } from '../config/bull'
+import { createQueue } from '../config/bull'
 
 export interface EmailQueueJob {
   to: string
@@ -8,4 +7,4 @@ export interface EmailQueueJob {
   text?: string
 }
 
-export const emailQueue = new Queue<EmailQueueJob>('email', bullQueueOptions)
+export const emailQueue = createQueue<EmailQueueJob>('email')

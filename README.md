@@ -215,7 +215,7 @@ npx pnpm --filter api db:reset       # rollback all, migrate, seed
 | [`docs/database.md`](docs/database.md) | Schema, indexes, and migration notes |
 | [`docs/socket-events.md`](docs/socket-events.md) | Real-time event contract |
 | [`docs/design-system.md`](docs/design-system.md) | Design tokens, components, and logo guidance |
-| [`docs/BACKEND.md`](docs/BACKEND.md) | Backend memory and implementation rules |
+| [`CLAUDE.md`](CLAUDE.md) | Architecture rules, conventions and backend gotchas |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Product design direction |
 | [`deployment-ins.md`](deployment-ins.md) | Current production deployment instructions |
 

@@ -14,7 +14,11 @@ import {
 
 // Hourly at :10 — each run only acts on universities whose local hour matches.
 // Stable jobId prevents duplicate registration on restart.
-learningQueue.add({}, { repeat: { cron: '10 * * * *' }, jobId: 'learning-hourly' })
+learningQueue
+  .add({}, { repeat: { cron: '10 * * * *' }, jobId: 'learning-hourly' })
+  .catch((error) => {
+    logger.error('Failed to register repeatable job', { queue: 'learning', error })
+  })
 
 interface StatsRow {
   user_id: string

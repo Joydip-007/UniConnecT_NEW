@@ -10,7 +10,9 @@ feedRankingQueue.add(
     repeat: { cron: '*/20 * * * *' },
     jobId: 'feed-hot-score-refresh',
   },
-)
+).catch((error) => {
+  logger.error('Failed to register repeatable job', { queue: 'feed-ranking', error })
+})
 
 const WINDOW = `${FEED_RANKING.WINDOW_DAYS} days`
 

@@ -8,6 +8,9 @@ const envSchema = z.object({
   WEB_URL: z.string().optional(),
   DATABASE_URL: z.string().default('postgresql://postgres@localhost:5432/uniconnect_db'),
   REDIS_URL: z.string().default('redis://localhost:6379'),
+  // Namespace for Bull's Redis keys. Tests use their own so they never touch a dev
+  // machine's real queues on the same Redis.
+  BULL_PREFIX: z.string().default('bull'),
   JWT_SECRET: z.string().min(32).default('development-jwt-secret-change-before-production'),
   JWT_REFRESH_SECRET: z.string().min(32).default('development-refresh-secret-change-before-production'),
   RESEND_API_KEY: z.string().optional(),

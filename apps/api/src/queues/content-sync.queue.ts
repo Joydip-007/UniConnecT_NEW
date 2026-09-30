@@ -1,5 +1,4 @@
-import Queue from 'bull'
-import { bullQueueOptions } from '../config/bull'
+import { createQueue } from '../config/bull'
 
 export interface SyncRunJob {
   kind: 'sync-run'
@@ -24,4 +23,4 @@ export interface AttachmentBackfillJob {
 
 export type ContentSyncJob = SyncRunJob | AttachmentDownloadJob | AttachmentBackfillJob
 
-export const contentSyncQueue = new Queue<ContentSyncJob>('content-sync', bullQueueOptions)
+export const contentSyncQueue = createQueue<ContentSyncJob>('content-sync')

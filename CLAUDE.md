@@ -89,7 +89,9 @@ Presigned S3 PUT URL flow — client calls `POST /api/upload/presign`, uploads d
 
 ### Background jobs
 
-Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Queues: `email`, `notification`, `badge`, `group-digest` (weekly group digest cron), `mentorship` (48 h alumni reminder + 7 d request auto-expiry), `push` (Web Push fan-out), `content-sync` (admin-triggered external content import), `feed-ranking` (cron that recomputes `posts.hot_score`), `ai-content` (hourly crons for university quiz generation, per-group AI posting, and learning-path generation). Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue. In production, workers run in-process with the API server.
+Bull queues on Redis (`apps/api/src/queues/`), workers in `apps/api/src/workers/`. Job types: `email`, `notification`, `badge`, `group-digest` (weekly group digest cron), `notification-digest` (daily), `mentorship` (48 h alumni reminder + 7 d request auto-expiry), `push` (Web Push fan-out), `post-lifecycle` (scheduled publish/expiry + minutely sweep), `content-sync` (admin-triggered external content import), `feed-ranking` (cron that recomputes `posts.hot_score`), `learning` (hourly streak sweep, which also triggers daily-quiz slot generation), `ai-content` (hourly crons for university quiz generation, per-group AI posting, and learning-path generation).
+
+**The 12 job types ride two physical Bull queues ("lanes"), not 12.** `QUEUE_LANES` in `config/bull.ts` maps each type to `realtime` (email, notification, push, badge, mentorship, post-lifecycle) or `batch` (the slow and scheduled ones). Each processing queue holds one blocking Redis connection, so this cuts an instance from 16 Redis connections to 6. A new job type gets an entry in `QUEUE_LANES`; don't create a new physical queue. `createQueue(name)` returns a `LogicalQueue` that adds named jobs, namespaces caller-chosen `jobId`s as `{name}:{id}` (but not repeatable ones, since Bull splits repeat keys on `:`), and filters `on('failed'|'completed')` to its own type. `queues/legacy-migration.ts` moves any jobs left in the pre-lane per-type queues on worker start (and again after 5 minutes), then deletes those queues' keys. Tests set `BULL_PREFIX=bull-test` so they never touch a dev machine's real queues. Workers run as a **separate process** (`npx pnpm --filter api worker`) — never inline async work inside HTTP handlers, always enqueue. In production, workers run in-process with the API server.
 
 **Changing a repeatable job's schedule is a two-part change.** Bull persists repeatable jobs in Redis keyed by name+cron+`jobId`; deleting the registration from code does *not* deregister the running job. Change the `jobId` alongside the cron, or the old schedule survives the deploy and both fire. `ai-content.worker.ts` calls `pruneStaleRepeatableJobs()` before registering, which removes any repeatable whose id isn't in the current desired set — extend that set rather than adding an unpruned job.
 
@@ -216,6 +218,23 @@ Zod validation failures surface as **422 `VALIDATION_ERROR`**, not 400 — asser
 ### Shared services (`src/services/`)
 
 Cross-cutting services not owned by any module: `token.service.ts`, `email.service.ts`, `otp.service.ts`, `upload.service.ts`.
+
+### Backend gotchas
+
+- **Stack:** Express 5, Knex 3 (no ORM), `bcryptjs`, TypeScript 5. Production runs Node 22 LTS.
+- **OTPs live only in Redis**, bcrypt-hashed at `otp:{purpose}:{userId}` with a TTL from `OTP_EXPIRES_MINUTES`. Never add OTP columns to `users`: `007_ensure_no_otp_columns` removed them.
+- **Refresh tokens rotate on every use** (`tokenService.rotateRefreshToken`). A replayed old token is dead.
+- **`users.password_hash` is nullable** for bot accounts (e.g. campus-bot) that must never log in. Don't make it `NOT NULL`, and don't assume it's present.
+- **Soft-deleted users keep their email in the global `users_email_unique` index**, which ignores `is_deleted`. Any lookup-by-email that filters `is_deleted = false` before inserting will hit the unique constraint and return an opaque 500. `auth/service.ts` registration handles this; keep it in mind for any new email-keyed insert.
+- **`shuttle_locations` is append-only.** Every GPS ping inserts a row, and the newest row per route is authoritative.
+- **A `STORED` generated column may only call `IMMUTABLE` functions.** `array_to_string` is only `STABLE`, which crash-looped production at migration `070`. Migrations run at startup, so a bad one takes the whole API down. Wrap such calls in an `IMMUTABLE` SQL function (see `immutable_array_to_string`).
+- **No N+1 queries on list endpoints.** Use Knex joins or subqueries, not a query per row.
+- **One Redis serves everything** (`REDIS_URL`): Bull queues, the Socket.io adapter, OTPs, presence and rate limiting.
+- **Every Redis client and Bull queue needs an `error` listener**, or the first Redis error exits the process. On App Service that stops the whole site; this is how a restart that hit the Redis connection cap took the API down on 2026-09-30. Build queues with `createQueue(name)` from `config/bull.ts`, never `new Queue(...)` (that would also add a blocking connection), and pass any new ioredis client (including `.duplicate()`s) to `watchRedisClient()` from `config/redis-errors.ts`. Never leave a Bull call as a floating promise either: `.catch` a module-level `queue.add(...)`. `utils/process-handlers.ts` logs any unhandled rejection as a last resort instead of letting Node exit; uncaught exceptions still exit.
+- **Never log a raw ioredis error's `command`.** For AUTH its `args` are the Redis password. `logger` redacts `command.args` on errors, and `describeRedisError()` keeps only the command name.
+- **`req.user`** is `{ userId, universityId, role }`, and **`req.university`** is `{ id, name, domain, plan, allowedEmailDomains }` (`src/types/express.d.ts`).
+- **Rate limiters** (`middleware/rateLimiter.ts`, Redis key `rl:{prefix}:{subject}`): `loginLimiter` 10/15 min, `otpLimiter` 5/5 min, `globalLimiter` 1200/min on all of `/api/v1`, `writeLimiter` 60/min, `searchLimiter` 40/min, `uploadLimiter` 30/min.
+- **`logger` (`src/utils/logger.ts`) is not winston.** It writes one JSON line per call via `console.info|warn|error`, with `Error`s serialised (name/message/stack).
 
 ---
 
@@ -414,7 +433,7 @@ React tests: `@testing-library/react` + `user-event`. Test behaviour, not implem
 - Use `university_id` from the request body for auth decisions — use `req.university.id`.
 - Import across app boundaries (`apps/web` ↔ `apps/api`) — use `packages/shared`.
 - Add a dependency without checking if `packages/shared` or an existing workspace already covers it.
-- Call `console.log` in production-path code — use the `logger` from `src/utils/logger.ts` (winston).
+- Call `console.log` in production-path code — use the `logger` from `src/utils/logger.ts` (structured JSON lines).
 - Use `res.json()` directly in controllers — use `sendSuccess()` or `sendPaginated()`.
 - Use timestamp-prefixed migration filenames — use sequential `NNN_` prefix instead.
 
@@ -448,6 +467,8 @@ Types: `feat` · `fix` · `chore` · `refactor` · `test` · `docs`. CI (lint + 
 ### Deployment
 
 Azure App Service (CI/CD via GitHub Actions on `main`). The frontend can alternatively be deployed to Vercel (`vercel.json`). Production start command runs `db:migrate:prod` before starting the server.
+
+**Observability has blind spots.** Before trusting App Insights for a diagnosis, see `docs/deployment.md` → "Health and observability". The agent captures inbound requests and Postgres queries only: no exceptions, no Redis, and none of the `fetch`-based calls (Gemini, Resend, KLIPY, Skyvern, WordPress). Application logs come in separately: the diagnostic setting `uniconnect-api-logs` sends `logger` output to the workspace's `AppServiceConsoleLogs` table (30-day retention). Look there first for errors.
 
 ## Screenshots
 

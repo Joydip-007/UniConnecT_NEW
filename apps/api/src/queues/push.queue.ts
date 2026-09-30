@@ -1,5 +1,4 @@
-import Queue from 'bull'
-import { bullQueueOptions } from '../config/bull'
+import { createQueue } from '../config/bull'
 
 export interface PushNotificationPayload {
   title: string
@@ -13,4 +12,4 @@ export interface PushQueueJob {
   notification: PushNotificationPayload
 }
 
-export const pushQueue = new Queue<PushQueueJob>('push', bullQueueOptions)
+export const pushQueue = createQueue<PushQueueJob>('push')

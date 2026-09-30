@@ -3,7 +3,7 @@ import { db } from '../config/db'
 import { TEST_UNIVERSITY_ID, CREDENTIALS } from '../__tests__/setup'
 
 vi.mock('../queues/learning.queue', () => ({
-  learningQueue: { add: vi.fn(), process: vi.fn(), on: vi.fn() },
+  learningQueue: { add: vi.fn().mockResolvedValue(undefined), process: vi.fn(), on: vi.fn() },
 }))
 vi.mock('../queues/push.queue', () => ({
   pushQueue: { add: vi.fn() },

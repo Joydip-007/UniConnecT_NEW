@@ -1,3 +1,4 @@
+import './utils/process-handlers.install'
 import { createServer } from 'node:http'
 import { createApp } from './app'
 import { db } from './config/db'

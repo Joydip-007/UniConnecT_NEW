@@ -11,7 +11,9 @@ notificationDigestQueue.add(
     repeat: { cron: '0 3 * * *' },
     jobId: 'notification-daily-digest',
   },
-)
+).catch((error) => {
+  logger.error('Failed to register repeatable job', { queue: 'notification-digest', error })
+})
 
 interface DigestRow {
   user_id: string

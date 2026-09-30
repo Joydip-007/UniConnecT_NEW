@@ -10,7 +10,9 @@ groupDigestQueue.add(
     repeat: { cron: '0 3 * * 1' },
     jobId: 'group-weekly-digest', // stable ID prevents duplicate registration on restart
   },
-)
+).catch((error) => {
+  logger.error('Failed to register repeatable job', { queue: 'group-digest', error })
+})
 
 groupDigestQueue.process(async () => {
   logger.info('Group weekly digest job started')

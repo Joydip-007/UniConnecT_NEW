@@ -1,5 +1,6 @@
 import Redis from 'ioredis'
 import { env } from './env'
+import { watchRedisClient } from './redis-errors'
 
 const isTls = env.REDIS_URL.startsWith('rediss://')
 
@@ -12,6 +13,7 @@ export const redis = new Redis(env.REDIS_URL, {
   },
   ...(isTls && { tls: {} }),
 })
+watchRedisClient(redis, 'app')
 
 /**
  * Presence key TTL (seconds). The client heartbeats at ~half this interval so a

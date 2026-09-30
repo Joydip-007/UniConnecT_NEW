@@ -1,5 +1,4 @@
-import Queue from 'bull'
-import { bullQueueOptions } from '../config/bull'
+import { createQueue } from '../config/bull'
 
 export interface NotificationQueueJob {
   universityId: string
@@ -12,4 +11,4 @@ export interface NotificationQueueJob {
   payload: Record<string, unknown>
 }
 
-export const notificationQueue = new Queue<NotificationQueueJob>('notification', bullQueueOptions)
+export const notificationQueue = createQueue<NotificationQueueJob>('notification')

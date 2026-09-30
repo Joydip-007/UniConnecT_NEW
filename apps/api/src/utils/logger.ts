@@ -53,6 +53,17 @@ function serializeValue(value: unknown): unknown {
 }
 
 function copyEnumerableProperties(value: Error) {
-  const entries = Object.entries(value)
+  const entries = Object.entries(value).map(([key, nested]) =>
+    key === 'command' ? [key, redactCommand(nested)] : [key, nested],
+  )
   return entries.length > 0 ? Object.fromEntries(entries) : {}
+}
+
+// ioredis attaches the failed command to its errors, and for AUTH the args are the
+// username and password. Keep the command name for diagnosis and drop the args.
+function redactCommand(command: unknown): unknown {
+  if (command && typeof command === 'object' && 'args' in command) {
+    return { ...command, args: '[redacted]' }
+  }
+  return command
 }

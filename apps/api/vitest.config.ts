@@ -10,7 +10,7 @@ export default defineConfig({
     // The AI worker's per-minute quota guard sleeps out the remainder of the wall-clock
     // minute once the cap is hit. The AI calls are mocked in tests, so raise the cap high
     // enough that the suite never pays that real 60s stall.
-    env: { NODE_ENV: 'test', AI_CALLS_PER_MINUTE: '100000' },
+    env: { NODE_ENV: 'test', AI_CALLS_PER_MINUTE: '100000', BULL_PREFIX: 'bull-test' },
     testTimeout: 30_000,
     hookTimeout: 30_000,
     sequence: { concurrent: false },

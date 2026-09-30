@@ -11,7 +11,9 @@ postLifecycleQueue.add(
     repeat: { cron: '* * * * *' },
     jobId: 'post-lifecycle-sweep',
   },
-)
+).catch((error) => {
+  logger.error('Failed to register repeatable job', { queue: 'post-lifecycle', error })
+})
 
 postLifecycleQueue.process(async (job) => {
   const data = job.data
